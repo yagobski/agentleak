@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import typer
 
@@ -130,6 +131,103 @@ def scenarios() -> None:
         typer.secho(s.id, fg=typer.colors.CYAN, bold=True)
         typer.echo(f"  {s.description}")
         typer.echo(f"  domain: {s.domain} · sensitive: {', '.join(s.sensitive_data)}")
+
+
+# ----------------------------------------------------------------------
+# agent-card (offline A2A discovery card for THIS AgentLeak instance)
+# ----------------------------------------------------------------------
+@app.command(name="agent-card")
+def agent_card_cmd() -> None:
+    """Print AgentLeak's own A2A/Nasiko agent card (no server needed).
+
+    The same document is served unauthenticated at
+    ``/.well-known/agent-card.json`` by ``agentleak serve`` — this command
+    lets an agent (or a human) discover AgentLeak's capabilities offline.
+    """
+    from .core.agentcard import platform_card
+
+    typer.echo(json.dumps(platform_card(__version__).to_dict(), indent=2))
+
+
+# ----------------------------------------------------------------------
+# scan (static code privacy scan)
+# ----------------------------------------------------------------------
+@app.command()
+def scan(
+    path: str = typer.Argument(".", help="Directory (or zip file) to scan."),
+    repo: str | None = typer.Option(None, "--repo", "-r", help="Scan a GitHub repo (owner/name) instead of a path."),
+    branch: str = typer.Option("main", "--branch", help="Branch to scan with --repo."),
+    config: str | None = typer.Option(None, "--config", "-c", help="agentleak.yaml (detector toggles, custom rules, detection mode)."),
+    mode: str | None = typer.Option(None, "--mode", "-m", help="Detection mode: fast | standard (Presidio) | hybrid (Presidio + LLM-judge)."),
+    output: str | None = typer.Option(None, "--output", "-o", help="Write the full JSON result to a file."),
+    fail_under: int | None = typer.Option(None, "--fail-under", help="Exit non-zero when the code score is below this value."),
+) -> None:
+    """Static privacy scan of agent source code (local dir, zip, or GitHub repo).
+
+    Runs the same 3-tier hybrid pipeline as trace analysis (regex detectors,
+    Presidio, LLM-judge) plus code-specific layers: entropy analysis,
+    de-obfuscation of decomposed PII, and quasi-identifier correlation.
+    """
+    from .core.codescan import scan_dir, scan_github_repo, scan_zip_bytes
+
+    cfg: Config | None = None
+    if config:
+        try:
+            cfg = Config.load(config)
+        except (OSError, ValueError) as exc:
+            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
+    if mode:
+        # Mode override: standard enables Presidio, hybrid also enables the
+        # LLM-judge (endpoint from AGENTLEAK_LLM_BASE_URL / _MODEL env vars).
+        det: dict[str, object] = {
+            "mode": mode,
+            "presidio": {"enabled": mode in ("standard", "hybrid")},
+            "llm_judge": {
+                "enabled": mode in ("hybrid", "llm_only"),
+                "base_url": os.environ.get("AGENTLEAK_LLM_BASE_URL", ""),
+                "model": os.environ.get("AGENTLEAK_LLM_MODEL", ""),
+            },
+        }
+        base = cfg.model_dump() if cfg else {}
+        base["detection"] = {**base.get("detection", {}), **det}
+        cfg = Config.from_dict(base)
+
+    try:
+        if repo:
+            typer.echo(f"Fetching {repo}@{branch} …")
+            result = scan_github_repo(repo, branch=branch, config=cfg)
+        elif path.endswith(".zip"):
+            result = scan_zip_bytes(Path(path).read_bytes(), source_ref=path, config=cfg)
+        else:
+            result = scan_dir(path, config=cfg)
+    except (ValueError, OSError) as exc:
+        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    summary = result.summary()
+    color = typer.colors.GREEN if result.score >= 90 else (
+        typer.colors.YELLOW if result.score >= 70 else typer.colors.RED
+    )
+    typer.secho(f"Code privacy score: {result.score}/100 — {result.verdict}", fg=color, bold=True)
+    typer.echo(
+        f"  mode: {result.detection_mode} · tiers: {', '.join(result.tiers)}\n"
+        f"  files scanned: {summary['files_scanned']} · findings: {summary['total_findings']}"
+        f" · levels: {summary['level_profile']}"
+    )
+    for f in result.findings[:25]:
+        typer.echo(f"  [L{f.level}] {f.file}:{f.line} {f.rule} ({f.data_type}, {f.tier})")
+        typer.echo(f"        {f.snippet}")
+    if len(result.findings) > 25:
+        typer.echo(f"  … and {len(result.findings) - 25} more (use --output for the full list)")
+
+    if output:
+        Path(output).write_text(json.dumps(result.to_dict(), indent=2))
+        typer.secho(f"✓ wrote {output}", fg=typer.colors.GREEN)
+
+    if fail_under is not None and result.score < fail_under:
+        typer.secho(f"✗ score {result.score} < fail-under {fail_under}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
 
 
 # ----------------------------------------------------------------------
@@ -320,6 +418,146 @@ def _console_insight(data: dict) -> str | None:
             f"internal channels ({', '.join(internal)})."
         )
     return None
+
+
+# ----------------------------------------------------------------------
+# history
+# ----------------------------------------------------------------------
+@app.command()
+def history(
+    project: str = typer.Argument(..., help="Project name."),
+    limit: int = typer.Option(50, "--limit", "-n", help="Max runs to show."),
+    db_path: str | None = typer.Option(None, "--db", help="Path to agentleak.db (default: ~/.agentleak/)."),
+) -> None:
+    """Show the score progression history for a project."""
+    import datetime
+    from .core.store import Store
+    store = Store(db_path) if db_path else Store()
+    proj = store.get_project_by_name(project)
+    if not proj:
+        typer.secho(f"✗ Project '{project}' not found.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    runs = store.run_history(proj["id"], limit=limit)
+    if not runs:
+        typer.secho(f"No runs found for project '{project}'.", fg=typer.colors.YELLOW)
+        return
+
+    typer.secho(f"\nHistory — {project}  ({len(runs)} runs)\n", bold=True)
+    typer.echo(
+        f"  {'#':<4}  {'Run ID':<18}  {'Date':<20}  {'Score':>5}  {'Δ':>5}  "
+        f"{'RI':>6}  {'ΔRI':>7}  {'Verdict':<18}  Label"
+    )
+    typer.echo("  " + "─" * 95)
+    for r in runs:
+        d_score = r["delta_score"]
+        d_ri = r["delta_ri"]
+        delta_str = f"{d_score:>+5}" if d_score is not None else f"{'—':>5}"
+        dri_str = f"{d_ri:>+.3f}" if d_ri is not None else f"{'—':>7}"
+        dt = datetime.datetime.fromtimestamp(r["created_at"]).strftime("%Y-%m-%d %H:%M")
+        blocked_flag = " ⛔" if r["blocked"] else ""
+        label = r.get("label") or ""
+        score_color = (
+            typer.colors.GREEN if r["privacy_score"] >= 80
+            else typer.colors.YELLOW if r["privacy_score"] >= 50
+            else typer.colors.RED
+        )
+        delta_color = (
+            typer.colors.GREEN if (d_score or 0) > 0
+            else typer.colors.RED if (d_score or 0) < 0
+            else typer.colors.WHITE
+        )
+        typer.echo(f"  {r['rank']:<4}  {r['id']:<18}  {dt:<20}  ", nl=False)
+        typer.secho(f"{r['privacy_score']:>5}", fg=score_color, nl=False)
+        typer.echo("  ", nl=False)
+        typer.secho(delta_str, fg=delta_color, nl=False)
+        typer.echo(f"  {r['risk_index']:>6.3f}  {dri_str:>7}  {r['verdict']:<18}{blocked_flag}  {label}")
+
+    if len(runs) > 1:
+        first, last = runs[0], runs[-1]
+        total = last["privacy_score"] - first["privacy_score"]
+        total_color = typer.colors.GREEN if total > 0 else typer.colors.RED if total < 0 else typer.colors.WHITE
+        best = max(runs, key=lambda r: r["privacy_score"])
+        typer.echo("")
+        typer.echo("  Total improvement : ", nl=False)
+        typer.secho(f"{total:+d} pts", fg=total_color, bold=True)
+        typer.echo(f"  Best run          : {best['id']}  ({best['privacy_score']}/100)")
+        typer.echo(f"  Blocked runs      : {sum(1 for r in runs if r['blocked'])}/{len(runs)}")
+    typer.echo("")
+
+
+# ----------------------------------------------------------------------
+# compare
+# ----------------------------------------------------------------------
+@app.command()
+def compare(
+    run_a: str = typer.Argument(..., help="First run ID (baseline)."),
+    run_b: str = typer.Argument(..., help="Second run ID (comparison)."),
+    db_path: str | None = typer.Option(None, "--db", help="Path to agentleak.db."),
+) -> None:
+    """Compare two runs side by side and show score/RI/compliance deltas."""
+    from typing import Any as _Any
+    from .core.store import Store
+    store = Store(db_path) if db_path else Store()
+    result = store.compare_runs(run_a, run_b)
+    if result is None:
+        typer.secho("✗ One or both run IDs not found.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    a, b, diff = result["run_a"], result["run_b"], result["diff"]
+
+    typer.secho("\nRun comparison", bold=True)
+    typer.echo(f"  A (baseline) : {a['id']}  {a.get('label') or ''}".rstrip())
+    typer.echo(f"  B (current)  : {b['id']}  {b.get('label') or ''}".rstrip())
+    typer.echo("")
+
+    typer.echo(f"  {'Metric':<24}  {'A':>8}  {'B':>8}  {'Delta':>8}")
+    typer.echo("  " + "─" * 56)
+
+    def _row(name: str, val_a: _Any, val_b: _Any, delta: _Any, *, invert: bool = False) -> None:
+        if delta is None:
+            delta_str, delta_color = "—", typer.colors.WHITE
+        else:
+            delta_str = f"{delta:+.3f}" if isinstance(delta, float) else f"{delta:+d}"
+            positive_is_good = (delta > 0) ^ invert
+            delta_color = (
+                typer.colors.GREEN if positive_is_good
+                else typer.colors.RED if delta != 0
+                else typer.colors.WHITE
+            )
+        va = f"{val_a:.3f}" if isinstance(val_a, float) else str(val_a)
+        vb = f"{val_b:.3f}" if isinstance(val_b, float) else str(val_b)
+        typer.echo(f"  {name:<24}  {va:>8}  {vb:>8}  ", nl=False)
+        typer.secho(f"{delta_str:>8}", fg=delta_color)
+
+    _row("Privacy score", a["privacy_score"], b["privacy_score"], diff["delta_score"])
+    _row("Risk Index (RI)", a["risk_index"], b["risk_index"], diff["delta_ri"], invert=True)
+    _row("Leaked secrets", a["leaked_secrets"], b["leaked_secrets"], diff["delta_leaked"], invert=True)
+    total_a = a.get("report", {}).get("summary", {}).get("total_findings", 0)
+    total_b = b.get("report", {}).get("summary", {}).get("total_findings", 0)
+    _row("Total findings", total_a, total_b, diff["delta_findings"], invert=True)
+    _row("Blocked", "yes" if a["blocked"] else "no", "yes" if b["blocked"] else "no", None)
+
+    fws = diff.get("frameworks", [])
+    if fws:
+        typer.echo("")
+        typer.secho("  Compliance frameworks:", bold=True)
+        for fw in fws:
+            icon = {"fixed": "✓", "regressed": "✗", "same": " "}.get(fw["change"], " ")
+            color = {"fixed": typer.colors.GREEN, "regressed": typer.colors.RED}.get(fw["change"])
+            line = f"  {icon} [{fw['id']:<14}]  {fw['before']:<12} → {fw['after']}"
+            if color:
+                typer.secho(line, fg=color)
+            else:
+                typer.echo(line)
+
+    typer.echo("")
+    direction = diff.get("score_direction", "unchanged")
+    dcolor = {"improved": typer.colors.GREEN, "regressed": typer.colors.RED}.get(direction, typer.colors.WHITE)
+    typer.secho(f"  Overall: {direction.upper()}", fg=dcolor, bold=True)
+    if diff.get("blocked_resolved"):
+        typer.secho("  Blocker resolved — run B passes the privacy gate.", fg=typer.colors.GREEN)
+    typer.echo("")
 
 
 def main() -> None:

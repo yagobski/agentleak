@@ -31,6 +31,132 @@ GENERAL_RECOMMENDATIONS: list[str] = [
     "Give each agent the least privilege it needs; don't broadcast sensitive context.",
 ]
 
+# Per-channel remediation templates: machine-readable advice + copy-paste code fix.
+# Used by the platform UI and the /api/selftest endpoint so agents can auto-improve.
+CHANNEL_REMEDIATION: dict[str, dict[str, str]] = {
+    "tool_call": {
+        "advice": "Strip or mask sensitive fields before passing arguments to external tools.",
+        "code_fix": (
+            "SENSITIVE_KEYS = {'email', 'ssn', 'phone', 'password', 'api_key', 'credit_card'}\n"
+            "\n"
+            "def safe_tool_args(args: dict) -> dict:\n"
+            "    \"\"\"Redact sensitive keys before forwarding to any tool call.\"\"\"\n"
+            "    return {k: '[REDACTED]' if k.lower() in SENSITIVE_KEYS else v\n"
+            "            for k, v in args.items()}\n"
+            "\n"
+            "# Usage (LangChain tool wrapper example):\n"
+            "# result = my_tool.run(safe_tool_args(agent_action.tool_input))\n"
+        ),
+    },
+    "tool_response": {
+        "advice": "Filter tool responses before injecting them into the LLM context or forwarding to other agents.",
+        "code_fix": (
+            "import re\n"
+            "\n"
+            "EMAIL_RE  = re.compile(r'[\\w.+-]+@[\\w-]+\\.[a-z]{2,}', re.I)\n"
+            "SSN_RE    = re.compile(r'\\b\\d{3}-\\d{2}-\\d{4}\\b')\n"
+            "PHONE_RE  = re.compile(r'\\b\\+?\\d[\\d\\s\\-\\.]{7,}\\d\\b')\n"
+            "\n"
+            "def sanitize_tool_response(text: str) -> str:\n"
+            "    \"\"\"Strip PII from a tool response before it reaches the LLM context.\"\"\"\n"
+            "    text = EMAIL_RE.sub('[EMAIL]', text)\n"
+            "    text = SSN_RE.sub('[SSN]', text)\n"
+            "    text = PHONE_RE.sub('[PHONE]', text)\n"
+            "    return text\n"
+        ),
+    },
+    "shared_memory": {
+        "advice": "Never write raw sensitive data to shared memory; store opaque vault references instead.",
+        "code_fix": (
+            "import hashlib, secrets\n"
+            "\n"
+            "_vault: dict[str, str] = {}  # process-local; replace with encrypted store\n"
+            "\n"
+            "def vault_put(value: str) -> str:\n"
+            "    \"\"\"Store a sensitive value and return an opaque reference token.\"\"\"\n"
+            "    token = 'vlt_' + secrets.token_hex(8)\n"
+            "    _vault[token] = value\n"
+            "    return token  # safe to write to shared memory / logs\n"
+            "\n"
+            "def vault_get(token: str) -> str:\n"
+            "    return _vault[token]\n"
+            "\n"
+            "# Usage: instead of memory['email'] = user_email\n"
+            "#        do    memory['email_ref'] = vault_put(user_email)\n"
+        ),
+    },
+    "log": {
+        "advice": "Redact sensitive patterns at the logging boundary; never log full request/response payloads.",
+        "code_fix": (
+            "import re, logging\n"
+            "\n"
+            "_PATTERNS = [\n"
+            "    (re.compile(r'[\\w.+-]+@[\\w-]+\\.[a-z]{2,}', re.I), '[EMAIL]'),\n"
+            "    (re.compile(r'\\b\\d{3}-\\d{2}-\\d{4}\\b'),           '[SSN]'),\n"
+            "    (re.compile(r'(?i)(api[_-]?key|secret|token)=[^&\\s]+'), r'\\1=[REDACTED]'),\n"
+            "]\n"
+            "\n"
+            "class PrivacyFilter(logging.Filter):\n"
+            "    def filter(self, record: logging.LogRecord) -> bool:\n"
+            "        msg = str(record.getMessage())\n"
+            "        for pattern, repl in _PATTERNS:\n"
+            "            msg = pattern.sub(repl, msg)\n"
+            "        record.msg, record.args = msg, ()\n"
+            "        return True\n"
+            "\n"
+            "logging.getLogger().addFilter(PrivacyFilter())\n"
+        ),
+    },
+    "inter_agent_message": {
+        "advice": "Apply least-privilege data sharing between agents; only pass what the receiving agent strictly needs.",
+        "code_fix": (
+            "# Keys allowed to cross agent boundaries (allowlist beats denylist)\n"
+            "AGENT_HANDOFF_ALLOWLIST = {'task_id', 'intent', 'status', 'result_summary'}\n"
+            "\n"
+            "def clean_handoff(payload: dict) -> dict:\n"
+            "    \"\"\"Strip keys not on the allowlist before sending to the next agent.\"\"\"\n"
+            "    return {k: v for k, v in payload.items() if k in AGENT_HANDOFF_ALLOWLIST}\n"
+            "\n"
+            "# LangGraph / CrewAI example:\n"
+            "# next_agent.run(clean_handoff(current_state))\n"
+        ),
+    },
+    "generated_file": {
+        "advice": "Apply a redaction filter to every document before it is written to disk, sent to storage, or exported.",
+        "code_fix": (
+            "import re\n"
+            "\n"
+            "def redact_document(content: str) -> str:\n"
+            "    \"\"\"Remove PII from a generated document before export.\"\"\"\n"
+            "    content = re.sub(r'[\\w.+-]+@[\\w-]+\\.[a-z]{2,}', '[EMAIL]',   content, flags=re.I)\n"
+            "    content = re.sub(r'\\b\\d{3}-\\d{2}-\\d{4}\\b',    '[SSN]',     content)\n"
+            "    content = re.sub(r'\\b\\d{4}[\\s-]\\d{4}[\\s-]\\d{4}[\\s-]\\d{4}\\b', '[CARD]', content)\n"
+            "    return content\n"
+            "\n"
+            "# Usage: open('report.pdf', 'wb').write(generate_pdf(redact_document(text)))\n"
+        ),
+    },
+    "final_output": {
+        "advice": "Apply an output guardrail that strips identifiers before the final answer reaches the user.",
+        "code_fix": (
+            "import re\n"
+            "\n"
+            "def output_guardrail(text: str) -> str:\n"
+            "    \"\"\"Last-mile PII stripper — attach to every LLM output before returning.\"\"\"\n"
+            "    text = re.sub(r'[\\w.+-]+@[\\w-]+\\.[a-z]{2,}', '[EMAIL]', text, flags=re.I)\n"
+            "    text = re.sub(r'\\b\\d{3}-\\d{2}-\\d{4}\\b',    '[SSN]',   text)\n"
+            "    text = re.sub(r'\\b(\\d{4}[\\s-]){3}\\d{4}\\b', '[CARD]',  text)\n"
+            "    return text\n"
+            "\n"
+            "# LangChain:\n"
+            "# chain = prompt | llm | StrOutputParser() | output_guardrail\n"
+            "\n"
+            "# AutoGen:\n"
+            "# reply = output_guardrail(agent.generate_reply(messages))\n"
+        ),
+    },
+}
+
 
 @dataclass
 class AnalysisResult:
@@ -99,6 +225,43 @@ class AnalysisResult:
                     recs.append(advice)
         return recs
 
+    def remediation_hints(self) -> list[dict[str, object]]:
+        """Structured per-channel remediation with copy-paste code fixes.
+
+        Designed for programmatic consumption by agents and CI pipelines.
+        Each hint carries:
+        - channel      — where the leak was observed
+        - data_types   — what sensitive data types leaked in that channel
+        - priority     — "critical" | "high" | "medium"
+        - advice       — one-sentence human-readable guidance
+        - code_fix     — a Python code snippet showing exactly how to fix it
+        """
+        leaked = self.leaked_findings()
+        seen: set[str] = set()
+        hints: list[dict[str, object]] = []
+        # Order by risk contribution (highest first)
+        ordered_channels = [cr.channel for cr in self.score.channel_risks]
+        for ch in ordered_channels:
+            if ch in seen:
+                continue
+            ch_findings = [f for f in leaked if f.channel == ch]
+            if not ch_findings:
+                continue
+            seen.add(ch)
+            tpl = CHANNEL_REMEDIATION.get(ch)
+            if not tpl:
+                continue
+            max_level = max(f.level for f in ch_findings)
+            priority = "critical" if max_level >= 4 else "high" if max_level >= 3 else "medium"
+            hints.append({
+                "channel": ch,
+                "data_types": sorted({f.data_type for f in ch_findings}),
+                "priority": priority,
+                "advice": tpl["advice"],
+                "code_fix": tpl["code_fix"],
+            })
+        return hints
+
     # -- serialization ---------------------------------------------------
     def to_dict(self) -> dict[str, Any]:
         agentrisk = self.score.agentrisk.to_dict()
@@ -143,6 +306,7 @@ class AnalysisResult:
             ],
             "findings": [self._finding_dict(f) for f in leaked],
             "recommendations": self.recommendations(),
+            "remediation_hints": self.remediation_hints(),
             "agentrisk": agentrisk,
         }
         data["compliance"] = _compliance.evaluate(data)

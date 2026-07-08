@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from .context import RunContext, build_run_context
 from .llm import LLMConfig, LLMError, OpenAICompatLLM, resolve_api_key
+from .orchestrator import AgentDef, agents_from_config, run_pipeline
 from .runner import AgentRunError, run_scenario
 
 __all__ = [
@@ -30,4 +31,7 @@ __all__ = [
     "resolve_api_key",
     "AgentRunError",
     "run_scenario",
+    "AgentDef",
+    "agents_from_config",
+    "run_pipeline",
 ]

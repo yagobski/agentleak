@@ -1,0 +1,42 @@
+detection:
+  mode: fast
+
+project:
+  name: healthcare-patient-routing
+  description: >
+    5-agent healthcare case management pipeline.
+    Tests for HIPAA, GDPR Art. 9, and Québec Law 25 compliance.
+
+detectors:
+  pii: true
+  secrets: true
+  healthcare: true
+  finance: false
+  hr: false
+
+channels:
+  - user_input
+  - tool_call
+  - tool_response
+  - inter_agent_message
+  - shared_memory
+  - final_output
+  - log
+  - generated_file
+
+scoring:
+  weights: [1, 2, 3, 4]
+  block_on_critical: true
+  fail_below: 70
+
+privacy:
+  redact_values: true
+  store_raw_traces: false
+
+reports:
+  output_dir: reports
+  formats: [json, html, markdown]
+
+policy_gate:
+  fail_on: [hipaa, gdpr, law25]
+  fail_on_any: false

@@ -35,6 +35,14 @@ export function verdictColor(verdict: Report["verdict"]): string {
   return `hsl(var(${verdictVar(verdict)}))`
 }
 
+// Privacy-score color band (0–100): mirrors the verdict thresholds.
+export function scoreColor(score: number): string {
+  if (score >= 90) return "hsl(var(--sev-ok))"
+  if (score >= 70) return "hsl(var(--sev-l2))"
+  if (score >= 40) return "hsl(var(--sev-l3))"
+  return "hsl(var(--sev-l4))"
+}
+
 // Mirror of the backend verdict bands (on privacy_score = 100·(1−RI)).
 export function riVerdict(ri: number): Report["verdict"] {
   const s = 100 * (1 - ri)

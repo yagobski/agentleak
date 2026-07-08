@@ -1,0 +1,21 @@
+{
+  "vulnerable": {
+    "privacy_score": 11,
+    "risk_index": 0.8929,
+    "findings": 26,
+    "blocked": true,
+    "compliance_gate_failed": true
+  },
+  "hardened": {
+    "privacy_score": 100,
+    "risk_index": 0.0,
+    "findings": 9,
+    "blocked": false,
+    "compliance_gate_failed": false
+  },
+  "delta": {
+    "privacy_score": 89,
+    "risk_index_reduction": 0.8929,
+    "findings_removed": 17
+  }
+}

@@ -30,15 +30,17 @@ no data ever leaves your machine.
 ## Install
 
 ```bash
-pip install agentleak          # core (CLI + SDK)
-pip install 'agentleak[gui]'   # + local web UI
+pip install agentleak                     # core — CLI + SDK, zero optional deps
+pip install 'agentleak[gui]'              # + local web UI (FastAPI + React)
+pip install 'agentleak[presidio]'         # + Tier-2b detector (Presidio)
+pip install 'agentleak[full]'             # gui + presidio
 ```
 
 From source:
 
 ```bash
 git clone https://github.com/Privatris/AgentLeak
-cd AgentLeak/agentleak-oss   # this OSS package
+cd AgentLeak/agentleak-oss
 pip install -e ".[dev]"
 ```
 
@@ -53,11 +55,12 @@ A full local platform — React + Tailwind + **shadcn/ui** (black theme), fully
 self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
 
 - **Projects** — each is an agent under test. **Run a real agent** against any
-  scenario: point the project at an OpenAI-compatible endpoint (OpenAI /
-  OpenRouter / Ollama / vLLM) and AgentLeak executes the model with a toolbox,
-  captures the trace it actually produces, and scores it — or use the built-in
-  scripted agent offline. You can also **connect your own agent via the SDK**
-  (the Connect tab generates a copy-paste snippet).
+  scenario, or use the built-in scripted agent offline. Connect your own agent
+  via the SDK (the Connect tab generates a copy-paste snippet).
+- **Red Team** — adversarial batch testing with 32 attack classes across 6
+  families (prompt injection, tool-surface, memory, multi-agent, reasoning,
+  evasion). Generates synthetic traces, runs detection, and reports ASR / ELR /
+  CLR metrics — no live LLM required.
 - **Runs** — every analysis is stored locally (SQLite); view, **compare**
   (weight-robust dominance), export (JSON / MD / HTML), delete.
 - **Dashboard** — average Risk Index, blocked runs, recent activity.
@@ -72,19 +75,25 @@ self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
   auto-detected and converted), and **import packs** (the 36-scenario *AgentLeak
   Bench* and *PII Probes*). One click runs any of them in the Playground.
 
-Connect an agent in a few lines:
+Connect an agent in one line — `agentleak.watch()` works for **any** framework
+(LangChain, LangGraph, CrewAI, OpenAI Swarm / Agents SDK, Google ADK,
+computer-use / coding agents like OpenHands & Cline, or plain Python). One
+context manager: it records, analyzes on exit, and uploads to the platform if a
+project name is given.
 
 ```python
-from agentleak import AgentLeakClient, capture, monitor
+import agentleak
 
-@monitor(channel="tool_call")
-def call_crm(cid):
-    return {"customer_email": "a@b.com", "account_id": "ACC-12345"}
+with agentleak.watch("support-bot") as run:        # auto-analyzes + uploads on exit
+    # LangChain / LangGraph:  chain.invoke(x, config={"callbacks": [run.callback]})
+    # CrewAI:                 Crew(..., step_callback=run.crew.step_callback).kickoff()
+    # Swarm / Agents SDK:     run.ingest_messages(response.messages)
+    # computer-use / coder:   run.ingest_steps(agent.steps)   # shell, code, file writes
+    # plain Python:
+    run.tool_call({"customer_email": "a@b.com", "account_id": "ACC-12345"}, target="crm")
+    run.final_output("All set!")
 
-client = AgentLeakClient(project="support-bot")   # get-or-create
-with capture(run_id="run-001") as cap:
-    call_crm(42)
-client.submit(cap.trace)                          # shows up in the platform
+print(run.report.risk_index, run.report.verdict)   # also visible in the platform
 ```
 
 Everything runs locally. See [docs/platform.md](docs/platform.md) and
@@ -195,13 +204,25 @@ review — not legal certification. See [docs/compliance.md](docs/compliance.md)
 Agent frameworks are a **pluggable registry** — adding one is a single
 `register()` call in `agentleak/integrations/registry.py`, and it shows up in the
 platform's project pickers and Connect snippets automatically. Built in:
-generic, LangChain, LangGraph, CrewAI, AutoGen, OpenAI Agents SDK.
+generic, LangChain, LangGraph, CrewAI, AutoGen, OpenAI Swarm / Agents SDK,
+LlamaIndex, Semantic Kernel, Pydantic AI, smolagents, Google ADK, computer-use /
+coding agents (OpenHands, Open Interpreter, Cline), OpenTelemetry / OpenInference
+(reuse Phoenix / OpenLLMetry tracing), and MCP.
 
 Use the generic recorder anywhere, or the framework adapters:
 
 - **LangChain / LangGraph** — `agentleak.integrations.langchain.LangChainCallback`
 - **CrewAI** — `agentleak.integrations.crewai.CrewAICallback`
 - **AutoGen** — `agentleak.integrations.autogen.trace_from_messages`
+- **OpenAI Swarm / Agents SDK** — `agentleak.integrations.openai_swarm.trace_from_messages`
+- **LlamaIndex** — `agentleak.integrations.llamaindex.trace_from_response`
+- **Semantic Kernel** — `agentleak.integrations.semantic_kernel.trace_from_chat_history`
+- **Pydantic AI** — `agentleak.integrations.pydantic_ai.trace_from_messages`
+- **smolagents** — `agentleak.integrations.smolagents.trace_from_steps`
+- **Google ADK** — `agentleak.integrations.google_adk.trace_from_events`
+- **Computer-use / coding agents** — `agentleak.integrations.computer_use.trace_from_steps` (or `run.ingest_steps(...)`)
+- **OpenTelemetry / OpenInference** — `agentleak.integrations.otel.trace_from_spans` (or `run.ingest_spans(...)`) — reuse Arize Phoenix / OpenLLMetry tracing
+- **MCP** — `agentleak.integrations.mcp.trace_from_mcp`
 - **Generic** — `agentleak.integrations.generic.TraceRecorder`
 
 See [docs/integrations.md](docs/integrations.md).
@@ -220,9 +241,13 @@ See [docs/integrations.md](docs/integrations.md).
 
 - [Quickstart](docs/quickstart.md)
 - [Concepts](docs/concepts.md)
-- [Scoring (AgentRisk)](docs/scoring.md)
+- [Detection pipeline](docs/detection.md) — Tier 1+2 regex, Tier 2b Presidio, Tier 3 LLM-judge
+- [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
+- [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
+- [Defenses](docs/defenses.md) — Sanitizer, InternalChannelGuard
 - [Scenarios](docs/scenarios.md)
 - [Running agents (live & scripted)](docs/agents.md)
+- [Autonomous agents — agent card, code scan, improvement loop](docs/selftest-agents.md)
 - [Integrations](docs/integrations.md)
 - [Platform (projects, runs, SDK)](docs/platform.md)
 - [Compliance frameworks](docs/compliance.md)

@@ -50,6 +50,7 @@ export function Dashboard() {
 
   const avg = stats?.avg_risk_index
   const avgVerdict = avg != null ? riVerdict(avg) : null
+  const avgScore = stats?.avg_privacy_score
 
   return (
     <div className="animate-fade-up">
@@ -87,7 +88,7 @@ export function Dashboard() {
           footer={
             avgVerdict ? <span style={{ color: verdictColor(avgVerdict) }}>{avgVerdict}</span> : "No runs yet"
           }
-          sub="across all runs"
+          sub={avgScore != null ? `avg privacy score ${avgScore}/100` : "across all runs"}
         />
         <SectionCard
           label="Blocked runs"

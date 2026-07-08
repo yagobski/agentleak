@@ -28,6 +28,14 @@ IDENTITY_CREDENTIALS = SECRET_TYPES | frozenset({"ssn", "sin", "credit_card", "i
 # Channels the agent emits to (disclosures); tool_response/user_input are sources.
 INTERNAL_CHANNELS = frozenset({"tool_call", "shared_memory", "inter_agent_message", "log", "generated_file"})
 
+# Cardholder data in scope for PCI-DSS.
+CARDHOLDER_TYPES = frozenset({"credit_card", "account_number", "iban"})
+# Direct identifiers that, combined with health data, make it PHI under HIPAA.
+PII_IDENTIFIERS = frozenset({
+    "person_name", "name", "ssn", "sin", "date_of_birth", "address",
+    "email", "phone_number", "ip_address", "client_identifier",
+})
+
 
 @dataclass
 class Ctx:
@@ -122,6 +130,36 @@ FRAMEWORKS: list[Framework] = [
                     _levels_at_least(3)),
         ],
     ),
+    Framework(
+        "hipaa", "HIPAA Privacy & Security Rule (45 CFR 164)", "https://www.hhs.gov/hipaa/for-professionals/privacy/index.html",
+        [
+            Control("hipaa.164.502b", "§164.502(b) — Minimum necessary",
+                    "Protected health information forwarded to internal channels beyond the task need.",
+                    lambda c: (sorted(c.data_types & HEALTH_TYPES) if (c.channels & INTERNAL_CHANNELS) else [])),
+            Control("hipaa.164.312a", "§164.312(a) — Access control & transmission security",
+                    "PHI disclosed without an access/encryption safeguard.",
+                    lambda c: sorted(c.data_types & HEALTH_TYPES)),
+            Control("hipaa.164.514", "§164.514 — De-identification",
+                    "Health data co-disclosed with direct identifiers (re-identifiable PHI).",
+                    lambda c: (sorted(c.data_types & (HEALTH_TYPES | PII_IDENTIFIERS))
+                               if (c.data_types & HEALTH_TYPES) and (c.data_types & PII_IDENTIFIERS) else [])),
+        ],
+    ),
+    Framework(
+        "pci_dss", "PCI-DSS v4.0", "https://www.pcisecuritystandards.org/",
+        [
+            Control("pci.req3", "Req. 3 — Protect stored account data",
+                    "Cardholder / account data disclosed (must be unreadable wherever stored).",
+                    lambda c: sorted(c.data_types & CARDHOLDER_TYPES)),
+            Control("pci.req4", "Req. 4 — Protect data in transmission",
+                    "Cardholder data crossed an agent channel without protection.",
+                    lambda c: (sorted(c.channels) if (c.data_types & CARDHOLDER_TYPES) else [])),
+            Control("pci.req3.4", "Req. 3.4 — PAN not exposed in logs / tools",
+                    "Cardholder data written to logs, tool calls, or generated files.",
+                    lambda c: (sorted(c.channels & {"log", "tool_call", "generated_file"})
+                               if (c.data_types & CARDHOLDER_TYPES) else [])),
+        ],
+    ),
 ]
 
 
@@ -183,4 +221,25 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
             "non_compliant": len(FRAMEWORKS) - compliant_frameworks,
             "controls_at_risk": total_at_risk,
         },
+        "posture": _posture(frameworks_out),
+    }
+
+
+def _posture(frameworks_out: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compact, machine-readable verdict an agent can branch on directly.
+
+    ``status`` is ``"compliant"`` only when every framework passes, otherwise
+    ``"non_compliant"``. ``failed`` lists the regulations an agent must address
+    before it can ship, each with the count of controls at risk.
+    """
+    failed = [
+        {"id": fw["id"], "name": fw["name"], "at_risk": fw["at_risk"]}
+        for fw in frameworks_out
+        if fw["status"] == "non_compliant"
+    ]
+    failed.sort(key=lambda f: f["at_risk"], reverse=True)
+    return {
+        "status": "non_compliant" if failed else "compliant",
+        "failed_frameworks": [f["id"] for f in failed],
+        "failed": failed,
     }

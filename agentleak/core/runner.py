@@ -6,15 +6,60 @@ This is the single seam everything else (CLI, SDK, integrations) goes through.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from ..detectors import build_detectors
-from .agentrisk import DEFAULT_WEIGHTS, level_for
+from .agentrisk import DEFAULT_WEIGHTS
+from .canary import CanarySet
 from .config import Config
-from .detector import Detector, Finding, redact
+from .detector import Detector, Finding
+from .pipeline import DetectionMode, HybridPipeline
 from .report import AnalysisResult
 from .scoring import score_findings
 from .trace import Trace
+
+
+def _build_pipeline(config: Config | None, detectors: list[Detector]) -> HybridPipeline:
+    """Construct a HybridPipeline from optional config."""
+    if config is None:
+        return HybridPipeline(detectors, mode=DetectionMode.FAST)
+
+    det_cfg = config.detection
+    mode = DetectionMode(det_cfg.mode) if det_cfg.mode else DetectionMode.FAST
+
+    # Tier 2b: Presidio (optional extra)
+    presidio = None
+    if det_cfg.presidio.enabled:
+        try:
+            from ..detectors.presidio_detector import PresidioDetector
+            presidio = PresidioDetector(score_threshold=det_cfg.presidio.score_threshold)
+        except Exception:
+            pass
+
+    # Tier 3: LLM-judge (requires API key)
+    llm_judge = None
+    if det_cfg.llm_judge.enabled:
+        try:
+            from ..detectors.llm_judge import LLMJudgeDetector
+            api_key = os.environ.get(det_cfg.llm_judge.api_key_env, "")
+            llm_judge = LLMJudgeDetector(
+                base_url=det_cfg.llm_judge.base_url,
+                model=det_cfg.llm_judge.model,
+                api_key=api_key,
+                threshold=det_cfg.llm_judge.threshold,
+                timeout=det_cfg.llm_judge.timeout,
+            )
+        except Exception:
+            pass
+
+    return HybridPipeline(
+        detectors,
+        mode=mode,
+        llm_judge=llm_judge,
+        presidio=presidio,
+        level_overrides=config.scoring.level_overrides if config else {},
+    )
 
 
 class AgentLeakRunner:
@@ -29,7 +74,7 @@ class AgentLeakRunner:
     def __init__(self, config: Config | None = None) -> None:
         self.config = config
         if config is None:
-            self.detectors: list[Detector] = build_detectors(None, None)
+            raw_detectors: list[Detector] = build_detectors(None, None)
             self._channels: set[str] | None = None
             self._redact = True
             self._block_on_critical = True
@@ -40,7 +85,7 @@ class AgentLeakRunner:
             self._vault: Any = None
             self._scope_def: str | None = None
         else:
-            self.detectors = build_detectors(
+            raw_detectors = build_detectors(
                 config.detectors.as_dict(), config.custom_rules_raw()
             )
             self._channels = config.enabled_channels()
@@ -52,10 +97,23 @@ class AgentLeakRunner:
             self._level_overrides = dict(config.scoring.level_overrides)
             self._vault, self._scope_def = config.vault_spec()
 
-    def analyze(self, trace: Trace, *, vault: Any = None, scope_def: str | None = None) -> AnalysisResult:
+        self.detectors = raw_detectors
+        self._pipeline = _build_pipeline(config, raw_detectors)
+
+    def analyze(
+        self,
+        trace: Trace,
+        *,
+        vault: Any = None,
+        scope_def: str | None = None,
+        canary_set: CanarySet | None = None,
+    ) -> AnalysisResult:
         """Analyze a trace. An explicit ``vault`` (per-level counts, a list of
         secrets, or a raw ρ_S) overrides the config and the observed-reachable
         default for the AgentRisk denominator.
+
+        Pass a :class:`~agentleak.core.canary.CanarySet` to enable exact canary
+        matching in addition to the regular detector chain.
         """
         findings: list[Finding] = []
         counter = 0
@@ -69,33 +127,19 @@ class AgentLeakRunner:
             if not text:
                 continue
 
-            # Dedupe identical hits within one event (e.g. two detectors that
-            # both match the same value).
-            seen: set[tuple[str, str]] = set()
-            for detector in self.detectors:
-                for match in detector.detect(text):
-                    key = (match.data_type, match.matched_value)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    counter += 1
-                    findings.append(Finding(
-                        finding_id=f"finding_{counter:03d}",
-                        run_id=trace.run_id,
-                        event_id=event.event_id,
-                        channel=channel,
-                        data_type=match.data_type,
-                        severity=match.severity,
-                        confidence=match.confidence,
-                        matched_value=match.matched_value,
-                        redacted_value=redact(match.matched_value),
-                        detector=match.detector or detector.name,
-                        recommendation=match.recommendation,
-                        source=event.source,
-                        target=event.target,
-                        level=level_for(match.data_type, match.severity, self._level_overrides),
-                        metadata=dict(event.metadata),
-                    ))
+            event_findings = self._pipeline.run_event(
+                text=text,
+                event_id=event.event_id,
+                run_id=trace.run_id,
+                channel=channel,
+                source=event.source,
+                target=event.target,
+                metadata=dict(event.metadata),
+                canary_set=canary_set,
+                finding_counter=counter,
+            )
+            counter += len(event_findings)
+            findings.extend(event_findings)
 
         # Stable, readable ordering: highest severity level first, then confidence.
         findings.sort(key=lambda f: (-f.level, -f.confidence))

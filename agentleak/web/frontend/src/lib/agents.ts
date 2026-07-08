@@ -7,7 +7,12 @@ export const AGENT_LABELS: Record<string, string> = {
   langgraph: "LangGraph",
   crewai: "CrewAI",
   autogen: "AutoGen",
-  openai_agents: "OpenAI Agents SDK",
+  openai_swarm: "OpenAI Swarm / Agents SDK",
+  llamaindex: "LlamaIndex",
+  semantic_kernel: "Semantic Kernel",
+  pydantic_ai: "Pydantic AI",
+  smolagents: "smolagents",
+  google_adk: "Google ADK",
 }
 
 export function agentLabel(t: string): string {

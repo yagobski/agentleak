@@ -100,8 +100,10 @@ function NewProjectDialog({ onCreated }: { onCreated: (p: Project) => void }) {
 
 export function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
   const nav = useNavigate()
-  const load = () => api.projects().then(setProjects).catch(() => {})
+  const load = () =>
+    api.projects().then(setProjects).catch(() => {}).finally(() => setLoading(false))
   useEffect(() => {
     load()
   }, [])
@@ -114,7 +116,17 @@ export function Projects() {
         actions={<NewProjectDialog onCreated={(p) => nav(`/projects/${p.id}`)} />}
       />
 
-      {!projects.length ? (
+      {loading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="h-28 animate-pulse p-4">
+              <div className="h-4 w-2/3 rounded bg-muted" />
+              <div className="mt-2 h-3 w-full rounded bg-muted/70" />
+              <div className="mt-6 h-3 w-1/3 rounded bg-muted/50" />
+            </Card>
+          ))}
+        </div>
+      ) : !projects.length ? (
         <Card className="flex flex-col items-center justify-center gap-3 p-12 text-center">
           <Bot className="size-8 text-muted-foreground" />
           <div>
@@ -130,8 +142,18 @@ export function Projects() {
               <Card className="h-full p-4 transition-colors hover:border-primary/40">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium">{p.name}</span>
-                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {agentLabel(p.agent_type)}
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {p.agent_card && (
+                      <span
+                        className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary"
+                        title={`Agent card: ${p.agent_card.name}`}
+                      >
+                        card
+                      </span>
+                    )}
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {agentLabel(p.agent_type)}
+                    </span>
                   </span>
                 </div>
                 {p.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>}
