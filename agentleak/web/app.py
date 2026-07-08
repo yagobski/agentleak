@@ -893,6 +893,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def stats(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
         return db.stats(owner_id=user["id"])
 
+    @app.get("/api/leaderboard")
+    def leaderboard(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
+        """The user's agents ranked by their latest AgentRisk result."""
+        return {"entries": db.leaderboard(owner_id=user["id"])}
+
     # -- stateless playground analysis ---------------------------------
     @app.post("/api/analyze")
     def analyze(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> JSONResponse:

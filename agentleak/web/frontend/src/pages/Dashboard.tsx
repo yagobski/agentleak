@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Activity, ArrowRight, FlaskConical, FolderKanban, Gauge, ShieldAlert, ShieldCheck } from "lucide-react"
-import { api, type Project, type Stats } from "@/lib/api"
+import { Activity, ArrowRight, FlaskConical, FolderKanban, Gauge, ShieldAlert, ShieldCheck, Trophy } from "lucide-react"
+import { api, type LeaderboardEntry, type Stats } from "@/lib/api"
 import { riVerdict, verdictColor } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,12 +40,12 @@ function SectionCard({
 
 export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
+  const [board, setBoard] = useState<LeaderboardEntry[]>([])
   const nav = useNavigate()
 
   useEffect(() => {
     api.stats().then(setStats).catch(() => {})
-    api.projects().then(setProjects).catch(() => {})
+    api.leaderboard().then((b) => setBoard(b.entries)).catch(() => {})
   }, [])
 
   const avg = stats?.avg_risk_index
@@ -152,27 +152,42 @@ export function Dashboard() {
 
           <Card className="p-5">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <ShieldAlert className="size-4 text-sev-l3" /> Projects
+              <Trophy className="size-4 text-sev-l3" /> Agent leaderboard
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Latest AgentRisk result per agent — lower RI wins.
+            </p>
             <div className="mt-3 space-y-1.5">
-              {projects.slice(0, 4).map((p) => (
+              {board.slice(0, 6).map((e) => (
                 <Link
-                  key={p.id}
-                  to={`/projects/${p.id}`}
-                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                  key={e.project_id}
+                  to={`/projects/${e.project_id}`}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
                 >
-                  <span className="truncate">{p.name}</span>
-                  {p.avg_risk_index != null && (
-                    <span
-                      className="font-mono text-xs tnum"
-                      style={{ color: verdictColor(riVerdict(p.avg_risk_index)) }}
-                    >
-                      {p.avg_risk_index.toFixed(2)}
-                    </span>
-                  )}
+                  <span
+                    className={`w-5 shrink-0 text-center font-mono text-xs tnum ${
+                      e.rank === 1 ? "text-sev-ok" : "text-muted-foreground"
+                    }`}
+                  >
+                    {e.rank}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{e.name}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground tnum">
+                    {e.privacy_score}/100
+                  </span>
+                  <span
+                    className="w-12 text-right font-mono text-xs tnum"
+                    style={{ color: verdictColor(e.verdict) }}
+                  >
+                    {e.risk_index.toFixed(2)}
+                  </span>
                 </Link>
               ))}
-              {!projects.length && <p className="text-sm text-muted-foreground">No projects yet.</p>}
+              {!board.length && (
+                <p className="text-sm text-muted-foreground">
+                  No scored agents yet — run a project to enter the ranking.
+                </p>
+              )}
             </div>
           </Card>
         </div>

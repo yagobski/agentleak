@@ -1016,6 +1016,46 @@ class Store:
             "recent_runs": [self._run_summary(x) for x in recent],
         }
 
+    def leaderboard(self, *, owner_id: str | None = None) -> list[dict[str, Any]]:
+        """Rank the owner's agents by their latest AgentRisk result.
+
+        One entry per project that has at least one run, ordered by the most
+        recent run's Risk Index (lower is safer), privacy score as tiebreak.
+        """
+        with self._conn() as c:
+            where = "WHERE p.owner_id=?" if owner_id is not None else ""
+            args: tuple[Any, ...] = (owner_id,) if owner_id is not None else ()
+            rows = c.execute(
+                f"""SELECT p.id AS project_id, p.name, p.agent_type,
+                           r.risk_index, r.privacy_score, r.verdict, r.blocked,
+                           r.leaked AS leaked_secrets, r.created_at AS last_run_at,
+                           (SELECT COUNT(*) FROM runs x WHERE x.project_id = p.id) AS runs
+                    FROM projects p
+                    JOIN runs r ON r.id = (
+                        SELECT id FROM runs WHERE project_id = p.id
+                        ORDER BY created_at DESC LIMIT 1
+                    )
+                    {where}
+                    ORDER BY r.risk_index ASC, r.privacy_score DESC, p.name ASC""",
+                args,
+            ).fetchall()
+        entries = []
+        for i, row in enumerate(rows):
+            entries.append({
+                "rank": i + 1,
+                "project_id": row["project_id"],
+                "name": row["name"],
+                "agent_type": row["agent_type"],
+                "risk_index": row["risk_index"],
+                "privacy_score": row["privacy_score"],
+                "verdict": row["verdict"],
+                "blocked": bool(row["blocked"]),
+                "leaked_secrets": row["leaked_secrets"],
+                "runs": row["runs"],
+                "last_run_at": row["last_run_at"],
+            })
+        return entries
+
     # -- row mappers ----------------------------------------------------
     @staticmethod
     def _project_row(row: sqlite3.Row) -> dict[str, Any]:
