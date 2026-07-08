@@ -503,6 +503,12 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+export interface ModelKey {
+  base_url: string
+  model: string
+  api_key_set: boolean
+}
+
 export interface User {
   id: string
   email: string
@@ -646,6 +652,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+  modelKey: () => jsonFetch<ModelKey>("/api/auth/model-key"),
+  saveModelKey: (body: { base_url?: string; model?: string; api_key?: string }) =>
+    jsonFetch<ModelKey>("/api/auth/model-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  clearModelKey: () => jsonFetch<ModelKey>("/api/auth/model-key", { method: "DELETE" }),
 
   // platform
   stats: () => jsonFetch<Stats>("/api/stats"),

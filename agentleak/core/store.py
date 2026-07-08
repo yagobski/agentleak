@@ -148,6 +148,15 @@ class Store:
             )
             c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
             c.execute(
+                """CREATE TABLE IF NOT EXISTS user_settings (
+                    user_id TEXT NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (user_id, key),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )"""
+            )
+            c.execute(
                 """CREATE TABLE IF NOT EXISTS code_scans (
                     id TEXT PRIMARY KEY,
                     project_id TEXT NOT NULL,
@@ -333,6 +342,26 @@ class Store:
     def delete_session(self, token: str) -> None:
         with self._conn() as c:
             c.execute("DELETE FROM sessions WHERE token=?", (token,))
+
+    # -- per-user settings (default model key, preferences) --------------
+    def set_user_setting(self, user_id: str, key: str, value: str) -> None:
+        with self._conn() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO user_settings (user_id, key, value) VALUES (?,?,?)",
+                (user_id, key, value),
+            )
+
+    def get_user_setting(self, user_id: str, key: str, default: str = "") -> str:
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT value FROM user_settings WHERE user_id=? AND key=?", (user_id, key)
+            ).fetchone()
+        return str(row["value"]) if row else default
+
+    def delete_user_settings(self, user_id: str, *keys: str) -> None:
+        with self._conn() as c:
+            for key in keys:
+                c.execute("DELETE FROM user_settings WHERE user_id=? AND key=?", (user_id, key))
 
     @staticmethod
     def _user_row(row: sqlite3.Row) -> dict[str, Any]:

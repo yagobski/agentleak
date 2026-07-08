@@ -154,16 +154,18 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 def _resolve_redteam_llm(
-    project: dict[str, Any], payload: dict[str, Any]
+    project: dict[str, Any], payload: dict[str, Any],
+    user_default: dict[str, str] | None = None,
 ) -> OpenAICompatLLM | None:
     """Resolve a live LLM for a red-team run.
 
     Resolution order (first match wins):
     1. Explicit ``base_url`` / ``model`` in the request payload.
     2. Agent endpoint configured in project Settings.
-    3. ``AGENTLEAK_LLM_BASE_URL`` / ``AGENTLEAK_LLM_MODEL`` env vars
+    3. The account's default model key (Settings → Model key).
+    4. ``AGENTLEAK_LLM_BASE_URL`` / ``AGENTLEAK_LLM_MODEL`` env vars
        (supports local Ollama / LM Studio without a key).
-    4. ``OPENROUTER_API_KEY`` in the environment → OpenRouter cloud.
+    5. ``OPENROUTER_API_KEY`` in the environment → OpenRouter cloud.
 
     Returns ``None`` when no endpoint can be determined (caller falls back to
     a scripted run).
@@ -172,6 +174,15 @@ def _resolve_redteam_llm(
     base_url = str(payload.get("base_url") or agent_cfg.get("base_url") or "").strip()
     model = str(payload.get("model") or agent_cfg.get("model") or "").strip()
     api_key = str(payload.get("api_key") or agent_cfg.get("api_key") or "").strip()
+
+    # Account-level default endpoint (pasted OpenRouter/OpenAI key).
+    user_default = user_default or {}
+    if not base_url and user_default.get("base_url"):
+        base_url = str(user_default["base_url"]).strip()
+        model = model or str(user_default.get("model") or "").strip()
+        api_key = api_key or str(user_default.get("api_key") or "").strip()
+    elif base_url and not api_key and user_default.get("api_key"):
+        api_key = str(user_default["api_key"]).strip()
 
     # Env-var fallbacks — tried in order when the payload/project gave nothing.
     if not base_url:
@@ -665,6 +676,61 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         resp = JSONResponse({"ok": True})
         resp.delete_cookie(COOKIE_NAME, path="/")
         return resp
+
+    # -- default model key (account-level LLM endpoint) -----------------
+    _MODEL_KEY_SETTINGS = ("llm_base_url", "llm_model", "llm_api_key")
+    _OPENROUTER_URL = "https://openrouter.ai/api/v1"
+    _OPENROUTER_DEFAULT_MODEL = "openai/gpt-4o-mini"
+
+    def _user_llm_defaults(user_id: str) -> dict[str, str]:
+        """The account-level default LLM endpoint (used when a project has none)."""
+        return {
+            "base_url": db.get_user_setting(user_id, "llm_base_url"),
+            "model": db.get_user_setting(user_id, "llm_model"),
+            "api_key": db.get_user_setting(user_id, "llm_api_key"),
+        }
+
+    def _model_key_view(user_id: str) -> dict[str, Any]:
+        d = _user_llm_defaults(user_id)
+        return {"base_url": d["base_url"], "model": d["model"], "api_key_set": bool(d["api_key"])}
+
+    @app.get("/api/auth/model-key")
+    def get_model_key(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
+        """The signed-in user's default model endpoint (key never returned)."""
+        return _model_key_view(user["id"])
+
+    @app.post("/api/auth/model-key")
+    def set_model_key(
+        payload: dict[str, Any] = Body(...),
+        user: dict[str, Any] = Depends(require_user),
+    ) -> dict[str, Any]:
+        """Save the account's default model endpoint (OpenRouter, OpenAI, …).
+
+        A blank ``api_key`` preserves the stored key. When only a key is
+        given, OpenRouter defaults fill in the base URL and model so the
+        test core works out of the box.
+        """
+        base_url = str(payload.get("base_url") or "").strip()
+        model = str(payload.get("model") or "").strip()
+        api_key = str(payload.get("api_key") or "").strip()
+        stored = _user_llm_defaults(user["id"])
+
+        if api_key:
+            db.set_user_setting(user["id"], "llm_api_key", api_key)
+        has_key = bool(api_key or stored["api_key"])
+        if not base_url:
+            base_url = stored["base_url"] or (_OPENROUTER_URL if has_key else "")
+        if not model:
+            model = stored["model"] or (_OPENROUTER_DEFAULT_MODEL if has_key else "")
+        db.set_user_setting(user["id"], "llm_base_url", base_url)
+        db.set_user_setting(user["id"], "llm_model", model)
+        return _model_key_view(user["id"])
+
+    @app.delete("/api/auth/model-key")
+    def delete_model_key(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
+        """Clear the account's default model endpoint and key."""
+        db.delete_user_settings(user["id"], *_MODEL_KEY_SETTINGS)
+        return _model_key_view(user["id"])
 
     @app.post("/api/auth/delete-account")
     def delete_account(
@@ -1388,7 +1454,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         runner = AgentLeakRunner(cfg)
 
         # Resolve the agent under test.
-        llm = _resolve_redteam_llm(project, payload)
+        llm = _resolve_redteam_llm(project, payload, _user_llm_defaults(user["id"]))
         if mode == "scripted":
             llm = None
         elif mode == "live" and llm is None:
@@ -1653,6 +1719,17 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             )
 
         agent_cfg = (project["config"] or {}).get("agent") or {}
+        # Account-level default endpoint fills any gap in the project config,
+        # so a pasted OpenRouter key is enough to run the test core live.
+        user_llm = _user_llm_defaults(user["id"])
+        if not agent_cfg.get("base_url") and user_llm["base_url"]:
+            agent_cfg = {
+                "base_url": user_llm["base_url"],
+                "model": agent_cfg.get("model") or user_llm["model"],
+                "api_key": user_llm["api_key"],
+            }
+        elif agent_cfg.get("base_url") and not agent_cfg.get("api_key") and user_llm["api_key"]:
+            agent_cfg = {**agent_cfg, "api_key": user_llm["api_key"]}
         configured = _configured_agents(project)
 
         # Multi-agent project: orchestrate the configured agent pipeline.
