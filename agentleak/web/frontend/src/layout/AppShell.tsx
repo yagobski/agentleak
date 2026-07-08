@@ -5,11 +5,14 @@ import {
   FolderKanban,
   LayoutDashboard,
   Library,
+  LogOut,
   ScanLine,
   Settings,
   ShieldCheck,
+  UserCog,
 } from "lucide-react"
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -49,13 +52,18 @@ function isActivePath(pathname: string, to: string, end: boolean): boolean {
 }
 
 function sectionFor(pathname: string): { label: string; to: string } {
-  const all = [...NAV, { to: "/settings", label: "Settings", icon: Settings, end: false }]
+  const all = [
+    ...NAV,
+    { to: "/settings", label: "Settings", icon: Settings, end: false },
+    { to: "/admin", label: "Administration", icon: UserCog, end: false },
+  ]
   const match = all.find((n) => isActivePath(pathname, n.to, n.to === "/"))
   return match ? { label: match.label, to: match.to } : { label: "Dashboard", to: "/" }
 }
 
 function AppSidebar() {
   const { pathname } = useLocation()
+  const { user, logout } = useAuth()
   const [version, setVersion] = useState("")
   useEffect(() => {
     api.meta().then((m) => setVersion(m.version)).catch(() => {})
@@ -105,6 +113,16 @@ function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
+          {user?.is_admin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActivePath(pathname, "/admin", false)} tooltip="Administration">
+                <NavLink to="/admin">
+                  <UserCog />
+                  <span>Administration</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActivePath(pathname, "/settings", false)} tooltip="Settings">
               <NavLink to="/settings">
@@ -113,6 +131,14 @@ function AppSidebar() {
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          {user && (
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip={`Sign out (${user.email})`} onClick={() => void logout()}>
+                <LogOut />
+                <span className="truncate">{user.name || user.email}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-[11px] text-muted-foreground group-data-[collapsible=icon]:hidden">
               <span className="flex items-center gap-1.5">
@@ -180,7 +206,7 @@ export function AppShell() {
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
-          <div className="mx-auto w-full max-w-[1180px]">
+          <div className="w-full">
             <Outlet />
           </div>
         </div>

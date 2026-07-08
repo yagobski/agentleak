@@ -24,8 +24,13 @@ node_modules/
 reports/
 traces/*.local.json
 
+# Secrets — never commit these
+.env
+*.env.local
+
 # OS / editor
 .DS_Store
 .idea/
 .vscode/
 .claude/
+coverage.json

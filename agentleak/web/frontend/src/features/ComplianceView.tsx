@@ -11,6 +11,7 @@ function StatusIcon({ status }: { status: ControlResult["status"] }) {
 export function ComplianceView({ compliance }: { compliance: Compliance }) {
   if (!compliance?.frameworks?.length) return null
   const s = compliance.summary
+  const posture = compliance.posture
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
@@ -21,6 +22,31 @@ export function ComplianceView({ compliance }: { compliance: Compliance }) {
           {s.compliant}/{s.total} frameworks clear · {s.controls_at_risk} control(s) at risk
         </span>
       </div>
+      {posture && (
+        <div
+          className="mb-3 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm"
+          style={
+            posture.status === "compliant"
+              ? { color: "hsl(var(--sev-ok))", backgroundColor: "hsl(var(--sev-ok) / 0.07)", borderColor: "hsl(var(--sev-ok) / 0.25)" }
+              : { color: "hsl(var(--sev-l4))", backgroundColor: "hsl(var(--sev-l4) / 0.06)", borderColor: "hsl(var(--sev-l4) / 0.25)" }
+          }
+        >
+          {posture.status === "compliant" ? (
+            <>
+              <ShieldCheck className="size-4 shrink-0" />
+              <span className="font-medium text-foreground">Compliant across all {s.total} frameworks.</span>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="size-4 shrink-0" />
+              <span className="text-foreground">
+                <span className="font-medium">Not compliant.</span> Regulations to address:{" "}
+                {posture.failed.map((f) => f.name).join(", ")}.
+              </span>
+            </>
+          )}
+        </div>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
         {compliance.frameworks.map((fw) => {
           const ok = fw.status === "compliant"

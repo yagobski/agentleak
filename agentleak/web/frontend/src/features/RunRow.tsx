@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import type { RunSummary } from "@/lib/api"
-import { verdictColor } from "@/lib/format"
+import { scoreColor, verdictColor } from "@/lib/format"
 
 export function timeAgo(epochSeconds: number): string {
   const s = Math.max(1, Math.floor(Date.now() / 1000 - epochSeconds))
@@ -30,8 +30,25 @@ export function RunRow({ run, onClick, right }: { run: RunSummary; onClick?: () 
       className={`flex items-center gap-3 px-5 py-3 ${onClick ? "cursor-pointer transition-colors hover:bg-accent/50" : ""}`}
     >
       <VerdictChip verdict={run.verdict} ri={run.risk_index} />
+      {run.privacy_score != null && (
+        <span
+          className="shrink-0 font-mono tnum text-sm font-semibold"
+          style={{ color: scoreColor(run.privacy_score) }}
+          title="Privacy score"
+        >
+          {run.privacy_score}
+          <span className="text-[10px] text-muted-foreground">/100</span>
+        </span>
+      )}
       <div className="min-w-0 flex-1">
-        <div className="truncate font-mono text-[13px]">{run.agent_name || "agent"}</div>
+        <div className="flex items-center gap-2">
+          <span className="truncate font-mono text-[13px]">{run.agent_name || "agent"}</span>
+          {run.label && (
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {run.label}
+            </span>
+          )}
+        </div>
         <div className="text-[11px] text-muted-foreground">
           {run.leaked_secrets} leaked · {run.source} · {timeAgo(run.created_at)}
         </div>

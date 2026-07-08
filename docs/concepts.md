@@ -57,9 +57,27 @@ where the real leakage happens, and output-only audits miss it.
 
 ## Detectors
 
-A detector scans text and emits matches. Built-ins: `pii`, `secrets`,
-`healthcare`, `finance`, `hr`, plus custom regex rules. They are pure regex +
-dictionaries — no LLM, no network, fully explainable.
+A detector scans text and emits matches. The pipeline runs up to three tiers:
+
+| Tier | What runs | Default |
+| --- | --- | --- |
+| **Tier 1+2 — Regex** | Built-in pattern matchers: `pii`, `secrets`, `healthcare`, `finance`, `hr`, custom rules | Always |
+| **Tier 2b — Presidio** | Microsoft Presidio + 12 domain-specific recognizers (VIN, IMEI, GPS, CVV, …) | `pip install agentleak[presidio]` |
+| **Tier 3 — LLM-judge** | Semantic detector: calls an OpenAI-compatible endpoint to catch paraphrased / inferred leaks | Requires API key + config |
+
+See [Detection pipeline](detection.md) for configuration details.
+
+## Canary tokens
+
+A **canary token** is a synthetic secret planted in the vault before a test run.
+If a canary appears in the trace AgentLeak has unambiguous, zero-false-positive
+proof of a verbatim leak. Three tiers:
+
+- **Obvious** — `CANARY_ABCD1234` (clearly fake, for baseline testing)
+- **Realistic** — `000-12-3456` (valid SSN format, recognizable by detectors)
+- **Semantic** — natural-language sentence (detectable only by LLM-judge)
+
+Canary matching runs first in the pipeline, at `confidence=1.0`.
 
 ## Finding
 
@@ -89,3 +107,33 @@ unless you explicitly disable redaction.
 Findings are combined into the **AgentRisk Risk Index** (`RI ∈ [0,1]`), a
 per-channel RI breakdown, an L1–L4 severity profile, and a derived 0–100 privacy
 score with a verdict. See [Scoring](scoring.md).
+
+## Red Team
+
+AgentLeak includes a structured adversarial test harness. A **red team run**
+generates synthetic traces from a vault and injects attack payloads, then
+measures how well the detection pipeline catches the leaks.
+
+Key concepts:
+
+- **Attack family** (F1–F6): prompt injection, indirect/tool-surface, memory,
+  multi-agent, reasoning, evasion
+- **Adversary level** (A0–A2): inadvertent → weak external → strong internal
+- **Vault**: synthetic PII / PHI / PFI record set with 3-tier canaries
+- **Metrics**: ASR (Attack Success Rate), ELR (Exact Leakage Rate), CLR
+  (per-Channel Leak Rate)
+
+See [Red Team](redteam.md).
+
+## Defenses
+
+The `[guardrails]` module provides two complementary runtime defenses:
+
+- **Sanitizer** — redacts sensitive patterns from text before storage or
+  forwarding. Six redaction styles: placeholder, asterisk, masked, hash,
+  category, remove.
+- **InternalChannelGuard** — clearance-level access control on
+  `inter_agent_message` and `shared_memory` channels (which leak ~2.6× more than
+  external channels per the IEEE benchmark).
+
+See [Defenses](defenses.md).

@@ -6,8 +6,15 @@ final answer, but across **tool calls, memory, inter-agent messages, and logs**.
 ## 1. Install
 
 ```bash
-pip install agentleak
-# or, from a checkout:
+pip install agentleak                     # core — CLI + SDK, zero optional deps
+pip install 'agentleak[gui]'              # + local web UI (FastAPI + React)
+pip install 'agentleak[presidio]'         # + Tier-2b detector (Presidio + 12 domain recognizers)
+pip install 'agentleak[full]'             # gui + presidio
+```
+
+From source:
+
+```bash
 pip install -e ".[dev]"
 ```
 
@@ -98,4 +105,28 @@ result = AgentLeakRunner().analyze(trace)
 print(result.risk_index, result.verdict)      # 0.86 Fail
 ```
 
-Next: [Concepts](concepts.md) · [Scoring](scoring.md) · [Integrations](integrations.md)
+## Red Team
+
+Run adversarial tests against your agent without a live LLM:
+
+```python
+from agentleak.generators import ScenarioGenerator
+from agentleak.core.attacks import AdversaryLevel
+from agentleak.core.runner import AgentLeakRunner
+from agentleak.core.metrics import compute_metrics, _result_from_analysis
+
+gen = ScenarioGenerator(vertical="healthcare", adversary_level=AdversaryLevel.A1, seed=42)
+scenarios = gen.generate_batch(10)
+
+run_results = []
+for s in scenarios:
+    result = AgentLeakRunner().analyze(s.trace, canary_set=s.vault.canary_set)
+    run_results.append(_result_from_analysis(result, s))
+
+metrics = compute_metrics(run_results)
+print(f"ASR {metrics.overall_asr:.0%}  mean ELR {metrics.mean_elr:.2f}")
+```
+
+Or via the web UI — open a project → **Red Team** tab, pick a vertical, and click **Run**.
+
+Next: [Concepts](concepts.md) · [Detection pipeline](detection.md) · [Scoring](scoring.md) · [Red Team](redteam.md) · [Defenses](defenses.md) · [Integrations](integrations.md)

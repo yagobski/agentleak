@@ -36,6 +36,24 @@ gui = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
 ]
+llm = [
+  # No extra dependencies — uses stdlib urllib. Requires API key at runtime.
+  # Kept as a named extra to signal intent and allow future optional LLM libs.
+]
+presidio = [
+  "presidio-analyzer>=2.2",
+  "spacy>=3.7",
+]
+guardrails = [
+  # Optional guardrail backend wrappers (LLM Guard, NeMo, Lakera, etc.)
+  # Install individually based on which backend you use.
+]
+full = [
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "presidio-analyzer>=2.2",
+  "spacy>=3.7",
+]
 dev = [
   "pytest>=7.0",
   "pytest-cov>=4.0",

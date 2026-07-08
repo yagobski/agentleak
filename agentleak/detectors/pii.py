@@ -20,6 +20,15 @@ PHONE_RE = re.compile(
     r"(?<!\d)(?:\+?\d{1,3}[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]\d{3}[-.\s]\d{4}(?!\d)"
 )
 IP_RE = re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b")
+# IPv6 in expanded/partly-compressed form. Requires at least four groups so we
+# never mistake a clock time (12:34:56) for an address; precision over recall.
+IPV6_RE = re.compile(
+    r"\b(?:[A-Fa-f0-9]{1,4}:){3,7}[A-Fa-f0-9]{1,4}\b"
+    r"|\b(?:[A-Fa-f0-9]{1,4}:){1,6}:[A-Fa-f0-9]{1,4}\b"
+)
+# IPv4 that is actually a software version ("version 1.2.3.4") is not a client
+# IP leak — used to suppress that false positive.
+_VERSION_PREFIX_RE = re.compile(r"\b(?:version|ver|build|release|rev)\b[\s:v.]*$", re.IGNORECASE)
 CREDIT_CARD_RE = re.compile(r"\b(?:\d[ -]?){13,16}\b")
 # Dates only flagged as DOB when anchored to a birth keyword (avoids matching
 # trace timestamps and arbitrary dates).
@@ -28,10 +37,27 @@ DOB_RE = re.compile(
     r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
 )
 CLIENT_ID_RE = re.compile(r"\b(?:ACC|ACCT|CUST|CLIENT|USER|MEMBER)[-_]?\d{3,}\b", re.IGNORECASE)
+# UK National Insurance Number (AB123456C). Uses the official valid-prefix rules
+# (excludes administrative prefixes like BG/GB/NK/ZZ and the letters D/F/I/Q/U/V)
+# so the shape is distinctive enough to match without a keyword.
+NINO_RE = re.compile(
+    r"\b(?!BG|GB|NK|KN|TN|NT|ZZ)"
+    r"[ABCEGHJ-PRSTW-Z][ABCEGHJ-NPRSTW-Z]\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b"
+)
 # Street address: number + street words + a street-type suffix.
 ADDRESS_RE = re.compile(
     r"\b\d{1,5}\s+(?:[A-Z][A-Za-z.]+\s){1,3}"
     r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Place|Pl)\b\.?",
+    re.IGNORECASE,
+)
+# French / Québec civic address: number + street-type word *before* the name
+# (e.g. "1240 Rue Saint-Denis", "85 Boulevard René-Lévesque"). Grounded in
+# Law 25 — Québec addresses don't use the English "<name> Street" suffix shape.
+ADDRESS_FR_RE = re.compile(
+    r"\b\d{1,5}(?:[-\s]\d{1,4})?\s+"
+    r"(?:Rue|Avenue|Av|Boulevard|Boul|Bd|Chemin|Ch|C[ôo]te|Place|All[ée]e|"
+    r"Impasse|Mont[ée]e|Rang|Croissant|Promenade|Terrasse|Carr[ée])\.?\s+"
+    r"[A-ZÀ-Ý][\wÀ-ÿ'’.-]+(?:[ -][A-ZÀ-Ý][\wÀ-ÿ'’.-]+){0,3}",
     re.IGNORECASE,
 )
 # Canadian postal code (A1A 1A1) — distinctive enough to match without a keyword.
@@ -104,6 +130,16 @@ class PIIDetector(Detector):
                 ))
 
         for m in IP_RE.finditer(text):
+            # Skip version strings like "version 1.2.3.4" — not a client IP.
+            if _VERSION_PREFIX_RE.search(text[max(0, m.start() - 16):m.start()]):
+                continue
+            matches.append(self._match(
+                data_type="ip_address", severity=Severity.LOW, confidence=0.6,
+                matched_value=m.group(0),
+                recommendation="Strip client IP addresses from internal traces where not required.",
+            ))
+
+        for m in IPV6_RE.finditer(text):
             matches.append(self._match(
                 data_type="ip_address", severity=Severity.LOW, confidence=0.6,
                 matched_value=m.group(0),
@@ -124,6 +160,13 @@ class PIIDetector(Detector):
                 recommendation="Use opaque, scoped identifiers instead of raw client/account ids.",
             ))
 
+        for m in NINO_RE.finditer(text):
+            matches.append(self._match(
+                data_type="national_insurance_number", severity=Severity.HIGH, confidence=0.8,
+                matched_value=m.group(0),
+                recommendation="Never transmit full National Insurance numbers; tokenize them.",
+            ))
+
         for m in NAME_RE.finditer(text):
             matches.append(self._match(
                 data_type="person_name", severity=Severity.MEDIUM, confidence=0.55,
@@ -132,6 +175,13 @@ class PIIDetector(Detector):
             ))
 
         for m in ADDRESS_RE.finditer(text):
+            matches.append(self._match(
+                data_type="address", severity=Severity.HIGH, confidence=0.7,
+                matched_value=m.group(0).strip(),
+                recommendation="Home addresses are re-identifying; remove them from internal channels.",
+            ))
+
+        for m in ADDRESS_FR_RE.finditer(text):
             matches.append(self._match(
                 data_type="address", severity=Severity.HIGH, confidence=0.7,
                 matched_value=m.group(0).strip(),

@@ -51,6 +51,18 @@ def test_pii_dob_only_with_keyword():
     assert "date_of_birth" not in _types(d, "event at 2026-06-19")
 
 
+def test_pii_detects_french_quebec_address():
+    d = PIIDetector()
+    # English suffix form still works.
+    assert "address" in _types(d, "123 Main Street")
+    # French / Québec "<number> <street-type> <name>" form (Law 25 positioning).
+    assert "address" in _types(d, "1240 Rue Saint-Denis, Montréal")
+    assert "address" in _types(d, "85 Boulevard René-Lévesque Ouest")
+    assert "address" in _types(d, "7 Chemin de la Côte-Sainte-Catherine")
+    # A bare order number is not an address.
+    assert "address" not in _types(d, "Order 1240 was shipped today")
+
+
 # -- Secrets ------------------------------------------------------------
 def test_secrets_detects_aws_and_private_key():
     d = SecretsDetector()
@@ -149,3 +161,88 @@ def test_redact_keeps_edges():
 def test_redact_short_value_fully_masked():
     assert redact("abcd") == "****"
     assert redact("ab") == "**"
+
+
+# -- Secrets: model-provider & cloud keys (agent-runtime leaks) ----------
+def test_secrets_detects_openai_and_anthropic_keys():
+    d = SecretsDetector()
+    assert "llm_api_key" in _types(d, "OPENAI_API_KEY=sk-proj-abc123def456ghi789jkl012mno")
+    assert "llm_api_key" in _types(d, "key sk-ant-api03-AbCdEf1234567890ghijklmnop")
+
+
+def test_secrets_llm_key_is_distinct_from_stripe():
+    d = SecretsDetector()
+    # Stripe uses an underscore form and must not be relabeled as an LLM key.
+    types = _types(d, "sk_live_abcdef0123456789abcd")
+    assert "stripe_key" in types
+    assert "llm_api_key" not in types
+
+
+def test_secrets_detects_google_api_key():
+    d = SecretsDetector()
+    # AIza + exactly 35 url-safe chars (real Google key length).
+    key = "AIza" + "Syd0123456789abcdefghijklmnopqrstuv"
+    assert len(key) == 39
+    assert "google_api_key" in _types(d, f"maps key {key} here")
+
+
+def test_secrets_bearer_token_and_no_jwt_double_count():
+    d = SecretsDetector()
+    # Opaque bearer token -> bearer_token.
+    assert "bearer_token" in _types(d, "Authorization: Bearer abcdef0123456789abcdef0123456789")
+    # A JWT bearer is reported once, as a jwt (not also as a bearer_token).
+    jwt = "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc"
+    types = _types(d, jwt)
+    assert "jwt" in types
+    assert "bearer_token" not in types
+
+
+def test_secrets_new_keys_are_critical():
+    d = SecretsDetector()
+    crit = {m.data_type for m in d.detect("sk-proj-abc123def456ghi789jkl012mno")
+            if m.severity is Severity.CRITICAL}
+    assert "llm_api_key" in crit
+
+
+# -- PII: IPv6, version false positive, UK NINO --------------------------
+def test_pii_detects_ipv6():
+    d = PIIDetector()
+    assert "ip_address" in _types(d, "session 2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+    assert "ip_address" in _types(d, "host fe80::1ff:fe23:4567:890a here")
+
+
+def test_pii_ipv4_version_string_not_flagged():
+    d = PIIDetector()
+    # A software version is not a client IP leak.
+    assert "ip_address" not in _types(d, "version 1.2.3.4 of the build")
+    assert "ip_address" not in _types(d, "release 10.0.0.1 notes")
+    # A real client IP is still caught.
+    assert "ip_address" in _types(d, "client connected from 203.0.113.42")
+
+
+def test_pii_ipv6_does_not_match_clock_time():
+    d = PIIDetector()
+    assert "ip_address" not in _types(d, "the meeting is at 12:34:56 today")
+
+
+def test_pii_detects_uk_nino():
+    d = PIIDetector()
+    assert "national_insurance_number" in _types(d, "NINO AB123456C on file")
+    # Administrative / invalid prefixes are excluded (precision).
+    assert "national_insurance_number" not in _types(d, "code ZZ123456C is internal")
+
+
+# -- Cross-detector precision: clean text yields nothing -----------------
+def test_no_false_positives_on_realistic_clean_text():
+    detectors = [PIIDetector(), SecretsDetector(), FinanceDetector(),
+                 HealthcareDetector(), HRDetector()]
+    clean_samples = [
+        "The agent completed the task and returned a summary to the user.",
+        "Build version 2.10.4 was deployed at 09:15:30 without errors.",
+        "Please review the quarterly roadmap before the next sync.",
+        "The function returns a list of results sorted by relevance.",
+        "Order #4821 was shipped and the customer was notified by email.",
+    ]
+    for sample in clean_samples:
+        for d in detectors:
+            assert d.detect(sample) == [], f"{d.name} false-positive on: {sample!r}"
