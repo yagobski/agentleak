@@ -50,9 +50,9 @@ class HealthcareDetector(Detector):
         matches: list[RawMatch] = []
 
         for m in NAM_LIKE_RE.finditer(text):
-            matches.append(RawMatch(
+            matches.append(self._match(
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
-                matched_value=m.group(0), detector="healthcare_nam_detector",
+                matched_value=m.group(0),
                 recommendation="Remove or mask health identifiers before calling external tools.",
             ))
 

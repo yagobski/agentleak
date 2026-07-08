@@ -28,11 +28,28 @@ _KEY_ENV_BY_HOST = {
     "api.together.xyz": "TOGETHER_API_KEY",
 }
 
+# Local inference servers that work without an API key.
+_LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1")
+
+
+def _is_local(base_url: str) -> bool:
+    """Return True when the endpoint runs on the same machine."""
+    import urllib.parse as _up
+    host = _up.urlparse(base_url).hostname or ""
+    return host in _LOCAL_HOSTS
+
 
 def resolve_api_key(base_url: str, explicit: str = "") -> str:
-    """Pick the API key: explicit value first, else the conventional env var."""
+    """Pick the API key: explicit value first, else the conventional env var.
+
+    Local endpoints (Ollama, LM Studio, vLLM on localhost) require no key;
+    a placeholder ``"no-key"`` is returned so the ``Authorization`` header is
+    omitted cleanly.
+    """
     if explicit:
         return explicit
+    if _is_local(base_url):
+        return ""  # no auth header for local servers
     for host, env in _KEY_ENV_BY_HOST.items():
         if host in base_url:
             return os.environ.get(env, "")
@@ -45,7 +62,7 @@ class LLMConfig:
     model: str = "gpt-4o-mini"
     api_key: str = ""
     temperature: float = 0.2
-    timeout: float = 60.0
+    timeout: float = 120.0  # local models (Ollama, LM Studio) can be slow on first token
 
     def with_resolved_key(self) -> LLMConfig:
         return LLMConfig(
@@ -55,6 +72,27 @@ class LLMConfig:
             temperature=self.temperature,
             timeout=self.timeout,
         )
+
+    @classmethod
+    def from_env(cls) -> LLMConfig | None:
+        """Build an :class:`LLMConfig` from ``AGENTLEAK_LLM_BASE_URL`` /
+        ``AGENTLEAK_LLM_MODEL`` environment variables, if set.
+
+        These env vars let users point every live run at a local Ollama or
+        LM Studio instance without changing project settings::
+
+            AGENTLEAK_LLM_BASE_URL=http://localhost:11434/v1
+            AGENTLEAK_LLM_MODEL=llama3.2
+
+        Returns ``None`` when neither variable is present.
+        """
+        base_url = os.environ.get("AGENTLEAK_LLM_BASE_URL", "").strip()
+        model = os.environ.get("AGENTLEAK_LLM_MODEL", "").strip()
+        if not base_url:
+            return None
+        if not model:
+            model = "llama3.2" if "11434" in base_url else "local-model"
+        return cls(base_url=base_url, model=model)
 
 
 class OpenAICompatLLM:

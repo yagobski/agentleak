@@ -10,9 +10,13 @@ from fastapi.testclient import TestClient  # noqa: E402
 from agentleak.web import create_app  # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def client() -> TestClient:
-    return TestClient(create_app())
+@pytest.fixture()
+def client(tmp_path) -> TestClient:
+    import os
+    os.environ["AGENTLEAK_HOME"] = str(tmp_path)
+    c = TestClient(create_app())
+    from tests.conftest import authenticate
+    return authenticate(c)
 
 
 def test_spa_served(client: TestClient):
@@ -91,3 +95,79 @@ def test_report_formats(client: TestClient, fmt: str):
 
 def test_report_bad_format_400(client: TestClient):
     assert client.post("/api/report/pdf", json={"scenario_id": "healthcare_patient_summary"}).status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Run history & compare API endpoints
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def project_with_runs(client: TestClient) -> dict:
+    """Create a project and two stored runs (low score → high score)."""
+    p = client.post("/api/projects", json={"name": "history-test-agent"}).json()
+    pid = p["id"]
+    # Run 1: vulnerable scenario
+    r1 = client.post(f"/api/projects/{pid}/runs", json={
+        "scenario_id": "healthcare_patient_summary",
+        "label": "baseline",
+    }).json()
+    # Run 2: same scenario again (same score, just gives us two runs to compare)
+    r2 = client.post(f"/api/projects/{pid}/runs", json={
+        "scenario_id": "healthcare_patient_summary",
+        "label": "second",
+    }).json()
+    return {"project": p, "run_1": r1, "run_2": r2}
+
+
+def test_run_has_privacy_score_and_label(project_with_runs: dict):
+    r = project_with_runs["run_1"]
+    assert "privacy_score" in r
+    assert isinstance(r["privacy_score"], int)
+    assert r["label"] == "baseline"
+
+
+def test_history_endpoint_returns_progression(client: TestClient, project_with_runs: dict):
+    pid = project_with_runs["project"]["id"]
+    r = client.get(f"/api/projects/{pid}/history").json()
+    assert "runs" in r and "progression" in r
+    assert len(r["runs"]) == 2
+    # Ordered oldest-first
+    assert r["runs"][0]["rank"] == 1
+    assert r["runs"][1]["rank"] == 2
+    # First run has no delta
+    assert r["runs"][0]["delta_score"] is None
+    # Progression aggregate keys present
+    prog = r["progression"]
+    assert {"first_score", "latest_score", "best_score", "total_runs"} <= set(prog)
+    assert prog["total_runs"] == 2
+
+
+def test_history_endpoint_limit(client: TestClient, project_with_runs: dict):
+    pid = project_with_runs["project"]["id"]
+    r = client.get(f"/api/projects/{pid}/history?limit=1").json()
+    assert len(r["runs"]) == 1
+
+
+def test_compare_endpoint(client: TestClient, project_with_runs: dict):
+    pid = project_with_runs["project"]["id"]
+    id_a = project_with_runs["run_1"]["id"]
+    id_b = project_with_runs["run_2"]["id"]
+    r = client.get(f"/api/projects/{pid}/compare?a={id_a}&b={id_b}").json()
+    assert "run_a" in r and "run_b" in r and "diff" in r
+    diff = r["diff"]
+    assert "delta_score" in diff
+    assert "delta_ri" in diff
+    assert "score_direction" in diff
+    assert isinstance(diff.get("frameworks"), list)
+
+
+def test_compare_missing_run_404(client: TestClient, project_with_runs: dict):
+    pid = project_with_runs["project"]["id"]
+    r = client.get(f"/api/projects/{pid}/compare?a=run_missing&b=run_missing")
+    assert r.status_code == 404
+
+
+def test_history_wrong_project_403(client: TestClient):
+    """Accessing another user's project returns 404 (ownership enforced)."""
+    r = client.get("/api/projects/proj_nonexistent/history")
+    assert r.status_code == 404

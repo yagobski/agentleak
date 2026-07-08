@@ -12,8 +12,8 @@ from agentleak.web import create_app  # noqa: E402
 
 
 @pytest.fixture()
-def client(tmp_path) -> TestClient:
-    return TestClient(create_app(store=Store(str(tmp_path / "api.db"))))
+def client(tmp_path, login) -> TestClient:
+    return login(TestClient(create_app(store=Store(str(tmp_path / "api.db")))))
 
 
 def test_meta_lists_agent_types(client: TestClient):
@@ -25,8 +25,8 @@ def test_meta_lists_agent_types(client: TestClient):
 def test_connect_snippet(client: TestClient):
     pid = client.post("/api/projects", json={"name": "P", "agent_type": "langchain"}).json()["id"]
     body = client.get(f"/api/projects/{pid}/connect").json()
-    assert "AgentLeakClient" in body["snippet"]
-    assert "LangChainCallback" in body["snippet"]
+    assert "agentleak.watch" in body["snippet"]
+    assert "run.callback" in body["snippet"]
     assert body["framework"] == "LangChain"
 
 
@@ -60,6 +60,111 @@ def test_run_creation_and_retrieval(client: TestClient):
     assert len(runs) == 1
     full = client.get(f"/api/runs/{run['id']}").json()
     assert full["report"]["risk_index"] == run["report"]["risk_index"]
+
+
+def test_agent_crud_and_model(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Multi"}).json()["id"]
+    created = client.post(f"/api/projects/{pid}/agents", json={
+        "name": "Researcher", "framework": "langchain", "role": "researcher",
+    }).json()
+    agents = created["config"]["agents"]
+    assert len(agents) == 1
+    aid = agents[0]["id"]
+    assert aid.startswith("agt_")
+
+    listed = client.get(f"/api/projects/{pid}/agents").json()
+    assert listed[0]["framework_label"] == "LangChain"
+    assert listed[0]["name"] == "Researcher"
+
+    client.post(f"/api/projects/{pid}/agents", json={"name": "Writer", "framework": "crewai"})
+
+    # The model endpoint exposes the designed topology of the configured agents.
+    model = client.get(f"/api/projects/{pid}/model").json()
+    assert len(model["agents"]) == 2
+    node_ids = {n["id"] for n in model["topology"]["nodes"]}
+    assert "Researcher" in node_ids and "Writer" in node_ids
+    assert model["last_run"] is None
+
+    # Connect returns a per-agent snippet for each configured framework.
+    connect = client.get(f"/api/projects/{pid}/connect").json()
+    assert len(connect["agents"]) == 2
+    frameworks = {a["framework"] for a in connect["agents"]}
+    assert frameworks == {"langchain", "crewai"}
+
+    patched = client.patch(f"/api/projects/{pid}/agents/{aid}", json={"role": "lead"}).json()
+    assert next(a for a in patched["config"]["agents"] if a["id"] == aid)["role"] == "lead"
+
+    client.delete(f"/api/projects/{pid}/agents/{aid}")
+    assert len(client.get(f"/api/projects/{pid}/agents").json()) == 1
+
+
+def test_agent_endpoint_key_redacted(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "M"}).json()["id"]
+    proj = client.post(f"/api/projects/{pid}/agents", json={
+        "name": "R", "endpoint": {"base_url": "http://x/v1", "model": "m", "api_key": "secret"},
+    }).json()
+    ep = proj["config"]["agents"][0]["endpoint"]
+    assert ep["api_key"] == ""
+    assert ep["api_key_set"] is True
+
+    # A blank key on update keeps the stored secret (no accidental wipe).
+    aid = proj["config"]["agents"][0]["id"]
+    updated = client.patch(f"/api/projects/{pid}/agents/{aid}", json={
+        "endpoint": {"base_url": "http://x/v1", "model": "m2", "api_key": ""},
+    }).json()
+    ep2 = next(a for a in updated["config"]["agents"] if a["id"] == aid)["endpoint"]
+    assert ep2["api_key_set"] is True
+    assert ep2["model"] == "m2"
+
+
+def test_agent_tools_and_mcp_in_model(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "MCP"}).json()["id"]
+    created = client.post(f"/api/projects/{pid}/agents", json={
+        "name": "Researcher", "framework": "mcp",
+        "tools": [
+            {"name": "create_issue", "kind": "mcp", "server": "github-mcp"},
+            {"name": "send_email", "kind": "function"},
+        ],
+    }).json()
+    tools = created["config"]["agents"][0]["tools"]
+    assert len(tools) == 2
+    assert {t["kind"] for t in tools} == {"mcp", "function"}
+
+    # The agent view exposes the tools, and the model adds sink nodes for them.
+    listed = client.get(f"/api/projects/{pid}/agents").json()
+    assert len(listed[0]["tools"]) == 2
+
+    model = client.get(f"/api/projects/{pid}/model").json()
+    node_ids = {n["id"] for n in model["topology"]["nodes"]}
+    assert "mcp:github-mcp/create_issue" in node_ids
+    assert "send_email" in node_ids
+    kinds = {n["kind"] for n in model["topology"]["nodes"]}
+    assert "mcp" in kinds
+
+    # Running the pipeline leaks the records to the MCP server -> overlaid on the model.
+    run = client.post(f"/api/projects/{pid}/execute", json={
+        "scenario_id": "healthcare_patient_summary",
+    }).json()
+    assert run["report"]["scoring"] == "agentrisk"
+    model2 = client.get(f"/api/projects/{pid}/model").json()
+    mcp_node = next(n for n in model2["topology"]["nodes"] if n["id"] == "mcp:github-mcp/create_issue")
+    assert mcp_node["leak_level"] > 0
+
+
+def test_multi_agent_execute_produces_pipeline_run(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Multi"}).json()["id"]
+    client.post(f"/api/projects/{pid}/agents", json={"name": "Researcher", "framework": "langchain"})
+    client.post(f"/api/projects/{pid}/agents", json={"name": "Writer", "framework": "crewai"})
+
+    run = client.post(f"/api/projects/{pid}/execute", json={
+        "scenario_id": "healthcare_patient_summary",
+    }).json()
+    assert run["report"]["scoring"] == "agentrisk"
+    assert "pipeline" in run["source"]
+
+    # After a run, the model overlays where the leaks happened.
+    model = client.get(f"/api/projects/{pid}/model").json()
+    assert model["last_run"] is not None
 
 
 def test_project_config_applies_to_runs(client: TestClient):
@@ -211,3 +316,257 @@ def test_blank_api_key_preserves_stored_key(client: TestClient):
     proj = client.get(f"/api/projects/{pid}").json()
     assert proj["config"]["agent"]["model"] == "m2"
     assert proj["config"]["agent"]["api_key_set"] is True
+
+
+# ---------------------------------------------------- self-test API key
+
+
+def test_generate_and_fetch_api_key(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Self"}).json()["id"]
+    assert client.get(f"/api/projects/{pid}/api-key").json()["has_key"] is False
+
+    gen = client.post(f"/api/projects/{pid}/api-key").json()
+    assert gen["api_key"].startswith("ak_")
+    assert gen["project_id"] == pid
+
+    fetched = client.get(f"/api/projects/{pid}/api-key").json()
+    assert fetched["has_key"] is True
+    assert fetched["api_key"] == gen["api_key"]
+
+
+def test_rotate_api_key_changes_value(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Self"}).json()["id"]
+    first = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+    second = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+    assert first != second
+
+
+def test_selftest_with_body_key_runs_and_saves(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Self"}).json()["id"]
+    key = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+
+    resp = client.post("/api/selftest", json={
+        "api_key": key,
+        "scenario_id": "healthcare_patient_summary",
+    })
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["project_id"] == pid
+    assert body["run_id"].startswith("run_")
+    assert "passed" in body
+    assert "remediation_hints" in body
+
+    # the run was auto-saved under the project
+    runs = client.get(f"/api/projects/{pid}/runs").json()
+    assert any(r["id"] == body["run_id"] for r in runs)
+
+
+def test_selftest_returns_compliance_posture(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Self"}).json()["id"]
+    key = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+
+    body = client.post("/api/selftest", json={
+        "api_key": key,
+        "scenario_id": "healthcare_patient_summary",
+    }).json()
+    assert body["compliant"] is False
+    assert "hipaa" in body["failed_frameworks"]
+    assert body["compliance"]["posture"]["status"] == "non_compliant"
+
+
+def test_selftest_with_header_key(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "Self"}).json()["id"]
+    key = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+
+    resp = client.post(
+        "/api/selftest-header",
+        json={"scenario_id": "healthcare_patient_summary"},
+        headers={"X-AgentLeak-Key": key},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["project_id"] == pid
+
+
+def test_selftest_rejects_invalid_key(client: TestClient):
+    resp = client.post("/api/selftest", json={
+        "api_key": "ak_not_a_real_key",
+        "scenario_id": "healthcare_patient_summary",
+    })
+    assert resp.status_code == 401
+
+
+def test_selftest_requires_key(client: TestClient):
+    resp = client.post("/api/selftest", json={"scenario_id": "healthcare_patient_summary"})
+    assert resp.status_code == 401
+
+
+# ---------------------------------------------------- red-team endpoint
+
+def test_redteam_returns_metrics(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "RT"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={
+        "vertical": "healthcare",
+        "n": 3,
+        "adversary_level": "A1",
+    })
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["project_id"] == pid
+    assert body["vertical"] == "healthcare"
+    assert body["scenarios_run"] >= 1
+    metrics = body["metrics"]
+    assert "mean_elr" in metrics
+    assert "overall_asr" in metrics
+    assert "clr_per_channel" in metrics
+    assert "asr_by_family" in metrics
+
+
+def test_redteam_saves_runs(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "RT2"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={"n": 2})
+    body = resp.json()
+    assert len(body["run_ids"]) >= 1
+    runs = client.get(f"/api/projects/{pid}/runs").json()
+    assert any(r["id"] in body["run_ids"] for r in runs)
+
+
+def test_redteam_specific_attack_class(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "RT3"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={
+        "attack_class": "F1.1",
+        "n": 1,
+    })
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["scenarios_run"] >= 1
+
+
+def test_redteam_requires_login():
+    """Unauthenticated redteam request should be 401."""
+    from agentleak.core.store import Store
+    from agentleak.web import create_app
+
+    store = Store(":memory:")
+    app = create_app(store=store, serve_ui=False)
+    from fastapi.testclient import TestClient as TC
+    anon = TC(app, raise_server_exceptions=True)
+    resp = anon.post("/api/projects/nope/redteam", json={})
+    assert resp.status_code in (401, 403, 404)
+
+
+def _leaky_chat(self, messages, tools):
+    """A fake LLM that retrieves records then leaks them in its final answer."""
+    has_tool_result = any(m.get("role") == "tool" for m in messages)
+    if not has_tool_result:
+        return {
+            "content": "",
+            "tool_calls": [{"id": "c1", "function": {"name": "get_records", "arguments": "{}"}}],
+        }
+    leaked = " ".join(str(m.get("content", "")) for m in messages if m.get("role") == "tool")
+    return {"content": f"Here is the full client record: {leaked}", "tool_calls": []}
+
+
+def test_redteam_live_calls_real_agent(client: TestClient, monkeypatch):
+    """Live mode must drive a real agent run (mocked LLM) and detect leaks."""
+    from agentleak.agent.llm import OpenAICompatLLM
+    monkeypatch.setattr(OpenAICompatLLM, "chat", _leaky_chat)
+
+    pid = client.post("/api/projects", json={"name": "RT-live"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={
+        "vertical": "finance",
+        "n": 2,
+        "mode": "live",
+        "base_url": "https://example.test/v1",
+        "model": "mock-model",
+        "api_key": "test-key",
+    })
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["live"] is True
+    assert body["mode"] == "live"
+    assert body["scenarios_run"] >= 1
+    # The mocked agent leaks every record → detector must catch it.
+    assert body["metrics"]["mean_elr"] > 0
+    runs = client.get(f"/api/projects/{pid}/runs").json()
+    assert any(r["id"] in body["run_ids"] for r in runs)
+    assert any(r.get("source") == "redteam:live" for r in runs)
+
+
+def test_redteam_live_without_endpoint_400(client: TestClient, monkeypatch):
+    """mode=live with no endpoint and no env key returns a helpful 400."""
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    pid = client.post("/api/projects", json={"name": "RT-live-bad"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={"mode": "live", "n": 1})
+    assert resp.status_code == 400
+
+
+def test_redteam_auto_defaults_to_scripted(client: TestClient, monkeypatch):
+    """auto mode without a configured endpoint stays scripted/deterministic."""
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("AGENTLEAK_LLM_BASE_URL", raising=False)
+    pid = client.post("/api/projects", json={"name": "RT-auto"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={"n": 2})
+    assert resp.status_code == 200
+    assert resp.json()["live"] is False
+
+
+def test_redteam_live_env_base_url(client: TestClient, monkeypatch):
+    """AGENTLEAK_LLM_BASE_URL + AGENTLEAK_LLM_MODEL enables auto-live with a mocked LLM."""
+    from agentleak.agent.llm import OpenAICompatLLM
+    monkeypatch.setattr(OpenAICompatLLM, "chat", _leaky_chat)
+    monkeypatch.setenv("AGENTLEAK_LLM_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("AGENTLEAK_LLM_MODEL", "llama3.2")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    pid = client.post("/api/projects", json={"name": "RT-ollama"}).json()["id"]
+    resp = client.post(f"/api/projects/{pid}/redteam", json={"n": 1, "mode": "live"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["live"] is True
+    assert body["scenarios_run"] >= 1
+    # Local endpoints (localhost) need no API key — verify no LLMError was raised.
+    assert body["metrics"]["mean_elr"] > 0
+
+
+
+
+
+# -- leaderboard --------------------------------------------------------
+def _leaky_trace() -> dict:
+    return {
+        "agent_name": "leaky", "events": [
+            {"channel": "tool_response", "content": {"ssn": "123-45-6789"}, "source": "crm", "target": "agent"},
+            {"channel": "log", "content": "ssn 123-45-6789 email a@b.io", "source": "agent", "target": "stdout"},
+            {"channel": "final_output", "content": "Done.", "source": "agent", "target": "user"},
+        ],
+    }
+
+
+def _clean_trace() -> dict:
+    return {
+        "agent_name": "clean", "events": [
+            {"channel": "user_input", "content": "hello", "source": "user", "target": "agent"},
+            {"channel": "final_output", "content": "Hi! How can I help?", "source": "agent", "target": "user"},
+        ],
+    }
+
+
+def test_leaderboard_ranks_agents_by_agentrisk(client: TestClient):
+    good = client.post("/api/projects", json={"name": "GoodBot"}).json()["id"]
+    bad = client.post("/api/projects", json={"name": "LeakyBot"}).json()["id"]
+    client.post(f"/api/projects/{good}/runs", json={"trace": _clean_trace()})
+    client.post(f"/api/projects/{bad}/runs", json={"trace": _leaky_trace()})
+
+    board = client.get("/api/leaderboard").json()
+    assert [e["name"] for e in board["entries"]] == ["GoodBot", "LeakyBot"]
+    top = board["entries"][0]
+    assert top["rank"] == 1
+    assert top["risk_index"] <= board["entries"][1]["risk_index"]
+    assert set(top) >= {"project_id", "name", "rank", "risk_index", "privacy_score",
+                        "verdict", "leaked_secrets", "runs", "last_run_at"}
+
+
+def test_leaderboard_skips_projects_without_runs(client: TestClient):
+    client.post("/api/projects", json={"name": "Idle"})
+    board = client.get("/api/leaderboard").json()
+    assert all(e["name"] != "Idle" for e in board["entries"])

@@ -107,3 +107,42 @@ def test_resolve_api_key_by_host(monkeypatch):
     assert resolve_api_key("https://openrouter.ai/api/v1") == "or"
     assert resolve_api_key("https://api.openai.com/v1") == "oa"
     assert resolve_api_key("https://api.openai.com/v1", "explicit") == "explicit"
+
+
+def test_resolve_api_key_local_host_is_empty():
+    """Local endpoints must not require a key."""
+    for url in [
+        "http://localhost:11434/v1",
+        "http://127.0.0.1:1234/v1",
+        "http://localhost:8080/v1",
+    ]:
+        assert resolve_api_key(url) == "", f"expected empty key for {url}"
+        assert resolve_api_key(url, "") == ""
+
+
+def test_llmconfig_from_env(monkeypatch):
+    monkeypatch.setenv("AGENTLEAK_LLM_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("AGENTLEAK_LLM_MODEL", "mistral")
+    cfg = LLMConfig.from_env()
+    assert cfg is not None
+    assert cfg.base_url == "http://localhost:11434/v1"
+    assert cfg.model == "mistral"
+
+
+def test_llmconfig_from_env_no_vars(monkeypatch):
+    monkeypatch.delenv("AGENTLEAK_LLM_BASE_URL", raising=False)
+    assert LLMConfig.from_env() is None
+
+
+def test_llmconfig_from_env_ollama_default_model(monkeypatch):
+    monkeypatch.setenv("AGENTLEAK_LLM_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.delenv("AGENTLEAK_LLM_MODEL", raising=False)
+    cfg = LLMConfig.from_env()
+    assert cfg is not None
+    assert cfg.model == "llama3.2"
+
+
+def test_llmconfig_timeout_default():
+    """Default timeout should accommodate slow local inference."""
+    assert LLMConfig().timeout >= 120
+

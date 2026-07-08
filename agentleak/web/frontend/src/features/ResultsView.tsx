@@ -1,20 +1,68 @@
-import { type ReactNode } from "react"
-import { Download, FileJson, FileText, Lightbulb, ListChecks, ScrollText, ShieldAlert, ShieldCheck, Workflow } from "lucide-react"
+import { useMemo, useState, type ReactNode } from "react"
+import { ArrowRight, Check, Code2, Copy, Download, FileJson, FileText, Lightbulb, ListChecks, ScrollText, Search, ShieldAlert, ShieldCheck, Workflow, X } from "lucide-react"
 import { toast } from "sonner"
-import { api, type Report } from "@/lib/api"
+import { api, type Finding, type RemediationHint, type Report } from "@/lib/api"
 import { badgeChipClass, badgeColor, download, keyInsight, LEVEL_META } from "@/lib/format"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ComplianceView } from "./ComplianceView"
 import { FlowView } from "./FlowView"
 import { RiGauge } from "./RiGauge"
 
-function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+const PRIORITY_COLOR: Record<string, string> = {
+  critical: "text-sev-l4 border-sev-l4/30 bg-sev-l4/5",
+  high: "text-sev-l3 border-sev-l3/30 bg-sev-l3/5",
+  medium: "text-sev-l2 border-sev-l2/30 bg-sev-l2/5",
+}
+
+function RemediationCard({ hint }: { hint: RemediationHint }) {
+  const [copied, setCopied] = useState(false)
+
+  function copyCode() {
+    navigator.clipboard.writeText(hint.code_fix).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    })
+  }
+
+  const borderCls = PRIORITY_COLOR[hint.priority] ?? PRIORITY_COLOR.medium
+
   return (
+    <Card className={`border ${borderCls.split(" ")[1]}`}>
+      <div className="px-5 py-4">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${borderCls}`}>
+            {hint.priority}
+          </span>
+          <code className="font-mono text-sm">{hint.channel}</code>
+          <span className="text-[11px] text-muted-foreground">
+            · leaks: {hint.data_types.join(", ")}
+          </span>
+        </div>
+        <p className="mb-3 text-sm text-muted-foreground">{hint.advice}</p>
+        <div className="relative">
+          <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">
+            <code>{hint.code_fix}</code>
+          </pre>
+          <button
+            onClick={copyCode}
+            className="absolute right-2 top-2 rounded p-1.5 text-muted-foreground transition-colors hover:bg-border hover:text-foreground"
+            title="Copy code"
+          >
+            {copied ? <Check className="size-3.5 text-sev-ok" /> : <Copy className="size-3.5" />}
+          </button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {  return (
     <div className="rounded-md bg-muted/50 px-3.5 py-2.5">
       <div className="text-[11px] font-medium tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 font-mono text-lg tnum leading-none">{value}</div>
@@ -29,6 +77,219 @@ function TabCount({ n, tone }: { n: number; tone?: "danger" | "muted" }) {
       ? "bg-sev-l4/15 text-sev-l4"
       : "bg-muted text-muted-foreground"
   return <span className={`ml-1 rounded px-1.5 py-0.5 text-[10px] tnum ${cls}`}>{n}</span>
+}
+
+const LEVEL_NUM: Record<string, number> = { L4: 4, L3: 3, L2: 2, L1: 1 }
+
+function FindingRow({ f }: { f: Finding }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <tr
+        className="cursor-pointer border-t border-border transition-colors hover:bg-muted/40"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <td className="px-5 py-2.5">
+          <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${badgeChipClass(f.badge)}`}>
+            {f.level_label}
+          </span>
+        </td>
+        <td className="px-3 py-2.5">
+          <code className="font-mono text-[12px] text-muted-foreground">{f.channel}</code>
+        </td>
+        <td className="px-3 py-2.5">{f.data_type}</td>
+        <td className="px-3 py-2.5">
+          <code className="font-mono text-[12px]">{f.redacted_value || f.matched_value}</code>
+        </td>
+        <td className="hidden px-3 py-2.5 text-[12px] text-muted-foreground sm:table-cell">
+          <span className="inline-flex items-center gap-1">
+            <span className="truncate">{f.source}</span>
+            <ArrowRight className="size-3 shrink-0 opacity-50" />
+            <span className="truncate">{f.target}</span>
+          </span>
+        </td>
+        <td className="px-5 py-2.5 text-[12px] text-muted-foreground">{f.detector}</td>
+      </tr>
+      {open && (
+        <tr className="bg-muted/30">
+          <td colSpan={6} className="px-5 pb-3 pt-1">
+            <div className="flex gap-2 text-[12px] text-muted-foreground">
+              <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-primary" />
+              <span>{f.recommendation}</span>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function FindingsPanel({ report }: { report: Report }) {
+  const [q, setQ] = useState("")
+  const [levels, setLevels] = useState<Set<number>>(new Set())
+  const [channel, setChannel] = useState("all")
+  const [detector, setDetector] = useState("all")
+
+  const channels = useMemo(
+    () => Array.from(new Set(report.findings.map((f) => f.channel))).sort(),
+    [report.findings]
+  )
+  const detectors = useMemo(
+    () => Array.from(new Set(report.findings.map((f) => f.detector))).sort(),
+    [report.findings]
+  )
+  const levelCounts = useMemo(() => {
+    const m: Record<number, number> = {}
+    report.findings.forEach((f) => {
+      m[f.level] = (m[f.level] ?? 0) + 1
+    })
+    return m
+  }, [report.findings])
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    return report.findings
+      .filter((f) => {
+        if (levels.size && !levels.has(f.level)) return false
+        if (channel !== "all" && f.channel !== channel) return false
+        if (detector !== "all" && f.detector !== detector) return false
+        if (needle) {
+          const hay =
+            `${f.data_type} ${f.channel} ${f.detector} ${f.redacted_value} ${f.matched_value ?? ""} ${f.source} ${f.target}`.toLowerCase()
+          if (!hay.includes(needle)) return false
+        }
+        return true
+      })
+      .sort((a, b) => b.level - a.level)
+  }, [report.findings, q, levels, channel, detector])
+
+  const active = levels.size > 0 || channel !== "all" || detector !== "all" || q.trim() !== ""
+
+  function toggleLevel(l: number) {
+    setLevels((s) => {
+      const n = new Set(s)
+      if (n.has(l)) n.delete(l)
+      else n.add(l)
+      return n
+    })
+  }
+  function clearAll() {
+    setQ("")
+    setLevels(new Set())
+    setChannel("all")
+    setDetector("all")
+  }
+
+  if (report.findings.length === 0) {
+    return (
+      <Card>
+        <div className="px-5 py-12 text-center text-sm text-muted-foreground">No leaks detected. 🎉</div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      {/* filter toolbar */}
+      <div className="space-y-3 border-b border-border px-5 py-3.5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search type, value, channel, source…"
+              className="h-9 pl-9"
+            />
+          </div>
+          <Select value={channel} onValueChange={setChannel}>
+            <SelectTrigger className="h-9 w-full sm:w-[180px]">
+              <SelectValue placeholder="Channel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All channels</SelectItem>
+              {channels.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={detector} onValueChange={setDetector}>
+            <SelectTrigger className="h-9 w-full sm:w-[150px]">
+              <SelectValue placeholder="Detector" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All detectors</SelectItem>
+              {detectors.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {LEVEL_META.map((l) => {
+            const num = LEVEL_NUM[l.label]
+            const n = levelCounts[num] ?? 0
+            const on = levels.has(num)
+            return (
+              <button
+                key={l.label}
+                disabled={n === 0}
+                onClick={() => toggleLevel(num)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-40 ${
+                  on ? badgeChipClass(l.badge) : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+                title={l.name}
+              >
+                {l.label}
+                <span className="ml-1 tnum opacity-70">{n}</span>
+              </button>
+            )
+          })}
+          <span className="ml-auto text-[11px] tnum text-muted-foreground">
+            {filtered.length} of {report.findings.length}
+          </span>
+          {active && (
+            <button
+              onClick={clearAll}
+              className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-3" /> Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      <ScrollArea className="max-h-[520px]">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-10 bg-card">
+            <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-2 font-medium">Level</th>
+              <th className="px-3 py-2 font-medium">Channel</th>
+              <th className="px-3 py-2 font-medium">Type</th>
+              <th className="px-3 py-2 font-medium">Value</th>
+              <th className="hidden px-3 py-2 font-medium sm:table-cell">Path</th>
+              <th className="px-5 py-2 font-medium">Detector</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                  No findings match your filters.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((f) => <FindingRow key={f.finding_id} f={f} />)
+            )}
+          </tbody>
+        </table>
+      </ScrollArea>
+    </Card>
+  )
 }
 
 export function ResultsView({ report }: { report: Report }) {
@@ -156,6 +417,12 @@ export function ResultsView({ report }: { report: Report }) {
             <Lightbulb className="size-3.5" /> Recommendations
             <TabCount n={report.recommendations.length} tone="muted" />
           </TabsTrigger>
+          {(report.remediation_hints?.length ?? 0) > 0 && (
+            <TabsTrigger value="codefixes">
+              <Code2 className="size-3.5" /> Code fixes
+              <TabCount n={report.remediation_hints!.length} tone="danger" />
+            </TabsTrigger>
+          )}
           {report.compliance && (
             <TabsTrigger value="compliance">
               {atRisk > 0 ? <ShieldAlert className="size-3.5" /> : <ShieldCheck className="size-3.5" />} Compliance
@@ -221,58 +488,7 @@ export function ResultsView({ report }: { report: Report }) {
 
         {/* Findings */}
         <TabsContent value="findings">
-          <Card>
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Findings — leaked secrets by channel
-              </span>
-              <Badge variant="muted">{report.findings.length}</Badge>
-            </div>
-            <ScrollArea className="max-h-[520px]">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-card">
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-5 py-2 font-medium">Level</th>
-                    <th className="px-3 py-2 font-medium">Channel</th>
-                    <th className="px-3 py-2 font-medium">Type</th>
-                    <th className="px-3 py-2 font-medium">Value</th>
-                    <th className="px-5 py-2 font-medium">Detector</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.findings.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
-                        No leaks detected. 🎉
-                      </td>
-                    </tr>
-                  )}
-                  {report.findings.map((f) => (
-                    <Tooltip key={f.finding_id}>
-                      <TooltipTrigger asChild>
-                        <tr className="border-t border-border transition-colors hover:bg-muted/40">
-                          <td className="px-5 py-2.5">
-                            <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${badgeChipClass(f.badge)}`}>
-                              {f.level_label}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <code className="font-mono text-[12px] text-muted-foreground">{f.channel}</code>
-                          </td>
-                          <td className="px-3 py-2.5">{f.data_type}</td>
-                          <td className="px-3 py-2.5">
-                            <code className="font-mono text-[12px]">{f.redacted_value || f.matched_value}</code>
-                          </td>
-                          <td className="px-5 py-2.5 text-[12px] text-muted-foreground">{f.detector}</td>
-                        </tr>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">{f.recommendation}</TooltipContent>
-                    </Tooltip>
-                  ))}
-                </tbody>
-              </table>
-            </ScrollArea>
-          </Card>
+          <FindingsPanel report={report} />
         </TabsContent>
 
         {/* Recommendations */}
@@ -297,8 +513,24 @@ export function ResultsView({ report }: { report: Report }) {
                 ))}
               </ul>
             )}
+            {(report.remediation_hints?.length ?? 0) > 0 && (
+              <div className="border-t border-border px-5 py-3">
+                <p className="text-[11px] text-muted-foreground">
+                  See the <strong className="text-foreground">Code fixes</strong> tab for copy-paste patches per leaked channel.
+                </p>
+              </div>
+            )}
           </Card>
         </TabsContent>
+
+        {/* Code fixes */}
+        {(report.remediation_hints?.length ?? 0) > 0 && (
+          <TabsContent value="codefixes" className="space-y-4">
+            {report.remediation_hints!.map((hint) => (
+              <RemediationCard key={hint.channel} hint={hint} />
+            ))}
+          </TabsContent>
+        )}
 
         {/* Compliance */}
         {report.compliance && (
