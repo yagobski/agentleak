@@ -6,7 +6,6 @@ import pytest
 
 from agentleak.core.agentcard import AgentCard, parse_agent_card
 
-
 NASIKO_CARD = {
     "name": "document-analyzer",
     "description": "AI agent for document analysis and extraction",

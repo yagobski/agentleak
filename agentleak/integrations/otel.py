@@ -233,7 +233,7 @@ def trace_from_spans(
     if last_model_event_id is not None:
         for ev in trace.events:
             if ev.event_id == last_model_event_id:
-                ev.channel = Channel.FINAL_OUTPUT.value
+                ev.channel = Channel.FINAL_OUTPUT
                 ev.target = "user"
                 ev.metadata["promoted_to"] = "final_output"
                 break

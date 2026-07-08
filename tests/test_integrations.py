@@ -9,6 +9,7 @@ from agentleak.integrations.generic import TraceRecorder, from_events
 from agentleak.integrations.langchain import LangChainCallback
 from agentleak.integrations.langgraph import trace_from_state
 
+
 def test_generic_recorder():
     rec = TraceRecorder(run_id="r")
     rec.tool_call({"email": "a@b.com"}, target="crm")
@@ -74,7 +75,8 @@ def test_langchain_multi_agent_only_last_llm_end_is_final():
     def gen(text):
         class Gen:
             pass
-        g = Gen(); g.text = text
+        g = Gen()
+        g.text = text
         class LLMResult:
             generations = [[g]]
         return LLMResult()

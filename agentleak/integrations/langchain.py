@@ -53,7 +53,7 @@ class LangChainCallback(TraceRecorder, _Base):  # type: ignore[misc]
         if self._last_final_event_id is not None:
             for ev in self.trace.events:
                 if ev.event_id == self._last_final_event_id:
-                    ev.channel = Channel.INTER_AGENT_MESSAGE.value
+                    ev.channel = Channel.INTER_AGENT_MESSAGE
                     ev.target = "agent"
                     ev.metadata = {**(ev.metadata or {}), "demoted_from": "final_output"}
                     break

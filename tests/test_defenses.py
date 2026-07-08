@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-
-from agentleak.defenses.sanitizer import (
-    RedactionStyle,
-    Sanitizer,
-    sanitize_text,
-)
 from agentleak.defenses.internal_channel import (
     AgentProfile,
     ClearanceLevel,
     GuardDecision,
     InternalChannelGuard,
 )
-
+from agentleak.defenses.sanitizer import (
+    Sanitizer,
+    sanitize_text,
+)
 
 # ---------------------------------------------------------------------------
 # Sanitizer
@@ -91,7 +87,6 @@ class TestSanitizer:
         assert count >= 2
 
     def test_extra_patterns(self):
-        import re
         s = Sanitizer(
             style="placeholder",
             extra_patterns=[("INTERNAL_ID", r"\bINT-\d{6}\b")],
@@ -191,9 +186,10 @@ class TestPolicyGate:
 
     def test_selftest_gate_in_response(self, tmp_path):
         """The selftest endpoint must include gate_failed in its response."""
+        from fastapi.testclient import TestClient
+
         from agentleak.core.store import Store
         from agentleak.web.app import create_app
-        from fastapi.testclient import TestClient
 
         store = Store(str(tmp_path / "test.db"))
         app = create_app(store=store, serve_ui=False)
@@ -231,9 +227,10 @@ class TestPolicyGate:
 
     def test_selftest_gate_not_fired_for_unrelated_framework(self, tmp_path):
         """Policy gate with fail_on=["pci_dss"] should not fire for a healthcare trace."""
+        from fastapi.testclient import TestClient
+
         from agentleak.core.store import Store
         from agentleak.web.app import create_app
-        from fastapi.testclient import TestClient
 
         store = Store(str(tmp_path / "test2.db"))
         app = create_app(store=store, serve_ui=False)

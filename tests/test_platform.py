@@ -443,7 +443,6 @@ def test_redteam_specific_attack_class(client: TestClient):
 
 def test_redteam_requires_login():
     """Unauthenticated redteam request should be 401."""
-    import pytest
     from agentleak.core.store import Store
     from agentleak.web import create_app
 

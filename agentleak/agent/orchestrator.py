@@ -25,10 +25,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..core.trace import Trace
+from ._tools import MCP_TOOL_SCHEMA, TOOLS, TOOLS_HINT, dispatch_tool
 from .context import RunContext
 from .llm import LLMConfig, LLMError, OpenAICompatLLM
 from .runner import MAX_STEPS, AgentRunError
-from ._tools import TOOLS, TOOLS_HINT, MCP_TOOL_SCHEMA, dispatch_tool
 
 # Private alias kept for backwards compatibility.
 _TOOLS = TOOLS

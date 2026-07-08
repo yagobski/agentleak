@@ -1,7 +1,7 @@
 """Defenses package: sanitizers, internal-channel guards, and guardrail wrappers."""
 
-from .sanitizer import Sanitizer, RedactionStyle, sanitize_text
-from .internal_channel import InternalChannelGuard, ClearanceLevel, AgentProfile
+from .internal_channel import AgentProfile, ClearanceLevel, InternalChannelGuard
+from .sanitizer import RedactionStyle, Sanitizer, sanitize_text
 
 __all__ = [
     "Sanitizer",

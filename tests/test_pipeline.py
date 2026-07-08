@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from agentleak.core.canary import CanarySet, match_canaries
 from agentleak.core.pipeline import DetectionMode, HybridPipeline
 from agentleak.core.runner import AgentLeakRunner
 from agentleak.core.trace import Trace
 from agentleak.detectors import build_detectors
-
 
 # ---------------------------------------------------------------------------
 # Canary tests
@@ -390,7 +387,6 @@ class TestHybridPipelineMockTiers:
 
     def test_finding_tiers_includes_presidio_when_active(self):
         """finding_tiers should include 'presidio' for STANDARD/HYBRID mode with presidio set."""
-        from agentleak.core.detector import RawMatch
         class _MockPresidio:
             def detect(self, text): return []
 
@@ -561,6 +557,7 @@ class TestLLMJudgeDetailed:
         """Mock urllib.request.urlopen to test the full HTTP → RawMatch path."""
         import json
         from unittest.mock import MagicMock, patch
+
         from agentleak.detectors.llm_judge import LLMJudgeDetector
 
         judge = LLMJudgeDetector(api_key="sk-test", threshold=0.5)
@@ -587,9 +584,9 @@ class TestLLMJudgeDetailed:
     def test_api_key_added_to_auth_header(self):
         """When api_key is set the HTTP request includes Authorization header."""
         import json
-        from unittest.mock import MagicMock, patch, call as mcall
+        from unittest.mock import MagicMock, patch
+
         from agentleak.detectors.llm_judge import LLMJudgeDetector
-        import urllib.request
 
         judge = LLMJudgeDetector(api_key="sk-bearer-test", threshold=0.5)
         response_body = json.dumps({"choices": [{"message": {"content": "[]"}}]}).encode()
@@ -614,6 +611,7 @@ class TestLLMJudgeDetailed:
         """LLM response wrapped in ```json ... ``` fences should be parsed correctly."""
         import json
         from unittest.mock import MagicMock, patch
+
         from agentleak.detectors.llm_judge import LLMJudgeDetector
 
         judge = LLMJudgeDetector(api_key="sk-test", threshold=0.5)
@@ -634,6 +632,7 @@ class TestLLMJudgeDetailed:
         """Response with empty choices list → empty result."""
         import json
         from unittest.mock import MagicMock, patch
+
         from agentleak.detectors.llm_judge import LLMJudgeDetector
 
         judge = LLMJudgeDetector(api_key="sk-test", threshold=0.5)

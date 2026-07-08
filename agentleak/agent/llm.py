@@ -74,7 +74,7 @@ class LLMConfig:
         )
 
     @classmethod
-    def from_env(cls) -> "LLMConfig | None":
+    def from_env(cls) -> LLMConfig | None:
         """Build an :class:`LLMConfig` from ``AGENTLEAK_LLM_BASE_URL`` /
         ``AGENTLEAK_LLM_MODEL`` environment variables, if set.
 

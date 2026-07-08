@@ -1074,6 +1074,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             is_admin=bool(is_admin) if is_admin is not None else None,
             disabled=bool(disabled) if disabled is not None else None,
         )
+        if not updated:
+            raise HTTPException(status_code=404, detail="User not found")
         changes = []
         if is_admin is not None:
             changes.append(f"is_admin={bool(is_admin)}")
@@ -1082,7 +1084,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         db.log_admin_action(
             admin, "user.update", target=target, detail=", ".join(changes),
         )
-        return {**public_user(updated), "disabled": updated.get("disabled", False)}  # type: ignore[union-attr]
+        return {**public_user(updated), "disabled": updated.get("disabled", False)}
 
     @app.delete("/api/admin/users/{uid}")
     def admin_delete_user(uid: str, admin: dict[str, Any] = Depends(require_admin)) -> dict[str, bool]:
@@ -1359,10 +1361,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
           deterministic agent; ``auto`` goes live when an endpoint is configured.
         - ``base_url`` / ``model`` / ``api_key``: optional live-endpoint override.
         """
-        from ..core.attacks import AdversaryLevel, CLASS_TO_FAMILY
-        from ..core.metrics import RunResult, compute_metrics, _result_from_analysis
-        from ..generators import ScenarioGenerator
         import logging as _log
+
+        from ..core.attacks import CLASS_TO_FAMILY, AdversaryLevel
+        from ..core.metrics import RunResult, _result_from_analysis, compute_metrics
+        from ..generators import ScenarioGenerator
 
         project = _owned_project(pid, user)
 

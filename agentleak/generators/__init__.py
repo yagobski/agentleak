@@ -1,7 +1,7 @@
 """Generators: synthetic vault creation and adversarial scenario generation."""
 
+from .scenario_gen import AdversarialScenario, ScenarioGenerator
 from .vault import VaultGenerator, generate_vault
-from .scenario_gen import ScenarioGenerator, AdversarialScenario
 
 __all__ = [
     "VaultGenerator",

@@ -49,15 +49,16 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
+from ..detectors import build_detectors
+from ..detectors.pii import _luhn_ok
 from .agentrisk import DATA_TYPE_LEVELS, level_for
 from .config import Config
 from .detector import Severity, redact
-from ..detectors import build_detectors
-from ..detectors.pii import _luhn_ok
 
 # -- scan limits (defensive, keeps scans fast and memory-bounded) --------
 MAX_FILE_BYTES = 512 * 1024
@@ -532,8 +533,8 @@ class CodeScanner:
                 ), f.matched_value)
 
         # Layer 4 — digit-run de-obfuscation (decomposed PII).
-        for f in _decomposed_digit_findings(path, text):
-            _add(f, f.snippet)
+        for df in _decomposed_digit_findings(path, text):
+            _add(df, df.snippet)
 
         # Layer 5 — code-flow rules on the generated lexicon.
         for rule_id, pattern, data_type, severity, advice in self.rules:
