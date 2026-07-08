@@ -4,9 +4,29 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.7.0] — 2026-07-08
 
 ### Added
+- **Universal chat-log import** — the scenario uploader (and `detect_format`)
+  now accepts any OpenAI-style chat log (`{"messages": [...]}`): roles are
+  mapped faithfully onto channels (system/user → `user_input`, `tool_calls` →
+  `tool_call`, tool results → `tool_response`, intermediate assistant turns →
+  `inter_agent_message`, the last assistant text → `final_output`), so sessions
+  exported from the OpenAI SDK, LiteLLM, LangSmith or benchmark dumps are scored
+  by the same uniform engine (`scenarios/convert.py`).
+- **Account-level default model key** — paste one OpenRouter / OpenAI / Groq /
+  Ollama endpoint in *Settings → Default model key* and it powers the whole
+  test core (live runs, multi-agent pipelines, red-team, LLM-judge) for every
+  project that has no endpoint of its own. Stored per-user (`user_settings`),
+  redacted everywhere (`GET/POST/DELETE /api/auth/model-key` never return the
+  key; a blank key preserves the stored one).
+- **Agent leaderboard** — `GET /api/leaderboard` ranks your agents by their
+  latest AgentRisk result (Risk Index ascending, privacy score as tiebreak);
+  the Dashboard shows the ranked list so agents can be differentiated at a
+  glance.
+- **Code upload in the scan panel** — the static code scan UI now takes a
+  `.zip` archive or a handful of source files directly (in addition to a
+  GitHub repo link), matching the API's `zip` / `files` sources.
 - **Agent-first layer — autonomous self-registration, code scans, and a
   self-improvement loop.** An agent can now test and fix *itself* through the
   API, with no human in the loop:
