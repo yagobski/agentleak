@@ -9,14 +9,11 @@ from agentleak.core.attacks import (
     ATTACK_INDEX,
     AdversaryLevel,
     AttackClass,
-    AttackFamily,
     get_classes_for_channel,
     get_classes_for_level,
 )
-from agentleak.core.metrics import RunResult, compute_elr, compute_clr, compute_asr, compute_metrics
-from agentleak.generators import ScenarioGenerator, VaultGenerator, generate_vault
-from agentleak.generators.vault import CanarySet
-
+from agentleak.core.metrics import RunResult, compute_asr, compute_elr, compute_metrics
+from agentleak.generators import ScenarioGenerator, generate_vault
 
 # ---------------------------------------------------------------------------
 # Attack catalog
@@ -379,10 +376,10 @@ class TestScenarioGenChannelPaths:
 
     def test_to_dict_unknown_family_fallback(self):
         """AdversarialScenario.to_dict falls back to 'unknown' for a fabricated attack id."""
-        from agentleak.core.attacks import AttackClass, Channel, AdversaryLevel
+        from agentleak.core.attacks import AdversaryLevel, Channel
+        from agentleak.core.trace import Trace
         from agentleak.generators.scenario_gen import AdversarialScenario
         from agentleak.generators.vault import generate_vault
-        from agentleak.core.trace import Trace
 
         fake_class = AttackClass(
             id="ZZZFAKE",

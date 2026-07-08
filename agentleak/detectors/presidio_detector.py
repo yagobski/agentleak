@@ -33,9 +33,13 @@ from ..core.detector import Detector, RawMatch, Severity
 # Optional import guard — graceful degradation when presidio is absent
 # ---------------------------------------------------------------------------
 try:
-    from presidio_analyzer import AnalyzerEngine, RecognizerRegistry  # type: ignore[import]
+    from presidio_analyzer import (  # type: ignore[import]  # type: ignore[import]
+        AnalyzerEngine,
+        EntityRecognizer,
+        RecognizerRegistry,
+        RecognizerResult,
+    )
     from presidio_analyzer.nlp_engine import NlpEngineProvider  # type: ignore[import]
-    from presidio_analyzer import EntityRecognizer, RecognizerResult  # type: ignore[import]
     _PRESIDIO_AVAILABLE = True
 except ImportError:
     _PRESIDIO_AVAILABLE = False

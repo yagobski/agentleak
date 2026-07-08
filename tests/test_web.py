@@ -12,7 +12,6 @@ from agentleak.web import create_app  # noqa: E402
 
 @pytest.fixture()
 def client(tmp_path) -> TestClient:
-    from agentleak.core.store import Store
     import os
     os.environ["AGENTLEAK_HOME"] = str(tmp_path)
     c = TestClient(create_app())

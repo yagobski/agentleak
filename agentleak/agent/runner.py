@@ -24,9 +24,9 @@ import json
 from typing import Any
 
 from ..core.trace import Trace
+from ._tools import TOOLS, TOOLS_HINT, dispatch_tool
 from .context import RunContext
 from .llm import LLMError, OpenAICompatLLM
-from ._tools import TOOLS, TOOLS_HINT, dispatch_tool
 
 # Keep a private alias so existing code that does `from .runner import _TOOLS`
 # (e.g. orchestrator.py before it was updated) continues to work.

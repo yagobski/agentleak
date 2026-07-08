@@ -29,7 +29,6 @@ from typing import Any
 from .attacks import ATTACK_FAMILIES
 from .report import AnalysisResult
 
-
 # ---------------------------------------------------------------------------
 # Per-run result (lightweight, not the full AnalysisResult)
 # ---------------------------------------------------------------------------

@@ -29,9 +29,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
+from ..core.agentrisk import level_for
 from ..core.canary import CanarySet, match_canaries
 from ..core.detector import Finding, RawMatch, Severity, redact
-from ..core.agentrisk import level_for
 
 
 class DetectionMode(str, Enum):

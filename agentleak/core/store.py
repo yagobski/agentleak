@@ -369,7 +369,8 @@ class Store:
         self, uid: str, *, is_admin: bool | None = None, disabled: bool | None = None
     ) -> dict[str, Any] | None:
         """Update the admin/disabled flags. Disabling also revokes sessions."""
-        sets, vals = [], []
+        sets: list[str] = []
+        vals: list[Any] = []
         if is_admin is not None:
             sets.append("is_admin=?")
             vals.append(int(is_admin))

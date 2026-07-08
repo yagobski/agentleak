@@ -27,7 +27,13 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..core.attacks import ATTACK_INDEX, CLASS_TO_FAMILY, AttackClass, AdversaryLevel, get_classes_for_level
+from ..core.attacks import (
+    ATTACK_INDEX,
+    CLASS_TO_FAMILY,
+    AdversaryLevel,
+    AttackClass,
+    get_classes_for_level,
+)
 from ..core.trace import Trace
 from .vault import Vault, VaultGenerator
 

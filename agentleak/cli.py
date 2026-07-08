@@ -431,6 +431,7 @@ def history(
 ) -> None:
     """Show the score progression history for a project."""
     import datetime
+
     from .core.store import Store
     store = Store(db_path) if db_path else Store()
     proj = store.get_project_by_name(project)
@@ -497,6 +498,7 @@ def compare(
 ) -> None:
     """Compare two runs side by side and show score/RI/compliance deltas."""
     from typing import Any as _Any
+
     from .core.store import Store
     store = Store(db_path) if db_path else Store()
     result = store.compare_runs(run_a, run_b)

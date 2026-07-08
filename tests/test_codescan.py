@@ -17,7 +17,6 @@ from agentleak.core.codescan import (
     scan_zip_bytes,
 )
 
-
 LEAKY_AGENT = '''
 import logging
 import requests
