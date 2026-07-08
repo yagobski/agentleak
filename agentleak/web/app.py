@@ -732,7 +732,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
     @app.post("/api/scenarios")
     def create_scenario(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
-        """Create a scenario from an uploaded object (trace / spec / ai4privacy).
+        """Create a scenario from an uploaded object (trace / spec / ai4privacy / chat log).
 
         Optional ``name``/``domain``/``description``/``tags`` override the values
         inferred from the upload.

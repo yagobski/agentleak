@@ -388,8 +388,9 @@ function UploadDialog({
         <DialogHeader>
           <DialogTitle>Upload a scenario</DialogTitle>
           <DialogDescription>
-            Paste an AgentLeak trace, an AgentLeak scenario spec, or an ai4privacy record. The format is detected
-            automatically and converted into a runnable trace.
+            Paste an AgentLeak trace, an AgentLeak scenario spec, an ai4privacy record, or any
+            OpenAI-style chat log (<code className="font-mono text-[11px]">{'{"messages": [...]}'}</code>).
+            The format is detected automatically and converted into a runnable trace.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
