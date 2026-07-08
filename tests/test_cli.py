@@ -23,6 +23,15 @@ def test_scenarios_lists_builtins():
     assert "healthcare_patient_summary" in result.stdout
 
 
+def test_agent_card_prints_valid_a2a_card():
+    result = runner.invoke(app, ["agent-card"])
+    assert result.exit_code == 0
+    card = json.loads(result.stdout)
+    assert card["name"] == "agentleak"
+    assert card["agent_protocol_version"] == "a2a-v1"
+    assert "/api/selftest" in card["endpoints"]
+
+
 def test_init_scaffolds_project(tmp_path):
     result = runner.invoke(app, ["init", str(tmp_path)])
     assert result.exit_code == 0
@@ -141,3 +150,85 @@ def test_run_bad_config_errors(tmp_path):
 def test_report_missing_input_errors():
     result = runner.invoke(app, ["report", "--input", "/nonexistent/report.json"])
     assert result.exit_code == 2
+
+
+# ---------------------------------------------------------------------------
+# history & compare commands
+# ---------------------------------------------------------------------------
+
+def _make_db_with_runs(tmp_path):
+    """Create a tmp DB, project, and 3 runs with improving scores."""
+    from agentleak.core.store import Store
+    db = Store(str(tmp_path / "agentleak.db"))
+    p = db.create_project("my-agent")
+    reports = [
+        {"agent_name": "a", "privacy_score": 20, "risk_index": 0.9,
+         "verdict": "Fail", "blocked": True,
+         "summary": {"leaked_secrets": 4, "total_findings": 6}, "compliance": {}},
+        {"agent_name": "a", "privacy_score": 60, "risk_index": 0.5,
+         "verdict": "High risk", "blocked": False,
+         "summary": {"leaked_secrets": 1, "total_findings": 3}, "compliance": {}},
+        {"agent_name": "a", "privacy_score": 90, "risk_index": 0.05,
+         "verdict": "Pass", "blocked": False,
+         "summary": {"leaked_secrets": 0, "total_findings": 0}, "compliance": {}},
+    ]
+    for i, rep in enumerate(reports):
+        db.create_run(p["id"], rep, label=f"v{i + 1}")
+    runs = db.run_history(p["id"])
+    return str(tmp_path / "agentleak.db"), runs
+
+
+def test_history_shows_progression(tmp_path):
+    db_path, _ = _make_db_with_runs(tmp_path)
+    result = runner.invoke(app, ["history", "my-agent", "--db", db_path])
+    assert result.exit_code == 0
+    assert "my-agent" in result.stdout
+    assert "v1" in result.stdout
+    assert "v3" in result.stdout
+    # Should show score deltas
+    assert "+" in result.stdout
+
+
+def test_history_missing_project_exits_1(tmp_path):
+    from agentleak.core.store import Store
+    db_path = str(tmp_path / "empty.db")
+    Store(db_path)  # create empty DB
+    result = runner.invoke(app, ["history", "nonexistent", "--db", db_path])
+    assert result.exit_code == 1
+    assert "not found" in result.stdout.lower()
+
+
+def test_history_no_runs_shows_message(tmp_path):
+    from agentleak.core.store import Store
+    db_path = str(tmp_path / "norun.db")
+    db = Store(db_path)
+    db.create_project("empty-agent")
+    result = runner.invoke(app, ["history", "empty-agent", "--db", db_path])
+    assert result.exit_code == 0
+    assert "No runs" in result.stdout
+
+
+def test_compare_improvement(tmp_path):
+    db_path, runs = _make_db_with_runs(tmp_path)
+    id_a, id_b = runs[0]["id"], runs[2]["id"]
+    result = runner.invoke(app, ["compare", id_a, id_b, "--db", db_path])
+    assert result.exit_code == 0
+    assert "IMPROVED" in result.stdout
+    assert "Blocker resolved" in result.stdout
+
+
+def test_compare_regression(tmp_path):
+    db_path, runs = _make_db_with_runs(tmp_path)
+    id_a, id_b = runs[2]["id"], runs[0]["id"]  # reversed: good → bad
+    result = runner.invoke(app, ["compare", id_a, id_b, "--db", db_path])
+    assert result.exit_code == 0
+    assert "REGRESSED" in result.stdout
+
+
+def test_compare_missing_run_exits_1(tmp_path):
+    from agentleak.core.store import Store
+    db_path = str(tmp_path / "cmp.db")
+    Store(db_path)
+    result = runner.invoke(app, ["compare", "run_missing_a", "run_missing_b", "--db", db_path])
+    assert result.exit_code == 1
+    assert "not found" in result.stdout.lower()

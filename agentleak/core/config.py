@@ -68,6 +68,17 @@ class VaultConfig(BaseModel):
         return bool(self.levels) or self.rho_s is not None
 
 
+class LLMProviderConfig(BaseModel):
+    """LLM provider used for live agent runs (``agentleak run --live``)."""
+
+    provider: str = "openrouter"
+    base_url: str = "https://openrouter.ai/api/v1"
+    model: str = "openai/gpt-4o-mini"
+    api_key_env: str = "OPENROUTER_API_KEY"
+    temperature: float = 0.2
+    timeout: float = 60.0
+
+
 class ReportsConfig(BaseModel):
     output_dir: str = "reports"
     formats: list[str] = Field(default_factory=lambda: ["json", "html", "markdown"])
@@ -87,6 +98,51 @@ class CustomDetectorConfig(BaseModel):
     confidence: float = 0.9
 
 
+class LLMJudgeConfig(BaseModel):
+    """Configuration for the Tier-3 LLM-as-Judge semantic detector."""
+
+    enabled: bool = False
+    base_url: str = ""
+    model: str = ""
+    api_key_env: str = "OPENAI_API_KEY"
+    threshold: float = 0.72
+    timeout: float = 30.0
+
+
+class PresidioConfig(BaseModel):
+    """Configuration for the Tier-2b Presidio detector (extra required)."""
+
+    enabled: bool = False
+    score_threshold: float = 0.5
+
+
+class DetectionConfig(BaseModel):
+    """Controls the hybrid detection pipeline (Tiers 1–3)."""
+
+    mode: str = "fast"  # fast | standard | hybrid | llm_only
+    llm_judge: LLMJudgeConfig = Field(default_factory=LLMJudgeConfig)
+    presidio: PresidioConfig = Field(default_factory=PresidioConfig)
+
+
+class PolicyGateConfig(BaseModel):
+    """Compliance gates evaluated after every selftest / CI run."""
+
+    # List of framework IDs that must pass; any failure → passed=False.
+    fail_on: list[str] = Field(default_factory=list)
+    # When True, block on ANY non-compliant framework.
+    fail_on_any: bool = False
+
+
+class DefenseConfig(BaseModel):
+    """Runtime sanitizer applied before findings are stored/returned."""
+
+    enabled: bool = False
+    # Redaction style: placeholder | asterisk | masked | hash | category | remove
+    style: str = "placeholder"
+    # Channels to sanitize (empty = all leak channels).
+    channels: list[str] = Field(default_factory=list)
+
+
 class Config(BaseModel):
     """Top-level AgentLeak configuration."""
 
@@ -102,6 +158,10 @@ class Config(BaseModel):
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
     vault: VaultConfig = Field(default_factory=VaultConfig)
     custom_detectors: list[CustomDetectorConfig] = Field(default_factory=list)
+    llm: LLMProviderConfig = Field(default_factory=LLMProviderConfig)
+    detection: DetectionConfig = Field(default_factory=DetectionConfig)
+    defense: DefenseConfig = Field(default_factory=DefenseConfig)
+    policy_gate: PolicyGateConfig = Field(default_factory=PolicyGateConfig)
 
     # ------------------------------------------------------------------
     @classmethod
@@ -138,6 +198,20 @@ agent:
   name: my-agent
   type: generic
   endpoint: null
+
+# LLM provider for live agent runs (agentleak run --live).
+# OpenRouter is the default — set OPENROUTER_API_KEY in your .env.
+# To switch models, change `model` below. Examples:
+#   openai/gpt-4o-mini   (cheap, fast)
+#   openai/gpt-4o        (more capable)
+#   anthropic/claude-3-haiku   (fast, cheap via OpenRouter)
+#   meta-llama/llama-3.1-8b-instruct:free  (free tier)
+llm:
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  model: openai/gpt-4o-mini
+  api_key_env: OPENROUTER_API_KEY
+  temperature: 0.2
 
 scenarios:
   - id: healthcare_patient_summary

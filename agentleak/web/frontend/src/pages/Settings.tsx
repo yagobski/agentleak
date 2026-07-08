@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react"
-import { ExternalLink, Github, ShieldCheck } from "lucide-react"
+import { Cpu, ExternalLink, Github, KeyRound, Loader2, Save, ShieldCheck, Trash2, UserRound } from "lucide-react"
+import { toast } from "sonner"
 import { api, type Meta } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { PageHeader } from "@/layout/AppShell"
 
@@ -12,8 +17,13 @@ export function Settings() {
   }, [])
 
   return (
-    <div className="animate-fade-up max-w-2xl">
-      <PageHeader title="Settings" description="About this AgentLeak instance." />
+    <div className="animate-fade-up max-w-2xl space-y-4">
+      <PageHeader title="Settings" description="Your account and this AgentLeak instance." />
+
+      <AccountCard />
+      <ModelKeyCard />
+      <PasswordCard />
+      <DangerZoneCard />
 
       <Card className="p-5">
         <div className="flex items-center gap-2 text-sm font-medium">
@@ -63,3 +73,259 @@ export function Settings() {
     </div>
   )
 }
+
+// ------------------------------------------------------------- Account
+function AccountCard() {
+  const { user, setUser } = useAuth()
+  const [name, setName] = useState(user?.name ?? "")
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => setName(user?.name ?? ""), [user?.name])
+
+  async function save() {
+    if (!name.trim()) return toast.error("Name cannot be empty.")
+    setBusy(true)
+    try {
+      setUser(await api.updateMe({ name: name.trim() }))
+      toast.success("Profile updated.")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update profile.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <UserRound className="size-4 text-primary" /> Account
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label className="text-xs">Email</Label>
+          <Input value={user?.email ?? ""} disabled className="mt-1 opacity-70" />
+        </div>
+        <div>
+          <Label className="text-xs">Display name</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+        </div>
+      </div>
+      {user?.is_admin && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          You are an administrator of this deployment —{" "}
+          <a href="/admin" className="text-primary hover:underline">open the console</a>.
+        </p>
+      )}
+      <Button size="sm" className="mt-3" onClick={save} disabled={busy || name.trim() === (user?.name ?? "")}>
+        {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Save className="mr-1.5 size-3.5" />}
+        Save
+      </Button>
+    </Card>
+  )
+}
+
+// ----------------------------------------------------------- Model key
+const PRESETS = [
+  { label: "OpenRouter", base_url: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini" },
+  { label: "OpenAI", base_url: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+  { label: "Groq", base_url: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" },
+  { label: "Ollama (local)", base_url: "http://localhost:11434/v1", model: "llama3.2" },
+]
+
+function ModelKeyCard() {
+  const [baseUrl, setBaseUrl] = useState("")
+  const [model, setModel] = useState("")
+  const [apiKey, setApiKey] = useState("")
+  const [keySet, setKeySet] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    api.modelKey().then((k) => {
+      setBaseUrl(k.base_url)
+      setModel(k.model)
+      setKeySet(k.api_key_set)
+    }).catch(() => {})
+  }, [])
+
+  async function save() {
+    setBusy(true)
+    try {
+      const k = await api.saveModelKey({ base_url: baseUrl.trim(), model: model.trim(), api_key: apiKey.trim() })
+      setBaseUrl(k.base_url)
+      setModel(k.model)
+      setKeySet(k.api_key_set)
+      setApiKey("")
+      toast.success("Default model endpoint saved.")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the model key.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function clear() {
+    setBusy(true)
+    try {
+      await api.clearModelKey()
+      setBaseUrl("")
+      setModel("")
+      setApiKey("")
+      setKeySet(false)
+      toast.success("Model key cleared.")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not clear the model key.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Cpu className="size-4 text-primary" /> Default model key
+        {keySet && (
+          <span className="rounded bg-sev-ok/15 px-1.5 py-0.5 text-[11px] font-medium text-sev-ok">
+            key set
+          </span>
+        )}
+      </div>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        Powers the test core (live runs, red-team, LLM-judge) for any project that has no endpoint of
+        its own. Paste an OpenRouter key to unlock hundreds of models — the key is stored locally and
+        never returned by the API.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {PRESETS.map((p) => (
+          <button
+            key={p.label}
+            onClick={() => {
+              setBaseUrl(p.base_url)
+              setModel(p.model)
+            }}
+            className={`rounded border px-2 py-1 text-xs transition-colors ${
+              baseUrl === p.base_url
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label className="text-xs">Base URL (OpenAI-compatible)</Label>
+          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://openrouter.ai/api/v1" className="mt-1 font-mono text-xs" />
+        </div>
+        <div>
+          <Label className="text-xs">Model</Label>
+          <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="openai/gpt-4o-mini" className="mt-1 font-mono text-xs" />
+        </div>
+        <div className="sm:col-span-2">
+          <Label className="text-xs">API key {keySet && <span className="text-muted-foreground">(leave blank to keep the stored key)</span>}</Label>
+          <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={keySet ? "••••••••••••" : "sk-or-v1-…"} className="mt-1 font-mono text-xs" autoComplete="off" />
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" onClick={save} disabled={busy || (!baseUrl.trim() && !apiKey.trim())}>
+          {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Save className="mr-1.5 size-3.5" />}
+          Save
+        </Button>
+        {(keySet || baseUrl) && (
+          <Button size="sm" variant="ghost" onClick={clear} disabled={busy}>
+            <Trash2 className="mr-1.5 size-3.5" /> Clear
+          </Button>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+// ------------------------------------------------------------ Password
+function PasswordCard() {
+  const [current, setCurrent] = useState("")
+  const [next, setNext] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  async function submit() {
+    if (next.length < 8) return toast.error("New password must be at least 8 characters.")
+    setBusy(true)
+    try {
+      await api.changePassword({ current_password: current, new_password: next })
+      toast.success("Password changed — please sign in again.")
+      window.location.href = "/"
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not change password.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <KeyRound className="size-4 text-primary" /> Password
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label className="text-xs">Current password</Label>
+          <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs">New password</Label>
+          <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} className="mt-1" />
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Changing your password signs you out everywhere — you'll need to sign in again.
+      </p>
+      <Button size="sm" className="mt-3" onClick={submit} disabled={busy || !current || !next}>
+        {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <KeyRound className="mr-1.5 size-3.5" />}
+        Change password
+      </Button>
+    </Card>
+  )
+}
+
+// --------------------------------------------------------- Danger zone
+function DangerZoneCard() {
+  const { user } = useAuth()
+  const [password, setPassword] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  async function remove() {
+    if (!window.confirm("Delete your account and ALL your projects/runs? This cannot be undone.")) return
+    setBusy(true)
+    try {
+      await api.deleteAccount({ password })
+      window.location.href = "/"
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete account.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="border-sev-l4/30 p-5">
+      <div className="flex items-center gap-2 text-sm font-medium text-sev-l4">
+        <Trash2 className="size-4" /> Danger zone
+      </div>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        Permanently delete your account and every project, run, and code scan it owns.
+        {user?.is_admin && " The last admin of a deployment cannot delete their own account."}
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <div className="min-w-56">
+          <Label className="text-xs">Confirm with your password</Label>
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
+        </div>
+        <Button variant="destructive" size="sm" onClick={remove} disabled={busy || !password}>
+          {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Trash2 className="mr-1.5 size-3.5" />}
+          Delete my account
+        </Button>
+      </div>
+    </Card>
+  )
+}
+

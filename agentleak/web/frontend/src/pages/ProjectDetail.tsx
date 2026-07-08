@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { Bot, Check, Copy, GitCompare, Loader2, Play, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Bot, Check, Copy, Eye, EyeOff, KeyRound, Loader2, Pencil, Play, Plug, Plus, RefreshCw, Shield, Sparkles, Trash2, Wrench, X } from "lucide-react"
 import { toast } from "sonner"
 import {
   api,
+  type AgentConfig,
+  type ConnectInfo,
   type CustomRule,
   type Project,
+  type ProjectModel,
   type RunSummary,
   type Scenario,
+  type ToolConfig,
+  DETECTORS,
+  DETECTOR_LABEL,
 } from "@/lib/api"
 import { agentLabel } from "@/lib/agents"
 import { useAgentTypes } from "@/lib/hooks"
@@ -20,10 +26,11 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { ModelView } from "@/features/ModelView"
+import { AgentCardView } from "@/features/AgentCardView"
+import { ProgressionView } from "@/features/ProgressionView"
+import { RedTeamView } from "@/features/RedTeamView"
 import { RunRow } from "@/features/RunRow"
-
-const DETECTORS = ["pii", "secrets", "healthcare", "finance", "hr"] as const
-const DETECTOR_LABEL: Record<string, string> = { pii: "PII", secrets: "Secrets", healthcare: "Healthcare", finance: "Finance", hr: "HR" }
 
 export function ProjectDetail() {
   const { id = "" } = useParams()
@@ -63,7 +70,17 @@ export function ProjectDetail() {
       <Tabs defaultValue="audit">
         <TabsList>
           <TabsTrigger value="audit">Audit</TabsTrigger>
+          <TabsTrigger value="card" className="flex items-center gap-1.5">
+            <Bot className="h-3.5 w-3.5 text-primary" />
+            Card &amp; Code
+          </TabsTrigger>
+          <TabsTrigger value="agents">Agents ({project.config.agents?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="model">Model</TabsTrigger>
           <TabsTrigger value="runs">Runs ({runs.length})</TabsTrigger>
+          <TabsTrigger value="redteam" className="flex items-center gap-1.5">
+            <Shield className="h-3.5 w-3.5 text-red-500" />
+            Red Team
+          </TabsTrigger>
           <TabsTrigger value="connect">Connect</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -71,8 +88,20 @@ export function ProjectDetail() {
         <TabsContent value="audit">
           <AuditTab project={project} onRan={reload} />
         </TabsContent>
+        <TabsContent value="card">
+          <AgentCardView project={project} onChange={reload} />
+        </TabsContent>
+        <TabsContent value="agents">
+          <AgentsTab project={project} onChange={reload} />
+        </TabsContent>
+        <TabsContent value="model">
+          <ModelTab project={project} />
+        </TabsContent>
         <TabsContent value="runs">
-          <RunsTab runs={runs} onChange={reload} />
+          <RunsTab projectId={project.id} runs={runs} onChange={reload} />
+        </TabsContent>
+        <TabsContent value="redteam">
+          <RedTeamView projectId={project.id} />
         </TabsContent>
         <TabsContent value="connect">
           <ConnectTab project={project} />
@@ -91,6 +120,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenarioId, setScenarioId] = useState("")
   const [trace, setTrace] = useState("")
+  const [label, setLabel] = useState("")
   const [mode, setMode] = useState<"agent" | "trace">("agent")
   const [busy, setBusy] = useState(false)
 
@@ -115,12 +145,13 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
 
   const agent = project.config.agent
   const live = !!agent?.model
+  const pipeline = (project.config.agents?.length ?? 0) > 0
   const selected = scenarios.find((s) => s.id === scenarioId)
 
   async function runAgent() {
     setBusy(true)
     try {
-      const r = await api.executeAgent(project.id, { scenario_id: scenarioId })
+      const r = await api.executeAgent(project.id, { scenario_id: scenarioId, label: label.trim() })
       toast.success(`Agent run ${r.verdict} · RI ${r.report.risk_index.toFixed(3)}`)
       onRan()
       nav(`/runs/${r.id}`)
@@ -140,7 +171,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
     }
     setBusy(true)
     try {
-      const r = await api.createRun(project.id, { trace: parsed, source: "manual" })
+      const r = await api.createRun(project.id, { trace: parsed, source: "manual", label: label.trim() })
       toast.success(`Run ${r.verdict} · RI ${r.report.risk_index.toFixed(3)}`)
       onRan()
       nav(`/runs/${r.id}`)
@@ -173,7 +204,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
             AgentLeak runs this project's agent against the scenario's task and private data, captures the
             trace it produces, then scores it with the project's detectors and vault scope.
           </p>
-          <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <div className="space-y-1.5">
               <Label className="text-xs">Scenario</Label>
               <Select value={scenarioId} onValueChange={setScenarioId}>
@@ -190,13 +221,29 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Label <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g. baseline, after-fix"
+              />
+            </div>
             <Button onClick={runAgent} disabled={busy || !scenarioId}>
               {busy ? <Loader2 className="animate-spin" /> : <Bot />} Run agent
             </Button>
           </div>
 
           <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs">
-            {live ? (
+            {pipeline ? (
+              <>
+                <Bot className="size-3.5 text-primary" />
+                <span>
+                  Multi-agent pipeline — {project.config.agents?.length} agents hand off in sequence. Data propagation
+                  and per-agent leaks are captured. Configure agents in the <b className="text-foreground">Agents</b> tab.
+                </span>
+              </>
+            ) : live ? (
               <>
                 <Sparkles className="size-3.5 text-primary" />
                 <span>
@@ -238,6 +285,12 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
                   ))}
                 </SelectContent>
               </Select>
+              <Label className="mt-2 block text-xs">Label <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g. baseline, after-fix"
+              />
               <Button className="mt-2 w-full" onClick={runTrace} disabled={busy}>
                 {busy ? <Loader2 className="animate-spin" /> : <Play />} Analyze trace
               </Button>
@@ -258,22 +311,311 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
   )
 }
 
-// ---------------------------------------------------------------- Runs
-function RunsTab({ runs, onChange }: { runs: RunSummary[]; onChange: () => void }) {
-  const nav = useNavigate()
-  const [a, setA] = useState("")
-  const [b, setB] = useState("")
-  const [result, setResult] = useState<{ dominance: string; aRi: number; bRi: number } | null>(null)
+// ---------------------------------------------------------------- Agents
+const BLANK_AGENT = { name: "", role: "assistant", framework: "generic", description: "", base_url: "", model: "", api_key: "", tools: [] as ToolConfig[] }
 
-  async function compare() {
-    if (!a || !b || a === b) return toast.error("Pick two different runs")
+function AgentsTab({ project, onChange }: { project: Project; onChange: () => void }) {
+  const agentTypes = useAgentTypes()
+  const agents = project.config.agents ?? []
+  const [editing, setEditing] = useState<string | null>(null) // agent id, "new", or null
+  const [form, setForm] = useState({ ...BLANK_AGENT })
+  const [busy, setBusy] = useState(false)
+
+  function startNew() {
+    setForm({ ...BLANK_AGENT })
+    setEditing("new")
+  }
+  function startEdit(a: AgentConfig) {
+    setForm({
+      name: a.name,
+      role: a.role ?? "assistant",
+      framework: a.framework,
+      description: a.description ?? "",
+      base_url: a.endpoint?.base_url ?? "",
+      model: a.endpoint?.model ?? "",
+      api_key: "",
+      tools: (a.tools ?? []).map((t) => ({ ...t })),
+    })
+    setEditing(a.id)
+  }
+
+  async function submit() {
+    if (!form.name.trim()) return toast.error("Agent name is required")
+    setBusy(true)
+    const tools = form.tools
+      .map((t) => ({
+        name: t.name.trim(),
+        kind: t.kind,
+        server: t.kind === "mcp" ? (t.server ?? "").trim() : "",
+        description: (t.description ?? "").trim(),
+      }))
+      .filter((t) => t.name)
+    const body = {
+      name: form.name.trim(),
+      role: form.role.trim() || "assistant",
+      framework: form.framework,
+      description: form.description.trim(),
+      endpoint: { base_url: form.base_url.trim(), model: form.model.trim(), api_key: form.api_key },
+      tools,
+    }
     try {
-      const res = await api.compare(a, b)
-      setResult({ dominance: res.dominance, aRi: res.a.risk_index, bRi: res.b.risk_index })
+      if (editing === "new") await api.addAgent(project.id, body)
+      else if (editing) await api.updateAgent(project.id, editing, body)
+      toast.success("Agent saved")
+      setEditing(null)
+      onChange()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove(a: AgentConfig) {
+    if (!confirm(`Remove agent “${a.name}”?`)) return
+    try {
+      await api.removeAgent(project.id, a.id)
+      toast.success("Agent removed")
+      onChange()
     } catch (e) {
       toast.error((e as Error).message)
     }
   }
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-medium">Agents in this system</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              A project can hold several agents to model a multi-agent pipeline. Each agent has its own framework and
+              optional live endpoint; data is handed off down the chain.
+            </p>
+          </div>
+          <Button size="sm" onClick={startNew}>
+            <Plus /> Add agent
+          </Button>
+        </div>
+
+        {agents.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">No agents yet. Add your first agent to model the system.</p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {agents.map((a, i) => {
+              const live = !!a.endpoint?.model
+              return (
+                <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] text-muted-foreground">
+                    {i + 1}
+                  </span>
+                  <Bot className="size-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-sm font-medium">{a.name}</span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {agentLabel(a.framework)}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">· {a.role ?? "assistant"}</span>
+                      <span className="text-[11px] text-muted-foreground">· {live ? `live (${a.endpoint?.model})` : "scripted"}</span>
+                    </div>
+                    {a.description && <p className="truncate text-xs text-muted-foreground">{a.description}</p>}
+                    {!!a.tools?.length && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {a.tools.map((t, ti) => (
+                          <span
+                            key={ti}
+                            className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                          >
+                            {t.kind === "mcp" ? <Plug className="size-2.5" /> : <Wrench className="size-2.5" />}
+                            {t.name || "unnamed"}
+                            {t.kind === "mcp" && t.server ? ` · ${t.server}` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7" onClick={() => startEdit(a)}>
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-7 text-sev-l4" onClick={() => remove(a)}>
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      {editing && (
+        <Card className="space-y-4 p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">{editing === "new" ? "New agent" : "Edit agent"}</h3>
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => setEditing(null)}>
+              <X className="size-4" />
+            </Button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Name</Label>
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Researcher" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Input value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="researcher" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Framework</Label>
+              <Select value={form.framework} onValueChange={(v) => setForm((f) => ({ ...f, framework: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {agentTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Model (optional)</Label>
+              <Input value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))} placeholder="gpt-4o-mini" className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Base URL (optional)</Label>
+              <Input value={form.base_url} onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">API key (optional)</Label>
+              <Input type="password" value={form.api_key} onChange={(e) => setForm((f) => ({ ...f, api_key: e.target.value }))} placeholder="sk-… (leave blank to keep stored)" className="font-mono text-xs" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Description / instructions</Label>
+            <Textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="What this agent does and any privacy guidance."
+              className="h-20 text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Tools &amp; MCP servers</Label>
+              <div className="flex gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setForm((f) => ({ ...f, tools: [...f.tools, { name: "", kind: "function", server: "", description: "" }] }))}
+                >
+                  <Wrench className="size-3" /> Tool
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setForm((f) => ({ ...f, tools: [...f.tools, { name: "", kind: "mcp", server: "", description: "" }] }))}
+                >
+                  <Plug className="size-3" /> MCP server
+                </Button>
+              </div>
+            </div>
+            {form.tools.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                Tools and MCP servers the agent can call. Anything the agent forwards to them is treated as an external
+                sink and scored as a potential leak.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {form.tools.map((t, idx) => (
+                  <div key={idx} className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2">
+                    <Select
+                      value={t.kind}
+                      onValueChange={(v) =>
+                        setForm((f) => ({ ...f, tools: f.tools.map((x, i) => (i === idx ? { ...x, kind: v as ToolConfig["kind"] } : x)) }))
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-28 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="function">Function</SelectItem>
+                        <SelectItem value="mcp">MCP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={t.name}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, tools: f.tools.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)) }))
+                      }
+                      placeholder={t.kind === "mcp" ? "tool (e.g. create_issue)" : "tool name (e.g. send_email)"}
+                      className="h-8 flex-1 text-xs"
+                    />
+                    {t.kind === "mcp" && (
+                      <Input
+                        value={t.server ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, tools: f.tools.map((x, i) => (i === idx ? { ...x, server: e.target.value } : x)) }))
+                        }
+                        placeholder="server (e.g. github-mcp)"
+                        className="h-8 w-44 font-mono text-xs"
+                      />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-sev-l4"
+                      onClick={() => setForm((f) => ({ ...f, tools: f.tools.filter((_, i) => i !== idx) }))}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            With a model + base URL the agent runs live during execution; otherwise it runs as a scripted (offline) agent
+            in the pipeline.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button onClick={submit} disabled={busy}>
+              {busy && <Loader2 className="animate-spin" />} Save agent
+            </Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- Model
+function ModelTab({ project }: { project: Project }) {
+  const [model, setModel] = useState<ProjectModel | null>(null)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    api.model(project.id).then(setModel).catch((e) => setError((e as Error).message))
+  }, [project.id, project.config.agents])
+
+  if (error) return <Card className="p-6 text-sm text-sev-l4">{error}</Card>
+  if (!model) return <div className="text-sm text-muted-foreground">Loading…</div>
+  return <ModelView model={model} />
+}
+
+// ---------------------------------------------------------------- Runs
+function RunsTab({ projectId, runs, onChange }: { projectId: string; runs: RunSummary[]; onChange: () => void }) {
+  const nav = useNavigate()
 
   if (!runs.length) {
     return (
@@ -284,31 +626,14 @@ function RunsTab({ runs, onChange }: { runs: RunSummary[]; onChange: () => void 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Score progression + run-to-run comparison */}
+      <ProgressionView projectId={projectId} />
+
+      {/* Full run list */}
       <Card>
-        <div className="flex flex-wrap items-end gap-2 border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <GitCompare className="size-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Compare</span>
-          </div>
-          <RunSelect runs={runs} value={a} onChange={setA} placeholder="Run A" />
-          <RunSelect runs={runs} value={b} onChange={setB} placeholder="Run B" />
-          <Button size="sm" variant="outline" onClick={compare}>
-            Compare
-          </Button>
-          {result && (
-            <span className="text-sm">
-              {result.dominance === "neither" ? (
-                <span className="text-muted-foreground">
-                  Neither dominates — ordering is weight-dependent (RI {result.aRi.toFixed(3)} vs {result.bRi.toFixed(3)}).
-                </span>
-              ) : (
-                <span>
-                  <b>Run {result.dominance.toUpperCase()}</b> is weight-robustly riskier (dominates at every level).
-                </span>
-              )}
-            </span>
-          )}
+        <div className="border-b border-border px-5 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          All runs ({runs.length})
         </div>
         <div className="divide-y divide-border">
           {runs.map((r) => (
@@ -340,54 +665,239 @@ function RunsTab({ runs, onChange }: { runs: RunSummary[]; onChange: () => void 
   )
 }
 
-function RunSelect({ runs, value, onChange, placeholder }: { runs: RunSummary[]; value: string; onChange: (v: string) => void; placeholder: string }) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-48 text-xs">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {runs.map((r) => (
-          <SelectItem key={r.id} value={r.id}>
-            {r.verdict} · RI {r.risk_index.toFixed(2)} · {r.agent_name || "agent"}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
 // ------------------------------------------------------------- Connect
 function ConnectTab({ project }: { project: Project }) {
-  const [copied, setCopied] = useState(false)
-  const [snippet, setSnippet] = useState("# loading…")
+  const [copied, setCopied] = useState("")
+  const [info, setInfo] = useState<ConnectInfo | null>(null)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    api.connect(project.id).then((r) => setSnippet(r.snippet)).catch((e) => setSnippet(`# ${(e as Error).message}`))
-  }, [project.id, project.agent_type, project.name])
+    api.connect(project.id).then(setInfo).catch((e) => setError((e as Error).message))
+  }, [project.id, project.agent_type, project.name, project.config.agents])
 
-  function copy() {
-    navigator.clipboard.writeText(snippet).then(() => {
-      setCopied(true)
+  function copy(key: string, text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key)
       toast.success("Snippet copied")
-      setTimeout(() => setCopied(false), 1500)
+      setTimeout(() => setCopied(""), 1500)
     })
   }
 
+  if (error) return <Card className="p-6 text-sm text-sev-l4">{error}</Card>
+  if (!info) return <div className="text-sm text-muted-foreground">Loading…</div>
+
+  const blocks =
+    info.agents.length > 0
+      ? info.agents.map((a) => ({ key: a.id, title: `${a.name} · ${a.framework_label}`, snippet: a.snippet }))
+      : [{ key: "single", title: `${agentLabel(project.agent_type)} agent`, snippet: info.snippet }]
+
   return (
-    <Card>
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <div className="text-sm">
-          Connect your <b>{agentLabel(project.agent_type)}</b> agent via the SDK
-        </div>
-        <Button variant="outline" size="sm" onClick={copy}>
-          {copied ? <Check /> : <Copy />} Copy
-        </Button>
-      </div>
-      <pre className="overflow-x-auto p-5 font-mono text-[12px] leading-relaxed text-foreground/90">{snippet}</pre>
-      <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+    <div className="space-y-4">
+      {info.agents.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Connect each agent of your system with its framework's SDK. Runs submitted by any agent appear under this
+          project.
+        </p>
+      )}
+      {blocks.map((b) => (
+        <Card key={b.key}>
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <div className="text-sm">
+              Connect <b>{b.title}</b> via the SDK
+            </div>
+            <Button variant="outline" size="sm" onClick={() => copy(b.key, b.snippet)}>
+              {copied === b.key ? <Check /> : <Copy />} Copy
+            </Button>
+          </div>
+          <pre className="overflow-x-auto p-5 font-mono text-[12px] leading-relaxed text-foreground/90">{b.snippet}</pre>
+        </Card>
+      ))}
+      <SelfTestKeyPanel project={project} />
+      <div className="rounded-md border border-border px-5 py-3 text-xs text-muted-foreground">
         Make sure the platform is running (<code className="rounded bg-muted px-1.5 py-0.5">agentleak serve</code>).
         Submitted runs appear under this project.
+      </div>
+    </div>
+  )
+}
+
+// --------------------------------------------------- Self-test API key
+function SelfTestKeyPanel({ project }: { project: Project }) {
+  const [key, setKey] = useState<string | null>(null)
+  const [hasKey, setHasKey] = useState(false)
+  const [reveal, setReveal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState("")
+
+  useEffect(() => {
+    api.getApiKey(project.id)
+      .then((r) => { setKey(r.api_key); setHasKey(r.has_key) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [project.id])
+
+  async function generate() {
+    setBusy(true)
+    try {
+      const r = await api.generateApiKey(project.id)
+      setKey(r.api_key)
+      setHasKey(true)
+      setReveal(true)
+      toast.success(hasKey ? "API key rotated" : "API key generated")
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function copy(id: string, text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id)
+      toast.success("Copied")
+      setTimeout(() => setCopied(""), 1500)
+    })
+  }
+
+  const displayKey = key ? (reveal ? key : `${key.slice(0, 6)}${"•".repeat(20)}`) : ""
+  const curlSnippet = `curl -X POST http://127.0.0.1:8000/api/selftest \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "api_key": "${key ?? "ak_…"}",
+    "trace": { /* your captured agent trace */ },
+    "scenario_id": "healthcare_patient_summary"
+  }'`
+
+  const pySnippet = `import os, requests
+
+# The agent tests *itself* against the platform and reads back fixes.
+resp = requests.post(
+    "http://127.0.0.1:8000/api/selftest",
+    json={
+        "api_key": os.environ["AGENTLEAK_KEY"],   # ${key ?? "ak_…"}
+        "trace": trace,                            # captured this run
+        "scenario_id": "healthcare_patient_summary",
+    },
+).json()
+
+# 1. Regulatory verdict — is the agent allowed to ship?
+if not resp["compliant"]:
+    print("Blocked by:", ", ".join(resp["failed_frameworks"]))  # e.g. hipaa, gdpr
+
+# 2. Pull back machine-readable code fixes and apply them.
+if not resp["passed"]:
+    for hint in resp["remediation_hints"]:
+        print(f"[{hint['priority']}] {hint['channel']} leaks {hint['data_types']}")
+        print(hint["code_fix"])      # apply this patch, then re-run`
+
+  const loopSnippet = `from agentleak import AgentSelfClient
+
+me = AgentSelfClient(api_key=os.environ["AGENTLEAK_KEY"])
+
+# 1. Register identity (A2A/Nasiko AgentCard) + code source
+me.register(card={
+    "name": "${project.name}",
+    "capabilities": ["..."],
+    "source": {"type": "github", "repo": "owner/repo"},
+})
+me.scan_code()                      # static scan of the declared repo
+
+# 2. Improvement loop: test → read next_steps → fix → re-test
+step = me.improve(trace)
+while not step["passed"]:
+    for todo in step["next_steps"]:  # priority-sorted, machine-actionable
+        apply_fix(todo)
+    step = me.improve(new_trace())
+
+print(me.status()["progression"])    # score delta across all runs`
+
+  return (
+    <Card className="border-primary/25">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div className="flex items-center gap-2 text-sm">
+          <KeyRound className="size-4 text-primary" />
+          <b>Let this agent test itself</b>
+        </div>
+        <Button variant="outline" size="sm" onClick={generate} disabled={busy}>
+          {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+          {hasKey ? "Rotate key" : "Generate key"}
+        </Button>
+      </div>
+      <div className="space-y-4 p-5">
+        <p className="text-sm text-muted-foreground">
+          Issue a project API key so the agent can POST its own trace to{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-primary">/api/selftest</code>, get scored, and pull
+          back structured code fixes it can apply autonomously. Runs are saved here automatically.
+        </p>
+
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : hasKey && key ? (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 truncate rounded-md border border-border bg-muted/60 px-3 py-2 font-mono text-[12px]">
+              {displayKey}
+            </code>
+            <Button variant="outline" size="icon" onClick={() => setReveal((v) => !v)} title={reveal ? "Hide" : "Reveal"}>
+              {reveal ? <EyeOff /> : <Eye />}
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => copy("key", key)} title="Copy key">
+              {copied === "key" ? <Check /> : <Copy />}
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+            No API key yet. Generate one to enable agent self-testing.
+          </div>
+        )}
+
+        {hasKey && key && (
+          <>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                  Python — self-test &amp; auto-fix
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => copy("py", pySnippet)}>
+                  {copied === "py" ? <Check /> : <Copy />} Copy
+                </Button>
+              </div>
+              <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">{pySnippet}</pre>
+            </div>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                  curl
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => copy("curl", curlSnippet)}>
+                  {copied === "curl" ? <Check /> : <Copy />} Copy
+                </Button>
+              </div>
+              <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">{curlSnippet}</pre>
+            </div>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                  Python — autonomous improvement loop
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => copy("loop", loopSnippet)}>
+                  {copied === "loop" ? <Check /> : <Copy />} Copy
+                </Button>
+              </div>
+              <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">{loopSnippet}</pre>
+              <div className="mt-2 grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
+                <span><code className="rounded bg-muted px-1 py-0.5">POST /api/agent/register</code> — upsert the agent card</span>
+                <span><code className="rounded bg-muted px-1 py-0.5">POST /api/agent/code</code> — static-scan its own source</span>
+                <span><code className="rounded bg-muted px-1 py-0.5">POST /api/agent/improve</code> — test + delta + next steps</span>
+                <span><code className="rounded bg-muted px-1 py-0.5">GET /api/agent/status</code> — progression &amp; compliance posture</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The key authenticates as <code className="rounded bg-muted px-1.5 py-0.5">api_key</code> in the body or the{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5">X-AgentLeak-Key</code> header. Treat it like a secret.
+            </p>
+          </>
+        )}
       </div>
     </Card>
   )

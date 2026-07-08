@@ -17,10 +17,12 @@ Quick start::
 
 from __future__ import annotations
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
-from .client import AgentLeakClient, connect
+from .client import AgentLeakClient, AgentSelfClient, connect
+from .core.agentcard import AgentCard, fetch_agent_card, parse_agent_card
 from .core.agentrisk import AgentRiskReport, compute_agentrisk, dominates, level_for
+from .core.codescan import CodeScanner, CodeScanResult, scan_dir, scan_files, scan_github_repo
 from .core.config import Config
 from .core.detector import Finding, RawMatch, Severity, redact
 from .core.report import AnalysisResult
@@ -30,6 +32,7 @@ from .core.scoring import Score, score_findings, verdict_for
 from .core.store import Store
 from .core.trace import CHANNELS, Channel, Event, Trace
 from .sdk import Capture, capture, monitor, record
+from .track import Run, watch
 
 __all__ = [
     "__version__",
@@ -62,8 +65,21 @@ __all__ = [
     "Capture",
     "monitor",
     "record",
+    # unified one-line API
+    "watch",
+    "Run",
     # platform
     "AgentLeakClient",
+    "AgentSelfClient",
     "connect",
     "Store",
+    # agent-first layer
+    "AgentCard",
+    "parse_agent_card",
+    "fetch_agent_card",
+    "CodeScanResult",
+    "CodeScanner",
+    "scan_files",
+    "scan_dir",
+    "scan_github_repo",
 ]

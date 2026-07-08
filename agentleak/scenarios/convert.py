@@ -53,7 +53,7 @@ def detect_format(data: Any) -> str:
     """Sniff the shape of an uploaded object.
 
     Returns one of ``"trace"``, ``"agentleak_spec"``, ``"ai4privacy"``,
-    ``"oss_scenario"`` or ``"unknown"``.
+    ``"oss_scenario"``, ``"openai_chat"`` or ``"unknown"``.
     """
     if not isinstance(data, dict):
         return "unknown"
@@ -65,6 +65,13 @@ def detect_format(data: Any) -> str:
         return "ai4privacy"
     if "trace" in data and isinstance(data["trace"], dict):
         return "oss_scenario"
+    messages = data.get("messages")
+    if (
+        isinstance(messages, list)
+        and messages
+        and all(isinstance(m, dict) and "role" in m for m in messages)
+    ):
+        return "openai_chat"
     return "unknown"
 
 
@@ -263,6 +270,55 @@ def ai4privacy_to_trace(record: dict[str, Any]) -> Trace:
     return trace
 
 
+def openai_chat_to_trace(data: dict[str, Any]) -> Trace:
+    """Map an OpenAI-style chat log (``{"messages": [...]}``) onto channels.
+
+    This is a *faithful* mapping, not a synthesis — every message becomes the
+    event its role implies, so any exported session (OpenAI SDK, LangSmith,
+    LiteLLM, benchmark dumps…) can be scored as-is:
+
+    * ``system`` / ``user``      → ``user_input`` (context given to the agent)
+    * assistant ``tool_calls``   → one ``tool_call`` per call (outbound)
+    * ``tool`` / ``function``    → ``tool_response`` (inbound data)
+    * assistant text (not last)  → ``inter_agent_message`` (internal turn)
+    * assistant text (last)      → ``final_output`` (what the user saw)
+    """
+    messages = [m for m in data.get("messages", []) if isinstance(m, dict)]
+    name = str(data.get("model") or data.get("agent_name") or "chat_agent")
+    trace = Trace(run_id=str(data.get("id") or "chat_log"), agent_name=name)
+
+    # Locate the last assistant *text* turn — the only true final_output.
+    last_text_idx = -1
+    for i, m in enumerate(messages):
+        if m.get("role") == "assistant" and str(m.get("content") or "").strip():
+            last_text_idx = i
+
+    for i, m in enumerate(messages):
+        role = str(m.get("role") or "")
+        content = m.get("content")
+        text = content if isinstance(content, str) else "" if content is None else str(content)
+        if role in ("system", "user"):
+            if text.strip():
+                trace.add_event("user_input", text, source=role, target="agent")
+        elif role in ("tool", "function"):
+            tool = str(m.get("name") or "tool")
+            trace.add_event("tool_response", text, source=tool, target="agent",
+                            metadata={"tool_name": tool, "tool_call_id": m.get("tool_call_id")})
+        elif role == "assistant":
+            for call in m.get("tool_calls") or []:
+                fn = (call.get("function") or {}) if isinstance(call, dict) else {}
+                tool = str(fn.get("name") or "tool")
+                trace.add_event("tool_call", str(fn.get("arguments") or ""),
+                                source="agent", target=tool,
+                                metadata={"tool_name": tool, "tool_call_id": call.get("id")})
+            if text.strip():
+                if i == last_text_idx:
+                    trace.add_event("final_output", text, source="agent", target="user")
+                else:
+                    trace.add_event("inter_agent_message", text, source="agent", target="agent")
+    return trace
+
+
 def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
     """Turn any supported uploaded object into ``(metadata, trace)``.
 
@@ -314,7 +370,18 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
             "tags": ["ai4privacy", "pii"],
             "difficulty": "",
         }, trace
+    if fmt == "openai_chat":
+        trace = openai_chat_to_trace(data)
+        return {
+            "name": str(data.get("name") or data.get("model") or "Chat session"),
+            "domain": "custom",
+            "description": f"Imported chat log with {len(trace.events)} events.",
+            "sensitive_data": [],
+            "tags": ["uploaded", "chat-log"],
+            "difficulty": "",
+        }, trace
     raise ValueError(
         "Unrecognized format. Provide an AgentLeak trace, an AgentLeak scenario "
-        "spec, an ai4privacy record, or an OSS scenario object."
+        "spec, an ai4privacy record, an OpenAI-style chat log ({\"messages\": [...]}) "
+        "or an OSS scenario object."
     )

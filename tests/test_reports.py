@@ -36,6 +36,26 @@ def test_json_report_is_valid_and_redacted():
     assert any(f["redacted_value"] == "TR********78" for f in parsed["findings"])
 
 
+def test_remediation_hints_structure():
+    result = _result()
+    hints = result.remediation_hints()
+    assert hints, "a leaky scenario must yield remediation hints"
+    for h in hints:
+        assert set(h) >= {"channel", "data_types", "priority", "advice", "code_fix"}
+        assert h["priority"] in {"critical", "high", "medium"}
+        assert isinstance(h["data_types"], list) and h["data_types"]
+        assert str(h["code_fix"]).strip()
+    # each channel appears at most once
+    channels = [h["channel"] for h in hints]
+    assert len(channels) == len(set(channels))
+
+
+def test_remediation_hints_in_serialized_report():
+    parsed = json.loads(render(_result().to_dict(), "json"))
+    assert "remediation_hints" in parsed
+    assert parsed["remediation_hints"] == _result().remediation_hints()
+
+
 def test_markdown_has_sections():
     md = render(_result().to_dict(), "markdown")
     assert "# AgentLeak Privacy Report" in md

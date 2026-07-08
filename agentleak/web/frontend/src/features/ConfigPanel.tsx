@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Loader2, Play, Plus, Trash2, Wand2 } from "lucide-react"
 import { toast } from "sonner"
-import { api, type AnalyzePayload, type CustomRule, type Scenario } from "@/lib/api"
+import { api, type AnalyzePayload, type CustomRule, type Scenario, DETECTORS, DETECTOR_LABEL } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,14 +11,6 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
-const DETECTORS = ["pii", "secrets", "healthcare", "finance", "hr"] as const
-const DETECTOR_LABEL: Record<string, string> = {
-  pii: "PII",
-  secrets: "Secrets",
-  healthcare: "Healthcare",
-  finance: "Finance",
-  hr: "HR",
-}
 const LEVEL_TO_SEVERITY: Record<string, string> = { "4": "critical", "3": "high", "2": "medium", "1": "low" }
 
 interface Props {
@@ -41,8 +33,10 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
 
   useEffect(() => {
     if (!scenarios.length) return
-    if (initialScenarioId && scenarios.some((s) => s.id === initialScenarioId)) {
-      loadScenario(initialScenarioId)
+    // Strip ?t=... timestamp suffix used to force re-trigger from parent
+    const rawId = initialScenarioId?.split("?")[0]
+    if (rawId && scenarios.some((s) => s.id === rawId)) {
+      loadScenario(rawId)
     } else if (!scenarioId) {
       loadScenario(scenarios[0].id)
     }

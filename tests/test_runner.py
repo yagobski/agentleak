@@ -93,3 +93,62 @@ def test_redact_values_off_includes_raw():
     result = AgentLeakRunner(cfg).analyze(trace)
     data = result.to_dict()
     assert any("leaked@example.com" == f.get("matched_value") for f in data["findings"])
+
+
+# -- Agent scenarios: cases an agent can actually produce ----------------
+# These exercise the newer detectors end-to-end through the runner and assert
+# channel-aware result quality (sources are not leaks; internal channels are).
+
+def test_agent_forwards_its_own_llm_key_to_another_agent():
+    """A planner agent accidentally pastes its provider key into a handoff."""
+    trace = Trace(run_id="key", agent_name="planner")
+    trace.add_event("user_input", "Book the trip", source="user", target="planner")
+    trace.add_event(
+        "inter_agent_message",
+        "Use my key OPENAI_API_KEY=sk-proj-abc123def456ghi789jkl012mno to call the API",
+        source="planner", target="worker",
+    )
+    trace.add_event("final_output", "Your trip is booked.", source="worker", target="user")
+    result = AgentLeakRunner().analyze(trace)
+    leaked = {(f.channel, f.data_type) for f in result.findings}
+    assert ("inter_agent_message", "llm_api_key") in leaked
+    assert result.has_critical is True
+    # The user-facing answer stays clean.
+    assert "final_output" not in {f.channel for f in result.findings}
+
+
+def test_agent_logs_authorization_bearer_header():
+    """A tool wrapper logs the outbound request including the auth header."""
+    trace = Trace(run_id="bear", agent_name="agent")
+    trace.add_event("user_input", "Fetch my orders", source="user", target="agent")
+    trace.add_event(
+        "log",
+        "GET /orders Authorization: Bearer abcdef0123456789abcdef0123456789",
+        source="agent", target="logger",
+    )
+    trace.add_event("final_output", "You have 3 orders.", source="agent", target="user")
+    result = AgentLeakRunner().analyze(trace)
+    assert ("log", "bearer_token") in {(f.channel, f.data_type) for f in result.findings}
+
+
+def test_version_string_in_output_is_not_an_ip_leak():
+    """Precision: a build version must never be reported as a client IP."""
+    trace = Trace(run_id="ver")
+    trace.add_event("final_output", "Running version 1.2.3.4 of the assistant.")
+    result = AgentLeakRunner().analyze(trace)
+    assert result.findings == []
+    assert result.verdict == "Pass"
+
+
+def test_nino_from_tool_response_only_leaks_when_re_emitted():
+    """A UK NINO arrives from a datastore (source) then leaks to shared memory."""
+    trace = Trace(run_id="nino", agent_name="A1")
+    trace.add_event("user_input", "Check my benefits", source="user", target="A1")
+    trace.add_event("tool_response", {"nino": "AB123456C"}, source="datastore", target="A1")
+    trace.add_event("shared_memory", "note: claimant NINO AB123456C", source="A1", target="memory")
+    trace.add_event("final_output", "Your benefits are up to date.", source="A1", target="user")
+    result = AgentLeakRunner().analyze(trace)
+    by_channel = {f.channel for f in result.leaked_findings()
+                  if f.data_type == "national_insurance_number"}
+    # Arrival via tool_response is a source, not a leak; re-emission to memory is.
+    assert by_channel == {"shared_memory"}

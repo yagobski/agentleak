@@ -12,7 +12,8 @@ agentleak serve            # http://127.0.0.1:8000
 ## Concepts
 
 - **Project** — an agent you audit over time. It has a name, an *agent
-  framework* (generic / LangChain / LangGraph / CrewAI / AutoGen), and a config
+  framework* (generic / LangChain / LangGraph / CrewAI / AutoGen / OpenAI Swarm
+  / LlamaIndex / Semantic Kernel / Pydantic AI / smolagents / Google ADK), and a config
   (which detectors, the vault scope, custom rules, redaction).
 - **Run** — one stored analysis of a project. Each run keeps the full AgentRisk
   report; you can view, export, compare, and delete runs.
@@ -27,6 +28,31 @@ agentleak serve            # http://127.0.0.1:8000
 - **Project → Settings** — edit detectors, vault, custom rules, redaction.
 - **Playground** — score a trace instantly, nothing saved.
 - **Scenarios** — the built-in synthetic scenario library.
+- **Administration** (admins only) — accounts, usage, and platform health.
+
+## Administration & production deployment
+
+The platform is multi-account with an admin console:
+
+- **First account = admin.** The first user to register on a deployment gets
+  the admin role automatically (existing single-user installs are promoted on
+  upgrade). Admins can promote other admins from the console.
+- **Admin console** (`/admin`) — platform-wide stats (accounts, projects,
+  runs, code scans, average RI), account management (promote/demote admin,
+  disable/enable — disabling revokes sessions immediately — and delete with
+  full data cascade), and recent activity across every user.
+- **Lockout guards** — you cannot disable or delete your own account, and the
+  last admin cannot drop their role.
+- **Login rate limiting** — 10 failed attempts per e-mail per 5 minutes →
+  HTTP 429 (single-process, in-memory; put a WAF in front for multi-replica).
+- **Health probe** — `GET /api/health` (unauthenticated) returns
+  `{"status": "ok", "version": ...}` for load balancers and orchestrators.
+- **Hardening** — security headers on every response, HSTS + Secure cookies
+  with `AGENTLEAK_COOKIE_SECURE=1`, timing-safe API-key and password checks.
+
+Admin API: `GET /api/admin/overview`, `GET /api/admin/users`,
+`PATCH /api/admin/users/{id}` (`is_admin` / `disabled`),
+`DELETE /api/admin/users/{id}`.
 
 ## Connect an agent via the SDK
 

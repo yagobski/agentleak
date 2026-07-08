@@ -15,7 +15,18 @@ AWS_ACCESS_KEY_RE = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
 GITHUB_TOKEN_RE = re.compile(r"\bgh[oprsu]_[A-Za-z0-9]{36}\b")
 SLACK_TOKEN_RE = re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")
 STRIPE_KEY_RE = re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")
+# OpenAI / Anthropic keys use a hyphen separator (sk-..., sk-proj-..., sk-ant-...),
+# which is distinct from Stripe's underscore form (sk_live_...). Agent runtimes
+# routinely carry these in tool calls and env dumps, so treat them as critical.
+LLM_API_KEY_RE = re.compile(
+    r"\bsk-(?:proj|svcacct|admin|ant-api\d{2})?-?[A-Za-z0-9_-]{16,}\b"
+)
+# Google API key (Maps, Cloud, Gemini) — fixed AIza prefix + 35 url-safe chars.
+GOOGLE_API_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")
 JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
+# Opaque `Authorization: Bearer <token>` values. JWTs are handled separately, so
+# the JWT branch is skipped here to avoid double-reporting the same substring.
+BEARER_TOKEN_RE = re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._~+/=-]{16,})")
 PRIVATE_KEY_RE = re.compile(
     r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"
 )
@@ -71,11 +82,36 @@ class SecretsDetector(Detector):
                 recommendation="Rotate the Stripe key; never expose payment provider secrets to agents.",
             ))
 
+        for m in LLM_API_KEY_RE.finditer(text):
+            matches.append(self._match(
+                data_type="llm_api_key", severity=Severity.CRITICAL, confidence=0.95,
+                matched_value=m.group(0),
+                recommendation="Rotate the model-provider key; inject it at the runtime boundary, never in prompts or memory.",
+            ))
+
+        for m in GOOGLE_API_KEY_RE.finditer(text):
+            matches.append(self._match(
+                data_type="google_api_key", severity=Severity.CRITICAL, confidence=0.93,
+                matched_value=m.group(0),
+                recommendation="Rotate the Google API key and restrict it; keep cloud keys out of agent channels.",
+            ))
+
         for m in JWT_RE.finditer(text):
             matches.append(self._match(
                 data_type="jwt", severity=Severity.HIGH, confidence=0.85,
                 matched_value=m.group(0),
                 recommendation="Do not store or forward raw JWTs; they may carry identity and claims.",
+            ))
+
+        for m in BEARER_TOKEN_RE.finditer(text):
+            token = m.group(1)
+            # JWTs after `Bearer` are already covered by JWT_RE above.
+            if token.startswith("eyJ"):
+                continue
+            matches.append(self._match(
+                data_type="bearer_token", severity=Severity.HIGH, confidence=0.8,
+                matched_value=token,
+                recommendation="Strip Authorization bearer tokens from traces; they grant live access.",
             ))
 
         for m in CONNECTION_STRING_RE.finditer(text):
