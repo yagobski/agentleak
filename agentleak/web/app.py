@@ -594,7 +594,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         ip = client_ip(dict(request.headers), getattr(request.client, "host", ""))
         path = request.url.path
         if limits.register_per_ip_hour and request.method == "POST" \
-                and path == "/api/auth/register":
+                and path in ("/api/auth/register", "/api/agent/onboard"):
             if not _ip_register.hit(ip):
                 return JSONResponse(
                     {"detail": "Too many sign-ups from this network — try again later."},
@@ -697,6 +697,69 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             raise HTTPException(status_code=409, detail="An account with this email already exists.")
         user = db.create_user(email, password, name=str(payload.get("name") or "").strip())
         return _session_response(user)
+
+    @app.post("/api/agent/onboard")
+    def agent_onboard(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        """One-call self-service onboarding for an autonomous agent.
+
+        Creates the account, a project for the agent, and a self-test API key,
+        and returns everything the agent needs to start the register → scan →
+        improve → status loop — no browser, no dashboard, no human. Throttled
+        per IP (same guard as ``/api/auth/register``).
+
+        Body: ``{"email", "password"?, "agent_name"?}``. A password is generated
+        when omitted (the API key is the ongoing credential); it is returned
+        once so the human owner can also sign in to the dashboard later.
+        """
+        email = normalize_email(payload.get("email"))
+        if not valid_email(email):
+            raise HTTPException(status_code=400, detail="A valid email address is required.")
+        if db.get_user_by_email(email):
+            raise HTTPException(
+                status_code=409,
+                detail="Account exists — sign in and read your key from GET "
+                       "/api/projects/{id}/api-key, or use /api/auth/login.",
+            )
+        password = str(payload.get("password") or "")
+        generated = False
+        if not password:
+            password = secrets.token_urlsafe(18)
+            generated = True
+        elif len(password) < MIN_PASSWORD_LEN:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Password must be at least {MIN_PASSWORD_LEN} characters.",
+            )
+
+        agent_name = str(payload.get("agent_name") or "").strip() or "My Agent"
+        user = db.create_user(email, password, name=agent_name)
+        project = db.create_project(agent_name, owner_id=user["id"])
+        key = "ak_" + secrets.token_urlsafe(24)
+        cfg = dict(project.get("config") or {})
+        cfg["selftest_api_key"] = key
+        db.update_project(project["id"], config=cfg)
+
+        base = "" if limits.public_mode else "http://localhost:8000"
+        return {
+            "onboarded": True,
+            "project_id": project["id"],
+            "agent_name": agent_name,
+            "api_key": key,
+            "password": password if generated else None,
+            "password_generated": generated,
+            "free_tier": {
+                "monthly_quota": limits.free_monthly_quota,
+                "byok": limits.force_byok,
+            },
+            "next_steps": {
+                "1_register_card": f"POST {base}/api/agent/register  (X-AgentLeak-Key: {key[:8]}…)",
+                "2_scan_code": f"POST {base}/api/agent/code",
+                "3_self_test": f"POST {base}/api/selftest",
+                "4_improve": f"POST {base}/api/agent/improve",
+                "5_status": f"GET {base}/api/agent/status",
+            },
+            "docs": "/api/meta and docs/public-api.md",
+        }
 
     @app.post("/api/auth/login")
     def login(payload: dict[str, Any] = Body(...)) -> Any:
