@@ -132,3 +132,36 @@ def test_byok_blocks_env_key_fallback(monkeypatch):
     # force_byok off (self-hosted) → the env key is allowed.
     llm = _resolve_redteam_llm(project, {}, {}, force_byok=False)
     assert llm is not None and "openrouter" in llm.config.base_url
+
+
+# -- frictionless agent onboarding ---------------------------------------
+def test_agent_onboard_one_call(tmp_path, monkeypatch):
+    for v in ("AGENTLEAK_PUBLIC_MODE", "AGENTLEAK_IP_RATE_LIMIT", "AGENTLEAK_REGISTER_IP_LIMIT"):
+        monkeypatch.delenv(v, raising=False)
+    client = _app(tmp_path)
+
+    r = client.post("/api/agent/onboard", json={"email": "bot@x.io", "agent_name": "TicketBot"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["onboarded"] is True
+    assert body["api_key"].startswith("ak_")
+    assert body["password_generated"] is True and body["password"]
+    assert body["agent_name"] == "TicketBot"
+
+    # The returned key immediately drives the agent loop (no session cookie).
+    key = body["api_key"]
+    fresh = TestClient(client.app)
+    reg = fresh.post(
+        "/api/agent/register",
+        json={"agent_card": {"name": "TicketBot", "description": "d", "capabilities": ["triage"]}},
+        headers={"X-AgentLeak-Key": key},
+    )
+    assert reg.status_code == 200 and reg.json()["registered"] is True
+
+
+def test_agent_onboard_rejects_duplicate_email(tmp_path, monkeypatch):
+    monkeypatch.delenv("AGENTLEAK_REGISTER_IP_LIMIT", raising=False)
+    client = _app(tmp_path)
+    client.post("/api/agent/onboard", json={"email": "dup@x.io"})
+    again = client.post("/api/agent/onboard", json={"email": "dup@x.io"})
+    assert again.status_code == 409
