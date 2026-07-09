@@ -165,3 +165,25 @@ def test_agent_onboard_rejects_duplicate_email(tmp_path, monkeypatch):
     client.post("/api/agent/onboard", json={"email": "dup@x.io"})
     again = client.post("/api/agent/onboard", json={"email": "dup@x.io"})
     assert again.status_code == 409
+
+
+def test_selftest_accepts_header_key(tmp_path, monkeypatch):
+    """/api/selftest must accept X-AgentLeak-Key like the other agent endpoints
+    (an agent following the docs uses the header everywhere)."""
+    for v in ("AGENTLEAK_PUBLIC_MODE", "AGENTLEAK_IP_RATE_LIMIT", "AGENTLEAK_REGISTER_IP_LIMIT"):
+        monkeypatch.delenv(v, raising=False)
+    client = _app(tmp_path)
+    key = client.post("/api/agent/onboard", json={"email": "hdr@x.io"}).json()["api_key"]
+
+    fresh = TestClient(client.app)
+    r = fresh.post(
+        "/api/selftest",
+        json={"trace": {"agent_name": "a", "events": [
+            {"channel": "tool_call", "source": "agent", "target": "crm",
+             "content": {"ssn": "123-45-6789"}},
+            {"channel": "final_output", "content": "done"},
+        ]}},
+        headers={"X-AgentLeak-Key": key},
+    )
+    assert r.status_code == 200, r.text
+    assert "risk_index" in r.json()
