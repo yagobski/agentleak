@@ -331,3 +331,29 @@ def test_scenario_import_idempotency_helpers(store: Store):
     assert store.scenario_exists("pack_a", "origin_2") is False
     assert store.scenario_exists("pack_a", "") is False  # blank origin never matches
     assert store.count_pack_scenarios("pack_a") == 1
+
+
+# -- per-owner metering & free-tier quota accounting --------------------
+def test_meter_usage_counts_per_owner_within_window(store: Store):
+    import time as _t
+
+    now = _t.time()
+    store.meter_usage("user_a", "/api/analyze")
+    store.meter_usage("user_a", "/api/analyze")
+    store.meter_usage("user_b", "/api/analyze")
+
+    assert store.owner_usage_since("user_a", now - 60) == 2
+    assert store.owner_usage_since("user_b", now - 60) == 1
+    assert store.owner_usage_since("user_a", now + 60) == 0  # window excludes past rows
+    assert store.owner_usage_since("", now - 60) == 0  # anonymous never counts
+
+
+def test_record_api_usage_is_monitoring_only(store: Store):
+    """record_api_usage logs for the admin console but does NOT meter quota."""
+    import time as _t
+
+    u = store.create_user("owner@x.io", "pw-123456")
+    p = store.create_project("P", owner_id=u["id"])
+    store.record_api_usage(p["id"], "/api/agent/improve")
+    # Monitoring row exists, but quota is untouched (metered separately).
+    assert store.owner_usage_since(u["id"], _t.time() - 60) == 0
