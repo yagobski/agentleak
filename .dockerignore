@@ -1,0 +1,24 @@
+# Keep the build context small and the image clean.
+.git
+.github
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+.coverage
+tests
+docs
+examples
+# Frontend build artifacts are regenerated inside the image.
+agentleak/web/frontend/node_modules
+agentleak/web/frontend/dist
+# Never ship local state or secrets.
+.env
+.env.*
+!.env.production.example
+*.db
+data/
+releases/
