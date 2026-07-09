@@ -1212,20 +1212,24 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
     # -- agent self-test (API-key auth, no session cookie needed) ------
     @app.post("/api/selftest")
-    def selftest(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    def selftest(
+        payload: dict[str, Any] = Body(...),
+        x_agentleak_key: str = Header(default="", alias="x-agentleak-key"),
+    ) -> dict[str, Any]:
         """Agent self-test endpoint.
 
         Accepts a trace (or ``scenario_id``) plus an API key and returns a
         full analysis report enriched with ``remediation_hints`` — structured,
         machine-readable code fixes the agent can act on autonomously.
 
-        Auth: ``X-AgentLeak-Key: ak_...`` header *or* ``api_key`` in the body.
+        Auth: ``X-AgentLeak-Key: ak_...`` header *or* ``api_key`` in the body —
+        the header is preferred and matches every other agent endpoint.
 
         Saves the run to the linked project automatically so the owner can
         track progress in the platform UI.
         """
 
-        api_key = str(payload.get("api_key") or "")
+        api_key = str(payload.get("api_key") or "") or x_agentleak_key.strip()
         if not api_key:
             raise HTTPException(status_code=401, detail="Provide api_key in body or X-AgentLeak-Key header.")
         if not agent_rate_limiter.hit(api_key):
