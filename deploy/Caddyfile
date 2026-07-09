@@ -1,0 +1,25 @@
+# AgentLeak Cloud — Caddy reverse proxy (auto HTTPS via Let's Encrypt).
+#
+# Use ONLY if the server has no other web server bound to 80/443.
+# Enable with: docker compose --profile caddy up -d
+#
+# Caddy obtains and renews the TLS certificate for app.fomox.com automatically.
+# Point the app.fomox.com DNS A/AAAA record at this server first.
+
+app.fomox.com {
+	encode zstd gzip
+
+	# Forward the real client IP so the app's per-IP throttle is accurate.
+	reverse_proxy app:8000 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# Belt-and-suspenders security headers (the app sets these too).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

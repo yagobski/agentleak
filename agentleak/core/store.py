@@ -230,6 +230,21 @@ class Store:
                 c.execute("UPDATE users SET is_admin=1 WHERE id=?", (first["id"],))
         if "disabled" not in user_cols:
             c.execute("ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0")
+        # Per-owner metering for the free-tier quota (added in 0.11). A separate,
+        # FK-free table so account-level actions (e.g. the project-less
+        # playground analysis) can be counted without a project row.
+        c.execute(
+            """CREATE TABLE IF NOT EXISTS usage_events (
+                id TEXT PRIMARY KEY,
+                created_at REAL NOT NULL,
+                owner_id TEXT NOT NULL,
+                endpoint TEXT NOT NULL DEFAULT ''
+            )"""
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_usage_events_owner "
+            "ON usage_events(owner_id, created_at)"
+        )
 
     # -- users & sessions ----------------------------------------------
     def create_user(self, email: str, password: str, *, name: str = "") -> dict[str, Any]:
@@ -470,11 +485,40 @@ class Store:
         Every hit to an agent-facing endpoint (register/code/selftest/
         improve/status) is recorded here so admins can see how much (and how)
         agents are actually using the platform, distinct from human UI runs.
+        This is monitoring only — free-tier quota is metered separately via
+        :meth:`meter_usage` so read-only and delegating endpoints don't
+        double-count.
         """
         with self._conn() as c:
             c.execute(
                 "INSERT INTO api_usage (id, created_at, project_id, endpoint) VALUES (?,?,?,?)",
                 (_new_id("usage"), _now(), project_id, endpoint),
+            )
+
+    def meter_usage(self, owner_id: str, endpoint: str) -> None:
+        """Record one billable action for ``owner_id`` (quota accounting).
+
+        Account-keyed and FK-free, so it also works for project-less actions
+        such as the stateless playground analysis.
+        """
+        if not owner_id:
+            return
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO usage_events (id, created_at, owner_id, endpoint) VALUES (?,?,?,?)",
+                (_new_id("use"), _now(), owner_id, endpoint),
+            )
+
+    def owner_usage_since(self, owner_id: str, since: float) -> int:
+        """Count an account's metered actions since ``since`` (unix seconds)."""
+        if not owner_id:
+            return 0
+        with self._conn() as c:
+            return int(
+                c.execute(
+                    "SELECT COUNT(*) n FROM usage_events WHERE owner_id=? AND created_at >= ?",
+                    (owner_id, since),
+                ).fetchone()["n"]
             )
 
     def admin_projects_usage(self, *, limit: int = 200) -> list[dict[str, Any]]:

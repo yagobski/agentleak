@@ -156,6 +156,7 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
 def _resolve_redteam_llm(
     project: dict[str, Any], payload: dict[str, Any],
     user_default: dict[str, str] | None = None,
+    *, force_byok: bool = False,
 ) -> OpenAICompatLLM | None:
     """Resolve a live LLM for a red-team run.
 
@@ -167,8 +168,9 @@ def _resolve_redteam_llm(
        (supports local Ollama / LM Studio without a key).
     5. ``OPENROUTER_API_KEY`` in the environment → OpenRouter cloud.
 
-    Returns ``None`` when no endpoint can be determined (caller falls back to
-    a scripted run).
+    ``force_byok`` (public-SaaS mode) stops at step 3: the platform never spends
+    its own process-level LLM credentials on a tenant's run. Returns ``None``
+    when no endpoint can be determined (caller falls back to a scripted run).
     """
     agent_cfg = (project.get("config") or {}).get("agent") or {}
     base_url = str(payload.get("base_url") or agent_cfg.get("base_url") or "").strip()
@@ -183,6 +185,12 @@ def _resolve_redteam_llm(
         api_key = api_key or str(user_default.get("api_key") or "").strip()
     elif base_url and not api_key and user_default.get("api_key"):
         api_key = str(user_default["api_key"]).strip()
+
+    # BYOK: the tenant must supply their own endpoint; no platform-funded LLM.
+    if force_byok:
+        if not base_url or not model:
+            return None
+        return OpenAICompatLLM(LLMConfig(base_url=base_url, model=model, api_key=api_key))
 
     # Env-var fallbacks — tried in order when the payload/project gave nothing.
     if not base_url:
@@ -536,14 +544,20 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         public_user,
         valid_email,
     )
+    from .limits import Limits, client_ip, month_start, next_month_start
 
     db = store or Store()
     app = FastAPI(title="AgentLeak", description="Local privacy-leakage platform (AgentRisk)")
 
+    # Resolve runtime limits (quotas, per-IP throttles, BYOK) from the
+    # environment. Local/self-hosted stays unlimited; AGENTLEAK_PUBLIC_MODE=1
+    # turns on the free-for-agents hosted-service defaults.
+    limits = Limits.from_env()
+
     # Send the session cookie only over HTTPS when the platform is exposed
     # beyond localhost. Defaults to off so the local http://localhost dev
-    # experience keeps working; set AGENTLEAK_COOKIE_SECURE=1 in production.
-    _cookie_secure = os.environ.get("AGENTLEAK_COOKIE_SECURE", "0") == "1"
+    # experience keeps working; on in public mode (or AGENTLEAK_COOKIE_SECURE=1).
+    _cookie_secure = limits.cookie_secure
 
     # -- security headers ----------------------------------------------
     # Hardening defaults applied to every response (OWASP secure-headers).
@@ -561,6 +575,37 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
             )
         return response
+
+    # -- per-IP anti-abuse throttling (public mode) --------------------
+    # A DoS guard on every request plus a stricter cap on account creation.
+    # In-memory per-process — adequate behind a single reverse proxy; put a WAF
+    # or shared limiter in front for a multi-replica deployment.
+    from .auth import RateLimiter as _RateLimiter
+
+    _ip_global = _RateLimiter(
+        max_attempts=limits.global_ip_per_minute or 1, window=60.0
+    )
+    _ip_register = _RateLimiter(
+        max_attempts=limits.register_per_ip_hour or 1, window=3600.0
+    )
+
+    @app.middleware("http")
+    async def _ip_rate_limit(request, call_next):  # noqa: ANN001, ANN202
+        ip = client_ip(dict(request.headers), getattr(request.client, "host", ""))
+        path = request.url.path
+        if limits.register_per_ip_hour and request.method == "POST" \
+                and path in ("/api/auth/register", "/api/agent/onboard"):
+            if not _ip_register.hit(ip):
+                return JSONResponse(
+                    {"detail": "Too many sign-ups from this network — try again later."},
+                    status_code=429,
+                )
+        if limits.global_ip_per_minute and not _ip_global.hit(ip):
+            return JSONResponse(
+                {"detail": "Rate limit exceeded — slow down and retry shortly."},
+                status_code=429,
+            )
+        return await call_next(request)
 
     # -- authentication ------------------------------------------------
     # NOTE: endpoints read the session via a ``Cookie`` parameter (not a
@@ -604,6 +649,42 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             raise HTTPException(status_code=404, detail="Project not found")
         return project
 
+    def _quota_status(owner_id: str) -> dict[str, Any]:
+        """Current free-tier usage for an account (0 quota ⇒ unlimited)."""
+        quota = limits.free_monthly_quota
+        used = db.owner_usage_since(owner_id, month_start()) if quota else 0
+        return {
+            "limit": quota,
+            "used": used,
+            "remaining": max(quota - used, 0) if quota else None,
+            "resets_at": next_month_start() if quota else None,
+            "unlimited": quota == 0,
+        }
+
+    def _enforce_quota(owner_id: str, *, is_admin: bool = False) -> None:
+        """Raise 429 when an account is over its monthly free-tier quota.
+
+        Admins and self-hosted (quota=0) installs are never limited. Call this
+        BEFORE running a metered action; record the action with ``_meter``.
+        """
+        if not limits.free_monthly_quota or is_admin:
+            return
+        used = db.owner_usage_since(owner_id, month_start())
+        if used >= limits.free_monthly_quota:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"Monthly free-tier quota reached ({limits.free_monthly_quota} "
+                    "actions). It resets on the 1st (UTC), or self-host AgentLeak "
+                    "for unlimited use."
+                ),
+                headers={"X-Quota-Reset": str(int(next_month_start()))},
+            )
+
+    def _meter(user: dict[str, Any], endpoint: str) -> None:
+        """Record one billable action against the user's monthly quota."""
+        db.meter_usage(user["id"], endpoint)
+
     @app.post("/api/auth/register")
     def register(payload: dict[str, Any] = Body(...)) -> Any:
         email = normalize_email(payload.get("email"))
@@ -616,6 +697,69 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             raise HTTPException(status_code=409, detail="An account with this email already exists.")
         user = db.create_user(email, password, name=str(payload.get("name") or "").strip())
         return _session_response(user)
+
+    @app.post("/api/agent/onboard")
+    def agent_onboard(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        """One-call self-service onboarding for an autonomous agent.
+
+        Creates the account, a project for the agent, and a self-test API key,
+        and returns everything the agent needs to start the register → scan →
+        improve → status loop — no browser, no dashboard, no human. Throttled
+        per IP (same guard as ``/api/auth/register``).
+
+        Body: ``{"email", "password"?, "agent_name"?}``. A password is generated
+        when omitted (the API key is the ongoing credential); it is returned
+        once so the human owner can also sign in to the dashboard later.
+        """
+        email = normalize_email(payload.get("email"))
+        if not valid_email(email):
+            raise HTTPException(status_code=400, detail="A valid email address is required.")
+        if db.get_user_by_email(email):
+            raise HTTPException(
+                status_code=409,
+                detail="Account exists — sign in and read your key from GET "
+                       "/api/projects/{id}/api-key, or use /api/auth/login.",
+            )
+        password = str(payload.get("password") or "")
+        generated = False
+        if not password:
+            password = secrets.token_urlsafe(18)
+            generated = True
+        elif len(password) < MIN_PASSWORD_LEN:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Password must be at least {MIN_PASSWORD_LEN} characters.",
+            )
+
+        agent_name = str(payload.get("agent_name") or "").strip() or "My Agent"
+        user = db.create_user(email, password, name=agent_name)
+        project = db.create_project(agent_name, owner_id=user["id"])
+        key = "ak_" + secrets.token_urlsafe(24)
+        cfg = dict(project.get("config") or {})
+        cfg["selftest_api_key"] = key
+        db.update_project(project["id"], config=cfg)
+
+        base = "" if limits.public_mode else "http://localhost:8000"
+        return {
+            "onboarded": True,
+            "project_id": project["id"],
+            "agent_name": agent_name,
+            "api_key": key,
+            "password": password if generated else None,
+            "password_generated": generated,
+            "free_tier": {
+                "monthly_quota": limits.free_monthly_quota,
+                "byok": limits.force_byok,
+            },
+            "next_steps": {
+                "1_register_card": f"POST {base}/api/agent/register  (X-AgentLeak-Key: {key[:8]}…)",
+                "2_scan_code": f"POST {base}/api/agent/code",
+                "3_self_test": f"POST {base}/api/selftest",
+                "4_improve": f"POST {base}/api/agent/improve",
+                "5_status": f"GET {base}/api/agent/status",
+            },
+            "docs": "/api/meta and docs/public-api.md",
+        }
 
     @app.post("/api/auth/login")
     def login(payload: dict[str, Any] = Body(...)) -> Any:
@@ -760,6 +904,21 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         """Unauthenticated liveness probe for load balancers / orchestrators."""
         return {"status": "ok", "version": __version__}
 
+    @app.get("/readyz")
+    def readyz() -> JSONResponse:
+        """Readiness probe: confirms the datastore answers a trivial query.
+
+        Returns 503 (not 200) when the DB is unreachable so an orchestrator
+        holds traffic until the instance is truly serving.
+        """
+        try:
+            db.owner_usage_since("__readyz__", 0.0)
+        except Exception as exc:  # noqa: BLE001
+            return JSONResponse(
+                {"status": "unavailable", "detail": str(exc)}, status_code=503
+            )
+        return JSONResponse({"status": "ready", "version": __version__})
+
     @app.get("/.well-known/agent-card.json", include_in_schema=False)
     def platform_agent_card_endpoint() -> dict[str, Any]:
         """Public, unauthenticated A2A card describing this AgentLeak instance.
@@ -788,7 +947,24 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 "status": "GET /api/agent/status",
                 "auth": "X-AgentLeak-Key header or api_key in body (project-scoped ak_... key)",
             },
+            "free_tier": {
+                "public": limits.public_mode,
+                "monthly_quota": limits.free_monthly_quota,
+                "unlimited": limits.free_monthly_quota == 0,
+                "byok": limits.force_byok,
+                "note": (
+                    "Free detection (regex/Presidio/entropy) runs at no cost. "
+                    "LLM-judge and live agent runs are bring-your-own-key."
+                    if limits.force_byok else
+                    "Self-hosted / local instance — no quota, LLM keys from env allowed."
+                ),
+            },
         }
+
+    @app.get("/api/limits")
+    def get_limits(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
+        """The signed-in account's current free-tier usage and quota window."""
+        return _quota_status(user["id"])
 
     @app.get("/api/scenarios")
     def scenarios(user: dict[str, Any] = Depends(require_user)) -> list[dict[str, Any]]:
@@ -901,10 +1077,12 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     # -- stateless playground analysis ---------------------------------
     @app.post("/api/analyze")
     def analyze(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> JSONResponse:
+        _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         try:
             result = _analyze(payload, store=db)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _meter(user, "/api/analyze")
         return JSONResponse(result.to_dict())
 
     @app.post("/api/report/{fmt}")
@@ -1056,7 +1234,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         project = db.get_project_by_apikey(api_key)
         if not project:
             raise HTTPException(status_code=401, detail="Invalid API key.")
+        _enforce_quota(project.get("owner_id", ""))
         db.record_api_usage(project["id"], "/api/selftest")
+        db.meter_usage(project.get("owner_id", ""), "/api/selftest")
 
         try:
             result = _analyze(payload, project_name=project["name"], store=db)
@@ -1263,7 +1443,10 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def create_code_scan(pid: str, payload: dict[str, Any] = Body(default_factory=dict), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
         """Scan the agent's source code (github | zip | files) and store the result."""
         project = _owned_project(pid, user)
-        return _run_code_scan(project, payload)
+        _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
+        scan = _run_code_scan(project, payload)
+        _meter(user, "/api/projects/code-scan")
+        return scan
 
     @app.get("/api/projects/{pid}/code-scans")
     def list_code_scans(pid: str, user: dict[str, Any] = Depends(require_user)) -> list[dict[str, Any]]:
@@ -1330,7 +1513,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         With an empty body, re-scans the source declared in the agent card.
         """
         project = _project_from_key(str(payload.get("api_key") or "") or x_agentleak_key)
+        _enforce_quota(project.get("owner_id", ""))
         db.record_api_usage(project["id"], "/api/agent/code")
+        db.meter_usage(project.get("owner_id", ""), "/api/agent/code")
         return _run_code_scan(project, payload)
 
     @app.get("/api/agent/status")
@@ -1439,6 +1624,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         from ..generators import ScenarioGenerator
 
         project = _owned_project(pid, user)
+        _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
 
         vertical = str(payload.get("vertical") or "healthcare")
         n = min(int(payload.get("n") or 5), 20)
@@ -1459,7 +1645,10 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         runner = AgentLeakRunner(cfg)
 
         # Resolve the agent under test.
-        llm = _resolve_redteam_llm(project, payload, _user_llm_defaults(user["id"]))
+        llm = _resolve_redteam_llm(
+            project, payload, _user_llm_defaults(user["id"]),
+            force_byok=limits.force_byok,
+        )
         if mode == "scripted":
             llm = None
         elif mode == "live" and llm is None:
@@ -1627,6 +1816,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     @app.post("/api/projects/{pid}/runs")
     def create_run(pid: str, payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
         project = _owned_project(pid, user)
+        _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         # Merge stored project settings with the request (request can't disable
         # detectors here; it just supplies the trace/scenario).
         settings = {**project["config"], **{k: payload[k] for k in ("detectors", "vault", "custom_detectors", "redact") if k in payload}}
@@ -1635,6 +1825,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             result = _analyze(merged, project_name=project["name"], store=db)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _meter(user, "/api/projects/runs")
         return db.create_run(
             pid, result.to_dict(),
             source=payload.get("source", "manual"),
@@ -1711,6 +1902,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def execute_agent(pid: str, payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
         """Run the project's agent against a scenario and store the captured run."""
         project = _owned_project(pid, user)
+        _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         label = str(payload.get("label", ""))
         scenario = _scenario_detail(str(payload.get("scenario_id", "")))
         if not scenario:
@@ -1750,6 +1942,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             cfg = Config.from_dict(data) if data else None
             result = AgentLeakRunner(cfg).analyze(trace)
             source = f"pipeline:{len(agents)} agents" + (" (live)" if live else " (scripted)")
+            _meter(user, "/api/projects/execute")
             return db.create_run(pid, result.to_dict(), source=source, label=label)
 
         # Single-agent project.
@@ -1776,6 +1969,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         cfg = Config.from_dict(data) if data else None
         result = AgentLeakRunner(cfg).analyze(trace)
         source = f"agent:{llm.model}" if llm else "agent:scripted"
+        _meter(user, "/api/projects/execute")
         return db.create_run(pid, result.to_dict(), source=source, label=label)
 
     def _owned_run(rid: str, user: dict[str, Any]) -> dict[str, Any]:
