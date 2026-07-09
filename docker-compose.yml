@@ -1,0 +1,58 @@
+# AgentLeak Cloud — production compose.
+#
+# The app binds to 127.0.0.1:8787 on the host ONLY, so it is never exposed
+# directly to the internet. A reverse proxy (your existing nginx, or the
+# optional Caddy service below) terminates TLS for app.fomox.com and forwards
+# to it. This lets AgentLeak coexist with other sites already on the box.
+#
+#   docker compose up -d --build        # app only, behind your existing proxy
+#   docker compose --profile caddy up -d --build   # app + bundled Caddy TLS
+#
+# Configure via .env (copy .env.production.example → .env first).
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        EXTRAS: ${AGENTLEAK_EXTRAS:-gui}
+    image: agentleak:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Public SaaS mode: quotas, per-IP throttle, BYOK, secure cookies.
+      AGENTLEAK_PUBLIC_MODE: "1"
+    volumes:
+      - agentleak-data:/data
+    # Loopback-only publish: the proxy reaches it, the internet cannot.
+    ports:
+      - "127.0.0.1:8787:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/readyz"]
+      interval: 30s
+      timeout: 4s
+      retries: 3
+      start_period: 15s
+
+  # Optional: only if the server has NO existing reverse proxy on 80/443.
+  # Enable with `--profile caddy`. If ournia.com already uses nginx/Apache,
+  # DO NOT enable this — add deploy/nginx-app.fomox.com.conf to that proxy
+  # instead (see deploy/README.md).
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["caddy"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  agentleak-data:
+  caddy-data:
+  caddy-config:
