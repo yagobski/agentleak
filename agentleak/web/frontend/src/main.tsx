@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from "./lib/auth"
 import { AppShell } from "./layout/AppShell"
 import { Admin } from "./pages/Admin"
 import { Dashboard } from "./pages/Dashboard"
+import { Documentation } from "./pages/Documentation"
 import { Landing } from "./pages/Landing"
 import { Login } from "./pages/Login"
 import { Playground } from "./pages/Playground"
@@ -41,6 +42,9 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/docs" element={<Documentation />} />
+        <Route path="/docs/developers" element={<Documentation audience="developers" />} />
+        <Route path="/docs/agents" element={<Documentation audience="agents" />} />
         <Route path="/login" element={<Login initialMode="login" />} />
         <Route path="/register" element={<Login initialMode="register" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -50,6 +54,9 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="docs" element={<Documentation />} />
+      <Route path="docs/developers" element={<Documentation audience="developers" />} />
+      <Route path="docs/agents" element={<Documentation audience="agents" />} />
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />

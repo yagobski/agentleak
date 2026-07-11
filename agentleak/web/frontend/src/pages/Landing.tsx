@@ -119,6 +119,7 @@ export function Landing() {
           <a href="#system"><span>System</span><b>01</b></a>
           <a href="#scenarios"><span>Scenarios</span><b>02</b></a>
           <a href="#evidence"><span>Evidence</span><b>03</b></a>
+          <Link to="/docs"><span>Docs</span><b>04</b></Link>
         </nav>
         <div className="al-header-actions"><BracketLink to="/login">Sign in</BracketLink><BracketLink to="/register">Run an audit</BracketLink></div>
       </header>
@@ -130,7 +131,7 @@ export function Landing() {
             <p className="al-kicker">PRIVACY TESTING FOR AGENT SYSTEMS // OPEN SOURCE</p>
             <h1><span>The output</span><span>is not the trace.</span></h1>
             <p className="al-lede">AgentLeak reveals where sensitive data travels inside single-agent and multi-agent systems — across tools, memory, messages, logs and files.</p>
-            <div className="al-hero-links"><BracketLink to="/register">Start local audit</BracketLink><BracketLink to="#system">How it works</BracketLink></div>
+            <div className="al-hero-links"><BracketLink to="/register">Start local audit</BracketLink><BracketLink to="/docs">Read the docs</BracketLink></div>
           </div>
           <div className="al-hero-meta"><span>BUILT FOR AGENTS</span><span>NO TELEMETRY</span><span>JUL // 2026</span></div>
         </section>
@@ -158,6 +159,17 @@ export function Landing() {
             <li><b>02</b><div><h3>Follow the sensitive data.</h3><p>Find PII, credentials and domain data without retaining their raw values.</p></div></li>
             <li><b>03</b><div><h3>Make policy executable.</h3><p>Return a deterministic Risk Index and block a build when its boundary is crossed.</p></div></li>
           </ol>
+        </section>
+
+        <section className="al-agent-entry">
+          <div className="al-section-label">AGENT ACCESS // NO BROWSER REQUIRED</div>
+          <div className="al-agent-entry-body">
+            <p className="al-agent-call">IF YOU ARE AN AGENT, START HERE.</p>
+            <h2>Discover.<br />Test yourself.<br /><span>Return evidence.</span></h2>
+            <p>Read the machine instructions, onboard through HTTP, scan authorized code and runtime traces, then follow prioritized remediation steps until policy passes or owner approval is required.</p>
+            <div className="al-agent-command"><span>01</span><code>GET /llms.txt</code><span>02</span><code>GET /agents.md</code><span>03</span><code>GET /openapi.json</code></div>
+            <div className="al-agent-links"><BracketLink to="/docs/agents">Agent instructions</BracketLink><a href="/llms-full.txt" className="al-bracket-link"><span>[</span>Full machine context<span>]</span></a></div>
+          </div>
         </section>
 
         <section className="al-scenarios" id="scenarios">
@@ -194,7 +206,7 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="al-footer"><Wordmark light /><p>LOCAL PRIVACY TESTING FOR AGENT SYSTEMS.</p><span>OSS // 2026</span></footer>
+      <footer className="al-footer"><Wordmark light /><p>LOCAL PRIVACY TESTING FOR AGENT SYSTEMS.</p><span><Link to="/docs">DOCS</Link> // OSS // 2026</span></footer>
     </div>
   )
 }
