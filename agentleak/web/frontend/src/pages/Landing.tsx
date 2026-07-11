@@ -1,4 +1,17 @@
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const update = () => setReduced(media.matches)
+    update()
+    media.addEventListener("change", update)
+    return () => media.removeEventListener("change", update)
+  }, [])
+  return reduced
+}
 
 function Brand() {
   return (
@@ -14,6 +27,8 @@ function Arrow() {
 }
 
 function ProductDemo() {
+  const [activeEvent, setActiveEvent] = useState(0)
+  const reducedMotion = usePrefersReducedMotion()
   const events = [
     ["01", "tool_response", "CRM returned customer record", "source"],
     ["02", "tool_call", "Email forwarded to calendar", "leak"],
@@ -21,12 +36,23 @@ function ProductDemo() {
     ["04", "final_output", "Appointment confirmed", "clean"],
   ]
 
+  useEffect(() => {
+    if (reducedMotion) return
+    const timer = window.setInterval(() => setActiveEvent((current) => (current + 1) % events.length), 1700)
+    return () => window.clearInterval(timer)
+  }, [events.length, reducedMotion])
+
+  const privacyScores = [100, 81, 62, 62]
+  const riskIndexes = ["0.00", "0.19", "0.38", "0.38"]
+  const privacyScore = privacyScores[activeEvent]
+  const riskIndex = riskIndexes[activeEvent]
+
   return (
     <div className="cursor-demo" aria-label="AgentLeak trace analysis product preview">
       <div className="cursor-demo-bar">
         <div><span /><span /><span /></div>
         <p>AgentLeak / support-agent / run_2048</p>
-        <b>Analysis complete</b>
+        <b>{activeEvent === events.length - 1 ? "Analysis complete" : `Tracing event ${activeEvent + 1} / ${events.length}`}</b>
       </div>
       <div className="cursor-demo-body">
         <aside>
@@ -41,8 +67,8 @@ function ProductDemo() {
         <section className="cursor-demo-trace">
           <header><span>Execution trace</span><code>4 events</code></header>
           <div className="cursor-event-list">
-            {events.map(([index, channel, description, state]) => (
-              <article key={index} data-state={state}>
+            {events.map(([index, channel, description, state], eventIndex) => (
+              <article key={index} data-state={state} data-active={eventIndex === activeEvent}>
                 <b>{index}</b>
                 <div><code>{channel}</code><p>{description}</p></div>
                 <span>{state === "leak" ? "exposed" : state}</span>
@@ -51,17 +77,47 @@ function ProductDemo() {
           </div>
         </section>
         <section className="cursor-demo-report">
-          <header><span>AgentRisk</span><code>RI 0.38</code></header>
-          <div className="cursor-risk-score"><strong>62</strong><span>/ 100<br />privacy score</span></div>
-          <div className="cursor-risk-bar"><i /></div>
+          <header><span>AgentRisk</span><code>RI {riskIndex}</code></header>
+          <div className="cursor-risk-score"><strong key={privacyScore}>{privacyScore}</strong><span>/ 100<br />privacy score</span></div>
+          <div className="cursor-risk-bar"><i style={{ width: `${100 - privacyScore}%` }} /></div>
           <dl>
-            <div><dt>Boundary</dt><dd>Failed</dd></div>
-            <div><dt>Distinct leaks</dt><dd>2</dd></div>
-            <div><dt>Affected channels</dt><dd>2 / 6</dd></div>
+            <div><dt>Boundary</dt><dd>{activeEvent === 0 ? "Monitoring" : "Failed"}</dd></div>
+            <div><dt>Distinct leaks</dt><dd>{activeEvent === 0 ? 0 : activeEvent === 1 ? 1 : 2}</dd></div>
+            <div><dt>Affected channels</dt><dd>{activeEvent === 0 ? "0 / 6" : activeEvent === 1 ? "1 / 6" : "2 / 6"}</dd></div>
           </dl>
           <button>Open remediation plan <Arrow /></button>
         </section>
       </div>
+    </div>
+  )
+}
+
+function FlowDemo() {
+  const [activeStep, setActiveStep] = useState(0)
+  const reducedMotion = usePrefersReducedMotion()
+  const steps = [
+    ["Customer record", "Source", "Authorized input"],
+    ["Support agent", "Processing", "Private context"],
+    ["Shared memory", "Exposure", "Email + account ID"],
+    ["Final answer", "Clean", "No sensitive values"],
+  ]
+
+  useEffect(() => {
+    if (reducedMotion) return
+    const timer = window.setInterval(() => setActiveStep((current) => (current + 1) % steps.length), 1900)
+    return () => window.clearInterval(timer)
+  }, [reducedMotion, steps.length])
+
+  return (
+    <div className="cursor-flow-demo">
+      <div className="cursor-flow-head"><span>customer-support.run</span><b><i /> tracing live</b></div>
+      {steps.map(([title, status, detail], index) => (
+        <div className="cursor-flow-row" data-active={index === activeStep} data-leak={status === "Exposure"} key={title}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <div><strong>{title}</strong><small>{detail}</small></div>
+          <b>{status}</b>
+        </div>
+      ))}
     </div>
   )
 }
@@ -90,7 +146,6 @@ export function Landing() {
         <section className="cursor-hero" id="product">
           <div className="cursor-hero-copy">
             <h1>AgentLeak tests what your agents expose before the final answer.</h1>
-            <p>Find sensitive data across tools, memory, inter-agent messages, logs and files. Get deterministic AgentRisk evidence you can act on and enforce in CI.</p>
             <div className="cursor-actions">
               <Link className="cursor-button cursor-button-dark" to="/register">Run your first audit <Arrow /></Link>
               <Link className="cursor-button cursor-button-light" to="/docs">Read the documentation <Arrow /></Link>
@@ -111,21 +166,7 @@ export function Landing() {
             <p>AgentLeak follows sensitive values through the complete execution trace, reconstructs where exposure happened and shows the exact channel that crossed policy.</p>
             <Link to="/docs">Understand the trace model <Arrow /></Link>
           </div>
-          <div className="cursor-flow-demo">
-            <div className="cursor-flow-head"><span>customer-support.run</span><b>4 boundaries</b></div>
-            {[
-              ["Customer record", "Source", "Authorized input"],
-              ["Support agent", "Processing", "Private context"],
-              ["Shared memory", "Exposure", "Email + account ID"],
-              ["Final answer", "Clean", "No sensitive values"],
-            ].map(([title, status, detail], index) => (
-              <div className="cursor-flow-row" data-leak={status === "Exposure"} key={title}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <div><strong>{title}</strong><small>{detail}</small></div>
-                <b>{status}</b>
-              </div>
-            ))}
-          </div>
+          <FlowDemo />
         </section>
 
         <section className="cursor-feature-grid">
@@ -145,7 +186,7 @@ export function Landing() {
               <p>Machine-readable instructions, OpenAPI, scoped project keys and a bounded remediation loop work without a browser.</p>
               <Link to="/docs/agents">Read agent instructions <Arrow /></Link>
             </div>
-            <div className="cursor-terminal"><div><span /><span /><span /></div><code><i>$</i> curl agents.fomox.com/llms.txt<br /><i>$</i> POST /api/agent/onboard<br /><b>project created</b><br /><i>$</i> POST /api/selftest<br /><em>2 exposures · policy failed</em></code></div>
+            <div className="cursor-terminal"><div><span /><span /><span /></div><code><span><i>$</i> curl agents.fomox.com/llms.txt</span><span><i>$</i> POST /api/agent/onboard</span><span><b>project created</b></span><span><i>$</i> POST /api/selftest</span><span><em>2 exposures · policy failed</em></span></code></div>
           </article>
         </section>
 
