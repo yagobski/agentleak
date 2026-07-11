@@ -18,6 +18,7 @@ and a reverse proxy terminates TLS for `agents.fomox.com`.
 - Decide the proxy path:
   - **The server already runs nginx** (likely, if ournia.com is on nginx) →
     use **Path A**.
+  - **The server already runs Apache** → use `deploy/APACHE-DEPLOYMENT.md`.
   - **No web server on 80/443 yet** → use **Path B** (bundled Caddy).
 
 ## 1. Get the code and configure
