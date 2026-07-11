@@ -1,6 +1,47 @@
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { Grain, SignalField } from "@/features/SignalField"
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReduced(mq.matches)
+    const onChange = () => setReduced(mq.matches)
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+  return reduced
+}
 
 const channels = ["tool_call", "shared_memory", "agent_message", "log", "generated_file", "final_output"]
+
+/** Small, bespoke node-path glyphs — one per scenario, hand-placed to echo the
+ * data path already named in copy (e.g. "CRM lookup → handoff → ticket") with
+ * the node where the leak actually surfaces picked out in the accent color. */
+const SCENARIO_GLYPHS: { nodes: [number, number][]; leak: number }[] = [
+  { nodes: [[7, 30], [28, 11], [49, 27]], leak: 1 }, // support: leak at the internal handoff
+  { nodes: [[7, 13], [28, 32], [49, 15]], leak: 1 }, // healthcare: leak at the summary agent
+  { nodes: [[7, 28], [28, 8], [49, 30]], leak: 1 }, // finance: leak at the risk agent
+  { nodes: [[7, 8], [7, 20], [7, 32], [45, 20]], leak: 3 }, // multi-agent: leak at shared memory hub
+]
+
+function ScenarioGlyph({ index }: { index: number }) {
+  const g = SCENARIO_GLYPHS[index % SCENARIO_GLYPHS.length]
+  const [lx, ly] = g.nodes[g.leak]
+  return (
+    <svg className="al-scenario-glyph" viewBox="0 0 56 40" aria-hidden="true">
+      {g.nodes.slice(1).map(([x, y], i) => {
+        const [px, py] = g.nodes[i]
+        return <line key={i} x1={px} y1={py} x2={x} y2={y} />
+      })}
+      {g.nodes.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i === g.leak ? 3.2 : 2.2} className={i === g.leak ? "al-glyph-leak" : undefined} />
+      ))}
+      <circle cx={lx} cy={ly} r={7} className="al-glyph-pulse" style={{ animationDelay: `${index * 0.6}s` }} />
+    </svg>
+  )
+}
 
 function Wordmark({ light = false }: { light?: boolean }) {
   return (
@@ -17,17 +58,46 @@ function BracketLink({ to, children, inverted = false }: { to: string; children:
   return <a href={to} className={className}><span>[</span>{children}<span>]</span></a>
 }
 
+const TRACE_PATH = "M-40 270 C 100 230, 124 70, 270 118 S 428 322, 568 224 S 700 50, 940 92"
+// Color the traveling packet cool-clean → warm-leak → cool-clean, timed to
+// cross "warm" right where the map calls out EXPOSURE / PROPAGATED below.
+const PACKET_COLOR_KEYTIMES = "0; 0.22; 0.34; 0.62; 0.76; 1"
+const PACKET_COLORS = "#f1f1ed; #f1f1ed; #ff6a3d; #ff6a3d; #f1f1ed; #f1f1ed"
+
+function TracePacket({ delay }: { delay: number }) {
+  return (
+    <>
+      <circle r="7" className="al-packet-glow" opacity="0.35">
+        <animateMotion dur="5.2s" begin={`${delay}s`} repeatCount="indefinite" rotate="auto">
+          <mpath href="#al-trace-line" />
+        </animateMotion>
+        <animate attributeName="fill" values={PACKET_COLORS} keyTimes={PACKET_COLOR_KEYTIMES} dur="5.2s" begin={`${delay}s`} repeatCount="indefinite" />
+      </circle>
+      <circle r="2.6" className="al-packet">
+        <animateMotion dur="5.2s" begin={`${delay}s`} repeatCount="indefinite" rotate="auto">
+          <mpath href="#al-trace-line" />
+        </animateMotion>
+        <animate attributeName="fill" values={PACKET_COLORS} keyTimes={PACKET_COLOR_KEYTIMES} dur="5.2s" begin={`${delay}s`} repeatCount="indefinite" />
+      </circle>
+    </>
+  )
+}
+
 function TraceInstrument() {
+  const reduceMotion = usePrefersReducedMotion()
   return (
     <div className="al-instrument" aria-label="A trace crossing internal agent channels before reaching a clean final output">
       <div className="al-instrument-head"><span>TRACE / RUN_2048</span><span>LIVE ANALYSIS</span></div>
       <div className="al-trace-map">
         <svg viewBox="0 0 900 360" role="img" aria-label="Sensitive data path through an agent run">
           <defs><filter id="soft"><feGaussianBlur stdDeviation="16" /></filter></defs>
-          <path className="al-glow" d="M-40 270 C 100 230, 124 70, 270 118 S 428 322, 568 224 S 700 50, 940 92" filter="url(#soft)" />
-          <path className="al-path al-path-ghost" d="M-40 270 C 100 230, 124 70, 270 118 S 428 322, 568 224 S 700 50, 940 92" />
-          <path className="al-path al-path-live" d="M-40 270 C 100 230, 124 70, 270 118 S 428 322, 568 224 S 700 50, 940 92" />
+          <path className="al-glow" d={TRACE_PATH} filter="url(#soft)" />
+          <path id="al-trace-line" className="al-path al-path-ghost" d={TRACE_PATH} />
+          <path className="al-path al-path-live" d={TRACE_PATH} />
           <g className="al-nodes"><circle cx="145" cy="173" r="4" /><circle cx="325" cy="162" r="4" /><circle cx="554" cy="233" r="4" /><circle cx="743" cy="100" r="4" /></g>
+          {!reduceMotion && (
+            <g className="al-packets"><TracePacket delay={0} /><TracePacket delay={-1.7} /><TracePacket delay={-3.5} /></g>
+          )}
         </svg>
         <div className="al-map-label al-map-one"><small>01</small><span>INPUT</span><b>PII DETECTED</b></div>
         <div className="al-map-label al-map-two"><small>02</small><span>TOOL CALL</span><b>EXPOSURE</b></div>
@@ -42,6 +112,7 @@ function TraceInstrument() {
 export function Landing() {
   return (
     <div className="landing bg-[#080909] text-[#f1f1ed]">
+      <Grain />
       <header className="al-header">
         <Wordmark />
         <nav aria-label="Main navigation">
@@ -54,7 +125,7 @@ export function Landing() {
 
       <main>
         <section className="al-hero">
-          <div className="al-signal" aria-hidden="true"><span /><span /><span /></div>
+          <SignalField />
           <div className="al-hero-copy">
             <p className="al-kicker">PRIVACY TESTING FOR AGENT SYSTEMS // OPEN SOURCE</p>
             <h1><span>The output</span><span>is not the trace.</span></h1>
@@ -98,7 +169,12 @@ export function Landing() {
               ["Healthcare", "PATIENT RECORD → SUMMARY AGENT → GENERATED REPORT", "DIAGNOSIS / HEALTH ID / DOB"],
               ["Finance", "ACCOUNT DATA → RISK AGENT → EXTERNAL TOOL", "CARD / INCOME / TRANSACTION"],
               ["Multi-agent systems", "PLANNER → SPECIALIST → REVIEWER → SHARED MEMORY", "CREDENTIALS / INTERNAL IDS / PII"],
-            ].map(([name, path, data], index) => <article key={name}><span>0{index + 1}</span><h3>{name}</h3><p>{path}</p><small>{data}</small></article>)}
+            ].map(([name, path, data], index) => (
+              <article key={name}>
+                <span className="al-scenario-index"><ScenarioGlyph index={index} />0{index + 1}</span>
+                <h3>{name}</h3><p>{path}</p><small>{data}</small>
+              </article>
+            ))}
           </div>
         </section>
 

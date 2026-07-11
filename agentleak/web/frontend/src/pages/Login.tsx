@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
+import { SignalField } from "@/features/SignalField"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -38,10 +39,10 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
   return (
     <div className="grid min-h-screen bg-[#080909] text-[#f1f1ed] lg:grid-cols-[1fr_480px]">
       <div className="auth-visual relative hidden overflow-hidden border-r border-white/15 p-10 lg:flex lg:flex-col lg:justify-between">
+        <SignalField variant="panel" />
         <Link to="/" className="font-mono text-sm font-medium tracking-[-0.04em]">AgentLeak/</Link>
         <div className="relative z-10"><p className="mb-6 font-mono text-[9px] uppercase tracking-[.14em] text-white/35">PRIVATE WORKSPACE // LOCAL FIRST</p><p className="max-w-3xl text-6xl font-medium leading-[.88] tracking-[-0.07em]">The answer looked safe.<br /><span className="text-white/35">The trace did not.</span></p></div>
         <div className="relative z-10 font-mono text-[9px] uppercase tracking-[.14em] text-white/30">HTTP-ONLY SESSION // SQLITE // NO CLIENT TOKEN</div>
-        <div className="auth-signal" aria-hidden="true"><span /><span /><span /></div>
       </div>
 
       <div className="flex items-center justify-center border-white/15 bg-[#0c0d0d] px-5 py-12">
