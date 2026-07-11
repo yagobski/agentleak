@@ -20,16 +20,16 @@ Apache box alongside several unrelated existing sites — the naming gotcha in
   sudo a2enmod proxy proxy_http proxy_wstunnel headers rewrite ssl
   ```
 - `certbot` with the Apache plugin (`sudo apt install certbot python3-certbot-apache`).
-- DNS: an `A` record for your chosen subdomain (e.g. `agents.example.com`)
+- DNS: an `A` record for your chosen subdomain (`agents.fomox.com` for this deployment)
   pointing at the server's public IP. Verify before requesting TLS:
   ```bash
-  dig +short agents.example.com
+  dig +short agents.fomox.com
   ```
 - **If the server already hosts other sites**, confirm your target port and
   subdomain are actually free before touching anything:
   ```bash
   sudo ss -tlnp | grep ':8787 '                 # the port you're about to use
-  sudo apache2ctl -S | grep agents.example.com   # no existing vhost for it
+  sudo apache2ctl -S | grep agents.fomox.com     # no existing vhost for it
   ```
 
 ## 1. Get the code and configure
@@ -66,8 +66,8 @@ accidentally become the server-wide default and intercept unrelated traffic.
 ```bash
 sudo tee /etc/apache2/sites-available/zzz-agentleak.conf >/dev/null << 'CONF'
 <VirtualHost *:80>
-    ServerName agents.example.com
-    ServerAdmin admin@example.com
+    ServerName agents.fomox.com
+    ServerAdmin admin@fomox.com
 
     ProxyPreserveHost On
     ProxyRequests Off
@@ -99,8 +99,8 @@ curl -s -o /dev/null -w "%{http_code}\n" https://<some-other-site-you-host>/
 ## 4. TLS via certbot's Apache plugin
 
 ```bash
-sudo certbot --apache -d agents.example.com --non-interactive --agree-tos \
-  -m admin@example.com --redirect
+sudo certbot --apache -d agents.fomox.com --non-interactive --agree-tos \
+  -m admin@fomox.com --redirect
 ```
 
 This obtains the certificate, writes a new
@@ -121,15 +121,15 @@ systemctl is-active certbot.timer
 ## 5. Verify
 
 ```bash
-curl -s https://agents.example.com/api/health
-curl -s https://agents.example.com/api/meta | jq .free_tier
+curl -s https://agents.fomox.com/api/health
+curl -s https://agents.fomox.com/api/meta | jq .free_tier
 
-curl -sX POST https://agents.example.com/api/agent/onboard \
+curl -sX POST https://agents.fomox.com/api/agent/onboard \
   -H 'content-type: application/json' \
   -d '{"email":"you@example.com","agent_name":"SmokeTest"}'
 ```
 
-Sign in at `https://agents.example.com` with your own account **first** — the
+Sign in at `https://agents.fomox.com` with your own account **first** — the
 first account created on a fresh instance becomes the platform admin.
 
 ---
