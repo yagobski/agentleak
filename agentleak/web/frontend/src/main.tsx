@@ -45,6 +45,7 @@ function AppRoutes() {
         <Route path="/docs" element={<Documentation />} />
         <Route path="/docs/developers" element={<Documentation audience="developers" />} />
         <Route path="/docs/agents" element={<Documentation audience="agents" />} />
+        <Route path="/docs/api" element={<Documentation audience="api" />} />
         <Route path="/login" element={<Login initialMode="login" />} />
         <Route path="/register" element={<Login initialMode="register" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="docs" element={<Documentation />} />
       <Route path="docs/developers" element={<Documentation audience="developers" />} />
       <Route path="docs/agents" element={<Documentation audience="agents" />} />
+      <Route path="docs/api" element={<Documentation audience="api" />} />
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />

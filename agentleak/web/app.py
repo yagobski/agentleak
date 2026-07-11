@@ -999,6 +999,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 "humans": "/docs",
                 "developers": "/docs/developers",
                 "agents": "/docs/agents",
+                "api_reference": "/docs/api",
                 "agent_instructions": "/agents.md",
                 "llms": "/llms.txt",
                 "llms_full": "/llms-full.txt",

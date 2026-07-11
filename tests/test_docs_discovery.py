@@ -22,6 +22,7 @@ def test_llms_txt_is_a_linked_machine_readable_index(client: TestClient):
     assert response.headers["content-type"].startswith("text/markdown")
     assert response.text.startswith("# AgentLeak")
     assert "http://testserver/docs/agents" in response.text
+    assert "http://testserver/docs/api" in response.text
     assert "http://testserver/openapi.json" in response.text
     assert "http://testserver/agents.md" in response.text
 
@@ -31,6 +32,7 @@ def test_full_context_contains_working_agent_loop(client: TestClient):
     assert response.status_code == 200
     assert "/api/agent/onboard" in response.text
     assert "/api/agent/improve" in response.text
+    assert "/docs/api" in response.text
     assert "X-AgentLeak-Key" in response.text
     assert "synthetic" in response.text.lower()
 
@@ -66,6 +68,7 @@ def test_meta_links_every_documentation_surface(client: TestClient):
         "humans": "/docs",
         "developers": "/docs/developers",
         "agents": "/docs/agents",
+        "api_reference": "/docs/api",
         "agent_instructions": "/agents.md",
         "llms": "/llms.txt",
         "llms_full": "/llms-full.txt",
