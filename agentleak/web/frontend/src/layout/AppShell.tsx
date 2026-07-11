@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Library,
   LogOut,
-  ScanLine,
   Settings,
   ShieldCheck,
   UserCog,
@@ -70,20 +69,18 @@ function AppSidebar() {
   }, [])
 
   return (
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar collapsible="icon" variant="sidebar" className="platform-sidebar">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
               <Link to="/">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                  <ScanLine className="size-4" />
+                <div className="platform-brand-mark" aria-hidden="true">
+                  <i /><i /><i />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
-                    Agent<span className="text-primary">Leak</span>
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">Privacy auditor</span>
+                  <span className="truncate font-semibold">AGENTLEAK</span>
+                  <span className="truncate text-xs text-muted-foreground">Agent privacy testing</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -160,7 +157,7 @@ function SiteHeader() {
   const isDetail = pathname !== section.to && pathname !== "/"
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur-sm">
+    <header className="platform-header sticky top-0 z-10 flex h-[52px] shrink-0 items-center gap-2 border-b border-border bg-background/90 backdrop-blur-sm">
       <div className="flex w-full items-center gap-2 px-4 lg:px-6">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-1 h-4" />
@@ -201,11 +198,11 @@ function SiteHeader() {
 
 export function AppShell() {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="platform-shell">
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="platform-inset">
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
+        <div className="platform-content flex flex-1 flex-col gap-4 p-4 lg:p-7">
           <div className="w-full">
             <Outlet />
           </div>
@@ -225,9 +222,9 @@ export function PageHeader({
   actions?: React.ReactNode
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+    <div className="platform-page-header mb-7 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-[26px] font-normal leading-tight tracking-[-0.02em]">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions}

@@ -24,7 +24,7 @@ function SectionCard({
   sub?: string
 }) {
   return (
-    <Card>
+    <Card className="platform-stat-card">
       <CardHeader className="relative space-y-0 p-4 pb-2">
         <CardDescription className="text-[11px] font-medium uppercase tracking-wide">{label}</CardDescription>
         <CardTitle className="font-mono text-3xl tabular-nums tnum">{value}</CardTitle>
@@ -53,7 +53,7 @@ export function Dashboard() {
   const avgScore = stats?.avg_privacy_score
 
   return (
-    <div className="animate-fade-up">
+    <div className="platform-page animate-fade-up">
       <PageHeader
         title="Dashboard"
         description="Privacy posture across your agents, scored with AgentRisk."

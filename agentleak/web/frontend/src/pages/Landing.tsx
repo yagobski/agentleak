@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { DashboardCharts } from "@/features/Charts"
+import { RunRow } from "@/features/RunRow"
+import type { RunSummary } from "@/lib/api"
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false)
@@ -122,7 +125,14 @@ function FlowDemo() {
   )
 }
 
-const channels = ["Tools", "Memory", "Agent messages", "Logs", "Files", "Final output"]
+const integrations = ["LangChain", "LangGraph", "CrewAI", "AutoGen", "OpenAI Agents", "LlamaIndex", "OpenTelemetry", "MCP"]
+const now = Math.floor(Date.now() / 1000)
+const demoRuns: RunSummary[] = [
+  { id: "demo-1", project_id: "demo", created_at: now - 80, source: "agent:selftest", agent_name: "support-router", risk_index: .38, privacy_score: 62, verdict: "High risk", blocked: false, leaked_secrets: 2, label: "handoff" },
+  { id: "demo-2", project_id: "demo", created_at: now - 900, source: "agent:selftest", agent_name: "claims-reviewer", risk_index: .17, privacy_score: 83, verdict: "Conditional pass", blocked: false, leaked_secrets: 1, label: "memory" },
+  { id: "demo-3", project_id: "demo", created_at: now - 3900, source: "ci", agent_name: "patient-summary", risk_index: .64, privacy_score: 36, verdict: "Fail", blocked: true, leaked_secrets: 4, label: "release-42" },
+  { id: "demo-4", project_id: "demo", created_at: now - 8400, source: "ci", agent_name: "finance-copilot", risk_index: .08, privacy_score: 92, verdict: "Pass", blocked: false, leaked_secrets: 0, label: "baseline" },
+]
 
 export function Landing() {
   return (
@@ -155,8 +165,9 @@ export function Landing() {
         </section>
 
         <section className="cursor-trust">
-          <h2>One privacy boundary for every channel in an agent run</h2>
-          <div>{channels.map((channel) => <span key={channel}>{channel}</span>)}</div>
+          <h2>Works with the agent frameworks and protocols you already use</h2>
+          <div className="cursor-integration-grid">{integrations.map((integration, index) => <span key={integration}><i>{String(index + 1).padStart(2, "0")}</i><b>{integration}</b></span>)}</div>
+          <p>Compatibility, not customer endorsement. Framework adapters and generic trace ingestion use the same AgentLeak schema.</p>
         </section>
 
         <section className="cursor-feature cursor-feature-lead" id="workflow">
@@ -177,7 +188,13 @@ export function Landing() {
               <p>Severity-weighted risk from 0 to 1, normalized against the audited sensitive vault. No model decides the score.</p>
               <Link to="/docs#agentrisk">Learn how scoring works <Arrow /></Link>
             </div>
-            <div className="cursor-score-demo"><span>Risk index</span><strong>0.38</strong><i><b /></i><small>Privacy score 62 / 100</small></div>
+            <div className="cursor-platform-preview" aria-label="Synthetic AgentLeak dashboard preview">
+              <div className="cursor-preview-title"><span>AgentLeak dashboard</span><b>Synthetic demo data</b></div>
+              <DashboardCharts runs={demoRuns} />
+              <div className="cursor-preview-runs">
+                {demoRuns.slice(0, 3).map((run) => <RunRow key={run.id} run={run} />)}
+              </div>
+            </div>
           </article>
           <article>
             <div>

@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
-import { SignalField } from "@/features/SignalField"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -37,39 +36,46 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
   const isRegister = mode === "register"
 
   return (
-    <div className="grid min-h-screen bg-[#080909] text-[#f1f1ed] lg:grid-cols-[1fr_480px]">
-      <div className="auth-visual relative hidden overflow-hidden border-r border-white/15 p-10 lg:flex lg:flex-col lg:justify-between">
-        <SignalField variant="panel" />
-        <Link to="/" className="font-mono text-sm font-medium tracking-[-0.04em]">AgentLeak/</Link>
-        <div className="relative z-10"><p className="mb-6 font-mono text-[9px] uppercase tracking-[.14em] text-white/35">PRIVATE WORKSPACE // LOCAL FIRST</p><p className="max-w-3xl text-6xl font-medium leading-[.88] tracking-[-0.07em]">The answer looked safe.<br /><span className="text-white/35">The trace did not.</span></p></div>
-        <div className="relative z-10 font-mono text-[9px] uppercase tracking-[.14em] text-white/30">HTTP-ONLY SESSION // SQLITE // NO CLIENT TOKEN</div>
+    <div className="platform-auth grid min-h-screen lg:grid-cols-[1fr_480px]">
+      <div className="platform-auth-visual relative hidden overflow-hidden p-10 lg:flex lg:flex-col lg:justify-between">
+        <Link to="/" className="cursor-brand"><span className="cursor-brand-mark" aria-hidden="true"><i /><i /><i /></span><span>AGENTLEAK</span></Link>
+        <div className="platform-auth-story">
+          <p>Private workspace / local first</p>
+          <h2>The answer looked safe.<br /><span>The trace did not.</span></h2>
+          <div className="platform-auth-preview">
+            <header><span>support-router / run_2048</span><b>Analysis complete</b></header>
+            <div><i>01</i><span><b>tool_response</b><small>Customer record received</small></span><em>source</em></div>
+            <div data-leak="true"><i>02</i><span><b>tool_call</b><small>Email forwarded to calendar</small></span><em>exposed</em></div>
+            <div data-leak="true"><i>03</i><span><b>shared_memory</b><small>Account ID copied to memory</small></span><em>exposed</em></div>
+          </div>
+        </div>
+        <div className="platform-auth-meta">HTTP-only session / SQLite / no client token</div>
       </div>
 
-      <div className="flex items-center justify-center border-white/15 bg-[#0c0d0d] px-5 py-12">
+      <div className="platform-auth-panel flex items-center justify-center px-5 py-12">
         <div className="w-full max-w-sm">
-          <Link to="/" className="mb-16 block font-mono text-sm font-medium tracking-[-0.04em] lg:hidden">AgentLeak/</Link>
+          <Link to="/" className="mb-16 block text-sm font-semibold lg:hidden">AGENTLEAK</Link>
           <div className="mb-8">
-            <p className="font-mono text-[9px] uppercase tracking-[.14em] text-white/35">{isRegister ? "NEW LOCAL WORKSPACE // 01" : "EXISTING WORKSPACE // 01"}</p>
-            <h1 className="mt-3 text-4xl font-medium tracking-[-0.055em]">{isRegister ? "Create your account" : "Welcome back"}</h1>
-            <p className="mt-3 text-sm leading-6 text-white/45">{isRegister ? "Your account and audit data stay on this AgentLeak instance." : "Sign in to continue auditing your agents."}</p>
+            <p className="text-xs text-muted-foreground">{isRegister ? "New workspace" : "Existing workspace"}</p>
+            <h1 className="mt-3 text-[34px] font-normal tracking-[-0.04em]">{isRegister ? "Create your account" : "Welcome back"}</h1>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{isRegister ? "Your account and audit data stay on this AgentLeak instance." : "Sign in to continue auditing your agents."}</p>
           </div>
 
-        <Card className="rounded-none border-white/15 bg-transparent p-6 text-white shadow-none">
+        <Card className="platform-auth-card p-6">
           <form className="space-y-4" onSubmit={submit}>
             {isRegister && (
               <div className="space-y-1.5">
-                <Label htmlFor="name" className="font-mono text-[9px] uppercase tracking-wider text-white/55">
+                <Label htmlFor="name" className="text-xs text-muted-foreground">
                   Name (optional)
                 </Label>
-                <Input className="rounded-none border-white/15 bg-white/[.03] text-white placeholder:text-white/20 focus-visible:ring-white/50" id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" autoComplete="name" />
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" autoComplete="name" />
               </div>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="font-mono text-[9px] uppercase tracking-wider text-white/55">
+              <Label htmlFor="email" className="text-xs text-muted-foreground">
                 Email
               </Label>
               <Input
-                className="rounded-none border-white/15 bg-white/[.03] text-white placeholder:text-white/20 focus-visible:ring-white/50"
                 id="email"
                 type="email"
                 required
@@ -80,11 +86,10 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="font-mono text-[9px] uppercase tracking-wider text-white/55">
+              <Label htmlFor="password" className="text-xs text-muted-foreground">
                 Password
               </Label>
               <Input
-                className="rounded-none border-white/15 bg-white/[.03] text-white placeholder:text-white/20 focus-visible:ring-white/50"
                 id="password"
                 type="password"
                 required
@@ -95,21 +100,21 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
                 autoComplete={isRegister ? "new-password" : "current-password"}
               />
             </div>
-            <Button type="submit" className="w-full rounded-none bg-[#f1f1ed] text-black hover:bg-white/80" disabled={busy}>
+            <Button type="submit" className="w-full" disabled={busy}>
               {busy && <Loader2 className="animate-spin" />}
               {isRegister ? "Create account" : "Sign in"}
             </Button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-white/40">
+          <p className="mt-4 text-center text-xs text-muted-foreground">
             {isRegister ? "Already have an account?" : "No account yet?"}{" "}
-            <Link className="font-medium text-white underline underline-offset-4" to={isRegister ? "/login" : "/register"}>
+            <Link className="font-medium text-foreground underline underline-offset-4" to={isRegister ? "/login" : "/register"}>
               {isRegister ? "Sign in" : "Create one"}
             </Link>
           </p>
         </Card>
 
-        <p className="mt-5 text-center font-mono text-[8px] uppercase tracking-[.12em] text-white/25">Password hashed // session cookie http-only // no client-side token</p>
+        <p className="mt-5 text-center text-[10px] text-muted-foreground">Password hashed / HTTP-only session / no client-side token</p>
         </div>
       </div>
     </div>

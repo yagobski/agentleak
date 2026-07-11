@@ -23,9 +23,13 @@ import { RunView } from "./pages/RunView"
 import { Scenarios } from "./pages/Scenarios"
 import { Settings } from "./pages/Settings"
 
-// Apply the saved theme before first paint (default: dark / black).
+// Apply the saved theme before first paint (default: warm light).
+if (!localStorage.getItem("agentleak-warm-ui-v1")) {
+  localStorage.setItem("agentleak-theme", "light")
+  localStorage.setItem("agentleak-warm-ui-v1", "1")
+}
 const savedTheme = localStorage.getItem("agentleak-theme")
-document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : true)
+document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : false)
 
 function AppRoutes() {
   const { user, loading } = useAuth()
