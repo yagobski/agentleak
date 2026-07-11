@@ -72,3 +72,12 @@ def test_meta_links_every_documentation_surface(client: TestClient):
         "openapi": "/openapi.json",
         "interactive_api": "/api/docs",
     }
+
+
+def test_public_mode_emits_https_behind_an_http_reverse_proxy(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENTLEAK_PUBLIC_MODE", "1")
+    public = TestClient(create_app(store=Store(str(tmp_path / "public-docs.db"))))
+    response = public.get("/llms.txt", headers={"host": "agents.fomox.com"})
+    assert "https://agents.fomox.com/docs/agents" in response.text
+    card = public.get("/.well-known/agent-card.json", headers={"host": "agents.fomox.com"}).json()
+    assert card["documentationUrl"] == "https://agents.fomox.com/docs/agents"
