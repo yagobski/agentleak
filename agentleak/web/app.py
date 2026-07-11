@@ -15,6 +15,14 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+try:  # Runtime types must be module globals so FastAPI can resolve annotations.
+    from starlette.requests import Request
+    from starlette.responses import JSONResponse, PlainTextResponse
+except ImportError:  # pragma: no cover - the core package works without GUI extras
+    Request = Any  # type: ignore[misc,assignment]
+    JSONResponse = Any  # type: ignore[misc,assignment]
+    PlainTextResponse = Any  # type: ignore[misc,assignment]
+
 from .. import __version__
 from ..agent import (
     AgentRunError,
@@ -26,7 +34,7 @@ from ..agent import (
     run_pipeline,
     run_scenario,
 )
-from ..core.agentcard import AgentCard, fetch_agent_card, parse_agent_card, platform_card
+from ..core.agentcard import AgentCard, fetch_agent_card, parse_agent_card
 from ..core.agentrisk import dominates
 from ..core.codescan import scan_payload
 from ..core.config import Config
@@ -40,6 +48,7 @@ from ..reporters import render
 from ..scenarios import SCENARIOS, list_scenarios, load_example_trace
 from ..scenarios.convert import normalize_upload
 from ..scenarios.packs import expand_pack, list_packs
+from .docs_content import agent_instructions, llms_full, llms_index, official_platform_card
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _GUI_IMPORT_ERROR = (
@@ -547,7 +556,13 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     from .limits import Limits, client_ip, month_start, next_month_start
 
     db = store or Store()
-    app = FastAPI(title="AgentLeak", description="Local privacy-leakage platform (AgentRisk)")
+    app = FastAPI(
+        title="AgentLeak",
+        description="Privacy-leakage testing for single-agent and multi-agent systems.",
+        version=__version__,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+    )
 
     # Resolve runtime limits (quotas, per-IP throttles, BYOK) from the
     # environment. Local/self-hosted stays unlimited; AGENTLEAK_PUBLIC_MODE=1
@@ -758,7 +773,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 "4_improve": f"POST {base}/api/agent/improve",
                 "5_status": f"GET {base}/api/agent/status",
             },
-            "docs": "/api/meta and docs/public-api.md",
+            "docs": "/docs/agents and /openapi.json",
         }
 
     @app.post("/api/auth/login")
@@ -919,17 +934,41 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             )
         return JSONResponse({"status": "ready", "version": __version__})
 
-    @app.get("/.well-known/agent-card.json", include_in_schema=False)
-    def platform_agent_card_endpoint() -> dict[str, Any]:
-        """Public, unauthenticated A2A card describing this AgentLeak instance.
+    @app.get("/llms.txt", include_in_schema=False)
+    def llms_txt(request: Request) -> PlainTextResponse:
+        """Concise model-readable documentation index (llmstxt.org format)."""
+        return PlainTextResponse(
+            llms_index(str(request.base_url)),
+            media_type="text/markdown",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
 
-        Lets external agents, orchestrators, and registries (e.g. Nasiko)
-        auto-discover AgentLeak as a privacy self-testing service without any
-        prior knowledge of its API — the same well-known convention AgentLeak
-        itself uses to fetch a project's agent card (see
-        :func:`agentleak.core.agentcard.fetch_agent_card`).
+    @app.get("/llms-full.txt", include_in_schema=False)
+    def llms_full_txt(request: Request) -> PlainTextResponse:
+        """Self-contained usage context for agents that cannot follow links."""
+        return PlainTextResponse(
+            llms_full(str(request.base_url)),
+            media_type="text/markdown",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
+
+    @app.get("/agents.md", include_in_schema=False)
+    def agents_md(request: Request) -> PlainTextResponse:
+        """Normative safety and execution instructions for autonomous agents."""
+        return PlainTextResponse(
+            agent_instructions(str(request.base_url)),
+            media_type="text/markdown",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
+
+    @app.get("/.well-known/agent-card.json", include_in_schema=False)
+    def platform_agent_card_endpoint(request: Request) -> dict[str, Any]:
+        """A2A 1.0 discovery metadata with an explicit custom REST binding.
+
+        The manifest points clients to OpenAPI and does not claim support for
+        the standard A2A task/message transport.
         """
-        return platform_card(__version__).to_dict()
+        return official_platform_card(str(request.base_url), __version__)
 
     @app.get("/api/meta")
     def meta() -> dict[str, Any]:
@@ -939,6 +978,16 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "detectors": list(BUILTIN_DETECTORS),
             "agent_types": registry.frameworks(),
             "agent_card_url": "/.well-known/agent-card.json",
+            "documentation": {
+                "humans": "/docs",
+                "developers": "/docs/developers",
+                "agents": "/docs/agents",
+                "agent_instructions": "/agents.md",
+                "llms": "/llms.txt",
+                "llms_full": "/llms-full.txt",
+                "openapi": "/openapi.json",
+                "interactive_api": "/api/docs",
+            },
             "agent_api": {
                 "register": "POST /api/agent/register",
                 "code_scan": "POST /api/agent/code",

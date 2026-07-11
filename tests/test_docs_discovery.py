@@ -1,0 +1,74 @@
+"""Public documentation and autonomous-agent discovery surfaces."""
+
+from __future__ import annotations
+
+import pytest
+
+pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient  # noqa: E402
+
+from agentleak.core.store import Store  # noqa: E402
+from agentleak.web.app import create_app  # noqa: E402
+
+
+@pytest.fixture()
+def client(tmp_path) -> TestClient:
+    return TestClient(create_app(store=Store(str(tmp_path / "docs.db"))))
+
+
+def test_llms_txt_is_a_linked_machine_readable_index(client: TestClient):
+    response = client.get("/llms.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert response.text.startswith("# AgentLeak")
+    assert "http://testserver/docs/agents" in response.text
+    assert "http://testserver/openapi.json" in response.text
+    assert "http://testserver/agents.md" in response.text
+
+
+def test_full_context_contains_working_agent_loop(client: TestClient):
+    response = client.get("/llms-full.txt")
+    assert response.status_code == 200
+    assert "/api/agent/onboard" in response.text
+    assert "/api/agent/improve" in response.text
+    assert "X-AgentLeak-Key" in response.text
+    assert "synthetic" in response.text.lower()
+
+
+def test_agents_md_defines_safety_and_error_rules(client: TestClient):
+    response = client.get("/agents.md")
+    assert response.status_code == 200
+    assert "MUST NOT submit production credentials" in response.text
+    assert "On `429`" in response.text
+    assert "X-Quota-Reset" in response.text
+    assert "Completion report" in response.text
+
+
+def test_agent_card_uses_explicit_custom_binding(client: TestClient):
+    card = client.get("/.well-known/agent-card.json").json()
+    assert card["version"]
+    assert card["documentationUrl"] == "http://testserver/docs/agents"
+    interface = card["supportedInterfaces"][0]
+    assert interface["url"] == "http://testserver/api"
+    assert interface["protocolBinding"].endswith("#agentleak-rest-binding")
+    assert "standard A2A" in card["extensions"]["bindingNotice"]
+    assert card["securitySchemes"]["agentLeakKey"]["apiKeySecurityScheme"]["name"] == "X-AgentLeak-Key"
+
+
+def test_interactive_api_moved_below_api_namespace(client: TestClient):
+    assert client.get("/api/docs").status_code == 200
+    assert client.get("/openapi.json").json()["info"]["version"]
+
+
+def test_meta_links_every_documentation_surface(client: TestClient):
+    docs = client.get("/api/meta").json()["documentation"]
+    assert docs == {
+        "humans": "/docs",
+        "developers": "/docs/developers",
+        "agents": "/docs/agents",
+        "agent_instructions": "/agents.md",
+        "llms": "/llms.txt",
+        "llms_full": "/llms-full.txt",
+        "openapi": "/openapi.json",
+        "interactive_api": "/api/docs",
+    }

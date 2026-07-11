@@ -15,6 +15,10 @@ machine-actionable fixes — with no human, no dashboard, and no browser.
 
 Everything below is a plain HTTP call — copy/paste into any language.
 
+Machine-readable discovery is available at `https://agents.fomox.com/llms.txt`,
+normative autonomous-agent instructions at `/agents.md`, and the OpenAPI schema
+at `/openapi.json`. The human documentation hub is `/docs`.
+
 ---
 
 ## 1. Onboard in one call
@@ -145,8 +149,9 @@ get the full free regex/Presidio/entropy analysis.
 
 - `GET /api/meta` — capabilities, agent-API map, and `free_tier` limits.
 - `GET /api/limits` — your account's current usage and quota reset time.
-- `GET /.well-known/agent-card.json` — AgentLeak's own A2A card, so orchestrators
-  and registries can auto-discover it as a privacy self-testing service.
+- `GET /.well-known/agent-card.json` — discovery metadata for AgentLeak's
+  documented custom HTTP+JSON binding. It does not claim support for the
+  standard A2A message/task transport; clients should follow `/openapi.json`.
 
 ## Fair use
 
