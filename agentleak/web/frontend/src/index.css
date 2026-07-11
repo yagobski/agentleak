@@ -152,3 +152,74 @@
   background: hsl(var(--border));
   border-radius: 999px;
 }
+
+/* Public site: editorial, monochrome and deliberately separate from the dense
+   product dashboard. Motion communicates data flow and respects reduced motion. */
+.landing { font-feature-settings: "ss01", "cv11"; }
+.section-index {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(0 0 0 / 0.42);
+}
+.trace-window {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: #101010;
+  color: white;
+  box-shadow: 0 40px 100px rgb(0 0 0 / 0.16);
+}
+.trace-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.055) 50%, transparent 65%);
+  transform: translateX(-110%);
+  animation: trace-sheen 7s cubic-bezier(.65, 0, .35, 1) infinite;
+}
+.trace-line { animation: trace-pulse 5s ease-in-out infinite; }
+.trace-line-two { animation-delay: .55s; }
+.trace-line-three { animation-delay: 1.1s; }
+.hero-orbit,
+.auth-orbit {
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  border: 1px solid rgb(0 0 0 / 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.hero-orbit { left: -310px; top: 80px; }
+.hero-orbit::before,
+.hero-orbit::after,
+.auth-orbit::before,
+.auth-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border: inherit;
+  border-radius: inherit;
+}
+.hero-orbit::after,
+.auth-orbit::after { inset: 36%; }
+.auth-orbit { right: -260px; top: 18%; width: 700px; height: 700px; }
+.channel-marquee { animation: channel-scroll 30s linear infinite; }
+.scenario-row { transition: background-color .35s ease, padding-left .35s cubic-bezier(.16, 1, .3, 1); }
+.scenario-row:hover { background: rgb(255 255 255 / .62); padding-left: 2.35rem; }
+.metric { font-family: "JetBrains Mono", monospace; font-size: clamp(2.8rem, 5vw, 5.5rem); line-height: .9; letter-spacing: -.08em; }
+.metric-label { margin-top: 1rem; max-width: 18rem; font-size: .75rem; line-height: 1.25rem; color: rgb(255 255 255 / .42); }
+
+@keyframes trace-sheen { 0%, 58% { transform: translateX(-110%); } 82%, 100% { transform: translateX(110%); } }
+@keyframes trace-pulse { 0%, 100% { opacity: .54; } 45%, 65% { opacity: 1; } }
+@keyframes channel-scroll { to { transform: translateX(-50%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .trace-window::after,
+  .trace-line,
+  .channel-marquee { animation: none !important; }
+  .scenario-row { transition: none; }
+}

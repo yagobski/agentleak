@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from "./lib/auth"
 import { AppShell } from "./layout/AppShell"
 import { Admin } from "./pages/Admin"
 import { Dashboard } from "./pages/Dashboard"
+import { Landing } from "./pages/Landing"
 import { Login } from "./pages/Login"
 import { Playground } from "./pages/Playground"
 import { ProjectDetail } from "./pages/ProjectDetail"
@@ -36,7 +37,16 @@ function AppRoutes() {
     )
   }
 
-  if (!user) return <Login />
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login initialMode="login" />} />
+        <Route path="/register" element={<Login initialMode="register" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    )
+  }
 
   return (
     <Routes>
@@ -67,4 +77,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </TooltipProvider>
   </React.StrictMode>
 )
-
