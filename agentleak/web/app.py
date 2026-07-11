@@ -569,6 +569,23 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     # turns on the free-for-agents hosted-service defaults.
     limits = Limits.from_env()
 
+    def _public_base_url(request: Request) -> str:
+        """Return the canonical external origin for discovery documents.
+
+        Reverse proxies often connect to Uvicorn over loopback HTTP. Prefer
+        their forwarded scheme; hosted public mode falls back to HTTPS when
+        an older Apache vhost omitted that header.
+        """
+        base = str(request.base_url).rstrip("/")
+        forwarded = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().lower()
+        hostname = request.url.hostname or ""
+        use_https = forwarded == "https" or (
+            limits.public_mode and hostname not in {"localhost", "127.0.0.1", "testserver"}
+        )
+        if use_https and base.startswith("http://"):
+            return "https://" + base.removeprefix("http://")
+        return base
+
     # Send the session cookie only over HTTPS when the platform is exposed
     # beyond localhost. Defaults to off so the local http://localhost dev
     # experience keeps working; on in public mode (or AGENTLEAK_COOKIE_SECURE=1).
@@ -938,7 +955,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def llms_txt(request: Request) -> PlainTextResponse:
         """Concise model-readable documentation index (llmstxt.org format)."""
         return PlainTextResponse(
-            llms_index(str(request.base_url)),
+            llms_index(_public_base_url(request)),
             media_type="text/markdown",
             headers={"Cache-Control": "public, max-age=300"},
         )
@@ -947,7 +964,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def llms_full_txt(request: Request) -> PlainTextResponse:
         """Self-contained usage context for agents that cannot follow links."""
         return PlainTextResponse(
-            llms_full(str(request.base_url)),
+            llms_full(_public_base_url(request)),
             media_type="text/markdown",
             headers={"Cache-Control": "public, max-age=300"},
         )
@@ -956,7 +973,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def agents_md(request: Request) -> PlainTextResponse:
         """Normative safety and execution instructions for autonomous agents."""
         return PlainTextResponse(
-            agent_instructions(str(request.base_url)),
+            agent_instructions(_public_base_url(request)),
             media_type="text/markdown",
             headers={"Cache-Control": "public, max-age=300"},
         )
@@ -968,7 +985,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         The manifest points clients to OpenAPI and does not claim support for
         the standard A2A task/message transport.
         """
-        return official_platform_card(str(request.base_url), __version__)
+        return official_platform_card(_public_base_url(request), __version__)
 
     @app.get("/api/meta")
     def meta() -> dict[str, Any]:

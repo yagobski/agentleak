@@ -103,6 +103,13 @@ sudo certbot --apache -d agents.fomox.com --non-interactive --agree-tos \
   -m admin@fomox.com --redirect
 ```
 
+In the Certbot-generated `*:443` vhost, set the external scheme explicitly so
+OpenAPI and agent-discovery documents emit canonical HTTPS URLs:
+
+```apache
+RequestHeader set X-Forwarded-Proto "https"
+```
+
 This obtains the certificate, writes a new
 `sites-available/zzz-agentleak-le-ssl.conf`-style vhost (certbot names it after
 your original file, so it inherits the `zzz-` prefix automatically), and adds
