@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 
 type Audience = "overview" | "developers" | "agents" | "api"
@@ -252,26 +253,65 @@ function Code({ children }: { children: string }) {
   )
 }
 
+const searchEntries = [
+  ["AgentLeak overview", "/docs", "Mental model, channels and safety boundary"],
+  ["How to use AgentLeak", "/docs#how-to-use", "Capture, analyze, remediate and gate"],
+  ["AgentRisk scoring", "/docs#agentrisk", "Risk Index and privacy score"],
+  ["Developer guide", "/docs/developers", "Install, trace schema, SDK and CI"],
+  ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
+  ["API reference", "/docs/api", "Authentication, endpoints and schemas"],
+]
+
+function DocSearch() {
+  const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        input.current?.focus()
+        setOpen(true)
+      }
+      if (event.key === "Escape") setOpen(false)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
+
+  const results = searchEntries.filter((entry) => entry.join(" ").toLowerCase().includes(query.toLowerCase()))
+
+  return (
+    <div className="docs-search">
+      <span aria-hidden="true">⌕</span>
+      <input ref={input} value={query} onChange={(event) => { setQuery(event.target.value); setOpen(true) }} onFocus={() => setOpen(true)} placeholder="Search documentation..." aria-label="Search documentation" />
+      <kbd>⌘K</kbd>
+      {open && query && (
+        <div className="docs-search-results">
+          {results.length ? results.map(([title, href, description]) => (
+            <Link key={href} to={href} onClick={() => setOpen(false)}><strong>{title}</strong><span>{description}</span></Link>
+          )) : <p>No documentation found.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DocHeader({ audience }: { audience: Audience }) {
   return (
     <header className="docs-header">
       <DocWordmark />
       <nav aria-label="Documentation">
-        <Link className={audience === "overview" ? "active" : ""} to="/docs">
-          Overview
-        </Link>
+        <Link className={audience === "overview" || audience === "developers" ? "active" : ""} to="/docs">Documentation</Link>
+        <Link className={audience === "api" ? "active" : ""} to="/docs/api">API</Link>
+        <Link className={audience === "agents" ? "active" : ""} to="/docs/agents">Agents</Link>
+      </nav>
+      <DocSearch />
+      <div className="docs-header-actions">
         <Link className={audience === "developers" ? "active" : ""} to="/docs/developers">
           Developers
         </Link>
-        <Link className={audience === "agents" ? "active" : ""} to="/docs/agents">
-          Agents
-        </Link>
-        <Link className={audience === "api" ? "active" : ""} to="/docs/api">
-          API
-        </Link>
-      </nav>
-      <div className="docs-header-actions">
-        <Link to="/docs/api">API reference</Link>
         <Link to="/register">Get started</Link>
       </div>
     </header>
