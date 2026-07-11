@@ -300,7 +300,7 @@
 .docs-flow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 .docs-flow span { border: 1px solid #e5e5e5; border-radius: 7px; background: #fafafa; padding: 8px 12px; font-size: 13px; font-weight: 650; color: #404040; }
 .docs-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
-.docs-card-grid a { display: block; border: 1px solid #e5e5e5; border-radius: 8px; padding: 20px; transition: border-color .18s ease, background .18s ease; }
+.docs-card-grid a, .docs-card-grid > div { display: block; border: 1px solid #e5e5e5; border-radius: 8px; padding: 20px; transition: border-color .18s ease, background .18s ease; }
 .docs-card-grid a:hover { border-color: #bdbdbd; background: #fafafa; }
 .docs-card-grid p { margin-top: 8px; font-size: 14px; }
 .docs-token-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
@@ -330,6 +330,20 @@
 .docs-table div:last-child { border-bottom: 0; }
 .docs-table code { font-size: 12px; font-weight: 650; color: #171717; }
 .docs-table span { font-size: 14px; line-height: 1.6; color: #525252; }
+.docs-api-list { display: grid; gap: 12px; margin-top: 18px; }
+.docs-api-endpoint { border: 1px solid #e5e5e5; border-radius: 8px; padding: 18px; background: #fff; }
+.docs-api-title { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.docs-api-title span { border-radius: 6px; background: #171717; padding: 4px 7px; font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 650; color: #fff; }
+.docs-api-title span[data-method="GET"] { background: #404040; }
+.docs-api-title span[data-method="POST"] { background: #171717; }
+.docs-api-title span[data-method="PATCH"], .docs-api-title span[data-method="PUT"] { background: #525252; }
+.docs-api-title span[data-method="DELETE"] { background: #737373; }
+.docs-api-title code { overflow-wrap: anywhere; font-size: 13px; color: #171717; }
+.docs-api-endpoint > p { margin-top: 12px; }
+.docs-api-endpoint dl { display: grid; gap: 8px; margin-top: 16px; }
+.docs-api-endpoint dl div { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; }
+.docs-api-endpoint dt { font-size: 12px; font-weight: 700; color: #737373; }
+.docs-api-endpoint dd { margin: 0; font-size: 14px; line-height: 1.6; color: #525252; }
 .docs-footer { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 72px; padding: 0 28px; border-top: 1px solid #e5e5e5; background: #fafafa; color: #525252; }
 .docs-footer p, .docs-footer > a { font-size: 13px; }
 .docs-footer > a { justify-self: end; text-decoration: underline; text-underline-offset: 3px; }
@@ -369,7 +383,7 @@
   .docs-page-head h1 { font-size: 32px; }
   .docs-page-head p { font-size: 16px; }
   .docs-section { padding: 34px 0; }
-  .docs-card-grid, .docs-link-list a, .docs-rules li, .docs-steps > div, .docs-table div { grid-template-columns: 1fr; }
+  .docs-card-grid, .docs-link-list a, .docs-rules li, .docs-steps > div, .docs-table div, .docs-api-endpoint dl div { grid-template-columns: 1fr; }
   .docs-link-list span { display: none; }
   .docs-code { padding: 16px; font-size: 11px; }
 }

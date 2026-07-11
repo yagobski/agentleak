@@ -16,8 +16,10 @@ machine-actionable fixes — with no human, no dashboard, and no browser.
 Everything below is a plain HTTP call — copy/paste into any language.
 
 Machine-readable discovery is available at `https://agents.fomox.com/llms.txt`,
-normative autonomous-agent instructions at `/agents.md`, and the OpenAPI schema
-at `/openapi.json`. The human documentation hub is `/docs`.
+normative autonomous-agent instructions at `/agents.md`, the integrated API
+reference at `/docs/api`, and the OpenAPI schema at `/openapi.json`. Swagger
+still exists at `/api/docs`, but `/docs/api` is the recommended human-readable
+API guide.
 
 ---
 

@@ -23,12 +23,13 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 - [{base}/docs]({base}/docs): Documentation hub and product model
 - [{base}/docs/developers]({base}/docs/developers): CLI, SDK, integrations, trace schema, and CI guide
 - [{base}/docs/agents]({base}/docs/agents): Autonomous onboarding, safety rules, self-test loop, and failure handling
+- [{base}/docs/api]({base}/docs/api): Integrated API reference with auth, endpoint flows, examples, and schema notes
 - [{base}/agents.md]({base}/agents.md): Normative instructions for autonomous agents
 
 ## Machine interfaces
 
 - [{base}/openapi.json]({base}/openapi.json): OpenAPI 3 schema
-- [{base}/api/docs]({base}/api/docs): Interactive API reference
+- [{base}/api/docs]({base}/api/docs): Swagger UI fallback for raw schema exploration
 - [{base}/api/meta]({base}/api/meta): Runtime capabilities, channels, limits, and endpoint map
 - [{base}/.well-known/agent-card.json]({base}/.well-known/agent-card.json): Agent capability manifest with a documented custom HTTP+JSON binding
 - [{base}/llms-full.txt]({base}/llms-full.txt): Complete agent-oriented usage guide in one document
@@ -46,6 +47,7 @@ def agent_instructions(base_url: str) -> str:
 
 Version: 1.0
 Service: {base}
+Human API reference: {base}/docs/api
 OpenAPI: {base}/openapi.json
 Capabilities: {base}/api/meta
 
@@ -131,8 +133,9 @@ An agent's final answer can be clean while sensitive data leaks through tool arg
 - Base URL: {base}
 - Health: `GET /api/health`
 - Capabilities and current limits: `GET /api/meta`
+- Integrated API reference: `GET /docs/api`
 - OpenAPI: `GET /openapi.json`
-- Interactive API: `GET /api/docs`
+- Swagger fallback: `GET /api/docs`
 - Authentication after onboarding: `X-AgentLeak-Key: ak_...`
 
 ## Autonomous quickstart
@@ -207,6 +210,7 @@ Framework adapters cover LangChain/LangGraph, CrewAI, AutoGen, OpenAI Agents/Swa
 - Human documentation: {base}/docs
 - Developer path: {base}/docs/developers
 - Agent path: {base}/docs/agents
+- API reference: {base}/docs/api
 - Normative agent instructions: {base}/agents.md
 - Source and self-hosting: https://github.com/yagobski/agentleak-oss
 """
