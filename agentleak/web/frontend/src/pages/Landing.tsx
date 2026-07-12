@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { DashboardCharts } from "@/features/Charts"
-import { RunRow } from "@/features/RunRow"
 import type { RunSummary } from "@/lib/api"
 
 function usePrefersReducedMotion() {
@@ -134,6 +132,59 @@ const demoRuns: RunSummary[] = [
   { id: "demo-4", project_id: "demo", created_at: now - 8400, source: "ci", agent_name: "finance-copilot", risk_index: .08, privacy_score: 92, verdict: "Pass", blocked: false, leaked_secrets: 0, label: "baseline" },
 ]
 
+function PlatformWorkbench() {
+  return (
+    <div className="cursor-workbench" aria-label="Synthetic AgentLeak platform preview">
+      <aside>
+        <b>AGENTLEAK</b>
+        <span data-active="true">Dashboard</span>
+        <span>Projects</span>
+        <span>Scenarios</span>
+        <span>Policies</span>
+      </aside>
+      <section>
+        <header>
+          <span>AgentLeak dashboard</span>
+          <em>Synthetic demo data</em>
+        </header>
+        <div className="cursor-workbench-stats">
+          <div><small>Avg RI</small><strong>0.31</strong><span>4 recent runs</span></div>
+          <div><small>Privacy</small><strong>68</strong><span>/100 average</span></div>
+          <div><small>Gate</small><strong>1</strong><span>blocked release</span></div>
+        </div>
+        <div className="cursor-workbench-main">
+          <div className="cursor-workbench-chart">
+            <span>Risk Index</span>
+            <svg viewBox="0 0 440 142" role="img" aria-label="Risk Index trend">
+              {[20, 70, 120].map((y) => <line key={y} x1="18" x2="422" y1={y} y2={y} />)}
+              <path d="M22 105 L148 61 L272 93 L418 76" />
+              <circle cx="22" cy="105" r="4" />
+              <circle cx="148" cy="61" r="4" data-hot="true" />
+              <circle cx="272" cy="93" r="4" />
+              <circle cx="418" cy="76" r="4" />
+            </svg>
+          </div>
+          <div className="cursor-workbench-policy">
+            <span>Policy gate</span>
+            <p>Block tool_call and shared_memory exposures above L3.</p>
+            <b>Active in CI</b>
+          </div>
+        </div>
+        <div className="cursor-workbench-runs">
+          {demoRuns.slice(0, 3).map((run) => (
+            <article key={run.id} data-blocked={run.blocked}>
+              <span>{run.verdict}</span>
+              <b>{run.agent_name}</b>
+              <small>{run.leaked_secrets} leaked · RI {run.risk_index.toFixed(2)}</small>
+              <em>{run.blocked ? "Blocked" : run.label}</em>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export function Landing() {
   return (
     <div className="cursor-site">
@@ -188,13 +239,7 @@ export function Landing() {
               <p>Severity-weighted risk from 0 to 1, normalized against the audited sensitive vault. No model decides the score.</p>
               <Link to="/docs#agentrisk">Learn how scoring works <Arrow /></Link>
             </div>
-            <div className="cursor-platform-preview" aria-label="Synthetic AgentLeak dashboard preview">
-              <div className="cursor-preview-title"><span>AgentLeak dashboard</span><b>Synthetic demo data</b></div>
-              <DashboardCharts runs={demoRuns} />
-              <div className="cursor-preview-runs">
-                {demoRuns.slice(0, 3).map((run) => <RunRow key={run.id} run={run} />)}
-              </div>
-            </div>
+            <PlatformWorkbench />
           </article>
           <article>
             <div>
