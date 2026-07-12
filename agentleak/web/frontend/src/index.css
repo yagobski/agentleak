@@ -486,8 +486,8 @@
 .platform-stat-card { min-height: 142px; background: hsl(var(--card)); transition: background .2s ease, transform .25s cubic-bezier(.16,1,.3,1); }
 .platform-stat-card:hover { background: hsl(var(--muted) / .65); transform: translateY(-2px); }
 .platform-stat-card [class*="text-3xl"] { font-size: 38px; font-weight: 420; letter-spacing: -.055em; }
-.platform-content button, .platform-content [role="button"] { border-radius: 5px; }
-.platform-content pre { border-radius: 5px; }
+.platform-content button, .platform-content [role="button"] { border-radius: 7px; }
+.platform-content pre { border-radius: 7px; }
 .platform-content .animate-fade-up { animation-duration: .55s; }
 
 .auth-shell { min-height: 100vh; overflow: hidden; background: #f7f7f4; color: #26251e; font-family: "Hanken Grotesk Variable", "Helvetica Neue", Helvetica, Arial, sans-serif; }
