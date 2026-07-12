@@ -72,33 +72,42 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
           </div>
 
           <div className="auth-live" aria-label="AgentLeak product preview">
-            <div className="auth-window auth-window-main">
+            <div className="auth-platform-window">
               <header>
-                <span>support-router / run_2048</span>
+                <span>support-router</span>
                 <b>Analysis complete</b>
               </header>
-              <div className="auth-risk">
-                <small>AgentRisk RI</small>
-                <strong>0.38</strong>
-                <i>
-                  <b />
-                </i>
-                <span>2 blocked channels / final answer clean</span>
-              </div>
-              <div className="auth-events">
-                {auditRows.map(([id, channel, detail, status]) => (
-                  <div key={id} data-status={status}>
-                    <i>{id}</i>
-                    <span>
-                      <b>{channel}</b>
-                      <small>{detail}</small>
-                    </span>
-                    <em>{status}</em>
+              <div className="auth-platform-body">
+                <aside>
+                  <span data-active="true">Trace</span>
+                  <span>AgentRisk</span>
+                  <span>Policy</span>
+                </aside>
+                <section>
+                  <div className="auth-risk">
+                    <small>AgentRisk RI</small>
+                    <strong>0.38</strong>
+                    <i>
+                      <b />
+                    </i>
+                    <span>2 blocked channels / final answer clean</span>
                   </div>
-                ))}
+                  <div className="auth-events">
+                    {auditRows.map(([id, channel, detail, status]) => (
+                      <div key={id} data-status={status}>
+                        <i>{id}</i>
+                        <span>
+                          <b>{channel}</b>
+                          <small>{detail}</small>
+                        </span>
+                        <em>{status}</em>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               </div>
             </div>
-            <div className="auth-window auth-window-side">
+            <div className="auth-terminal-strip">
               <header>
                 <span>agent terminal</span>
                 <b>project key</b>
@@ -106,8 +115,6 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
               <code>
                 <span>$ agentleak scan --project support-router</span>
                 <span>trace accepted: 41 events</span>
-                <span>policy: block tool_call, shared_memory</span>
-                <span>result: remediation ready</span>
               </code>
             </div>
           </div>
