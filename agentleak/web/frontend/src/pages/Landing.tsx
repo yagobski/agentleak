@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import {
+  Activity,
+  FlaskConical,
+  FolderKanban,
+  Gauge,
+  LayoutDashboard,
+  Library,
+  Settings,
+  ShieldAlert,
+  Trophy,
+} from "lucide-react"
 import type { RunSummary } from "@/lib/api"
 
 function usePrefersReducedMotion() {
@@ -27,98 +38,137 @@ function Arrow() {
   return <span aria-hidden="true">→</span>
 }
 
-function ProductDemo() {
-  const [activeEvent, setActiveEvent] = useState(0)
+// Faithful miniature of the real Dashboard (layout/AppShell + pages/Dashboard):
+// same sidebar, same stat cards, same run rows — filled with complete demo data
+// so the hero shows what a working workspace actually looks like.
+const HERO_RUNS = [
+  ["support-router", "agent:selftest", "now", "0.38", "Fail", "2 leaked", true],
+  ["claims-reviewer", "ci · release-42", "8m", "0.12", "Pass", "clean", false],
+  ["patient-summary", "ci · nightly", "21m", "0.64", "Blocked", "4 leaked", true],
+  ["finance-copilot", "playground", "1h", "0.08", "Pass", "clean", false],
+  ["onboarding-bot", "agent:improve", "2h", "0.22", "Conditional", "1 leaked", true],
+] as const
+
+function HeroPlatform() {
+  const [activeRun, setActiveRun] = useState(0)
   const reducedMotion = usePrefersReducedMotion()
-  const events = [
-    ["01", "tool_response", "CRM returned customer record", "source"],
-    ["02", "tool_call", "Email forwarded to calendar", "leak"],
-    ["03", "shared_memory", "Account ID copied to shared state", "leak"],
-    ["04", "final_output", "Appointment confirmed", "clean"],
-  ]
 
   useEffect(() => {
     if (reducedMotion) return
-    const timer = window.setInterval(() => setActiveEvent((current) => (current + 1) % events.length), 1700)
+    const timer = window.setInterval(() => setActiveRun((current) => (current + 1) % HERO_RUNS.length), 2100)
     return () => window.clearInterval(timer)
-  }, [events.length, reducedMotion])
-
-  const privacyScores = [100, 81, 62, 62]
-  const riskIndexes = ["0.00", "0.19", "0.38", "0.38"]
-  const privacyScore = privacyScores[activeEvent]
-  const riskIndex = riskIndexes[activeEvent]
+  }, [reducedMotion])
 
   return (
-    <div className="cursor-demo" aria-label="AgentLeak trace analysis product preview">
+    <div className="cursor-demo cursor-app" aria-label="The AgentLeak dashboard with a full workspace of scored agents">
       <div className="cursor-demo-bar">
         <div><span /><span /><span /></div>
-        <p>AgentLeak / support-agent / run_2048</p>
-        <b>{activeEvent === events.length - 1 ? "Analysis complete" : `Tracing event ${activeEvent + 1} / ${events.length}`}</b>
+        <p>AgentLeak — Dashboard</p>
+        <b>100% local · v0.8.0</b>
       </div>
-      <div className="cursor-demo-body">
-        <aside>
-          <small>RUNS</small>
-          <button className="active"><span>Support handoff</span><em>now</em></button>
-          <button><span>Patient summary</span><em>8m</em></button>
-          <button><span>Finance workflow</span><em>21m</em></button>
-          <small>POLICY</small>
-          <p>Synthetic vault</p>
-          <p>Raw values redacted</p>
-        </aside>
-        <section className="cursor-demo-trace">
-          <header><span>Execution trace</span><code>4 events</code></header>
-          <div className="cursor-event-list">
-            {events.map(([index, channel, description, state], eventIndex) => (
-              <article key={index} data-state={state} data-active={eventIndex === activeEvent}>
-                <b>{index}</b>
-                <div><code>{channel}</code><p>{description}</p></div>
-                <span>{state === "leak" ? "exposed" : state}</span>
-              </article>
-            ))}
+      <div className="cursor-app-body">
+        <aside className="cursor-app-side">
+          <b className="cursor-app-brand">AGENTLEAK<small>Agent privacy testing</small></b>
+          <small>Platform</small>
+          <span data-active="true"><LayoutDashboard /> Dashboard</span>
+          <span><FolderKanban /> Projects</span>
+          <span><FlaskConical /> Playground</span>
+          <span><Library /> Scenarios</span>
+          <div className="cursor-app-side-foot">
+            <span><Settings /> Settings</span>
+            <em>acme-ops</em>
           </div>
-        </section>
-        <section className="cursor-demo-report">
-          <header><span>AgentRisk</span><code>RI {riskIndex}</code></header>
-          <div className="cursor-risk-score"><strong key={privacyScore}>{privacyScore}</strong><span>/ 100<br />privacy score</span></div>
-          <div className="cursor-risk-bar"><i style={{ width: `${100 - privacyScore}%` }} /></div>
-          <dl>
-            <div><dt>Boundary</dt><dd>{activeEvent === 0 ? "Monitoring" : "Failed"}</dd></div>
-            <div><dt>Distinct leaks</dt><dd>{activeEvent === 0 ? 0 : activeEvent === 1 ? 1 : 2}</dd></div>
-            <div><dt>Affected channels</dt><dd>{activeEvent === 0 ? "0 / 6" : activeEvent === 1 ? "1 / 6" : "2 / 6"}</dd></div>
-          </dl>
-          <button>Open remediation plan <Arrow /></button>
+        </aside>
+        <section className="cursor-app-main">
+          <header className="cursor-app-head">
+            <div><h4>Dashboard</h4><p>Privacy posture across your agents, scored with AgentRisk.</p></div>
+            <b>Projects</b>
+          </header>
+          <div className="cursor-app-stats">
+            <div><small>Projects <FolderKanban /></small><strong>6</strong><span>Agents under test</span></div>
+            <div><small>Runs <Activity /></small><strong>128</strong><span>Analyses stored</span></div>
+            <div><small>Avg risk index <Gauge /></small><strong>0.24</strong><span>Conditional pass</span></div>
+            <div><small>Blocked runs <ShieldAlert /></small><strong>3</strong><span>Would fail a CI gate</span></div>
+          </div>
+          <div className="cursor-app-columns">
+            <div className="cursor-app-runs">
+              <header><span>Recent runs</span><code>last 24h</code></header>
+              {HERO_RUNS.map(([agent, source, when, ri, verdict, leaks, hot], index) => (
+                <article key={agent} data-active={index === activeRun} data-hot={hot}>
+                  <b>{agent}</b>
+                  <small>{source}</small>
+                  <span>{leaks} · RI {ri}</span>
+                  <em data-verdict={verdict}>{verdict}</em>
+                  <code>{when}</code>
+                </article>
+              ))}
+            </div>
+            <div className="cursor-app-rail">
+              <div className="cursor-app-card">
+                <span><FlaskConical /> Quick audit</span>
+                <p>Score a trace instantly without creating a project.</p>
+                <b>Open playground <Arrow /></b>
+              </div>
+              <div className="cursor-app-card">
+                <span><Trophy /> Agent leaderboard</span>
+                {[["finance-copilot", "92"], ["claims-reviewer", "88"], ["support-router", "62"]].map(([name, score], index) => (
+                  <div className="cursor-app-rank" key={name}><i>{index + 1}</i><b>{name}</b><code>{score}</code></div>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </div>
   )
 }
 
-function FlowDemo() {
-  const [activeStep, setActiveStep] = useState(0)
+// Faithful miniature of a real run report (pages/RunView): per-channel risk,
+// concrete findings with severity levels, and the remediation hint an agent
+// can act on — the artifact you actually get from an analysis.
+const REPORT_CHANNELS = [
+  ["user_input", "Customer message received", "clean", ""],
+  ["tool_call", "email + account_id sent to calendar.create", "L3", "EMAIL · ACCOUNT_ID"],
+  ["shared_memory", "account_id persisted for the next agent", "L2", "ACCOUNT_ID"],
+  ["log", "No sensitive values written", "clean", ""],
+  ["final_output", "Clean answer to the customer", "clean", ""],
+] as const
+
+function RunReportDemo() {
+  const [activeRow, setActiveRow] = useState(1)
   const reducedMotion = usePrefersReducedMotion()
-  const steps = [
-    ["Customer record", "Source", "Authorized input"],
-    ["Support agent", "Processing", "Private context"],
-    ["Shared memory", "Exposure", "Email + account ID"],
-    ["Final answer", "Clean", "No sensitive values"],
-  ]
 
   useEffect(() => {
     if (reducedMotion) return
-    const timer = window.setInterval(() => setActiveStep((current) => (current + 1) % steps.length), 1900)
+    const timer = window.setInterval(() => setActiveRow((current) => (current + 1) % REPORT_CHANNELS.length), 2000)
     return () => window.clearInterval(timer)
-  }, [reducedMotion, steps.length])
+  }, [reducedMotion])
 
   return (
-    <div className="cursor-flow-demo">
-      <div className="cursor-flow-head"><span>customer-support.run</span><b><i /> tracing live</b></div>
-      {steps.map(([title, status, detail], index) => (
-        <div className="cursor-flow-row" data-active={index === activeStep} data-leak={status === "Exposure"} key={title}>
-          <span>{String(index + 1).padStart(2, "0")}</span>
-          <div><strong>{title}</strong><small>{detail}</small></div>
-          <b>{status}</b>
+    <div className="cursor-report" aria-label="A real AgentLeak run report: channel risks, findings and the remediation hint">
+      <div className="cursor-report-head">
+        <div><b>support-router</b><small>run_2048 · selftest · 4 events</small></div>
+        <span data-verdict="Fail">Fail · RI 0.38</span>
+      </div>
+      <div className="cursor-report-score">
+        <strong>62</strong>
+        <div><span>/ 100 privacy score</span><i><b style={{ width: "38%" }} /></i></div>
+        <dl>
+          <div><dt>Distinct leaks</dt><dd>2</dd></div>
+          <div><dt>Channels</dt><dd>2 / 6</dd></div>
+        </dl>
+      </div>
+      {REPORT_CHANNELS.map(([channel, description, level, types], index) => (
+        <div className="cursor-report-row" data-active={index === activeRow} data-leak={level !== "clean"} key={channel}>
+          <code>{channel}</code>
+          <div><strong>{description}</strong>{types && <small>{types}</small>}</div>
+          <b>{level === "clean" ? "clean" : level}</b>
         </div>
       ))}
+      <div className="cursor-report-fix">
+        <span>Remediation 01</span>
+        <p>Redact <code>account_id</code> before <code>calendar.create</code> — ready-to-paste fix included.</p>
+      </div>
     </div>
   )
 }
@@ -207,12 +257,18 @@ export function Landing() {
         <section className="cursor-hero" id="product">
           <div className="cursor-hero-copy">
             <h1>AgentLeak tests what your agents expose before the final answer.</h1>
+            <p>
+              An agent can return one clean answer while copying customer data into a tool call,
+              shared memory, a log or a generated file along the way. AgentLeak replays the complete
+              execution trace, scores every internal channel with AgentRisk, and hands you — or your
+              agent — the exact fix.
+            </p>
             <div className="cursor-actions">
               <Link className="cursor-button cursor-button-dark" to="/register">Run your first audit <Arrow /></Link>
               <Link className="cursor-button cursor-button-light" to="/docs">Read the documentation <Arrow /></Link>
             </div>
           </div>
-          <ProductDemo />
+          <HeroPlatform />
         </section>
 
         <section className="cursor-trust">
@@ -221,14 +277,33 @@ export function Landing() {
           <p>Compatibility, not customer endorsement. Framework adapters and generic trace ingestion use the same AgentLeak schema.</p>
         </section>
 
+        <section className="cursor-capabilities">
+          <header>
+            <p className="cursor-eyebrow">What the platform does</p>
+            <h2>One workspace for the whole privacy loop.</h2>
+          </header>
+          <div>
+            {[
+              ["Trace analysis", "Replay any run across 6 channels — tools, memory, messages, logs, files, output — and find every exposure."],
+              ["AgentRisk scoring", "A deterministic, severity-weighted 0–1 index and a 0–100 privacy score. No model decides the number."],
+              ["Static code scan", "Catch hardcoded secrets, PII in logs and sensitive values sent to third parties before the agent even runs."],
+              ["Adversarial red-team", "Replay prompt-injection and exfiltration attack classes against your agent, scripted or live."],
+              ["CI policy gate", "Set a boundary per project; a crossing blocks the build with the trace as evidence."],
+              ["Agent self-serve API", "Agents onboard with one call, test themselves and follow a bounded remediation loop — no human needed."],
+            ].map(([title, description], index) => (
+              <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{description}</p></article>
+            ))}
+          </div>
+        </section>
+
         <section className="cursor-feature cursor-feature-lead" id="workflow">
           <div className="cursor-feature-copy">
             <p className="cursor-eyebrow">Complete trace analysis</p>
             <h2>The final output can be clean while the system is leaking.</h2>
-            <p>AgentLeak follows sensitive values through the complete execution trace, reconstructs where exposure happened and shows the exact channel that crossed policy.</p>
+            <p>Output-only checks miss what happens inside the run. AgentLeak follows sensitive values through every internal channel, reconstructs where exposure happened, assigns each finding a severity level (L1–L4) and returns the exact remediation — as prose for your team and as structured hints an agent can apply.</p>
             <Link to="/docs">Understand the trace model <Arrow /></Link>
           </div>
-          <FlowDemo />
+          <RunReportDemo />
         </section>
 
         <section className="cursor-feature-grid">
@@ -236,7 +311,7 @@ export function Landing() {
             <div>
               <p className="cursor-eyebrow">AgentRisk</p>
               <h3>A score your team can explain.</h3>
-              <p>Severity-weighted risk from 0 to 1, normalized against the audited sensitive vault. No model decides the score.</p>
+              <p>Severity-weighted risk from 0 to 1, normalized against the audited sensitive vault. Deterministic and reproducible: the same trace always yields the same score, so a regression in CI means the agent changed — not the judge.</p>
               <Link to="/docs#agentrisk">Learn how scoring works <Arrow /></Link>
             </div>
             <PlatformWorkbench />
@@ -245,7 +320,7 @@ export function Landing() {
             <div>
               <p className="cursor-eyebrow">Built for autonomous agents</p>
               <h3>Agents can discover, test and improve themselves.</h3>
-              <p>Machine-readable instructions, OpenAPI, scoped project keys and a bounded remediation loop work without a browser.</p>
+              <p>llms.txt discovery, one-call onboarding, scoped project keys and machine-readable remediation hints: an agent can find AgentLeak, audit itself and fix its own leaks in a bounded loop — no browser, no human in the middle.</p>
               <Link to="/docs/agents">Read agent instructions <Arrow /></Link>
             </div>
             <div className="cursor-terminal"><div><span /><span /><span /></div><code><span><i>$</i> curl agents.fomox.com/llms.txt</span><span><i>$</i> POST /api/agent/onboard</span><span><b>project created</b></span><span><i>$</i> POST /api/selftest</span><span><em>2 exposures · policy failed</em></span></code></div>
