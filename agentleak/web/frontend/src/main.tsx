@@ -23,13 +23,15 @@ import { RunView } from "./pages/RunView"
 import { Scenarios } from "./pages/Scenarios"
 import { Settings } from "./pages/Settings"
 
-// Apply the saved theme before first paint (default: warm light).
-if (!localStorage.getItem("agentleak-warm-ui-v1")) {
-  localStorage.setItem("agentleak-theme", "light")
-  localStorage.setItem("agentleak-warm-ui-v1", "1")
+// Apply the saved theme before first paint. Dark is the default so the
+// product matches the marketing site; one-time migration flips accounts the
+// old "warm light" migration had pinned to light.
+if (!localStorage.getItem("agentleak-dark-ui-v1")) {
+  localStorage.setItem("agentleak-theme", "dark")
+  localStorage.setItem("agentleak-dark-ui-v1", "1")
 }
 const savedTheme = localStorage.getItem("agentleak-theme")
-document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : false)
+document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : true)
 
 function AppRoutes() {
   const { user, loading } = useAuth()

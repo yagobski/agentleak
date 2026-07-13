@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 export function ThemeToggle() {
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("agentleak-theme")
-    return saved ? saved === "dark" : false
+    return saved ? saved === "dark" : true
   })
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark)
