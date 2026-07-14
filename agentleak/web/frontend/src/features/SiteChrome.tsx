@@ -100,12 +100,16 @@ export const FAQ_ITEMS: readonly (readonly [string, string])[] = [
   ["What happens to my traces and data?", "Nothing leaves your machine on the local and self-hosted paths. There is no telemetry and no phone-home. On the hosted instance, raw sensitive values are never stored: findings reference channels and severity, not the secrets themselves."],
   ["Can I self-host the whole platform?", "Yes. One docker compose command brings up the same platform the hosted instance runs, on your own infrastructure or in your VPC. Self-hosting removes the free-tier quota entirely."],
   ["Which compliance frameworks does it map to?", "Each run carries a compliance posture across GDPR, Quebec Law 25, HIPAA and the OWASP LLM Top 10, so a finding is tied to the obligation it touches, not just a generic severity label."],
+  ["What counts against the free quota?", "Only metered actions on the hosted platform: a run analysis, a live agent turn or a self-test call. Local CLI and self-hosted usage have no quota at all, and reading reports or browsing the dashboard never counts."],
+  ["Can I bring my own detection rules or PII types?", "Yes. The regex and entropy detectors accept a project-level ruleset, so you can add a proprietary ID format or an internal secret pattern alongside the built-in email, key and PHI/PII detectors."],
+  ["Does it handle multi-agent and A2A traces?", "Yes. Inter-agent messages and hand-offs are their own channel, so a leak that only appears when one agent hands a task to another is caught the same way a leaked tool call would be."],
 ] as const
 
 export const FAQ_GROUPS: readonly { title: string; items: readonly (readonly [string, string])[] }[] = [
   { title: "The basics", items: FAQ_ITEMS.slice(0, 3) },
   { title: "Running it", items: FAQ_ITEMS.slice(3, 7) },
-  { title: "Data, hosting and compliance", items: FAQ_ITEMS.slice(7) },
+  { title: "Data, hosting and compliance", items: FAQ_ITEMS.slice(7, 9) },
+  { title: "Limits and customization", items: FAQ_ITEMS.slice(9) },
 ] as const
 
 /** Single accordion row for the FAQ. */

@@ -18,6 +18,7 @@ import {
 } from "@/features/SiteChrome"
 
 type Section = { title: string; body: string; points: string[] }
+type Step = { title: string; body: string }
 type FeatureContent = {
   eyebrow: string
   title: string
@@ -26,6 +27,17 @@ type FeatureContent = {
   metaDescription: string
   demo: ReactNode
   sections: Section[]
+  steps: Step[]
+  snippetLabel: string
+  snippet: string
+}
+
+function Code({ children }: { children: string }) {
+  return (
+    <pre className="docs-code">
+      <code>{children}</code>
+    </pre>
+  )
 }
 
 // One dedicated, SEO-oriented page per capability. Each reuses the exact same
@@ -55,6 +67,14 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Ready-to-paste code fixes", "Per-channel redaction advice", "Priority-sorted next steps", "Structured hints for autonomous agents"],
       },
     ],
+    steps: [
+      { title: "Capture the trace", body: "Record events at trust boundaries: user input, tool calls and responses, memory, logs and the final output. Any framework works." },
+      { title: "Normalize to six channels", body: "LangChain, LangGraph, CrewAI, MCP, OpenTelemetry and generic OpenAI-style logs all map to the same AgentLeak schema before analysis." },
+      { title: "Replay and match", body: "Each channel is scanned with regex, Presidio, entropy and de-obfuscation detectors, matched against the vault, and reconstructed into a leak path." },
+      { title: "Read the report", body: "Every finding lists the exact channel, a severity from L1 to L4, and a fix, in the CLI, the dashboard or a JSON report." },
+    ],
+    snippetLabel: "Analyze a trace from the CLI",
+    snippet: "agentleak run --trace run.json --output ./reports --format html\nopen ./reports/run_0001.html",
   },
   agentrisk: {
     eyebrow: "AgentRisk scoring",
@@ -80,6 +100,14 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Per-agent leaderboard", "Per-release trend line", "Threshold you set per project", "Evidence attached to every run"],
       },
     ],
+    steps: [
+      { title: "Findings are collected", body: "Every match across the six channels comes with a severity from L1 to L4, weighted by how sensitive the value is and how exposed the channel is." },
+      { title: "Severity is weighted", body: "Higher severity findings and easier-to-exploit channels count for more in the closed-form scoring function, not an LLM's opinion." },
+      { title: "The vault normalizes it", body: "The score is scaled 0 to 1 against the sensitive values actually present in the run, so a small trace and a huge one stay comparable." },
+      { title: "The same trace, the same score", body: "No model decides the number, so a regression in CI means the agent changed behavior, never that the judge got moody." },
+    ],
+    snippetLabel: "Score a trace from the CLI",
+    snippet: "agentleak score --trace run.json\n# {\"agent_risk\": 0.18, \"privacy_score\": 82,\n#  \"severity_counts\": {\"L1\": 2, \"L2\": 1, \"L3\": 0, \"L4\": 0}}",
   },
   "ci-gate": {
     eyebrow: "CI policy gate",
@@ -105,6 +133,14 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Offending channel highlighted", "Severity and risk index shown", "Link straight to the full report", "The exact remediation attached"],
       },
     ],
+    steps: [
+      { title: "Set the policy", body: "Choose a score threshold, or forbid a specific channel/severity combination, per project and check it into version control." },
+      { title: "Wire in the CLI", body: "One command in any shell, any runner: GitHub Actions, GitLab CI, a Makefile or a pre-merge hook." },
+      { title: "Fail on crossing", body: "A boundary crossing exits non-zero, which fails the job exactly like any other failing test in the suite." },
+      { title: "Attach the evidence", body: "The trace, the offending channel and the severity ride along on the pull request as a normal required status check." },
+    ],
+    snippetLabel: "Gate a merge in CI",
+    snippet: "# .github/workflows/agentleak.yml\n- name: Privacy gate\n  run: agentleak run --scenario ci --policy agentleak.yaml --fail-under 0.8",
   },
   "agent-api": {
     eyebrow: "Built for autonomous agents",
@@ -130,6 +166,14 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["POST /api/agent/improve", "Delta versus the previous run", "Priority-sorted next steps", "Generous free quota for agents"],
       },
     ],
+    steps: [
+      { title: "Discover", body: "An agent reads /llms.txt or /.well-known/agent-card.json to learn the API surface with no human in the loop." },
+      { title: "Onboard", body: "One call to /api/agent/onboard creates a scoped project key with a free monthly quota, ready to use immediately." },
+      { title: "Self-test", body: "POST /api/selftest with its own trace and get back findings, a compliance verdict and structured remediation hints." },
+      { title: "Improve and loop", body: "POST /api/agent/improve to get a delta versus the previous run and priority-sorted next steps, then repeat until clean." },
+    ],
+    snippetLabel: "Onboard an agent in one call",
+    snippet: "curl -sX POST https://agents.fomox.com/api/agent/onboard \\\n  -H 'content-type: application/json' \\\n  -d '{\"email\":\"agent@example.com\",\"agent_name\":\"SupportBot\"}'",
   },
 }
 
@@ -173,6 +217,23 @@ export function FeaturePage() {
             </article>
           ))}
         </div>
+
+        <section className="docs-section cursor-page-howto">
+          <header><p className="cursor-eyebrow">How it works</p><h2>From raw trace to a fix, in four steps.</h2></header>
+          <div className="docs-steps">
+            {content.steps.map((step, index) => (
+              <div key={step.title}>
+                <b>{index + 1}</b>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="cursor-page-snippet">
+            <p className="cursor-eyebrow">{content.snippetLabel}</p>
+            <Code>{content.snippet}</Code>
+          </div>
+        </section>
 
         <section className="cursor-related">
           <header><p className="cursor-eyebrow">Explore the platform</p><h2>The rest of the loop.</h2></header>

@@ -2,6 +2,14 @@ import { Link } from "react-router-dom"
 import { Arrow, PlatformWorkbench } from "@/features/ProductDemos"
 import { PAPER_URL, REPO_URL, SiteFooter, SiteNav, usePageMeta } from "@/features/SiteChrome"
 
+function Code({ children }: { children: string }) {
+  return (
+    <pre className="docs-code">
+      <code>{children}</code>
+    </pre>
+  )
+}
+
 type Publication = {
   id: string
   kind: string
@@ -45,7 +53,37 @@ const PUBLICATIONS: Publication[] = [
     href: "/docs/agents",
     cta: "Read the threat model",
   },
+  {
+    id: "Dataset",
+    kind: "Dataset",
+    year: "2026",
+    title: "36 scenarios, 4 domains: the benchmark's synthetic data",
+    summary:
+      "Every scenario ships with a realistic but fully synthetic vault of PII and PHI, canary values that can only appear if the agent actually leaked them, and adversary levels from a passive A0 to an actively adversarial A2 across healthcare, finance, legal and corporate domains.",
+    href: "/docs/agents",
+    cta: "See the scenario catalog",
+  },
+  {
+    id: "Compliance",
+    kind: "Compliance mapping",
+    year: "2026",
+    title: "From severity level to legal obligation: GDPR, Law 25, HIPAA and the OWASP LLM Top 10",
+    summary:
+      "Every finding is tied to the regulatory or standards obligation it touches, not a generic red/yellow/green badge, so a compliance review can trace a score straight back to the clause it maps to.",
+    href: "/docs/api",
+    cta: "See the compliance docs",
+  },
 ]
+
+const RESEARCH_STATS: readonly [string, string][] = [
+  ["6", "channels per trace"],
+  ["4", "severity levels, L1 to L4"],
+  ["36", "benchmark scenarios"],
+  ["4", "domains covered"],
+  ["3", "adversary levels, A0 to A2"],
+] as const
+
+const CITATION = "@misc{agentleak2026,\n  title  = {AgentLeak: measuring privacy leakage across agent execution traces},\n  author = {AgentLeak},\n  year   = {2026},\n  eprint = {2602.11510},\n  url    = {https://arxiv.org/abs/2602.11510}\n}"
 
 export function Research() {
   usePageMeta(
@@ -69,6 +107,12 @@ export function Research() {
               <a className="cursor-button cursor-button-dark" href={PAPER_URL}>Read the benchmark <Arrow /></a>
               <a className="cursor-button cursor-button-light" href={REPO_URL}>View the source <Arrow /></a>
             </div>
+          </div>
+
+          <div className="cursor-research-stats">
+            {RESEARCH_STATS.map(([value, label]) => (
+              <div key={label}><b>{value}</b><span>{label}</span></div>
+            ))}
           </div>
 
           <div className="cursor-pubs">
@@ -98,6 +142,17 @@ export function Research() {
         <div className="cursor-page-preview">
           <div className="cursor-feature-visual"><PlatformWorkbench /></div>
         </div>
+
+        <section className="docs-section cursor-page-howto">
+          <header><p className="cursor-eyebrow">Cite this work</p><h2>Referencing AgentLeak or AgentRisk in your own research?</h2></header>
+          <p style={{ maxWidth: "640px", color: "var(--s-9d9c96)", fontSize: "14px", lineHeight: 1.6 }}>
+            Use the BibTeX entry below for the primary benchmark. The methodology and threat-model
+            write-ups above are companion documents to the same paper, not separate citations.
+          </p>
+          <div className="cursor-page-snippet">
+            <Code>{CITATION}</Code>
+          </div>
+        </section>
 
         <section className="cursor-final-cta">
           <div className="cursor-final-inner">
