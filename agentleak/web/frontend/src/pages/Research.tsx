@@ -21,7 +21,7 @@ const PUBLICATIONS: Publication[] = [
     year: "2026",
     title: "AgentLeak: measuring privacy leakage across agent execution traces",
     summary:
-      "The primary benchmark. Defines the six-channel trace model, the L1–L4 severity levels and the AgentRisk score, evaluated across 36 scenarios in healthcare, finance, legal and corporate domains at adversary levels A0–A2. This tool is the open implementation of that work.",
+      "The primary benchmark. Defines the six-channel trace model, the L1 to L4 severity levels and the AgentRisk score, evaluated across 36 scenarios in healthcare, finance, legal and corporate domains at adversary levels A0-A2. This tool is the open implementation of that work.",
     href: PAPER_URL,
     cta: "Read on arXiv",
   },
@@ -50,16 +50,13 @@ const PUBLICATIONS: Publication[] = [
 export function Research() {
   usePageMeta(
     "Research · AgentLeak",
-    "The published benchmark and methodology behind AgentLeak and AgentRisk: the six-channel trace model, L1–L4 severity levels and the deterministic privacy risk index.",
+    "The published benchmark and methodology behind AgentLeak and AgentRisk: the six-channel trace model, L1 to L4 severity levels and the deterministic privacy risk index.",
   )
   return (
     <div className="cursor-site">
       <SiteNav />
       <main>
         <section className="cursor-page">
-          <Link className="cursor-page-back" to="/">
-            <span aria-hidden="true">←</span> Back to overview
-          </Link>
           <div className="cursor-page-hero">
             <p className="cursor-eyebrow">Research</p>
             <h1>AgentLeak and AgentRisk are not marketing terms.</h1>
