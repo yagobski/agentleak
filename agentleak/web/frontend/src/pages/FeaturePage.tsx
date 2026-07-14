@@ -1,11 +1,11 @@
 import type { ReactNode } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
 import {
-  AgentTerminal,
+  AgentLoopDemo,
   Arrow,
-  CIGateDemo,
-  PlatformWorkbench,
-  RunReportDemo,
+  PipelineGateDemo,
+  RiskModelDemo,
+  TraceExplorerDemo,
 } from "@/features/ProductDemos"
 import {
   FAQ_ITEMS,
@@ -19,6 +19,7 @@ import {
 
 type Section = { title: string; body: string; points: string[] }
 type Step = { title: string; body: string }
+type Concept = { title: string; body: string; before: string; after: string; principles: string[] }
 type FeatureContent = {
   eyebrow: string
   title: string
@@ -27,6 +28,7 @@ type FeatureContent = {
   metaDescription: string
   demo: ReactNode
   sections: Section[]
+  concept: Concept
   steps: Step[]
   snippetLabel: string
   snippet: string
@@ -49,7 +51,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "AgentLeak replays the whole execution trace and follows every sensitive value through six internal channels. A clean final answer no longer hides a leak in a tool call, shared memory, a log or a generated file.",
     metaTitle: "Trace analysis · AgentLeak",
     metaDescription: "AgentLeak replays the whole agent execution trace across six channels (tools, memory, messages, logs, files, output) and pinpoints every exposure with a severity level and an exact fix.",
-    demo: <RunReportDemo />,
+    demo: <TraceExplorerDemo />,
     sections: [
       {
         title: "Six channels, one schema",
@@ -67,6 +69,13 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Ready-to-paste code fixes", "Per-channel redaction advice", "Priority-sorted next steps", "Structured hints for autonomous agents"],
       },
     ],
+    concept: {
+      title: "An agent run is a dataflow graph, not a chat transcript.",
+      body: "A final answer is only one exit from the system. Sensitive data can enter through a tool response, move through memory, cross an agent hand-off and reach a third party without ever appearing in the answer. AgentLeak treats every event as an edge in that flow and reconstructs the complete disclosure path.",
+      before: "Output checks ask: did the answer contain a secret?",
+      after: "Trace analysis asks: where did each sensitive value travel?",
+      principles: ["Sources establish what the agent was allowed to see", "Disclosure channels establish what the agent emitted", "Distinct values are followed across events, not counted as isolated strings"],
+    },
     steps: [
       { title: "Capture the trace", body: "Record events at trust boundaries: user input, tool calls and responses, memory, logs and the final output. Any framework works." },
       { title: "Normalize to six channels", body: "LangChain, LangGraph, CrewAI, MCP, OpenTelemetry and generic OpenAI-style logs all map to the same AgentLeak schema before analysis." },
@@ -82,7 +91,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "AgentRisk is a deterministic, severity-weighted risk index from 0 to 1, defined in a published benchmark. The same trace always yields the same score, so a regression in CI means the agent changed, not the judge.",
     metaTitle: "AgentRisk scoring · AgentLeak",
     metaDescription: "AgentRisk is a deterministic, severity-weighted privacy risk index from 0 to 1 with a readable 0-100 privacy score. Reproducible by design, so CI regressions are real.",
-    demo: <PlatformWorkbench />,
+    demo: <RiskModelDemo />,
     sections: [
       {
         title: "Deterministic by design",
@@ -100,6 +109,13 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Per-agent leaderboard", "Per-release trend line", "Threshold you set per project", "Evidence attached to every run"],
       },
     ],
+    concept: {
+      title: "Risk is exposure relative to what the agent could reach.",
+      body: "Counting findings alone makes a run with one leaked identifier look equivalent to a run leaking a medical record. AgentRisk weights distinct leaked values by sensitivity, then normalizes them against the audited vault. The result stays bounded, comparable and explainable.",
+      before: "Finding counts reward noisy scanners and ignore sensitivity.",
+      after: "AgentRisk measures weighted disclosure density from 0 to 1.",
+      principles: ["L1-L4 weights reflect the sensitivity of each data type", "Repeated occurrences of one secret do not inflate global risk", "The closed-form score has no model variance or hidden prompt"],
+    },
     steps: [
       { title: "Findings are collected", body: "Every match across the six channels comes with a severity from L1 to L4, weighted by how sensitive the value is and how exposed the channel is." },
       { title: "Severity is weighted", body: "Higher severity findings and easier-to-exploit channels count for more in the closed-form scoring function, not an LLM's opinion." },
@@ -107,7 +123,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
       { title: "The same trace, the same score", body: "No model decides the number, so a regression in CI means the agent changed behavior, never that the judge got moody." },
     ],
     snippetLabel: "Score a trace from the CLI",
-    snippet: "agentleak score --trace run.json\n# {\"agent_risk\": 0.18, \"privacy_score\": 82,\n#  \"severity_counts\": {\"L1\": 2, \"L2\": 1, \"L3\": 0, \"L4\": 0}}",
+    snippet: "agentleak run --trace run.json --format json --output ./reports\n# Risk Index 0.18 · privacy score 82 / 100\n# JSON report: ./reports/run_0001.json",
   },
   "ci-gate": {
     eyebrow: "CI policy gate",
@@ -115,7 +131,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "Set a policy per project and wire AgentLeak into CI. When an agent crosses its boundary, the check fails and the pull request is blocked, with the offending channel and severity attached to the run.",
     metaTitle: "CI policy gate · AgentLeak",
     metaDescription: "Wire AgentLeak into GitHub or GitLab as a required status check. A privacy boundary crossing blocks the merge with the trace, channel and severity attached as evidence.",
-    demo: <CIGateDemo />,
+    demo: <PipelineGateDemo />,
     sections: [
       {
         title: "One boundary per project",
@@ -133,6 +149,13 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Offending channel highlighted", "Severity and risk index shown", "Link straight to the full report", "The exact remediation attached"],
       },
     ],
+    concept: {
+      title: "A privacy policy becomes useful when it can stop a release.",
+      body: "Dashboards are evidence after the fact. A gate turns the same evidence into an enforceable engineering boundary: which channels may disclose which levels, and what minimum privacy score a project must maintain. The policy lives beside the code and produces a normal CI status.",
+      before: "Reviewers inspect a report after an agent has changed.",
+      after: "The pull request cannot merge until the same trace passes policy.",
+      principles: ["Policies are version-controlled per project", "Exit codes work in any CI runner without a proprietary action", "Every failure carries the channel, level and remediation needed to fix it"],
+    },
     steps: [
       { title: "Set the policy", body: "Choose a score threshold, or forbid a specific channel/severity combination, per project and check it into version control." },
       { title: "Wire in the CLI", body: "One command in any shell, any runner: GitHub Actions, GitLab CI, a Makefile or a pre-merge hook." },
@@ -140,7 +163,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
       { title: "Attach the evidence", body: "The trace, the offending channel and the severity ride along on the pull request as a normal required status check." },
     ],
     snippetLabel: "Gate a merge in CI",
-    snippet: "# .github/workflows/agentleak.yml\n- name: Privacy gate\n  run: agentleak run --scenario ci --policy agentleak.yaml --fail-under 0.8",
+    snippet: "# .github/workflows/agentleak.yml\n- name: Privacy gate\n  run: agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80",
   },
   "agent-api": {
     eyebrow: "Built for autonomous agents",
@@ -148,7 +171,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "llms.txt discovery, one-call onboarding, scoped project keys and machine-readable remediation hints. An agent can find AgentLeak, audit itself and fix its own leaks in a bounded loop, with no browser and no human in the middle.",
     metaTitle: "Agent API · AgentLeak",
     metaDescription: "AgentLeak exposes a machine-first API: llms.txt discovery, one-call onboarding, scoped keys and structured remediation hints so autonomous agents can self-test and improve in a loop.",
-    demo: <AgentTerminal />,
+    demo: <AgentLoopDemo />,
     sections: [
       {
         title: "Discoverable by machines",
@@ -166,6 +189,13 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["POST /api/agent/improve", "Delta versus the previous run", "Priority-sorted next steps", "Generous free quota for agents"],
       },
     ],
+    concept: {
+      title: "Privacy testing can be part of an agent's own control loop.",
+      body: "AgentLeak exposes discovery, onboarding, testing and remediation as machine-readable contracts. A capable agent does not need to interpret a dashboard: it submits a trace, receives bounded actions, applies one change and verifies the same scenario again.",
+      before: "A human notices a leak, translates the report and asks for a fix.",
+      after: "The agent consumes structured evidence and proves the fix itself.",
+      principles: ["Scoped credentials limit what an autonomous client can access", "Remediation hints name one channel and one concrete action", "Each iteration reports a score delta so improvement is measurable"],
+    },
     steps: [
       { title: "Discover", body: "An agent reads /llms.txt or /.well-known/agent-card.json to learn the API surface with no human in the loop." },
       { title: "Onboard", body: "One call to /api/agent/onboard creates a scoped project key with a free monthly quota, ready to use immediately." },
@@ -217,6 +247,20 @@ export function FeaturePage() {
             </article>
           ))}
         </div>
+
+        <section className="cursor-concept">
+          <div className="cursor-concept-copy">
+            <p className="cursor-eyebrow">The mental model</p>
+            <h2>{content.concept.title}</h2>
+            <p>{content.concept.body}</p>
+          </div>
+          <div className="cursor-concept-shift">
+            <div><small>Before</small><p>{content.concept.before}</p></div>
+            <span aria-hidden="true">→</span>
+            <div data-after="true"><small>With AgentLeak</small><p>{content.concept.after}</p></div>
+          </div>
+          <ul>{content.concept.principles.map((principle) => <li key={principle}>{principle}</li>)}</ul>
+        </section>
 
         <section className="docs-section cursor-page-howto">
           <header><p className="cursor-eyebrow">How it works</p><h2>From raw trace to a fix, in four steps.</h2></header>
