@@ -47,7 +47,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
       {
         title: "Severity you can defend",
         body: "Every finding gets a level from L1 to L4 based on how sensitive the exposed value is and where it went, not a vague red/yellow/green badge.",
-        points: ["L1–L4 severity per finding", "The exact channel where exposure happened", "Reconstructed leak path across events", "Canary matching for realistic vaults"],
+        points: ["L1 to L4 severity per finding", "The exact channel where exposure happened", "Reconstructed leak path across events", "Canary matching for realistic vaults"],
       },
       {
         title: "A fix, not just a flag",
@@ -61,18 +61,18 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     title: "A privacy score your whole team can explain.",
     lede: "AgentRisk is a deterministic, severity-weighted risk index from 0 to 1, defined in a published benchmark. The same trace always yields the same score, so a regression in CI means the agent changed, not the judge.",
     metaTitle: "AgentRisk scoring · AgentLeak",
-    metaDescription: "AgentRisk is a deterministic, severity-weighted privacy risk index from 0 to 1 with a readable 0–100 privacy score. Reproducible by design, so CI regressions are real.",
+    metaDescription: "AgentRisk is a deterministic, severity-weighted privacy risk index from 0 to 1 with a readable 0-100 privacy score. Reproducible by design, so CI regressions are real.",
     demo: <PlatformWorkbench />,
     sections: [
       {
         title: "Deterministic by design",
         body: "The score is a closed-form function of the findings and the audited vault. No model decides the number, so it never drifts between runs.",
-        points: ["Same trace, same score, every time", "Severity-weighted, normalized 0 to 1", "A readable 0–100 privacy score", "Reproducible in CI and offline"],
+        points: ["Same trace, same score, every time", "Severity-weighted, normalized 0 to 1", "A readable 0-100 privacy score", "Reproducible in CI and offline"],
       },
       {
         title: "Grounded in the benchmark",
         body: "AgentRisk uses the same channels and severity model as the published AgentLeak benchmark, so results are comparable across agents and versions.",
-        points: ["36 scenarios across 4 domains", "Adversary levels A0–A2", "Comparable across agents", "Trend the score over time"],
+        points: ["36 scenarios across 4 domains", "Adversary levels A0-A2", "Comparable across agents", "Trend the score over time"],
       },
       {
         title: "Built for regressions",
@@ -149,9 +149,6 @@ export function FeaturePage() {
       <SiteNav />
       <main>
         <section className="cursor-page">
-          <Link className="cursor-page-back" to="/">
-            <span aria-hidden="true">←</span> Back to overview
-          </Link>
           <div className="cursor-page-hero">
             <p className="cursor-eyebrow">{content.eyebrow}</p>
             <h1>{content.title}</h1>

@@ -19,9 +19,6 @@ export function Faq() {
       <SiteNav />
       <main>
         <section className="cursor-page">
-          <Link className="cursor-page-back" to="/">
-            <span aria-hidden="true">←</span> Back to overview
-          </Link>
           <div className="cursor-page-hero">
             <p className="cursor-eyebrow">FAQ</p>
             <h1>Questions, answered.</h1>
