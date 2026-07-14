@@ -14,8 +14,11 @@ import { AppShell } from "./layout/AppShell"
 import { Admin } from "./pages/Admin"
 import { Dashboard } from "./pages/Dashboard"
 import { Documentation } from "./pages/Documentation"
+import { Faq } from "./pages/Faq"
+import { FeaturePage } from "./pages/FeaturePage"
 import { Landing } from "./pages/Landing"
 import { Login } from "./pages/Login"
+import { Research } from "./pages/Research"
 import { Playground } from "./pages/Playground"
 import { ProjectDetail } from "./pages/ProjectDetail"
 import { Projects } from "./pages/Projects"
@@ -48,6 +51,9 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/features/:slug" element={<FeaturePage />} />
+        <Route path="/research" element={<Research />} />
+        <Route path="/faq" element={<Faq />} />
         <Route path="/docs" element={<Documentation />} />
         <Route path="/docs/developers" element={<Documentation audience="developers" />} />
         <Route path="/docs/agents" element={<Documentation audience="agents" />} />
@@ -61,6 +67,9 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="features/:slug" element={<FeaturePage />} />
+      <Route path="research" element={<Research />} />
+      <Route path="faq" element={<Faq />} />
       <Route path="docs" element={<Documentation />} />
       <Route path="docs/developers" element={<Documentation audience="developers" />} />
       <Route path="docs/agents" element={<Documentation audience="agents" />} />
