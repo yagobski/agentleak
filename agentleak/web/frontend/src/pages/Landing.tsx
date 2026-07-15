@@ -65,7 +65,7 @@ function HeroPlatform() {
       </div>
       <div className="cursor-app-body">
         <aside className="cursor-app-side">
-          <div className="cursor-app-brand"><AgentLeakLogo className="agentleak-logo-preview" label="" /><small>Agent privacy testing</small></div>
+          <div className="cursor-app-brand"><AgentLeakLogo className="agentleak-logo-preview" label="" /></div>
           <small>Platform</small>
           <button type="button" data-active={view === "Dashboard"} onClick={() => setView("Dashboard")}><LayoutDashboard /> Dashboard</button>
           <button type="button" data-active={view === "Runs"} onClick={() => setView("Runs")}><FolderKanban /> Runs</button>
