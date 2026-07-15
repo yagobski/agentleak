@@ -186,6 +186,25 @@ class Store:
             )
             c.execute("CREATE INDEX IF NOT EXISTS idx_api_usage_project ON api_usage(project_id, created_at)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at)")
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS usage_meter (
+                    id TEXT PRIMARY KEY,
+                    created_at REAL NOT NULL,
+                    owner_id TEXT NOT NULL,
+                    endpoint TEXT NOT NULL
+                )"""
+            )
+            c.execute("CREATE INDEX IF NOT EXISTS idx_usage_meter_owner ON usage_meter(owner_id, created_at)")
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS user_settings (
+                    user_id TEXT NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL DEFAULT '',
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY (user_id, key),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )"""
+            )
             self._migrate(c)
 
     @staticmethod
@@ -369,7 +388,8 @@ class Store:
         self, uid: str, *, is_admin: bool | None = None, disabled: bool | None = None
     ) -> dict[str, Any] | None:
         """Update the admin/disabled flags. Disabling also revokes sessions."""
-        sets, vals = [], []
+        sets: list[str] = []
+        vals: list[Any] = []
         if is_admin is not None:
             sets.append("is_admin=?")
             vals.append(int(is_admin))
@@ -446,6 +466,116 @@ class Store:
                 "INSERT INTO api_usage (id, created_at, project_id, endpoint) VALUES (?,?,?,?)",
                 (_new_id("usage"), _now(), project_id, endpoint),
             )
+
+    # -- quota metering & account settings ------------------------------
+    def meter_usage(self, owner_id: str, endpoint: str) -> None:
+        """Record one metered action for an account (free-tier quota)."""
+        owner = owner_id.strip()
+        if not owner:
+            return
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO usage_meter (id, created_at, owner_id, endpoint) VALUES (?,?,?,?)",
+                (_new_id("meter"), _now(), owner, endpoint),
+            )
+
+    def owner_usage_since(self, owner_id: str, since_ts: float) -> int:
+        """Count metered actions for ``owner_id`` since ``since_ts`` (epoch)."""
+        owner = owner_id.strip()
+        if not owner:
+            return 0
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT COUNT(*) n FROM usage_meter WHERE owner_id=? AND created_at>=?",
+                (owner, since_ts),
+            ).fetchone()
+        return int((row["n"] if row else 0) or 0)
+
+    def set_user_setting(self, user_id: str, key: str, value: str) -> None:
+        """Upsert one per-user setting."""
+        with self._conn() as c:
+            c.execute(
+                """
+                INSERT INTO user_settings (user_id, key, value, updated_at)
+                VALUES (?,?,?,?)
+                ON CONFLICT(user_id, key)
+                DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+                """,
+                (user_id, key, value, _now()),
+            )
+
+    def get_user_setting(self, user_id: str, key: str) -> str:
+        """Read one per-user setting; returns an empty string when absent."""
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT value FROM user_settings WHERE user_id=? AND key=?",
+                (user_id, key),
+            ).fetchone()
+        return str(row["value"]) if row else ""
+
+    def delete_user_settings(self, user_id: str, *keys: str) -> None:
+        """Delete selected per-user settings (or all settings when no key is passed)."""
+        with self._conn() as c:
+            if keys:
+                placeholders = ",".join("?" for _ in keys)
+                c.execute(
+                    f"DELETE FROM user_settings WHERE user_id=? AND key IN ({placeholders})",
+                    [user_id, *keys],
+                )
+            else:
+                c.execute("DELETE FROM user_settings WHERE user_id=?", (user_id,))
+
+    def leaderboard(self, *, owner_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+        """Rank projects by their latest run (lower risk index ranks higher)."""
+        owner_filter = ""
+        params: list[Any] = []
+        if owner_id is not None:
+            owner_filter = "WHERE p.owner_id=?"
+            params.append(owner_id)
+        params.append(limit)
+
+        with self._conn() as c:
+            rows = c.execute(
+                f"""
+                SELECT
+                    p.id AS project_id,
+                    p.name AS name,
+                    lr.risk_index AS risk_index,
+                    lr.privacy_score AS privacy_score,
+                    lr.verdict AS verdict,
+                    lr.created_at AS last_run_at,
+                    (SELECT COUNT(*) FROM runs r2 WHERE r2.project_id = p.id) AS runs,
+                    (SELECT SUM(r3.leaked) FROM runs r3 WHERE r3.project_id = p.id) AS leaked_secrets
+                FROM projects p
+                JOIN runs lr ON lr.id = (
+                    SELECT r.id FROM runs r
+                    WHERE r.project_id = p.id
+                    ORDER BY r.created_at DESC
+                    LIMIT 1
+                )
+                {owner_filter}
+                ORDER BY lr.risk_index ASC, lr.privacy_score DESC, lr.created_at DESC
+                LIMIT ?
+                """,
+                params,
+            ).fetchall()
+
+        entries: list[dict[str, Any]] = []
+        for idx, row in enumerate(rows, start=1):
+            entries.append(
+                {
+                    "project_id": row["project_id"],
+                    "name": row["name"],
+                    "rank": idx,
+                    "risk_index": float(row["risk_index"] or 0.0),
+                    "privacy_score": int(row["privacy_score"] or 0),
+                    "verdict": row["verdict"] or "",
+                    "leaked_secrets": int(row["leaked_secrets"] or 0),
+                    "runs": int(row["runs"] or 0),
+                    "last_run_at": row["last_run_at"],
+                }
+            )
+        return entries
 
     def admin_projects_usage(self, *, limit: int = 200) -> list[dict[str, Any]]:
         """Per-project monitoring for the admin console: runs executed, agent
