@@ -1,6 +1,6 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import "@fontsource-variable/hanken-grotesk"
 import "@fontsource/jetbrains-mono/400.css"
 import "@fontsource/jetbrains-mono/500.css"
@@ -14,7 +14,6 @@ import { AppShell } from "./layout/AppShell"
 import { Admin } from "./pages/Admin"
 import { Dashboard } from "./pages/Dashboard"
 import { Documentation } from "./pages/Documentation"
-import { Faq } from "./pages/Faq"
 import { FeaturePage } from "./pages/FeaturePage"
 import { Landing } from "./pages/Landing"
 import { Login } from "./pages/Login"
@@ -36,6 +35,45 @@ if (!localStorage.getItem("agentleak-dark-ui-v1")) {
 const savedTheme = localStorage.getItem("agentleak-theme")
 document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : true)
 
+function ScrollToRoute() {
+  const { hash, pathname } = useLocation()
+  React.useEffect(() => {
+    let frame = 0
+    let observer: MutationObserver | undefined
+    let timeout = 0
+    const scrollToHash = () => {
+      const target = document.getElementById(hash.slice(1))
+      if (!target) return false
+      window.scrollTo({
+        top: target.getBoundingClientRect().top + window.scrollY,
+        left: 0,
+        behavior: "auto",
+      })
+      return true
+    }
+    frame = window.requestAnimationFrame(() => {
+      if (!hash) {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" })
+        return
+      }
+      if (scrollToHash()) return
+      observer = new MutationObserver(() => {
+        if (!scrollToHash()) return
+        observer?.disconnect()
+        window.clearTimeout(timeout)
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+      timeout = window.setTimeout(() => observer?.disconnect(), 3000)
+    })
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+      observer?.disconnect()
+    }
+  }, [hash, pathname])
+  return null
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth()
 
@@ -53,7 +91,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/features/:slug" element={<FeaturePage />} />
         <Route path="/research" element={<Research />} />
-        <Route path="/faq" element={<Faq />} />
+        <Route path="/faq" element={<Navigate to="/#faq" replace />} />
         <Route path="/docs" element={<Documentation />} />
         <Route path="/docs/developers" element={<Documentation audience="developers" />} />
         <Route path="/docs/agents" element={<Documentation audience="agents" />} />
@@ -69,7 +107,7 @@ function AppRoutes() {
     <Routes>
       <Route path="features/:slug" element={<FeaturePage />} />
       <Route path="research" element={<Research />} />
-      <Route path="faq" element={<Faq />} />
+      <Route path="faq" element={<Navigate to="/" replace />} />
       <Route path="docs" element={<Documentation />} />
       <Route path="docs/developers" element={<Documentation audience="developers" />} />
       <Route path="docs/agents" element={<Documentation audience="agents" />} />
@@ -93,6 +131,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <TooltipProvider delayDuration={200}>
       <BrowserRouter>
+        <ScrollToRoute />
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>

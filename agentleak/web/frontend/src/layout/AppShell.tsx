@@ -38,6 +38,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/features/ThemeToggle"
+import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -75,11 +76,8 @@ function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
               <Link to="/">
-                <div className="platform-brand-mark" aria-hidden="true">
-                  <i /><i /><i />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">AGENTLEAK</span>
+                <div className="platform-brand">
+                  <AgentLeakLogo className="agentleak-logo-platform" label="AgentLeak platform" />
                   <span className="truncate text-xs text-muted-foreground">Agent privacy testing</span>
                 </div>
               </Link>

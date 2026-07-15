@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { Arrow, PlatformWorkbench } from "@/features/ProductDemos"
-import { PAPER_URL, REPO_URL, SiteFooter, SiteNav, usePageMeta } from "@/features/SiteChrome"
+import { PAPER_URL, REPO_URL, SITE_URL, SiteFooter, SiteNav, usePageMeta } from "@/features/SiteChrome"
 
 function Code({ children }: { children: string }) {
   return (
@@ -89,6 +89,19 @@ export function Research() {
   usePageMeta(
     "Research · AgentLeak",
     "The published benchmark and methodology behind AgentLeak and AgentRisk: the six-channel trace model, L1 to L4 severity levels and the deterministic privacy risk index.",
+    {
+      type: "article",
+      structuredData: {
+        "@context": "https://schema.org",
+        "@type": "ScholarlyArticle",
+        headline: "AgentLeak: measuring privacy leakage across agent execution traces",
+        description: "The benchmark and methodology behind the six-channel AgentLeak model and deterministic AgentRisk privacy score.",
+        url: `${SITE_URL}/research`,
+        sameAs: PAPER_URL,
+        datePublished: "2026",
+        author: { "@type": "Organization", name: "AgentLeak", url: SITE_URL },
+      },
+    },
   )
   return (
     <div className="cursor-site">

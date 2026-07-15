@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Cpu, ExternalLink, Github, KeyRound, Loader2, Save, ShieldCheck, Trash2, UserRound } from "lucide-react"
+import { ExternalLink, Github, KeyRound, Loader2, Save, ShieldCheck, Trash2, UserRound } from "lucide-react"
 import { toast } from "sonner"
 import { api, type Meta } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
@@ -21,7 +21,6 @@ export function Settings() {
       <PageHeader title="Settings" description="Your account and this AgentLeak instance." />
 
       <AccountCard />
-      <ModelKeyCard />
       <PasswordCard />
       <DangerZoneCard />
 
@@ -120,123 +119,6 @@ function AccountCard() {
         {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Save className="mr-1.5 size-3.5" />}
         Save
       </Button>
-    </Card>
-  )
-}
-
-// ----------------------------------------------------------- Model key
-const PRESETS = [
-  { label: "OpenRouter", base_url: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini" },
-  { label: "OpenAI", base_url: "https://api.openai.com/v1", model: "gpt-4o-mini" },
-  { label: "Groq", base_url: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" },
-  { label: "Ollama (local)", base_url: "http://localhost:11434/v1", model: "llama3.2" },
-]
-
-function ModelKeyCard() {
-  const [baseUrl, setBaseUrl] = useState("")
-  const [model, setModel] = useState("")
-  const [apiKey, setApiKey] = useState("")
-  const [keySet, setKeySet] = useState(false)
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    api.modelKey().then((k) => {
-      setBaseUrl(k.base_url)
-      setModel(k.model)
-      setKeySet(k.api_key_set)
-    }).catch(() => {})
-  }, [])
-
-  async function save() {
-    setBusy(true)
-    try {
-      const k = await api.saveModelKey({ base_url: baseUrl.trim(), model: model.trim(), api_key: apiKey.trim() })
-      setBaseUrl(k.base_url)
-      setModel(k.model)
-      setKeySet(k.api_key_set)
-      setApiKey("")
-      toast.success("Default model endpoint saved.")
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save the model key.")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function clear() {
-    setBusy(true)
-    try {
-      await api.clearModelKey()
-      setBaseUrl("")
-      setModel("")
-      setApiKey("")
-      setKeySet(false)
-      toast.success("Model key cleared.")
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not clear the model key.")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Card className="p-5">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Cpu className="size-4 text-primary" /> Default model key
-        {keySet && (
-          <span className="rounded bg-sev-ok/15 px-1.5 py-0.5 text-[11px] font-medium text-sev-ok">
-            key set
-          </span>
-        )}
-      </div>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        Powers the test core (live runs, red-team, LLM-judge) for any project that has no endpoint of
-        its own. Paste an OpenRouter key to unlock hundreds of models — the key is stored locally and
-        never returned by the API.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {PRESETS.map((p) => (
-          <button
-            key={p.label}
-            onClick={() => {
-              setBaseUrl(p.base_url)
-              setModel(p.model)
-            }}
-            className={`rounded border px-2 py-1 text-xs transition-colors ${
-              baseUrl === p.base_url
-                ? "border-primary/50 bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label className="text-xs">Base URL (OpenAI-compatible)</Label>
-          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://openrouter.ai/api/v1" className="mt-1 font-mono text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Model</Label>
-          <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="openai/gpt-4o-mini" className="mt-1 font-mono text-xs" />
-        </div>
-        <div className="sm:col-span-2">
-          <Label className="text-xs">API key {keySet && <span className="text-muted-foreground">(leave blank to keep the stored key)</span>}</Label>
-          <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={keySet ? "••••••••••••" : "sk-or-v1-…"} className="mt-1 font-mono text-xs" autoComplete="off" />
-        </div>
-      </div>
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" onClick={save} disabled={busy || (!baseUrl.trim() && !apiKey.trim())}>
-          {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Save className="mr-1.5 size-3.5" />}
-          Save
-        </Button>
-        {(keySet || baseUrl) && (
-          <Button size="sm" variant="ghost" onClick={clear} disabled={busy}>
-            <Trash2 className="mr-1.5 size-3.5" /> Clear
-          </Button>
-        )}
-      </div>
     </Card>
   )
 }

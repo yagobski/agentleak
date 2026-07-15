@@ -4,63 +4,9 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [0.8.0] — 2026-07-09
-
-### Added — public-SaaS mode (free for autonomous agents)
-- **`AGENTLEAK_PUBLIC_MODE`** — one switch that turns the local tool into a
-  hosted, free-for-agents service: monthly free-tier quota, per-IP anti-abuse
-  throttling, BYOK enforcement, and secure cookies. Every knob is individually
-  overridable via an env var (`agentleak/web/limits.py`). Local/self-hosted
-  behavior is unchanged (unlimited, no throttle).
-- **Free-tier quota** — per-account monthly ceiling on billable actions
-  (analyses, runs, code scans, red-team, agent self-tests), metered in a new
-  `usage_events` table. `429` with reset time when exceeded; admins and
-  self-hosted installs are unlimited. `GET /api/limits` reports current usage;
-  `GET /api/meta` advertises the free-tier policy for discovery.
-- **BYOK cost control** — in public mode the platform never falls back to a
-  process-level LLM key for a tenant's run, so a free public instance costs ~0:
-  free regex/Presidio/entropy detection by default, paid LLM-judge / live runs
-  require the agent's own key.
-- **Per-IP throttling** — a global DoS guard plus a stricter cap on account
-  creation (`/api/auth/register`, `/api/agent/onboard`), reading the real client
-  IP behind the reverse proxy.
-- **One-call agent onboarding** — `POST /api/agent/onboard` creates account +
-  project + API key in a single request so an autonomous agent self-serves the
-  whole register → scan → improve → status loop with no dashboard.
-- **Readiness probe** — `GET /readyz` checks the datastore and returns `503`
-  until the instance is truly serving (distinct from the `/api/health` liveness
-  probe).
-- **Deployment artifacts** — multi-stage `Dockerfile` (builds the frontend,
-  serves the API), `docker-compose.yml` (loopback-only app + optional bundled
-  Caddy TLS), `deploy/Caddyfile`, `deploy/nginx-app.fomox.com.conf` (coexists
-  with an existing nginx), `.env.production.example`, and a step-by-step
-  `deploy/README.md`.
-- **Public API guide** — `docs/public-api.md` documents the free-tier agent
-  workflow end to end.
-
-## [0.7.0] — 2026-07-08
+## [Unreleased]
 
 ### Added
-- **Universal chat-log import** — the scenario uploader (and `detect_format`)
-  now accepts any OpenAI-style chat log (`{"messages": [...]}`): roles are
-  mapped faithfully onto channels (system/user → `user_input`, `tool_calls` →
-  `tool_call`, tool results → `tool_response`, intermediate assistant turns →
-  `inter_agent_message`, the last assistant text → `final_output`), so sessions
-  exported from the OpenAI SDK, LiteLLM, LangSmith or benchmark dumps are scored
-  by the same uniform engine (`scenarios/convert.py`).
-- **Account-level default model key** — paste one OpenRouter / OpenAI / Groq /
-  Ollama endpoint in *Settings → Default model key* and it powers the whole
-  test core (live runs, multi-agent pipelines, red-team, LLM-judge) for every
-  project that has no endpoint of its own. Stored per-user (`user_settings`),
-  redacted everywhere (`GET/POST/DELETE /api/auth/model-key` never return the
-  key; a blank key preserves the stored one).
-- **Agent leaderboard** — `GET /api/leaderboard` ranks your agents by their
-  latest AgentRisk result (Risk Index ascending, privacy score as tiebreak);
-  the Dashboard shows the ranked list so agents can be differentiated at a
-  glance.
-- **Code upload in the scan panel** — the static code scan UI now takes a
-  `.zip` archive or a handful of source files directly (in addition to a
-  GitHub repo link), matching the API's `zip` / `files` sources.
 - **Agent-first layer — autonomous self-registration, code scans, and a
   self-improvement loop.** An agent can now test and fix *itself* through the
   API, with no human in the loop:

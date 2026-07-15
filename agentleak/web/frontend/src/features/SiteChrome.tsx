@@ -1,28 +1,63 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Menu, Monitor, Moon, Sun, X } from "lucide-react"
+import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 
 export const PAPER_URL = "https://arxiv.org/abs/2602.11510"
 export const REPO_URL = "https://github.com/yagobski/agentleak-oss"
+export const SITE_URL = "https://agents.fomox.com"
 
-/** Per-page SEO: title + meta description, restored on unmount. */
-export function usePageMeta(title: string, description: string) {
+type PageMetaOptions = {
+  noIndex?: boolean
+  type?: "website" | "article"
+  structuredData?: Record<string, unknown>
+}
+
+/** Canonical, social and crawler metadata for each public route. */
+export function usePageMeta(title: string, description: string, options: PageMetaOptions = {}) {
+  const structuredData = options.structuredData ? JSON.stringify(options.structuredData) : ""
   useEffect(() => {
-    const prevTitle = document.title
     document.title = title
-    let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]')
-    if (!meta) {
-      meta = document.createElement("meta")
-      meta.name = "description"
-      document.head.appendChild(meta)
+    const canonicalUrl = `${SITE_URL}${window.location.pathname === "/" ? "/" : window.location.pathname}`
+    const setMeta = (attribute: "name" | "property", key: string, content: string) => {
+      let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
+      if (!element) {
+        element = document.createElement("meta")
+        element.setAttribute(attribute, key)
+        document.head.appendChild(element)
+      }
+      element.content = content
     }
-    const prevDesc = meta.content
-    meta.content = description
-    return () => {
-      document.title = prevTitle
-      if (meta) meta.content = prevDesc
+    setMeta("name", "description", description)
+    setMeta("name", "robots", options.noIndex ? "noindex, nofollow" : "index, follow, max-image-preview:large")
+    setMeta("property", "og:title", title)
+    setMeta("property", "og:description", description)
+    setMeta("property", "og:type", options.type ?? "website")
+    setMeta("property", "og:url", canonicalUrl)
+    setMeta("property", "og:site_name", "AgentLeak")
+    setMeta("property", "og:locale", "en_US")
+    setMeta("name", "twitter:card", "summary")
+    setMeta("name", "twitter:title", title)
+    setMeta("name", "twitter:description", description)
+
+    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    if (!canonical) {
+      canonical = document.createElement("link")
+      canonical.rel = "canonical"
+      document.head.appendChild(canonical)
     }
-  }, [title, description])
+    canonical.href = canonicalUrl
+
+    const schemaId = "agentleak-page-schema"
+    document.getElementById(schemaId)?.remove()
+    if (structuredData) {
+      const schema = document.createElement("script")
+      schema.id = schemaId
+      schema.type = "application/ld+json"
+      schema.text = structuredData.replace(/</g, "\\u003c")
+      document.head.appendChild(schema)
+    }
+  }, [description, options.noIndex, options.type, structuredData, title])
 }
 
 type SiteTheme = "system" | "light" | "dark"
@@ -75,8 +110,7 @@ export function ThemeSwitch() {
 export function Brand() {
   return (
     <Link to="/" className="cursor-brand" aria-label="AgentLeak home">
-      <span className="cursor-brand-mark" aria-hidden="true"><i /><i /><i /></span>
-      <span>AGENTLEAK</span>
+      <AgentLeakLogo className="agentleak-logo-site" label="" />
     </Link>
   )
 }
@@ -88,7 +122,7 @@ export const FEATURE_PAGES = [
   { slug: "agent-api", title: "Agent API", blurb: "Agents test and fix themselves" },
 ] as const
 
-/** Shared FAQ, rendered on the landing page and on the dedicated /faq page. */
+/** Shared FAQ content rendered inside the landing and feature pages. */
 export const FAQ_ITEMS: readonly (readonly [string, string])[] = [
   ["Is AgentLeak really open source?", "Yes. The analyzer and platform are MIT-licensed on GitHub. The core runs fully local with no telemetry, and you can self-host the hosted platform with one docker compose command."],
   ["How is this different from a guardrail or a red-team prompt?", "Guardrails and red-team prompts look at inputs and the final output. AgentLeak audits the whole execution trace, so it catches data that leaked into a tool call, shared memory, a log or a generated file even when the final answer looks clean."],
@@ -103,13 +137,6 @@ export const FAQ_ITEMS: readonly (readonly [string, string])[] = [
   ["What counts against the free quota?", "Only metered actions on the hosted platform: a run analysis, a live agent turn or a self-test call. Local CLI and self-hosted usage have no quota at all, and reading reports or browsing the dashboard never counts."],
   ["Can I bring my own detection rules or PII types?", "Yes. The regex and entropy detectors accept a project-level ruleset, so you can add a proprietary ID format or an internal secret pattern alongside the built-in email, key and PHI/PII detectors."],
   ["Does it handle multi-agent and A2A traces?", "Yes. Inter-agent messages and hand-offs are their own channel, so a leak that only appears when one agent hands a task to another is caught the same way a leaked tool call would be."],
-] as const
-
-export const FAQ_GROUPS: readonly { title: string; items: readonly (readonly [string, string])[] }[] = [
-  { title: "The basics", items: FAQ_ITEMS.slice(0, 3) },
-  { title: "Running it", items: FAQ_ITEMS.slice(3, 7) },
-  { title: "Data, hosting and compliance", items: FAQ_ITEMS.slice(7, 9) },
-  { title: "Limits and customization", items: FAQ_ITEMS.slice(9) },
 ] as const
 
 /** Single accordion row for the FAQ. */
@@ -159,7 +186,6 @@ export function SiteNav() {
           <div className="cursor-nav-menu" role="menu">
             <Link to="/docs" role="menuitem"><b>Documentation</b><small>Concepts, guides and API</small></Link>
             <Link to="/research" role="menuitem"><b>Research</b><small>The papers behind the scores</small></Link>
-            <Link to="/faq" role="menuitem"><b>FAQ</b><small>Short answers to common questions</small></Link>
             <a href={REPO_URL} role="menuitem"><b>GitHub</b><small>MIT-licensed source</small></a>
           </div>
         </div>
@@ -189,7 +215,6 @@ export function SiteNav() {
           <span>Resources</span>
           <Link to="/docs">Documentation</Link>
           <Link to="/research">Research</Link>
-          <Link to="/faq">FAQ</Link>
           <a href={REPO_URL}>GitHub</a>
           <div className="cursor-nav-mobile-actions">
             <Link className="cursor-button cursor-button-light" to="/login">Sign in</Link>
@@ -207,7 +232,7 @@ export function SiteFooter() {
       <div className="cursor-footer-grid">
         <Brand />
         <div><h3>Product</h3>{FEATURE_PAGES.map((page) => <Link key={page.slug} to={`/features/${page.slug}`}>{page.title}</Link>)}</div>
-        <div><h3>Resources</h3><Link to="/docs">Documentation</Link><Link to="/research">Research</Link><Link to="/faq">FAQ</Link><Link to="/docs/agents">For agents</Link></div>
+        <div><h3>Resources</h3><Link to="/docs">Documentation</Link><Link to="/research">Research</Link><Link to="/#faq">Questions</Link><Link to="/docs/agents">For agents</Link></div>
         <div><h3>Open source</h3><a href={REPO_URL}>GitHub</a><a href="/openapi.json">OpenAPI</a><a href="/llms.txt">llms.txt</a><a href={PAPER_URL}>arXiv:2602.11510</a></div>
       </div>
       <div className="cursor-footer-bar">

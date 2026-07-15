@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import type { RunSummary } from "@/lib/api"
+import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 
 export function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false)
@@ -85,7 +86,7 @@ export function PlatformWorkbench() {
   return (
     <div className="cursor-workbench" aria-label="AgentRisk trend, policy gate and recent runs">
       <aside>
-        <b>AGENTLEAK</b>
+        <AgentLeakLogo className="agentleak-logo-workbench" label="" />
         <span data-active="true">Dashboard</span>
         <span>Projects</span>
         <span>Scenarios</span>
@@ -182,7 +183,20 @@ export function OpenSourceDemo() {
 
 export function AgentTerminal() {
   return (
-    <div className="cursor-terminal"><div><span /><span /><span /></div><code><span><i>$</i> curl agents.fomox.com/llms.txt</span><span><i>$</i> POST /api/agent/onboard</span><span><b>project created</b></span><span><i>$</i> POST /api/selftest</span><span><em>2 exposures · policy failed</em></span></code></div>
+    <div className="cursor-terminal" aria-label="An autonomous agent discovers AgentLeak, creates a scoped project and runs a privacy self-test">
+      <div><span /><span /><span /><b>agentleak agent API</b></div>
+      <section className="cursor-terminal-brand">
+        <AgentLeakLogo className="agentleak-logo-terminal" label="" />
+        <small>Machine-readable privacy testing for autonomous agents</small>
+      </section>
+      <code>
+        <span><i>$</i> curl agents.fomox.com/llms.txt</span>
+        <span><i>$</i> POST /api/agent/onboard</span>
+        <span><b>project created · scoped key issued</b></span>
+        <span><i>$</i> POST /api/selftest</span>
+        <span><em>2 exposures · policy failed · remediation attached</em></span>
+      </code>
+    </div>
   )
 }
 
