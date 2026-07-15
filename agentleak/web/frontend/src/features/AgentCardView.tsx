@@ -12,7 +12,6 @@ import {
   Save,
   ShieldCheck,
   Trash2,
-  Upload,
 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -320,9 +319,12 @@ function CodeScanPanel({ project }: { project: Project }) {
   }, [project.id])
   useEffect(reload, [reload])
 
-  async function scanWith(payload: Record<string, unknown>) {
+  async function runScan() {
     setBusy(true)
     try {
+      const payload = repo.trim()
+        ? { source: "github", repo: repo.trim(), branch: branch.trim() || "main" }
+        : {}
       const scan = await api.runCodeScan(project.id, payload)
       setDetail(scan)
       setExpanded(null)
@@ -332,37 +334,6 @@ function CodeScanPanel({ project }: { project: Project }) {
       toast.error(e instanceof Error ? e.message : "Scan failed.")
     } finally {
       setBusy(false)
-    }
-  }
-
-  function runScan() {
-    void scanWith(
-      repo.trim() ? { source: "github", repo: repo.trim(), branch: branch.trim() || "main" } : {},
-    )
-  }
-
-  /** Upload local agent code: a .zip archive or a handful of source files. */
-  async function onUpload(list: FileList | null) {
-    if (!list || list.length === 0) return
-    const files = Array.from(list)
-    const zip = files.find((f) => f.name.toLowerCase().endsWith(".zip"))
-    try {
-      if (zip) {
-        const buf = new Uint8Array(await zip.arrayBuffer())
-        let bin = ""
-        const CHUNK = 0x8000
-        for (let i = 0; i < buf.length; i += CHUNK) {
-          bin += String.fromCharCode(...buf.subarray(i, i + CHUNK))
-        }
-        await scanWith({ source: "zip", data: btoa(bin), name: zip.name })
-      } else {
-        const payload = await Promise.all(
-          files.map(async (f) => ({ path: f.name, content: await f.text() })),
-        )
-        await scanWith({ source: "files", files: payload })
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not read the selected files.")
     }
   }
 
@@ -405,25 +376,6 @@ function CodeScanPanel({ project }: { project: Project }) {
           {busy ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Github className="mr-1.5 size-3.5" />}
           Scan code
         </Button>
-        <label className="inline-flex">
-          <input
-            type="file"
-            multiple
-            accept=".zip,.py,.ts,.tsx,.js,.jsx,.json,.yaml,.yml,.toml,.env,.txt,.md"
-            className="hidden"
-            disabled={busy}
-            onChange={(e) => {
-              void onUpload(e.target.files)
-              e.target.value = ""
-            }}
-          />
-          <Button size="sm" variant="outline" disabled={busy} asChild>
-            <span className="cursor-pointer">
-              <Upload className="mr-1.5 size-3.5" />
-              Upload code
-            </span>
-          </Button>
-        </label>
       </div>
 
       {scans.length === 0 && !busy && (

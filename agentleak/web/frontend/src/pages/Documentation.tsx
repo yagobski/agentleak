@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
+import { AgentLeakLogo } from "@/features/AgentLeakLogo"
+import { usePageMeta } from "@/features/SiteChrome"
 
 type Audience = "overview" | "developers" | "agents" | "api"
 type NavItem = { href: string; label: string }
@@ -239,7 +241,7 @@ const apiEndpoints: Endpoint[] = [
 function DocWordmark() {
   return (
     <Link to="/" className="docs-wordmark" aria-label="AgentLeak home">
-      <span>AgentLeak</span>
+      <AgentLeakLogo className="agentleak-logo-docs" label="" />
       <em>Docs</em>
     </Link>
   )
@@ -853,6 +855,13 @@ function renderAudience(audience: Audience) {
 }
 
 export function Documentation({ audience = "overview" }: { audience?: Audience }) {
+  const metadata: Record<Audience, [string, string]> = {
+    overview: ["AgentLeak documentation", "Learn how AgentLeak captures and audits AI agent execution traces across tools, memory, messages, logs, files and final output."],
+    developers: ["AgentLeak developer guide", "Install the AgentLeak Python SDK, capture agent traces, configure privacy detection and enforce deterministic CI policy gates."],
+    agents: ["AgentLeak instructions for autonomous agents", "Machine-oriented instructions for agents to register, self-test, inspect privacy findings, apply fixes and verify improvements."],
+    api: ["AgentLeak API reference", "AgentLeak REST API endpoints, authentication methods, request schemas and responses for privacy testing and autonomous agent self-improvement."],
+  }
+  usePageMeta(metadata[audience][0], metadata[audience][1])
   return (
     <div className="docs-shell">
       <DocHeader audience={audience} />

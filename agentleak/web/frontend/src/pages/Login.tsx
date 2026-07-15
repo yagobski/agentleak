@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Brand, ThemeSwitch, usePageMeta } from "@/features/SiteChrome"
 
 const auditRows = [
   ["01", "tool_response", "Customer record received", "source"],
@@ -41,21 +42,20 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
   }
 
   const isRegister = mode === "register"
+  usePageMeta(
+    isRegister ? "Create an AgentLeak account" : "Sign in to AgentLeak",
+    isRegister ? "Create your AgentLeak workspace for private, local-first AI agent audits." : "Sign in to your AgentLeak workspace and continue testing AI agent privacy.",
+    { noIndex: true },
+  )
 
   return (
     <div className="auth-shell min-h-screen">
       <nav className="auth-nav">
-        <Link to="/" className="cursor-brand">
-          <span className="cursor-brand-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>AGENTLEAK</span>
-        </Link>
+        <Brand />
         <div>
           <Link to="/docs">Docs</Link>
           <a href="/openapi.json">API</a>
+          <ThemeSwitch />
           <Link to={isRegister ? "/login" : "/register"}>{isRegister ? "Sign in" : "Create account"}</Link>
         </div>
       </nav>

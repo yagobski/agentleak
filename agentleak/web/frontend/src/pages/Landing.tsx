@@ -12,6 +12,7 @@ import {
   Trophy,
 } from "lucide-react"
 import { BrandLogo, ECOSYSTEM_LOGOS } from "@/features/BrandLogos"
+import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 import {
   AgentTerminal,
   Arrow,
@@ -26,6 +27,7 @@ import {
   FAQ_ITEMS,
   FaqItem,
   REPO_URL,
+  SITE_URL,
   SiteFooter,
   SiteNav,
   usePageMeta,
@@ -63,10 +65,10 @@ function HeroPlatform() {
       </div>
       <div className="cursor-app-body">
         <aside className="cursor-app-side">
-          <b className="cursor-app-brand">AGENTLEAK<small>Agent privacy testing</small></b>
+          <div className="cursor-app-brand"><AgentLeakLogo className="agentleak-logo-preview" label="" /><small>Agent privacy testing</small></div>
           <small>Platform</small>
           <button type="button" data-active={view === "Dashboard"} onClick={() => setView("Dashboard")}><LayoutDashboard /> Dashboard</button>
-          <button type="button" data-active={view === "Runs"} onClick={() => setView("Runs")}><FolderKanban /> Projects</button>
+          <button type="button" data-active={view === "Runs"} onClick={() => setView("Runs")}><FolderKanban /> Runs</button>
           <button type="button"><FlaskConical /> Playground</button>
           <button type="button" data-active={view === "Leaderboard"} onClick={() => setView("Leaderboard")}><Trophy /> Leaderboard</button>
           <button type="button"><Library /> Scenarios</button>
@@ -87,6 +89,13 @@ function HeroPlatform() {
                 <div><small>Runs <Activity /></small><strong>128</strong><span>Analyses stored</span></div>
                 <div><small>Avg risk index <Gauge /></small><strong>0.24</strong><span>Conditional pass</span></div>
                 <div><small>Blocked runs <ShieldAlert /></small><strong>3</strong><span>Would fail a CI gate</span></div>
+              </div>
+              <div className="cursor-app-chart" aria-label="AgentRisk trend over the last 30 runs">
+                <header><span>AgentRisk trend</span><small>30 runs · lower is safer</small></header>
+                <svg viewBox="0 0 800 90" preserveAspectRatio="none" aria-hidden="true">
+                  <path className="cursor-app-chart-fill" d="M0 72 L55 68 L110 74 L165 59 L220 63 L275 50 L330 56 L385 44 L440 48 L495 35 L550 40 L605 28 L660 32 L715 21 L800 12 L800 90 L0 90 Z" />
+                  <path className="cursor-app-chart-line" d="M0 72 L55 68 L110 74 L165 59 L220 63 L275 50 L330 56 L385 44 L440 48 L495 35 L550 40 L605 28 L660 32 L715 21 L800 12" />
+                </svg>
               </div>
               <div className="cursor-app-columns">
                 <div className="cursor-app-runs">
@@ -162,30 +171,84 @@ function HeroPlatform() {
   )
 }
 
-// "Wherever your agents run" — parallel to Cursor's four-surface panel.
-const SURFACES = [
-  ["CLI", "agentleak run --trace run.json in any shell or Makefile, exit code gates your build.", ["$ agentleak run --trace run.json", "AgentRisk 0.38 · 2 exposures", "exit 1 · policy failed"]],
-  ["CI", "A required GitHub / GitLab check. A crossing blocks the merge with the trace attached.", ["✓ build", "✓ tests", "✗ AgentLeak / privacy-gate"]],
-  ["SDK", "Wrap any framework run with the Python client and score it inline before you ship.", ["from agentleak import analyze", "report = analyze(trace)", "report.risk_index  # 0.38"]],
-  ["Agent API", "Autonomous agents onboard, self-test and fix in a loop, with no browser and no human.", ["POST /api/agent/onboard", "POST /api/selftest", "POST /api/agent/improve"]],
-] as const
+const STAY_AHEAD_STEPS = ["Capture", "Detect", "Explain", "Enforce"] as const
 
-function WhereverSection() {
+function StayAheadSection() {
+  const reducedMotion = usePrefersReducedMotion()
+  const [step, setStep] = useState(reducedMotion ? 3 : 0)
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setStep(3)
+      return
+    }
+    const timer = window.setInterval(() => setStep((current) => (current + 1) % STAY_AHEAD_STEPS.length), 2100)
+    return () => window.clearInterval(timer)
+  }, [reducedMotion])
+
   return (
-    <section className="cursor-surfaces">
+    <section className="cursor-stay-ahead">
       <header>
-        <p className="cursor-eyebrow">Wherever your agents run</p>
-        <h2>Test from the CLI, CI, an SDK or the agent API.</h2>
-        <Link className="cursor-textlink" to="/docs">Explore the integrations <Arrow /></Link>
+        <p className="cursor-eyebrow">Stay ahead of every disclosure</p>
+        <h2>Detect the leak, explain the score, stop the release.</h2>
       </header>
-      <div className="cursor-surface-grid">
-        {SURFACES.map(([title, blurb, lines]) => (
-          <article key={title}>
-            <h3>{title}</h3>
-            <p>{blurb}</p>
-            <code>{lines.map((line, index) => <span key={index}>{line}</span>)}</code>
-          </article>
-        ))}
+      <div className="cursor-stay-grid" data-step={step}>
+        <article>
+          <div className="cursor-stay-copy">
+            <h3>See the leak inside the run</h3>
+            <p>Follow sensitive values through tools, memory, messages, logs and files, even when the final answer is clean.</p>
+            <Link to="/features/trace-analysis">Explore trace analysis <Arrow /></Link>
+          </div>
+          <div className="cursor-stay-stage cursor-stay-trace" aria-label={`Trace analysis: ${STAY_AHEAD_STEPS[step]}`}>
+            <header><span>run_2048.trace</span><b>{step < 2 ? "analyzing" : "2 disclosures"}</b></header>
+            {[
+              ["tool_response", "customer record received", "source"],
+              ["tool_call", "account_id sent to calendar", "L3"],
+              ["shared_memory", "identifier persisted", "L3"],
+              ["final_output", "customer answer is clean", "clean"],
+            ].map(([channel, detail, level], index) => (
+              <div key={channel} data-visible={step >= Math.min(index, 2)} data-hot={step >= 2 && level === "L3"}>
+                <i>{index + 1}</i><span><b>{channel}</b><small>{detail}</small></span><em>{level}</em>
+              </div>
+            ))}
+            <footer><span /><b>{step < 2 ? "following data flow" : "leak path reconstructed"}</b></footer>
+          </div>
+        </article>
+
+        <article>
+          <div className="cursor-stay-copy">
+            <h3>Know exactly why risk changed</h3>
+            <p>AgentRisk is deterministic and severity-weighted. Every point traces back to concrete evidence your team can inspect.</p>
+            <Link to="/features/agentrisk">Understand AgentRisk <Arrow /></Link>
+          </div>
+          <div className="cursor-stay-stage cursor-stay-risk" aria-label={`AgentRisk calculation: ${STAY_AHEAD_STEPS[step]}`}>
+            <header><span>AgentRisk v1</span><b>deterministic</b></header>
+            <div className="cursor-stay-risk-score"><small>Privacy score</small><strong>{step < 2 ? "100" : "62"}</strong><span>/ 100</span></div>
+            <div className="cursor-stay-risk-bar"><i style={{ width: step < 2 ? "100%" : "62%" }} /></div>
+            <dl>
+              <div data-active={step >= 2}><dt>account_id</dt><dd>L3 · shared_memory</dd></div>
+              <div data-active={step >= 2}><dt>email</dt><dd>L2 · tool_call</dd></div>
+            </dl>
+            <footer><code>RI = WSL / rho(S)</code><span>{step < 2 ? "waiting for findings" : "RI 0.38"}</span></footer>
+          </div>
+        </article>
+
+        <article>
+          <div className="cursor-stay-copy">
+            <h3>Turn privacy into a release gate</h3>
+            <p>Run AgentLeak in any CI system. A policy crossing blocks the merge and attaches the exact remediation.</p>
+            <Link to="/features/ci-gate">See the CI policy gate <Arrow /></Link>
+          </div>
+          <div className="cursor-stay-stage cursor-stay-ci" aria-label={`CI privacy gate: ${STAY_AHEAD_STEPS[step]}`}>
+            <header><span>release-42</span><b>required checks</b></header>
+            {["Build", "Unit tests", "Agent trace", "AgentLeak privacy gate"].map((label, index) => {
+              const complete = step >= Math.min(index, 2)
+              const failed = index === 3 && step === 3
+              return <div key={label} data-complete={complete} data-failed={failed}><i>{failed ? "!" : complete ? "✓" : "·"}</i><b>{label}</b><span>{failed ? "failed" : complete ? "passed" : "waiting"}</span></div>
+            })}
+            <footer data-blocked={step === 3}><b>{step === 3 ? "Merge blocked" : "Checking policy"}</b><span>{step === 3 ? "Redact account_id before shared_memory" : "Privacy score must remain above 80"}</span></footer>
+          </div>
+        </article>
       </div>
     </section>
   )
@@ -195,6 +258,21 @@ export function Landing() {
   usePageMeta(
     "AgentLeak · Privacy testing for AI agents",
     "AgentLeak replays the whole agent execution trace, scores every internal channel with AgentRisk, and returns the exact fix. Open source, MIT, runs 100% local.",
+    {
+      structuredData: {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "AgentLeak",
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Linux, macOS, Windows",
+        description: "Open-source privacy testing for AI agents across tool calls, memory, messages, logs, files and final output.",
+        url: SITE_URL,
+        downloadUrl: REPO_URL,
+        license: "https://opensource.org/license/mit",
+        isAccessibleForFree: true,
+        codeRepository: REPO_URL,
+      },
+    },
   )
   return (
     <div className="cursor-site">
@@ -282,7 +360,7 @@ export function Landing() {
           <div className="cursor-feature-visual"><CIGateDemo /></div>
         </section>
 
-        <WhereverSection />
+        <StayAheadSection />
 
         <section className="cursor-feature cursor-feature-reverse">
           <div className="cursor-feature-copy">

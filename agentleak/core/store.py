@@ -148,15 +148,6 @@ class Store:
             )
             c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
             c.execute(
-                """CREATE TABLE IF NOT EXISTS user_settings (
-                    user_id TEXT NOT NULL,
-                    key TEXT NOT NULL,
-                    value TEXT NOT NULL DEFAULT '',
-                    PRIMARY KEY (user_id, key),
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                )"""
-            )
-            c.execute(
                 """CREATE TABLE IF NOT EXISTS code_scans (
                     id TEXT PRIMARY KEY,
                     project_id TEXT NOT NULL,
@@ -230,21 +221,6 @@ class Store:
                 c.execute("UPDATE users SET is_admin=1 WHERE id=?", (first["id"],))
         if "disabled" not in user_cols:
             c.execute("ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0")
-        # Per-owner metering for the free-tier quota (added in 0.11). A separate,
-        # FK-free table so account-level actions (e.g. the project-less
-        # playground analysis) can be counted without a project row.
-        c.execute(
-            """CREATE TABLE IF NOT EXISTS usage_events (
-                id TEXT PRIMARY KEY,
-                created_at REAL NOT NULL,
-                owner_id TEXT NOT NULL,
-                endpoint TEXT NOT NULL DEFAULT ''
-            )"""
-        )
-        c.execute(
-            "CREATE INDEX IF NOT EXISTS idx_usage_events_owner "
-            "ON usage_events(owner_id, created_at)"
-        )
 
     # -- users & sessions ----------------------------------------------
     def create_user(self, email: str, password: str, *, name: str = "") -> dict[str, Any]:
@@ -358,26 +334,6 @@ class Store:
         with self._conn() as c:
             c.execute("DELETE FROM sessions WHERE token=?", (token,))
 
-    # -- per-user settings (default model key, preferences) --------------
-    def set_user_setting(self, user_id: str, key: str, value: str) -> None:
-        with self._conn() as c:
-            c.execute(
-                "INSERT OR REPLACE INTO user_settings (user_id, key, value) VALUES (?,?,?)",
-                (user_id, key, value),
-            )
-
-    def get_user_setting(self, user_id: str, key: str, default: str = "") -> str:
-        with self._conn() as c:
-            row = c.execute(
-                "SELECT value FROM user_settings WHERE user_id=? AND key=?", (user_id, key)
-            ).fetchone()
-        return str(row["value"]) if row else default
-
-    def delete_user_settings(self, user_id: str, *keys: str) -> None:
-        with self._conn() as c:
-            for key in keys:
-                c.execute("DELETE FROM user_settings WHERE user_id=? AND key=?", (user_id, key))
-
     @staticmethod
     def _user_row(row: sqlite3.Row) -> dict[str, Any]:
         keys = row.keys()
@@ -413,8 +369,7 @@ class Store:
         self, uid: str, *, is_admin: bool | None = None, disabled: bool | None = None
     ) -> dict[str, Any] | None:
         """Update the admin/disabled flags. Disabling also revokes sessions."""
-        sets: list[str] = []
-        vals: list[Any] = []
+        sets, vals = [], []
         if is_admin is not None:
             sets.append("is_admin=?")
             vals.append(int(is_admin))
@@ -485,40 +440,11 @@ class Store:
         Every hit to an agent-facing endpoint (register/code/selftest/
         improve/status) is recorded here so admins can see how much (and how)
         agents are actually using the platform, distinct from human UI runs.
-        This is monitoring only — free-tier quota is metered separately via
-        :meth:`meter_usage` so read-only and delegating endpoints don't
-        double-count.
         """
         with self._conn() as c:
             c.execute(
                 "INSERT INTO api_usage (id, created_at, project_id, endpoint) VALUES (?,?,?,?)",
                 (_new_id("usage"), _now(), project_id, endpoint),
-            )
-
-    def meter_usage(self, owner_id: str, endpoint: str) -> None:
-        """Record one billable action for ``owner_id`` (quota accounting).
-
-        Account-keyed and FK-free, so it also works for project-less actions
-        such as the stateless playground analysis.
-        """
-        if not owner_id:
-            return
-        with self._conn() as c:
-            c.execute(
-                "INSERT INTO usage_events (id, created_at, owner_id, endpoint) VALUES (?,?,?,?)",
-                (_new_id("use"), _now(), owner_id, endpoint),
-            )
-
-    def owner_usage_since(self, owner_id: str, since: float) -> int:
-        """Count an account's metered actions since ``since`` (unix seconds)."""
-        if not owner_id:
-            return 0
-        with self._conn() as c:
-            return int(
-                c.execute(
-                    "SELECT COUNT(*) n FROM usage_events WHERE owner_id=? AND created_at >= ?",
-                    (owner_id, since),
-                ).fetchone()["n"]
             )
 
     def admin_projects_usage(self, *, limit: int = 200) -> list[dict[str, Any]]:
@@ -1059,46 +985,6 @@ class Store:
             "blocked_runs": r["blocked"] or 0,
             "recent_runs": [self._run_summary(x) for x in recent],
         }
-
-    def leaderboard(self, *, owner_id: str | None = None) -> list[dict[str, Any]]:
-        """Rank the owner's agents by their latest AgentRisk result.
-
-        One entry per project that has at least one run, ordered by the most
-        recent run's Risk Index (lower is safer), privacy score as tiebreak.
-        """
-        with self._conn() as c:
-            where = "WHERE p.owner_id=?" if owner_id is not None else ""
-            args: tuple[Any, ...] = (owner_id,) if owner_id is not None else ()
-            rows = c.execute(
-                f"""SELECT p.id AS project_id, p.name, p.agent_type,
-                           r.risk_index, r.privacy_score, r.verdict, r.blocked,
-                           r.leaked AS leaked_secrets, r.created_at AS last_run_at,
-                           (SELECT COUNT(*) FROM runs x WHERE x.project_id = p.id) AS runs
-                    FROM projects p
-                    JOIN runs r ON r.id = (
-                        SELECT id FROM runs WHERE project_id = p.id
-                        ORDER BY created_at DESC LIMIT 1
-                    )
-                    {where}
-                    ORDER BY r.risk_index ASC, r.privacy_score DESC, p.name ASC""",
-                args,
-            ).fetchall()
-        entries = []
-        for i, row in enumerate(rows):
-            entries.append({
-                "rank": i + 1,
-                "project_id": row["project_id"],
-                "name": row["name"],
-                "agent_type": row["agent_type"],
-                "risk_index": row["risk_index"],
-                "privacy_score": row["privacy_score"],
-                "verdict": row["verdict"],
-                "blocked": bool(row["blocked"]),
-                "leaked_secrets": row["leaked_secrets"],
-                "runs": row["runs"],
-                "last_run_at": row["last_run_at"],
-            })
-        return entries
 
     # -- row mappers ----------------------------------------------------
     @staticmethod
