@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Activity, ArrowRight, FlaskConical, FolderKanban, Gauge, ShieldAlert, ShieldCheck, Trophy } from "lucide-react"
-import { api, type LeaderboardEntry, type Stats } from "@/lib/api"
+import { api, type Stats } from "@/lib/api"
 import { riVerdict, verdictColor } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PageHeader } from "@/layout/AppShell"
 import { DashboardCharts } from "@/features/Charts"
 import { RunRow } from "@/features/RunRow"
+
+type LeaderboardItem = {
+  project_id: string
+  rank: number
+  name: string
+  privacy_score: number
+  risk_index: number
+  verdict: "Pass" | "Conditional pass" | "High risk" | "Fail"
+}
 
 function SectionCard({
   label,
@@ -40,12 +49,31 @@ function SectionCard({
 
 export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [board, setBoard] = useState<LeaderboardEntry[]>([])
+  const [board, setBoard] = useState<LeaderboardItem[]>([])
   const nav = useNavigate()
 
   useEffect(() => {
     api.stats().then(setStats).catch(() => {})
-    api.leaderboard().then((b) => setBoard(b.entries)).catch(() => {})
+    api
+      .projects()
+      .then((projects) =>
+        projects
+          .filter((project) => project.avg_risk_index != null)
+          .sort((a, b) => (a.avg_risk_index ?? 1) - (b.avg_risk_index ?? 1))
+          .map((project, index) => {
+            const riskIndex = project.avg_risk_index ?? 1
+            return {
+              project_id: project.id,
+              rank: index + 1,
+              name: project.name,
+              risk_index: riskIndex,
+              privacy_score: Math.max(0, Math.min(100, Math.round((1 - riskIndex) * 100))),
+              verdict: riVerdict(riskIndex),
+            }
+          }),
+      )
+      .then(setBoard)
+      .catch(() => {})
   }, [])
 
   const avg = stats?.avg_risk_index
