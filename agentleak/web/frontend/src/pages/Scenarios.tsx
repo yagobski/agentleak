@@ -94,6 +94,7 @@ export function Scenarios() {
   }
 
   async function onDelete(s: Scenario) {
+    if (!window.confirm(`Delete scenario "${s.name ?? s.id}"? This cannot be undone.`)) return
     try {
       await api.deleteScenario(s.id)
       toast.success(`Deleted ${s.name ?? s.id}`)

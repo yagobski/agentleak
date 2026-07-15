@@ -78,7 +78,6 @@ function AppSidebar() {
               <Link to="/">
                 <div className="platform-brand">
                   <AgentLeakLogo className="agentleak-logo-platform" label="AgentLeak platform" />
-                  <span className="truncate text-xs text-muted-foreground">Agent privacy testing</span>
                 </div>
               </Link>
             </SidebarMenuButton>
