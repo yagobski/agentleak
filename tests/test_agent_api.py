@@ -160,9 +160,10 @@ def test_agent_register_rejects_bad_key(client: TestClient):
 
 def test_agent_code_scan_uses_card_source(client: TestClient, monkeypatch):
     """POST /api/agent/code with an empty body re-scans the card's repo."""
-    import agentleak.core.codescan as codescan
     import io
     import zipfile
+
+    import agentleak.core.codescan as codescan
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
@@ -259,8 +260,7 @@ def test_next_steps_empty_report():
 
 def test_agent_self_client_against_app(client: TestClient, monkeypatch):
     """AgentSelfClient drives the loop end-to-end through the HTTP surface."""
-    import json as _json
-    from agentleak.client import AgentSelfClient
+    from agentleak.client import AgentLeakError, AgentSelfClient
 
     _, key = _project_with_key(client)
     fresh = TestClient(client.app)
@@ -286,5 +286,5 @@ def test_agent_self_client_against_app(client: TestClient, monkeypatch):
     assert any(s["kind"] == "code_scan" for s in step["next_steps"])
     assert me.status()["progression"]["total_runs"] == 1
     # Guard: improve() needs a trace or scenario.
-    with pytest.raises(Exception):
+    with pytest.raises(AgentLeakError):
         me.improve()
