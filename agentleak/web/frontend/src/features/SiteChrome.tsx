@@ -118,6 +118,8 @@ export function Brand() {
 export const FEATURE_PAGES = [
   { slug: "trace-analysis", title: "Trace analysis", blurb: "Every channel of a run, audited" },
   { slug: "agentrisk", title: "AgentRisk scoring", blurb: "A deterministic score teams can explain" },
+  { slug: "code-scan", title: "Static code scan", blurb: "Catch secrets before the agent runs" },
+  { slug: "red-team", title: "Adversarial red-team", blurb: "Replay real attack classes, not just clean traces" },
   { slug: "ci-gate", title: "CI policy gate", blurb: "Privacy as a required check" },
   { slug: "agent-api", title: "Agent API", blurb: "Agents test and fix themselves" },
 ] as const
@@ -130,10 +132,10 @@ export const FAQ_ITEMS: readonly (readonly [string, string])[] = [
   ["Do I need to send data to a hosted model?", "No. Free detection (regex, Presidio, entropy, de-obfuscation) runs locally at no cost. The LLM-judge and live agent runs are bring-your-own-key, so the platform never spends its own money and never sees data you did not send it."],
   ["Which frameworks does it work with?", "Traces from LangChain, LangGraph, CrewAI, MCP servers and OpenTelemetry all normalize to one AgentLeak schema. Any OpenAI-style chat log is accepted directly, and a generic trace format covers everything else."],
   ["Is it free for autonomous agents?", "Yes. An agent can onboard in one call and use the free detection tiers within a generous monthly quota, with no human in the loop. Discovery is machine-readable at /llms.txt."],
-  ["How do I add it to CI?", "Run the CLI in any pipeline. It exits non-zero when a run crosses the policy you set for the project, so a failing privacy gate blocks the merge like any failing test. On GitHub or GitLab it reports back as a normal required status check with the trace attached."],
+  ["How do I add it to CI?", "Run the CLI in any pipeline with a --fail-under threshold. It exits non-zero when a run crosses the policy you set for the project, so GitHub Actions, GitLab CI or any runner treats it as a failing job automatically. Mark that job required in branch protection and the merge blocks itself \u2014 no bespoke GitHub or GitLab integration to install."],
   ["What happens to my traces and data?", "Nothing leaves your machine on the local and self-hosted paths. There is no telemetry and no phone-home. On the hosted instance, raw sensitive values are never stored: findings reference channels and severity, not the secrets themselves."],
   ["Can I self-host the whole platform?", "Yes. One docker compose command brings up the same platform the hosted instance runs, on your own infrastructure or in your VPC. Self-hosting removes the free-tier quota entirely."],
-  ["Which compliance frameworks does it map to?", "Each run carries a compliance posture across GDPR, Quebec Law 25, HIPAA and the OWASP LLM Top 10, so a finding is tied to the obligation it touches, not just a generic severity label."],
+  ["Which compliance frameworks does it map to?", "Each run carries a compliance posture across all 7 frameworks the scoring engine understands: GDPR, Quebec Law 25, NIST AI RMF, the OWASP LLM Top 10, the EU AI Act, HIPAA and PCI-DSS v4.0. A finding is tied to the specific obligation it touches, not a generic severity label \u2014 this is a mapping to help a review, not a certification or legal attestation of compliance."],
   ["What counts against the free quota?", "Only metered actions on the hosted platform: a run analysis, a live agent turn or a self-test call. Local CLI and self-hosted usage have no quota at all, and reading reports or browsing the dashboard never counts."],
   ["Can I bring my own detection rules or PII types?", "Yes. The regex and entropy detectors accept a project-level ruleset, so you can add a proprietary ID format or an internal secret pattern alongside the built-in email, key and PHI/PII detectors."],
   ["Does it handle multi-agent and A2A traces?", "Yes. Inter-agent messages and hand-offs are their own channel, so a leak that only appears when one agent hands a task to another is caught the same way a leaked tool call would be."],

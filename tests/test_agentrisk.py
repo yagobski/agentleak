@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from agentleak.core.agentrisk import (
     DATA_TYPE_LEVELS,
+    VaultScopeError,
     compute_agentrisk,
     dominates,
     level_for,
@@ -82,6 +85,20 @@ def test_rank_robustness_dominance():
         assert ra > rb
 
 
+def test_rank_robust_flag_and_weight_validation():
+    # Every accepted report satisfies Proposition 5's strictly-positive,
+    # four-tier weight assumption.
+    findings = [mk("log", "a", 4, "a")]
+    positive = compute_agentrisk(findings, vault={4: 1}, weights=(1, 2, 3, 4))
+    assert positive.rank_robust is True
+    with pytest.raises(ValueError, match="strictly positive"):
+        compute_agentrisk(findings, vault={4: 1}, weights=(0, 2, 3, 4))
+    with pytest.raises(ValueError, match="strictly positive"):
+        compute_agentrisk(findings, vault={4: 1}, weights=(1, 2, 3, -4))
+    with pytest.raises(ValueError, match="exactly four"):
+        compute_agentrisk(findings, vault={4: 1}, weights=(1, 2, 3))
+
+
 # -- Counting convention & channels -------------------------------------
 def test_distinct_secrets_not_occurrences():
     # The same secret on three channels counts once in the global WSL.
@@ -124,9 +141,69 @@ def test_level_mapper_grounds_in_taxonomy():
     assert DATA_TYPE_LEVELS["person_name"] == 1
 
 
+def test_level_mapper_includes_bearer_token_and_nino_as_l4():
+    # Bearer tokens are live-access credentials (like api_key/jwt); UK NINOs are
+    # a national identifier equivalent to SSN/SIN for identity theft purposes.
+    assert DATA_TYPE_LEVELS["bearer_token"] == 4
+    assert DATA_TYPE_LEVELS["national_insurance_number"] == 4
+
+
 def test_level_for_overrides_and_fallback():
     assert level_for("person_name", Severity.MEDIUM) == 1
     assert level_for("person_name", Severity.MEDIUM, {"person_name": 4}) == 4
     # Unknown type falls back to the detector severity.
     assert level_for("mystery", Severity.CRITICAL) == 4
     assert level_for("mystery", Severity.LOW) == 1
+
+
+# -- Explicit vault validation (fail loudly, never a misleading RI) -----
+def test_explicit_vault_zero_rho_s_with_leaks_raises():
+    # WSL > 0 but the explicit vault claims rho_s <= 0 -> must not silently
+    # report RI=0 (a false "clean" read); fail explicitly instead.
+    findings = [mk("log", "ssn", 4, "x")]
+    with pytest.raises(VaultScopeError, match=r"\u03c1_S=0"):
+        compute_agentrisk(findings, vault={})
+
+
+def test_explicit_vault_raw_zero_rho_s_with_leaks_raises():
+    findings = [mk("log", "ssn", 4, "x")]
+    with pytest.raises(VaultScopeError):
+        compute_agentrisk(findings, vault=0)
+
+
+def test_explicit_vault_undersized_raises_and_preserves_bounded_ri():
+    # WSL > rho_s (an undersized/misconfigured vault) must fail explicitly
+    # rather than silently letting RI exceed 1 and break boundedness.
+    findings = [mk("log", "ssn", 4, "x"), mk("log", "health_identifier", 4, "y")]
+    with pytest.raises(VaultScopeError, match="undersized"):
+        compute_agentrisk(findings, vault={4: 1})  # rho_s=4 < wsl=8
+
+
+def test_explicit_vault_negative_level_count_raises():
+    findings = [mk("log", "ssn", 4, "x")]
+    with pytest.raises(VaultScopeError):
+        compute_agentrisk(findings, vault={4: -1})
+
+
+def test_explicit_vault_negative_raw_rho_s_raises():
+    findings: list[Finding] = []
+    with pytest.raises(VaultScopeError):
+        compute_agentrisk(findings, vault=-5)
+
+
+def test_explicit_vault_empty_and_clean_is_fine():
+    # No leaks and an empty/zero vault is a valid (if degenerate) audit —
+    # nothing leaked, so RI=0 is not misleading here.
+    r = compute_agentrisk([], vault={})
+    assert r.rho_s == 0
+    assert r.wsl == 0
+    assert r.ri_global == 0.0
+
+
+def test_explicit_vault_exactly_covers_wsl_is_ri_one():
+    # The boundary case: WSL == rho_s must succeed and give RI = 1.0, not raise.
+    findings = [mk("log", "ssn", 4, "x")]
+    r = compute_agentrisk(findings, vault={4: 1})
+    assert r.rho_s == 4
+    assert r.wsl == 4
+    assert r.ri_global == 1.0

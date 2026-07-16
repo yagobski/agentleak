@@ -29,7 +29,7 @@ const PUBLICATIONS: Publication[] = [
     year: "2026",
     title: "AgentLeak: measuring privacy leakage across agent execution traces",
     summary:
-      "The primary benchmark. Defines the six-channel trace model, the L1 to L4 severity levels and the AgentRisk score, evaluated across 36 scenarios in healthcare, finance, legal and corporate domains at adversary levels A0-A2. This tool is the open implementation of that work.",
+      "The primary benchmark. Defines the 8-channel trace model, the L1 to L4 severity levels and the AgentRisk score, evaluated across 36 scenarios in healthcare, finance, legal and corporate domains at adversary levels A0-A2. This tool is the open implementation of that work.",
     href: PAPER_URL,
     cta: "Read on arXiv",
   },
@@ -67,16 +67,16 @@ const PUBLICATIONS: Publication[] = [
     id: "Compliance",
     kind: "Compliance mapping",
     year: "2026",
-    title: "From severity level to legal obligation: GDPR, Law 25, HIPAA and the OWASP LLM Top 10",
+    title: "From severity level to legal obligation: GDPR, Law 25, HIPAA, the OWASP LLM Top 10 and more",
     summary:
-      "Every finding is tied to the regulatory or standards obligation it touches, not a generic red/yellow/green badge, so a compliance review can trace a score straight back to the clause it maps to.",
+      "Every finding is tied to one of 7 mapped frameworks (GDPR, Quebec Law 25, NIST AI RMF, the OWASP LLM Top 10, the EU AI Act, HIPAA and PCI-DSS v4.0), not a generic red/yellow/green badge, so a compliance review can trace a score straight back to the clause it maps to. This is a mapping to help a review, not a certification.",
     href: "/docs/api",
     cta: "See the compliance docs",
   },
 ]
 
 const RESEARCH_STATS: readonly [string, string][] = [
-  ["6", "channels per trace"],
+  ["8", "channels per trace"],
   ["4", "severity levels, L1 to L4"],
   ["36", "benchmark scenarios"],
   ["4", "domains covered"],
@@ -88,14 +88,14 @@ const CITATION = "@misc{agentleak2026,\n  title  = {AgentLeak: measuring privacy
 export function Research() {
   usePageMeta(
     "Research · AgentLeak",
-    "The published benchmark and methodology behind AgentLeak and AgentRisk: the six-channel trace model, L1 to L4 severity levels and the deterministic privacy risk index.",
+    "The published benchmark and methodology behind AgentLeak and AgentRisk: the 8-channel trace model, L1 to L4 severity levels and the deterministic privacy risk index.",
     {
       type: "article",
       structuredData: {
         "@context": "https://schema.org",
         "@type": "ScholarlyArticle",
         headline: "AgentLeak: measuring privacy leakage across agent execution traces",
-        description: "The benchmark and methodology behind the six-channel AgentLeak model and deterministic AgentRisk privacy score.",
+        description: "The benchmark and methodology behind the 8-channel AgentLeak model and deterministic AgentRisk privacy score.",
         url: `${SITE_URL}/research`,
         sameAs: PAPER_URL,
         datePublished: "2026",
@@ -170,11 +170,11 @@ export function Research() {
         <section className="cursor-final-cta">
           <div className="cursor-final-inner">
             <p className="cursor-eyebrow">From paper to practice</p>
-            <h2>Run the benchmark against your own agent.</h2>
-            <p>Every scenario, severity level and score in the paper ships in the open-source tool. Reproduce the benchmark locally, then point it at your agent.</p>
+            <h2>Run the benchmark model against your own agent.</h2>
+            <p>The same domains, severity levels and AgentRisk scoring method from the paper are available in the open-source tool, which ships 10 example scenarios (5 with an injected leak, 5 clean controls) so you can see the model work before pointing it at your own agent. The full 36-scenario benchmark is a separate research dataset.</p>
             <div className="cursor-actions">
-              <Link className="cursor-button cursor-button-dark" to="/register">Start testing AgentLeak <Arrow /></Link>
-              <Link className="cursor-button cursor-button-light" to="/docs">Read the documentation <Arrow /></Link>
+              <Link className="cursor-button cursor-button-dark" to="/register">Create a workspace <Arrow /></Link>
+              <Link className="cursor-button cursor-button-light" to="/docs/agents">Agents: discover and onboard <Arrow /></Link>
             </div>
           </div>
         </section>

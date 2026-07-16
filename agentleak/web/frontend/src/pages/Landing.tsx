@@ -289,9 +289,13 @@ export function Landing() {
               fix to you or to your agent.
             </p>
             <div className="cursor-actions">
-              <Link className="cursor-button cursor-button-dark" to="/register">Run your first audit <Arrow /></Link>
-              <Link className="cursor-button cursor-button-light" to="/docs">Read the documentation <Arrow /></Link>
+              <Link className="cursor-button cursor-button-dark" to="/register">Create a workspace <Arrow /></Link>
+              <Link className="cursor-button cursor-button-light" to="/docs/agents">Agents: discover and onboard <Arrow /></Link>
             </div>
+            <p className="cursor-hero-subactions">
+              Human, browser-based signup. Building an agent instead? Read the{" "}
+              <Link to="/docs/agents">machine API quickstart</Link>.
+            </p>
           </div>
           <HeroPlatform />
         </section>
@@ -313,11 +317,11 @@ export function Landing() {
           </header>
           <div>
             {[
-              ["trace-analysis", "Trace analysis", "Replay any run across six channels (tools, memory, messages, logs, files, output) and find every exposure."],
+              ["trace-analysis", "Trace analysis", "Replay any run across 8 normalized channels (user input, tool calls, tool responses, inter-agent messages, shared memory, logs, generated files, final output) and find every exposure."],
               ["agentrisk", "AgentRisk scoring", "A deterministic, severity-weighted risk index from 0 to 1 and a 0 to 100 privacy score. No model decides the number."],
-              ["trace-analysis", "Static code scan", "Catch hardcoded secrets, PII in logs and sensitive values sent to third parties before the agent even runs."],
-              ["agentrisk", "Adversarial red-team", "Replay prompt-injection and exfiltration attack classes against your agent, scripted or live."],
-              ["ci-gate", "CI policy gate", "Set a boundary per project. A crossing blocks the build, with the trace attached as evidence."],
+              ["code-scan", "Static code scan", "Catch hardcoded secrets, PII in logs and sensitive values sent to third parties before the agent even runs."],
+              ["red-team", "Adversarial red-team", "Replay prompt-injection and exfiltration attack classes against your agent, scripted or live."],
+              ["ci-gate", "CI policy gate", "Set a boundary per project. A crossing fails the job, and a required job blocks the merge."],
               ["agent-api", "Agent self-serve API", "Agents onboard in one call, test themselves and follow a bounded remediation loop, with no human in the middle."],
             ].map(([slug, title, description], index) => (
               <Link className="cursor-cap-card" to={`/features/${slug}`} key={title + index}>
@@ -330,12 +334,43 @@ export function Landing() {
           </div>
         </section>
 
+        <section className="cursor-proof-metrics" aria-label="Real numbers behind the platform">
+          <header>
+            <p className="cursor-eyebrow">Real numbers, not marketing</p>
+            <h2>What ships in the box, and what's in the published benchmark.</h2>
+          </header>
+          <div className="cursor-proof-metrics-grid">
+            <div><strong>8</strong><span>normalized channels every trace is scored across</span></div>
+            <div><strong>10</strong><span>built-in scenarios, 5 of them clean controls with no injected leak</span></div>
+            <div><strong>36</strong><span>scenarios in the published benchmark (a superset, not what ships by default)</span></div>
+            <div><strong>32</strong><span>attack classes across 6 families, from passive A0 to adversarial A2</span></div>
+            <div><strong>7</strong><span>compliance frameworks mapped per finding, none of them a certification</span></div>
+          </div>
+          <p className="cursor-proof-metrics-note">
+            The 10 bundled scenarios (healthcare, finance, HR, education and customer support, each with a
+            leaky and a clean version) ship with the open-source tool so you can see the model work in minutes.
+            The 36-scenario benchmark is the larger, separate research dataset behind the paper — see{" "}
+            <Link to="/research">the research page</Link> for how the two relate.
+          </p>
+        </section>
+
         <section className="cursor-feature cursor-feature-lead" id="workflow">
           <div className="cursor-feature-copy">
             <p className="cursor-eyebrow">Complete trace analysis</p>
             <h2>The final output can be clean while the system is leaking.</h2>
             <p>Output-only checks miss what happens inside the run. AgentLeak follows sensitive values through every internal channel, reconstructs where exposure happened, assigns each finding a severity level from L1 to L4, and returns the exact remediation: prose for your team, and structured hints an agent can apply.</p>
             <Link className="cursor-textlink" to="/features/trace-analysis">Understand the trace model <Arrow /></Link>
+            <figure className="cursor-diagram cursor-diagram-iceberg">
+              <img
+                src="/assets/diagrams/hidden-data-iceberg.svg"
+                alt="An iceberg diagram: the visible tip above the waterline is the final answer a reviewer reads, while metadata, credentials, PII, regulated and third-party data sit hidden below the surface, inside tool calls, memory and logs."
+                width={300}
+                height={448}
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>What a transcript shows vs. what a full-trace audit finds: most exposure sits below the waterline, in channels a reviewer never reads.</figcaption>
+            </figure>
           </div>
           <div className="cursor-feature-visual"><RunReportDemo /></div>
         </section>
@@ -346,6 +381,17 @@ export function Landing() {
             <h2>A score your team can explain.</h2>
             <p>Severity-weighted risk from 0 to 1, normalized against the audited sensitive vault. Deterministic and reproducible: the same trace always yields the same score, so a regression in CI means the agent changed, not the judge.</p>
             <Link className="cursor-textlink" to="/features/agentrisk">Learn how scoring works <Arrow /></Link>
+            <figure className="cursor-diagram">
+              <img
+                src="/assets/diagrams/deterministic-detection-trace.svg"
+                alt="An annotated agent trace where regex and model-based detectors label spans of a conversation as name, location, money, SIN and date of birth, each pointing back to the exact text that triggered the finding."
+                width={420}
+                height={309}
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Every finding points back to the exact span and channel that produced it — deterministic detection, not a model's opinion.</figcaption>
+            </figure>
           </div>
           <div className="cursor-feature-visual"><PlatformWorkbench /></div>
         </section>
@@ -368,6 +414,17 @@ export function Landing() {
             <h2>Agents can discover, test and improve themselves.</h2>
             <p>llms.txt discovery, one-call onboarding, scoped project keys and machine-readable remediation hints. An agent can find AgentLeak, audit itself and fix its own leaks in a bounded loop, with no browser and no human in the middle.</p>
             <Link className="cursor-textlink" to="/features/agent-api">Read agent instructions <Arrow /></Link>
+            <figure className="cursor-diagram cursor-diagram-agent">
+              <img
+                src="/assets/diagrams/agent-coverage-privacy-ai.svg"
+                alt="A hub-and-spoke diagram of an agent's privacy surface: a central shield connects to smart language processing, AI-powered insights, precision PII detection, contextual data analysis and advanced data classification."
+                width={420}
+                height={375}
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>The same coverage an agent gets over its own execution: language, insights, PII detection, context and classification, all reachable from one scoped key.</figcaption>
+            </figure>
           </div>
           <div className="cursor-feature-visual"><AgentTerminal /></div>
         </section>
@@ -414,9 +471,12 @@ export function Landing() {
             <h2>Test the path, not only the answer.</h2>
             <p>Create a local workspace, run a bundled scenario, then wire AgentLeak into CI or let your agent onboard itself.</p>
             <div className="cursor-actions">
-              <Link className="cursor-button cursor-button-dark" to="/register">Start testing AgentLeak <Arrow /></Link>
-              <a className="cursor-button cursor-button-light" href={REPO_URL}>View source <Arrow /></a>
+              <Link className="cursor-button cursor-button-dark" to="/register">Create a workspace <Arrow /></Link>
+              <Link className="cursor-button cursor-button-light" to="/docs/agents">Agents: discover and onboard <Arrow /></Link>
             </div>
+            <p className="cursor-final-subactions">
+              Prefer the source? <a href={REPO_URL}>View it on GitHub</a>.
+            </p>
           </div>
         </section>
       </main>

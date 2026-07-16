@@ -232,3 +232,74 @@ def test_compare_missing_run_exits_1(tmp_path):
     result = runner.invoke(app, ["compare", "run_missing_a", "run_missing_b", "--db", db_path])
     assert result.exit_code == 1
     assert "not found" in result.stdout.lower()
+
+
+# -- scan (static code privacy scan): clear-error paths -------------------
+
+def test_scan_directory_reports_score(tmp_path):
+    (tmp_path / "agent.py").write_text("print('hello')\n")
+    result = runner.invoke(app, ["scan", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "Code privacy score" in result.stdout
+
+
+def test_scan_missing_zip_file_clear_error(tmp_path):
+    missing = tmp_path / "does-not-exist.zip"
+    result = runner.invoke(app, ["scan", str(missing)])
+    assert result.exit_code == 1
+    assert "✗" in result.stdout
+    assert "No such file" in result.stdout or "does-not-exist.zip" in result.stdout
+
+
+def test_scan_invalid_zip_content_clear_error(tmp_path):
+    # A .zip-named file that isn't actually a zip archive.
+    bad_zip = tmp_path / "broken.zip"
+    bad_zip.write_bytes(b"this is not a zip file at all")
+    result = runner.invoke(app, ["scan", str(bad_zip)])
+    assert result.exit_code == 1
+    assert "not a valid zip archive" in result.stdout
+
+
+def test_scan_github_403_clear_error(monkeypatch):
+    import io
+    import urllib.error
+
+    def fake_urlopen(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", {}, io.BytesIO(b""))
+
+    monkeypatch.setattr("agentleak.core.codescan.urllib.request.urlopen", fake_urlopen)
+    result = runner.invoke(app, ["scan", "--repo", "acme/private-repo"])
+    assert result.exit_code == 1
+    assert "403" in result.stdout
+    assert "acme/private-repo" in result.stdout
+
+
+def test_scan_github_unreachable_clear_error(monkeypatch):
+    import urllib.error
+
+    def fake_urlopen(req, timeout=None):
+        raise urllib.error.URLError("Name or service not known")
+
+    monkeypatch.setattr("agentleak.core.codescan.urllib.request.urlopen", fake_urlopen)
+    result = runner.invoke(app, ["scan", "--repo", "acme/bot"])
+    assert result.exit_code == 1
+    assert "Could not reach GitHub" in result.stdout
+
+
+def test_scan_github_invalid_repo_name_clear_error():
+    result = runner.invoke(app, ["scan", "--repo", "not a repo name !!!"])
+    assert result.exit_code == 1
+    assert "owner/name" in result.stdout
+
+
+def test_scan_nonexistent_directory_clear_error(tmp_path):
+    result = runner.invoke(app, ["scan", str(tmp_path / "nope")])
+    assert result.exit_code == 1
+    assert "Not a directory" in result.stdout
+
+
+def test_scan_fail_under_exits_1(tmp_path):
+    (tmp_path / "leak.py").write_text('password = "hunter2secret99"\n')
+    result = runner.invoke(app, ["scan", str(tmp_path), "--fail-under", "100"])
+    assert result.exit_code == 1
+    assert "fail-under" in result.stdout

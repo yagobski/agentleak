@@ -274,9 +274,10 @@ hardcodes the framework list — selects come from `/api/meta`, snippets from
 ## 6d. The scenario library (upload, packs, conversion)
 
 The **Scenarios** page is a managed library, not a static list. It merges the
-five packaged `Scenario`s (read-only, `source: builtin`) with user scenarios
-persisted in the store (`source: custom` for uploads, `source: imported` for
-pack imports).
+ten packaged `Scenario`s (read-only, `source: builtin`) — a leak demo and a
+clean control per domain, see `docs/scenarios.md` for the coverage matrix —
+with user scenarios persisted in the store (`source: custom` for uploads,
+`source: imported` for pack imports).
 
 - **Conversion** (`scenarios/convert.py`). The analyzer consumes *traces*, but
   external datasets don't carry one. `normalize_upload(data)` auto-detects the

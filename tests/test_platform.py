@@ -186,6 +186,42 @@ def test_compare_dominance(client: TestClient):
     assert res["dominance"] in {"a", "b", "neither"}
 
 
+def test_compare_incompatible_scopes_refuses_dominance(client: TestClient):
+    # Two projects audited against different explicit vault sizes: same scope
+    # label, different rho_s -> not a valid dominance comparison.
+    pid_small = client.post("/api/projects", json={
+        "name": "Small vault", "vault": {"mode": "explicit", "levels": {"4": 3}},
+    }).json()["id"]
+    pid_big = client.post("/api/projects", json={
+        "name": "Big vault", "vault": {"mode": "explicit", "levels": {"1": 5, "2": 3, "3": 2, "4": 1}},
+    }).json()["id"]
+    a = client.post(f"/api/projects/{pid_small}/runs", json={"scenario_id": "healthcare_patient_summary"}).json()
+    b = client.post(f"/api/projects/{pid_big}/runs", json={"scenario_id": "healthcare_patient_summary"}).json()
+    assert a["report"]["rho_s"] != b["report"]["rho_s"]
+
+    res = client.post("/api/compare", json={"a": a["id"], "b": b["id"]}).json()
+    assert res["comparable"] is False
+    assert res["dominance"] == "neither"
+    assert "rho_s" in res["reason"] or "scope" in res["reason"]
+
+
+def test_compare_matching_scopes_is_comparable(client: TestClient):
+    # Two runs of the same scenario under the same project (identical scope
+    # and rho_s) -> a valid, comparable dominance check.
+    pid = client.post("/api/projects", json={
+        "name": "Matching", "vault": {"mode": "explicit", "levels": {"1": 5, "2": 3, "3": 2, "4": 1}},
+    }).json()["id"]
+    a = client.post(f"/api/projects/{pid}/runs", json={"scenario_id": "healthcare_patient_summary"}).json()
+    b = client.post(f"/api/projects/{pid}/runs", json={"scenario_id": "healthcare_patient_summary"}).json()
+    assert a["report"]["scope_def"] == b["report"]["scope_def"]
+    assert a["report"]["rho_s"] == b["report"]["rho_s"]
+
+    res = client.post("/api/compare", json={"a": a["id"], "b": b["id"]}).json()
+    assert res["comparable"] is True
+    assert res["reason"] == ""
+    assert res["dominance"] in {"a", "b", "neither"}
+
+
 def test_stats_endpoint(client: TestClient):
     pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
     client.post(f"/api/projects/{pid}/runs", json={"scenario_id": "hr_employee_case"})
@@ -495,6 +531,8 @@ def test_redteam_live_calls_real_agent(client: TestClient, monkeypatch):
 def test_redteam_live_without_endpoint_400(client: TestClient, monkeypatch):
     """mode=live with no endpoint and no env key returns a helpful 400."""
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("AGENTLEAK_LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("AGENTLEAK_LLM_MODEL", raising=False)
     pid = client.post("/api/projects", json={"name": "RT-live-bad"}).json()["id"]
     resp = client.post(f"/api/projects/{pid}/redteam", json={"mode": "live", "n": 1})
     assert resp.status_code == 400

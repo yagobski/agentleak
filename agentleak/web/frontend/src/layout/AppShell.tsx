@@ -74,7 +74,7 @@ function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
+            <SidebarMenuButton asChild tooltip="AgentLeak">
               <Link to="/">
                 <div className="platform-brand">
                   <AgentLeakLogo className="agentleak-logo-platform" label="AgentLeak platform" />

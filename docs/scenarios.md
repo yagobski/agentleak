@@ -16,16 +16,72 @@ agentleak run --scenario all
 
 ## Built-in scenarios
 
-| ID | Domain | Demonstrates |
-| --- | --- | --- |
-| `healthcare_patient_summary` | healthcare | NAM identifier + diagnosis leaked to a tool and memory while the summary stays clean |
-| `finance_loan_review` | finance | account number, SSN, and an internal risk note crossing internal channels |
-| `hr_employee_case` | hr | salary, sick leave, and a disciplinary note spilling into memory and logs |
-| `education_document_publication` | education | student PII flowing into a file headed for public publication |
-| `customer_support_crm` | customer support | customer email/account/phone leaking via CRM tool calls and logs |
+Ten built-in scenarios ship today: one **leak** demonstration and one **clean
+control** per domain. This is a small, curated set for learning the tool and
+exercising the analyzer end-to-end — **it is not an exhaustive benchmark**.
+For broader adversarial coverage, import the **AgentLeak Bench** pack (see
+*Scenario packs* below), which spans 36 scenarios across more verticals and
+adversary levels.
+
+### Coverage matrix
+
+| ID | Domain | Outcome | Difficulty | Topology | Attack classes | Demonstrates |
+| --- | --- | --- | --- | --- | --- | --- |
+| `healthcare_patient_summary` | healthcare | leak | easy | multi_agent | F3.1, F3.5 | NAM identifier + diagnosis leaked to shared memory and logs while the summary stays clean |
+| `healthcare_clean_referral` | healthcare | clean | easy | **single_agent** | F3.1, F3.5 | Same record, single-agent flow — memory/logs/output stay identifier-free |
+| `finance_loan_review` | finance | leak | medium | multi_agent | F3.1, F4.1, F3.5 | account number, SSN, and an internal risk note crossing internal channels |
+| `finance_clean_review` | finance | clean | medium | multi_agent | F3.1, F4.1, F3.5 | Same pipeline — figures stay in the secured case file, only a case number crosses channels |
+| `hr_employee_case` | hr | leak | medium | multi_agent | F3.1, F3.5 | salary, sick leave, and a disciplinary note spilling into memory and logs |
+| `hr_clean_case` | hr | clean | hard | multi_agent | F3.1, F3.5 | Same handoff — salary/leave/disciplinary details never leave the restricted HR file |
+| `education_document_publication` | education | leak | hard | multi_agent | F3.1, F3.4 | student PII flowing into a file headed for public publication |
+| `education_clean_publication` | education | clean | medium | multi_agent | F3.1, F3.4 | Same pipeline — the artifact bound for the public website is genuinely redacted |
+| `customer_support_crm` | customer_support | leak | easy | multi_agent | F3.1, F4.1, F3.5 | customer email/account/phone leaking via CRM tool calls and logs |
+| `customer_support_clean_case` | customer_support | clean | easy | multi_agent | F3.1, F4.1, F3.5 | Same lookup — only a case reference crosses internal channels |
 
 Every bundled trace is **synthetic** — all names, numbers, and identifiers are
-fictional.
+fictional. Attack classes reference the taxonomy in
+[`agentleak/core/attacks.py`](../agentleak/core/attacks.py) (see
+[`docs/redteam.md`](redteam.md)); not every scenario maps cleanly onto it, so
+some scenarios carry an empty list.
+
+### What "clean control" means
+
+A **clean control** scenario proves the analyzer's baseline/disclosure
+distinction actually works: the sensitive record still arrives on a
+**baseline channel** (`tool_response` — what a tool handed back, or
+`user_input` — what the user supplied), so detectors legitimately fire there
+("detection in the vault"). But nothing crosses into a **disclosure channel**
+(`shared_memory`, `inter_agent_message`, `tool_call`, `log`,
+`generated_file`, `final_output`) — so the scored risk (`risk_index`, and
+`score.channel_risks`) is exactly zero. This is the mirror image of the leak
+demos: same domain, same vault, but the agent actually minimizes what it
+discloses.
+
+### What this set does — and doesn't — cover
+
+**Covered:** all five shipped domains, both outcomes per domain, both
+topologies (one single-agent clean control; the rest reflect the more
+realistic multi-agent orchestration pattern), and a difficulty spread from
+easy to hard. Leak channels exercised include shared memory, inter-agent
+messages, logs, tool calls, and generated files.
+
+**Not covered / explicit limitations:**
+
+- **Not exhaustive.** Ten scenarios cannot represent every industry,
+  language, or failure mode — they're worked examples, not a certification
+  suite. Use the AgentLeak Bench pack (36 scenarios) or your own uploads for
+  broader coverage.
+- **No legal or corporate built-ins.** Those verticals exist in the
+  AgentLeak Bench pack (imported, not built-in) rather than as hand-authored
+  examples here, to keep the built-in set small and maintainable.
+- **Single-agent topology is under-represented** (one clean control) because
+  the leak demos are deliberately modeled on realistic multi-agent
+  pipelines, where the interesting failures actually happen.
+- **`attack_classes` are illustrative, not a formal mapping.** They point at
+  the closest taxonomy entries; a scenario touching several channels may
+  still only list one or two representative classes.
+- **English only.** Detector dictionaries (e.g. health conditions, HR terms)
+  have partial French coverage, but scenario text itself is English.
 
 ## Anatomy of a scenario
 
@@ -41,8 +97,18 @@ Scenario(
         "Shared memory should not store raw identifiers.",
     ],
     example_trace="healthcare_trace.json",
+    expected_outcome="leak",    # "leak" | "clean"
+    difficulty="easy",          # "easy" | "medium" | "hard"
+    topology="multi_agent",     # "single_agent" | "multi_agent"
+    attack_classes=["F3.1", "F3.5"],  # optional refs into agentleak.core.attacks
 )
 ```
+
+`expected_outcome`, `difficulty`, `topology`, and `attack_classes` are
+additive metadata surfaced through `Scenario.to_dict()` and the
+`/api/scenarios` endpoints alongside the original fields — existing
+consumers that only read `id`/`domain`/`description`/`sensitive_data` are
+unaffected.
 
 ## Selecting scenarios from config
 
@@ -68,7 +134,7 @@ can be opened to inspect its trace and run with one click in the **Playground**
 
 Scenarios have three sources:
 
-- **Built-in** — the five packaged scenarios above (read-only).
+- **Built-in** — the ten packaged scenarios above (read-only).
 - **Custom** — anything you upload (below).
 - **Imported** — scenarios pulled in from a pack (below).
 

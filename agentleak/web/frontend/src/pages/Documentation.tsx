@@ -102,13 +102,74 @@ const RISK_FORMULA = [
   "",
   "privacy_score = round(100 * (1 - RI))",
 ].join("\n")
+const VAULT_YAML = [
+  "# agentleak.yaml \u2014 an explicit, audited vault scope (recommended)",
+  "vault:",
+  "  levels: { \"1\": 40, \"2\": 12, \"3\": 5, \"4\": 2 }",
+  "  scope_def: \"customer records reachable by support-router in production\"",
+  "",
+  "# Without a vault block, rho_S falls back to the observed reachable set:",
+  "# only the distinct secrets this one trace happened to expose.",
+].join("\n")
+const HOSTED_QUICKSTART = [
+  "1. Go to /register and create a human account (email + password).",
+  "2. Create a project from the dashboard, or open the Playground for a",
+  "   zero-setup scenario run.",
+  "3. Pick a bundled scenario (e.g. healthcare_patient_summary) or paste a",
+  "   trace, then run it.",
+  "4. Read the AgentRisk report: findings, channels, severity and the fix.",
+].join("\n")
+const LOCAL_QUICKSTART = [
+  "pip install agentleak",
+  "agentleak init",
+  "agentleak run --scenario healthcare_patient_summary",
+  "open reports/*.html   # or --format json for machine-readable output",
+].join("\n")
+const BYOK_JUDGE = [
+  "# Tier-3 LLM-judge detector (off by default, opt in via --mode)",
+  "export OPENAI_API_KEY=sk-...",
+  "agentleak run --scenario healthcare_patient_summary --mode hybrid",
+  "",
+  "# Point the judge at OpenRouter or any OpenAI-compatible endpoint instead:",
+  "export AGENTLEAK_LLM_BASE_URL=https://openrouter.ai/api/v1",
+  "export AGENTLEAK_LLM_MODEL=openai/gpt-4o-mini",
+].join("\n")
+const BYOK_LIVE_AGENT = [
+  "# agentleak.yaml \u2014 the agent under test, for live (non-scripted) runs",
+  "llm:",
+  "  provider: openrouter",
+  "  base_url: https://openrouter.ai/api/v1",
+  "  model: openai/gpt-4o-mini",
+  "  api_key_env: OPENROUTER_API_KEY",
+  "",
+  "export OPENROUTER_API_KEY=sk-or-...",
+].join("\n")
+const AGENT_QUICKSTART = [
+  "# 1. Discover",
+  "curl -sS " + BASE + "/llms.txt",
+  "",
+  "# 2. Onboard (creates project + scoped key in one call)",
+  ONBOARD,
+  "",
+  "# 3. Register identity, capabilities and (optionally) source",
+  "curl -sS -X POST " + BASE + "/api/agent/register -H \"X-AgentLeak-Key: $AGENTLEAK_KEY\" -d '{\"agent_card\":{\"name\":\"support-bot\"}}'",
+  "",
+  "# 4. Self-test a trace",
+  "curl -sS -X POST " + BASE + "/api/selftest -H \"X-AgentLeak-Key: $AGENTLEAK_KEY\" -d '{\"trace\":{...}}'",
+  "",
+  "# 5. Apply the highest-priority next_step, then verify",
+  "curl -sS -X POST " + BASE + "/api/agent/improve -H \"X-AgentLeak-Key: $AGENTLEAK_KEY\" -d '{\"trace\":{...}}'",
+].join("\n")
 
 const pageNav: Record<Audience, NavItem[]> = {
   overview: [
+    { href: "#quickstart", label: "5-minute quickstart" },
     { href: "#model", label: "Mental model" },
     { href: "#how-to-use", label: "How to use AgentLeak" },
     { href: "#agentrisk", label: "AgentRisk" },
     { href: "#channels", label: "Channels" },
+    { href: "#scenarios", label: "Scenario coverage & limits" },
+    { href: "#compliance", label: "Compliance mappings" },
     { href: "#safety", label: "Safety boundary" },
   ],
   developers: [
@@ -117,11 +178,14 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#trace", label: "Trace model" },
     { href: "#sdk", label: "Python SDK" },
     { href: "#integrations", label: "Integrations" },
+    { href: "#byok", label: "BYOK: LLM-judge & OpenRouter" },
     { href: "#ci", label: "CI gate" },
     { href: "#api", label: "Cloud API" },
+    { href: "#troubleshooting", label: "Troubleshooting" },
   ],
   agents: [
     { href: "#start", label: "Start" },
+    { href: "#quickstart", label: "End-to-end quickstart" },
     { href: "#rules", label: "Operating rules" },
     { href: "#loop", label: "Improvement loop" },
     { href: "#register", label: "Register identity" },
@@ -257,11 +321,36 @@ function Code({ children }: { children: string }) {
 
 const searchEntries = [
   ["AgentLeak overview", "/docs", "Mental model, channels and safety boundary"],
+  ["5-minute quickstart", "/docs#quickstart", "Local pip install vs. the hosted platform"],
   ["How to use AgentLeak", "/docs#how-to-use", "Capture, analyze, remediate and gate"],
-  ["AgentRisk scoring", "/docs#agentrisk", "Risk Index and privacy score"],
+  ["AgentRisk scoring", "/docs#agentrisk", "Risk Index, privacy score and the explicit-vault caveat"],
+  ["Explicit vault vs. observed reachable set", "/docs#agentrisk", "Why an audited vault scope changes what the Risk Index means"],
+  ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
+  ["Scenario coverage and clean controls", "/docs#scenarios", "10 built-in scenarios, 5 clean controls, the 36-scenario benchmark, limitations"],
+  ["Compliance mappings", "/docs#compliance", "7 frameworks per finding \u2014 not a certification"],
+  ["Safety boundary", "/docs#safety", "What a passing run does and does not prove"],
   ["Developer guide", "/docs/developers", "Install, trace schema, SDK and CI"],
+  ["Install AgentLeak", "/docs/developers#start", "pip install agentleak, agentleak init"],
+  ["Trace model", "/docs/developers#trace", "run_id, agent_name and channel-tagged events"],
+  ["Python SDK", "/docs/developers#sdk", "AgentLeakRunner, Trace and analyze()"],
+  ["Framework integrations", "/docs/developers#integrations", "LangChain, CrewAI, MCP, OpenTelemetry and more"],
+  ["BYOK: OpenRouter and the LLM-judge", "/docs/developers#byok", "Bring your own key for the Tier-3 semantic detector and live agent runs"],
+  ["CI gate", "/docs/developers#ci", "Fail a build with --fail-under and a non-zero exit code"],
+  ["Cloud API overview", "/docs/developers#api", "The hosted dashboard, project and agent endpoints"],
+  ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
+  ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
+  ["Adversarial red-team", "/features/red-team", "32 attack classes across 6 families, POST /api/projects/{id}/redteam"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
+  ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
+  ["Agent operating rules", "/docs/agents#rules", "MUST / SHOULD / MUST NOT for autonomous clients"],
+  ["Agent improvement loop", "/docs/agents#loop", "Onboard, register, scan, test, improve, verify"],
+  ["Register an agent card", "/docs/agents#register", "Identity, capabilities, declared data types, source"],
+  ["Agent failure handling", "/docs/agents#errors", "401, 409, 422, 429 and 5xx behavior"],
   ["API reference", "/docs/api", "Authentication, endpoints and schemas"],
+  ["API authentication", "/docs/api#auth", "Session cookie for humans, X-AgentLeak-Key for agents"],
+  ["Endpoint reference", "/docs/api#endpoints", "Every documented AgentLeak endpoint"],
+  ["Core schemas", "/docs/api#schemas", "Trace, Finding, Report, Agent card, Next step"],
+  ["OpenAPI and Swagger", "/docs/api#openapi", "/openapi.json and /api/docs"],
 ]
 
 function DocSearch() {
@@ -381,6 +470,30 @@ function Overview() {
         </p>
       </header>
 
+      <section className="docs-section" id="quickstart">
+        <h2>5-minute quickstart</h2>
+        <p>
+          Two ways to run your first test. Both take about five minutes and produce the same report
+          shape.
+        </p>
+        <div className="docs-card-grid">
+          <div>
+            <h3>Local (open source)</h3>
+            <p>Run entirely on your machine. No account, no network calls, no data leaves your host.</p>
+            <Code>{LOCAL_QUICKSTART}</Code>
+          </div>
+          <div>
+            <h3>Hosted (agents.fomox.com)</h3>
+            <p>Register, create a project and run scenarios or your own traces from the dashboard.</p>
+            <Code>{HOSTED_QUICKSTART}</Code>
+          </div>
+        </div>
+        <p>
+          Building an autonomous agent instead of clicking through a browser? Skip both of these and go
+          straight to the <Link to="/docs/agents#quickstart">agent quickstart</Link>.
+        </p>
+      </section>
+
       <section className="docs-section">
         <h2>Mental model</h2>
         <p>
@@ -439,6 +552,24 @@ function Overview() {
             <dd>The whole audited vault leaked. This is a complete boundary failure.</dd>
           </div>
         </dl>
+        <div className="docs-callout" role="note">
+          <p>
+            <b>The denominator matters.</b> RI is a fraction of an audited vault (rho_S), not an
+            absolute count. Without an explicit vault, AgentLeak falls back to the{" "}
+            <b>observed reachable set</b>: only the distinct secrets that trace happened to expose.
+            That fallback is convenient for a first run, but it means rho_S grows with what leaked,
+            which understates risk for comparisons across runs or deployments. Provide an explicit,
+            audited vault (<code>vault.levels</code> or <code>vault.rho_s</code> in the config) whenever
+            you need a Risk Index that is comparable run over run.
+          </p>
+          <Code>{VAULT_YAML}</Code>
+          <p>
+            A misconfigured explicit vault (non-positive <code>rho_S</code> while secrets leaked, or a
+            vault too small to cover what leaked) raises <code>VaultScopeError</code> instead of
+            silently clamping the score. Fix the vault spec rather than trusting a suspicious 0.00 or
+            1.00.
+          </p>
+        </div>
       </section>
 
       <section className="docs-section" id="channels">
@@ -460,6 +591,67 @@ function Overview() {
           ].map((channel) => (
             <code key={channel}>{channel}</code>
           ))}
+        </div>
+        <p>
+          <code>user_input</code> and <code>tool_response</code> are source channels: data entering the
+          run, not agent output. The other 6 are disclosure channels AgentLeak scores an agent against.
+        </p>
+      </section>
+
+      <section className="docs-section" id="scenarios">
+        <h2>Scenario coverage, clean controls and limitations</h2>
+        <p>
+          AgentLeak ships 10 built-in scenarios across healthcare, finance, HR, education and customer
+          support. 5 are deliberately leaky fixtures; the other 5 are matched <b>clean controls</b> for
+          the same domain, used to confirm the pipeline does not flag well-behaved runs. A separate,
+          larger <b>36-scenario benchmark</b> (healthcare, finance, legal and corporate domains, at
+          three adversary levels) is published for research and reproducibility; it is not bundled with
+          the open-source package by default. See <Link to="/research">research</Link> for the full
+          benchmark methodology.
+        </p>
+        <div className="docs-table">
+          {[
+            ["10", "Built-in scenarios bundled with the open-source package and the hosted Playground."],
+            ["5", "Of those, clean controls with no injected leak, used to check for false positives."],
+            ["36", "Scenarios in the separate, published benchmark dataset (not bundled)."],
+            ["32", "Attack classes across 6 families (F1\u2013F6) exercised by the benchmark and red-team."],
+          ].map(([n, body]) => (
+            <div key={body}>
+              <code>{n}</code>
+              <span>{body}</span>
+            </div>
+          ))}
+        </div>
+        <p>
+          <b>Limitations.</b> Default detection is regex, entropy and Presidio-based; it has no semantic
+          understanding of a leak unless you opt in to the Tier-3 LLM-judge (see{" "}
+          <Link to="/docs/developers#byok">BYOK</Link>). Canary-based detection assumes the audited
+          values are actually distinct from ordinary text in your domain. A passing run reflects the
+          traces and channels you tested, not a guarantee about traces you did not test.
+        </p>
+      </section>
+
+      <section className="docs-section" id="compliance">
+        <h2>Compliance mappings</h2>
+        <p>
+          Every finding carries severity tags mapped to 7 regulatory and industry frameworks. Use these
+          mappings to prioritize remediation and to write policy gates that fail a build when a specific
+          framework's findings are unresolved.
+        </p>
+        <div className="docs-token-grid">
+          {["GDPR", "Quebec Law 25", "NIST AI RMF", "OWASP LLM Top 10", "EU AI Act", "HIPAA", "PCI-DSS v4.0"].map(
+            (framework) => (
+              <code key={framework}>{framework}</code>
+            ),
+          )}
+        </div>
+        <div className="docs-callout" role="note">
+          <p>
+            These are best-effort <b>mappings from technical findings to framework language</b>, not a
+            certification, audit opinion or legal determination. A clean AgentLeak run does not mean a
+            system is GDPR, HIPAA or PCI-DSS compliant &mdash; consult qualified legal and compliance
+            counsel for that determination.
+          </p>
         </div>
       </section>
 
@@ -564,6 +756,43 @@ function Developers() {
         </p>
       </section>
 
+      <section className="docs-section" id="byok">
+        <h2>BYOK: LLM-judge and OpenRouter</h2>
+        <p>
+          Two independent pieces of AgentLeak can call out to a third-party LLM, and both are bring
+          your own key. Neither is required for the default (regex + entropy + Presidio) pipeline.
+        </p>
+        <div className="docs-card-grid">
+          <div>
+            <h3>Tier-3 LLM-judge detector</h3>
+            <p>
+              Opt-in semantic detector layered on top of deterministic tiers. Off by default; enable
+              with <code>--mode hybrid</code> or <code>--mode llm_only</code>. Uses{" "}
+              <code>OPENAI_API_KEY</code> by default, or point it at any OpenAI-compatible endpoint
+              (including OpenRouter) via config.
+            </p>
+            <Code>{BYOK_JUDGE}</Code>
+          </div>
+          <div>
+            <h3>Live agent runs</h3>
+            <p>
+              For scenarios and red-team batches that drive a real LLM as the agent under test (rather
+              than replaying a scripted trace), configure the <code>llm</code> block. OpenRouter is the
+              default provider so you can pick any model without juggling multiple API keys.
+            </p>
+            <Code>{BYOK_LIVE_AGENT}</Code>
+          </div>
+        </div>
+        <div className="docs-callout" role="note">
+          <p>
+            <b>Privacy warning.</b> Enabling either of these sends trace content &mdash; prompts, tool
+            arguments, tool responses, memory entries &mdash; to the third-party provider behind your
+            key. Use synthetic or canary data, and prefer a provider whose data-retention terms you have
+            reviewed, especially in <code>hybrid</code> or <code>llm_only</code> detection mode.
+          </p>
+        </div>
+      </section>
+
       <section className="docs-section" id="ci">
         <h2>CI gate</h2>
         <Code>{CI}</Code>
@@ -596,6 +825,25 @@ function Developers() {
           </a>
         </div>
       </section>
+
+      <section className="docs-section" id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <div className="docs-table">
+          {[
+            ["No findings at all", "Confirm the scenario or trace actually contains sensitive values, and that the relevant channels are included in config.channels."],
+            ["Unexpected 0.00 RI", "Check whether an explicit vault is configured; an undersized or unset vault can hide real exposure. See the AgentRisk vault caveat."],
+            ["LLM-judge errors or timeouts", "Verify the provider API key env var is set and the model name matches the provider's catalog; the judge tier fails closed rather than silently skipping."],
+            ["CI gate does not block the merge", "The exit code only fails the job. Mark that job required in your CI platform's branch-protection settings."],
+            ["429 rate limited", "Honor X-Quota-Reset and back off; do not open a second account or key to route around a limit."],
+            ["Static scan flags a false positive", "Add a scoped custom_detectors override or exclusion in agentleak.yaml rather than disabling detection globally."],
+          ].map(([issue, fix]) => (
+            <div key={issue}>
+              <code>{issue}</code>
+              <span>{fix}</span>
+            </div>
+          ))}
+        </div>
+      </section>
     </article>
   )
 }
@@ -617,6 +865,21 @@ function Agents() {
           <code>GET {BASE}/openapi.json</code>
         </div>
       </header>
+
+      <section className="docs-section" id="quickstart">
+        <h2>End-to-end quickstart</h2>
+        <p>
+          The shortest path from nothing to a verified fix: discover, onboard, register, self-test,
+          improve, then verify. Every step after discovery is a plain HTTP call authenticated with the
+          key returned by onboarding &mdash; no browser session required.
+        </p>
+        <Code>{AGENT_QUICKSTART}</Code>
+        <p>
+          Static source review and adversarial batch generation are available the same way: see{" "}
+          <Link to="/features/code-scan">static code scan</Link> and{" "}
+          <Link to="/features/red-team">adversarial red-team</Link> for the request shapes.
+        </p>
+      </section>
 
       <section className="docs-section" id="rules">
         <h2>Operating rules</h2>

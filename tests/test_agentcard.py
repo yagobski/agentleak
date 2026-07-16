@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentleak.core.agentcard import AgentCard, parse_agent_card
+from agentleak.core.agentcard import AgentCard, UnsafeURLError, fetch_agent_card, parse_agent_card
 
 NASIKO_CARD = {
     "name": "document-analyzer",
@@ -89,3 +89,106 @@ def test_parse_from_json_string_and_bad_json():
         parse_agent_card("{not json")
     with pytest.raises(ValueError):
         parse_agent_card([1, 2, 3])  # type: ignore[arg-type]
+
+
+# -- fetch_agent_card SSRF guard (unit-level, no network) ------------------
+# The web API tests in test_agent_api.py exercise the same guard end-to-end
+# through the HTTP endpoint; these unit tests pin down the exact classification
+# (UnsafeURLError vs. plain ValueError) for each rejection reason.
+
+@pytest.mark.parametrize("url", [
+    "file:///etc/passwd",
+    "ftp://example.com/agent-card.json",
+    "javascript:alert(1)",
+    "",
+    "not-a-url-at-all",
+])
+def test_fetch_agent_card_rejects_disallowed_scheme(url: str):
+    with pytest.raises(UnsafeURLError):
+        fetch_agent_card(url)
+
+
+@pytest.mark.parametrize("url", [
+    "http://127.0.0.1/card.json",
+    "http://localhost/card.json",
+    "http://169.254.169.254/latest/meta-data/",   # cloud metadata service
+    "http://[::1]/card.json",                     # IPv6 loopback literal
+    "http://10.0.0.5/card.json",                  # RFC1918 private
+    "http://192.168.1.1/card.json",                # RFC1918 private
+    "http://0.0.0.0/card.json",                    # unspecified
+    "http://100.64.0.1/card.json",                 # carrier-grade NAT
+])
+def test_fetch_agent_card_rejects_internal_addresses(url: str):
+    with pytest.raises(UnsafeURLError, match="disallowed"):
+        fetch_agent_card(url)
+
+
+def test_fetch_agent_card_rejects_embedded_credentials():
+    with pytest.raises(UnsafeURLError, match="credential"):
+        fetch_agent_card("http://user:pass@example.com/agent-card.json")
+
+
+def test_fetch_agent_card_rejects_missing_host():
+    with pytest.raises(UnsafeURLError, match="host"):
+        fetch_agent_card("http:///agent-card.json")
+
+
+def test_fetch_agent_card_allows_public_ip_literal_past_ssrf_guard(monkeypatch):
+    """A public IP literal passes the SSRF guard (network still mocked here)."""
+    import agentleak.core.agentcard as agentcard_mod
+
+    def fake_open(req, timeout=None):
+        raise OSError("connection refused")  # SSRF guard passed; transport fails
+
+    monkeypatch.setattr(agentcard_mod._SAFE_OPENER, "open", fake_open)
+    with pytest.raises(ValueError) as exc_info:
+        fetch_agent_card("http://8.8.8.8/agent-card.json")
+    assert not isinstance(exc_info.value, UnsafeURLError)
+
+
+def test_fetch_agent_card_dns_failure_is_plain_value_error():
+    """An unresolvable host is a network problem, not an SSRF finding."""
+    with pytest.raises(ValueError) as exc_info:
+        fetch_agent_card("https://this-host-does-not-exist.invalid/agent-card.json")
+    assert not isinstance(exc_info.value, UnsafeURLError)
+
+
+def test_fetch_agent_card_mocked_https_success(monkeypatch):
+    import json as _json
+
+    import agentleak.core.agentcard as agentcard_mod
+
+    class _Resp:
+        def __init__(self, payload: dict) -> None:
+            self._b = _json.dumps(payload).encode()
+
+        def read(self) -> bytes:
+            return self._b
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(
+        agentcard_mod._SAFE_OPENER, "open",
+        lambda req, timeout=None: _Resp({"name": "remote-agent", "capabilities": ["chat"]}),
+    )
+    card = fetch_agent_card("https://example.com/agent-card.json")
+    assert card.name == "remote-agent"
+
+
+def test_fetch_agent_card_redirect_to_internal_address_is_blocked(monkeypatch):
+    """A redirect landing on an internal address must be rejected, not followed."""
+    import agentleak.core.agentcard as agentcard_mod
+
+    def fake_open(req, timeout=None):
+        # Simulate what HTTPRedirectHandler.redirect_request would do: the
+        # opener revalidates the new URL, which here points at the metadata IP.
+        agentcard_mod._assert_safe_http_url("http://169.254.169.254/agent-card.json")
+        raise AssertionError("should not be reached — redirect must be rejected first")
+
+    monkeypatch.setattr(agentcard_mod._SAFE_OPENER, "open", fake_open)
+    with pytest.raises(UnsafeURLError, match="disallowed"):
+        fetch_agent_card("https://example.com/agent-card.json")

@@ -54,7 +54,10 @@ def _http_request(
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode()
+        try:
             return json.loads(raw) if raw else None
+        except json.JSONDecodeError as exc:
+            raise AgentLeakError(f"AgentLeak at {base_url} returned a non-JSON response: {raw[:200]!r}") from exc
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")
         try:

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from agentleak.core.agentrisk import VaultScopeError
 from agentleak.core.detector import Finding, Severity
 from agentleak.core.scoring import badge_for_level, score_findings, verdict_for
 
@@ -12,6 +15,7 @@ def _finding(channel="tool_call", level=4, confidence=1.0, data_type="x", value=
         data_type=data_type, severity=Severity.HIGH, confidence=confidence,
         matched_value=value, redacted_value="*", detector="d", level=level,
     )
+
 
 
 def test_verdict_bands():
@@ -93,3 +97,23 @@ def test_level_profile_counts():
     assert s.level_profile[4] == 2
     assert s.level_profile[2] == 1
     assert s.level_profile[1] == 0
+
+
+def test_explicit_vault_undersized_raises_through_score_findings():
+    # score_findings must propagate the AgentRisk fail-fast: an undersized
+    # explicit vault (WSL > rho_s) is a broken audit, not a low score.
+    findings = [_finding(level=4, value="a"), _finding(level=4, data_type="y", value="b")]
+    with pytest.raises(VaultScopeError, match="undersized"):
+        score_findings(findings, vault={4: 1})
+
+
+def test_explicit_vault_zero_rho_s_with_leaks_raises_through_score_findings():
+    findings = [_finding(level=4, value="a")]
+    with pytest.raises(VaultScopeError):
+        score_findings(findings, vault={1: 0, 2: 0, 3: 0, 4: 0})
+
+
+def test_explicit_vault_negative_counts_raise_through_score_findings():
+    findings = [_finding(level=4, value="a")]
+    with pytest.raises(VaultScopeError):
+        score_findings(findings, vault={4: -2})

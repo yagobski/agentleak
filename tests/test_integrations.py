@@ -445,6 +445,160 @@ def test_openinference_accepts_raw_otlp_payload():
     assert calls and "jane@example.com" in calls[0].searchable_text
 
 
+# -- OTel/OpenInference edge cases: nested OTLP values, missing attributes --
+
+def test_otel_otlp_nested_value_types_are_unwrapped():
+    """Every OTLP AnyValue variant (bool/int/double/array/kvlist) must unwrap
+    to a plain Python value, not a leftover ``{"boolValue": ...}`` dict."""
+    from agentleak.integrations.otel import _otlp_value
+
+    assert _otlp_value({"stringValue": "x"}) == "x"
+    assert _otlp_value({"boolValue": True}) is True
+    assert _otlp_value({"doubleValue": 1.5}) == 1.5
+    assert _otlp_value({"intValue": "42"}) == 42
+    assert _otlp_value({"intValue": "not-a-number"}) == "not-a-number"  # graceful fallback
+    assert _otlp_value({"arrayValue": {"values": [{"stringValue": "a"}, {"intValue": "2"}]}}) == ["a", 2]
+    assert _otlp_value(
+        {"kvlistValue": {"values": [{"key": "k", "value": {"stringValue": "v"}}]}}
+    ) == {"k": "v"}
+    # A plain (non-AnyValue) scalar passes through unchanged.
+    assert _otlp_value(7) == 7
+    assert _otlp_value("plain") == "plain"
+
+
+def test_otel_missing_attributes_produces_no_crash_and_no_events():
+    """A span dict/object with no ``attributes`` key at all is tolerated."""
+    from agentleak.integrations.otel import trace_from_spans
+
+    trace = trace_from_spans([{"name": "bare_span"}], run_id="r")
+    assert trace.events == []
+
+
+def test_otel_span_object_is_duck_typed_not_only_dicts():
+    """Spans can be objects exposing ``.name``/``.attributes`` (e.g. a readable
+    OTel span), not just dicts."""
+    from agentleak.integrations.otel import trace_from_spans
+
+    class Span:
+        def __init__(self, name, attributes):
+            self.name = name
+            self.attributes = attributes
+
+    spans = [Span("crm", {
+        "openinference.span.kind": "TOOL",
+        "tool.name": "crm",
+        "output.value": "ssn: 456-78-9012",
+    })]
+    trace = trace_from_spans(spans, run_id="r")
+    resp = [e for e in trace.events if e.channel_value == "tool_response"]
+    assert resp and "456-78-9012" in resp[0].searchable_text
+
+
+def test_otel_retriever_span_is_a_source_not_a_leak():
+    from agentleak.integrations.otel import trace_from_spans
+
+    spans = [{"name": "retriever", "attributes": {
+        "openinference.span.kind": "RETRIEVER",
+        "retrieval.documents.0.document.content": "client ssn 456-78-9012",
+    }}]
+    trace = trace_from_spans(spans, run_id="r")
+    resp = [e for e in trace.events if e.channel_value == "tool_response"]
+    assert resp and "456-78-9012" in resp[0].searchable_text
+    assert resp[0].source == "retriever"
+
+
+def test_otel_guardrail_span_records_log_channel():
+    from agentleak.integrations.otel import trace_from_spans
+
+    spans = [{"name": "pii_filter", "attributes": {
+        "openinference.span.kind": "GUARDRAIL",
+        "output.value": "blocked: ssn detected",
+    }}]
+    trace = trace_from_spans(spans, run_id="r")
+    logs = [e for e in trace.events if e.channel_value == "log"]
+    assert logs and logs[0].target == "guardrail"
+
+
+def test_otel_llm_span_tool_call_message_recorded():
+    """An LLM span whose output message itself is a tool call (rather than
+    plain text) must be recorded as a tool_call, not silently dropped."""
+    from agentleak.integrations.otel import trace_from_spans
+
+    spans = [{"name": "llm", "attributes": {
+        "openinference.span.kind": "LLM",
+        "llm.output_messages.0.message.role": "assistant",
+        "llm.output_messages.0.tool_call.function.name": "crm_lookup",
+        "llm.output_messages.0.tool_call.function.arguments": '{"ssn": "456-78-9012"}',
+    }}]
+    trace = trace_from_spans(spans, run_id="r")
+    calls = [e for e in trace.events if e.channel_value == "tool_call"]
+    assert calls and "456-78-9012" in calls[0].searchable_text
+    assert calls[0].target == "crm_lookup"
+
+
+def test_otel_empty_span_list_produces_empty_trace():
+    from agentleak.integrations.otel import trace_from_spans
+
+    trace = trace_from_spans([], run_id="r")
+    assert trace.events == []
+    trace_none = trace_from_spans(None, run_id="r")
+    assert trace_none.events == []
+
+
+# -- computer-use edge cases: unknown/failed actions ------------------------
+
+def test_computer_use_unknown_action_defaults_to_run():
+    """An action name that matches none of the known verb buckets is still
+    recorded (as a 'run' tool_call), never silently dropped."""
+    from agentleak.integrations.computer_use import trace_from_steps
+
+    steps = [{"action": "TeleportAction", "command": "beam me up", "observation": "ok"}]
+    trace = trace_from_steps(steps, run_id="r")
+    calls = [e for e in trace.events if e.channel_value == "tool_call"]
+    assert calls and calls[0].target == "TeleportAction"
+
+
+def test_computer_use_failed_shell_command_still_captured():
+    """A failed action's error observation is still a tool_response — the
+    adapter doesn't distinguish success/failure, so failures are not lost."""
+    from agentleak.integrations.computer_use import trace_from_steps
+
+    steps = [{"action": "run_shell", "command": "cat /etc/shadow",
+              "observation": "Error: Permission denied (exit code 1) for ssn 456-78-9012"}]
+    trace = trace_from_steps(steps, run_id="r")
+    resp = [e for e in trace.events if e.channel_value == "tool_response"]
+    assert resp and "Permission denied" in str(resp[0].content)
+    assert "456-78-9012" in resp[0].searchable_text
+
+
+def test_computer_use_browse_action_records_call_and_response():
+    from agentleak.integrations.computer_use import trace_from_steps
+
+    steps = [{"action": "click", "url": "https://forms.example.com/submit",
+              "observation": "submitted: ssn 456-78-9012"}]
+    trace = trace_from_steps(steps, run_id="r")
+    calls = [e for e in trace.events if e.channel_value == "tool_call"]
+    resp = [e for e in trace.events if e.channel_value == "tool_response"]
+    assert calls and calls[0].target == "https://forms.example.com/submit"
+    assert resp and "456-78-9012" in resp[0].searchable_text
+
+
+def test_computer_use_non_final_finish_step_is_inter_agent_message():
+    """Only the LAST 'finish'-kind step is promoted to final_output; an
+    earlier one (e.g. a sub-agent's completion message) is internal."""
+    from agentleak.integrations.computer_use import trace_from_steps
+
+    steps = [
+        {"action": "finish", "content": "Sub-task done: ssn 456-78-9012 verified.", "agent": "sub"},
+        {"action": "finish", "content": "All done. No PII in this summary.", "agent": "main"},
+    ]
+    trace = trace_from_steps(steps, run_id="r")
+    inter = [e for e in trace.events if e.channel_value == "inter_agent_message"]
+    finals = [e for e in trace.events if e.channel_value == "final_output"]
+    assert inter and "456-78-9012" in inter[0].searchable_text
+    assert finals and finals[0].content == "All done. No PII in this summary."
+
+
 # -- End-to-end: every adapter yields a valid AgentRisk-scored result -------
 def test_all_adapters_produce_agentrisk_score():
     """Each framework adapter must yield a trace the runner can score, with a

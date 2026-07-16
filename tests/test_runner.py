@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import json
+
+import pytest
+
 from agentleak import AgentLeakRunner, Trace
+from agentleak.agent import AgentRunError, LLMConfig, OpenAICompatLLM, run_scenario
+from agentleak.agent.context import RunContext
 from agentleak.core.config import Config
 from agentleak.scenarios import load_example_trace
 
@@ -152,3 +158,90 @@ def test_nino_from_tool_response_only_leaks_when_re_emitted():
                   if f.data_type == "national_insurance_number"}
     # Arrival via tool_response is a source, not a leak; re-emission to memory is.
     assert by_channel == {"shared_memory"}
+
+
+# -- Live single-agent runner: LLM mocked, no network --------------------
+
+class _Resp:
+    def __init__(self, payload: dict) -> None:
+        self._b = json.dumps(payload).encode()
+
+    def read(self) -> bytes:
+        return self._b
+
+    def __enter__(self) -> _Resp:
+        return self
+
+    def __exit__(self, *a: object) -> bool:
+        return False
+
+
+def _assistant_msg(*, content: str = "", tool_calls: list[dict] | None = None) -> dict:
+    msg: dict = {"role": "assistant", "content": content}
+    if tool_calls:
+        msg["tool_calls"] = tool_calls
+    return {"choices": [{"message": msg}]}
+
+
+def _ctx() -> RunContext:
+    return RunContext(
+        scenario_id="live",
+        request="Summarize the client's file.",
+        records=[{"ssn": "123-45-6789"}],
+    )
+
+
+def test_live_run_malformed_tool_json_falls_back_to_empty_args(monkeypatch):
+    calls = [
+        _assistant_msg(tool_calls=[{"id": "c1", "function": {"name": "save_memory", "arguments": "{broken"}}]),
+        _assistant_msg(content="Done."),
+    ]
+
+    monkeypatch.setattr("agentleak.agent.llm.urllib.request.urlopen", lambda req, timeout=None: _Resp(calls.pop(0)))
+    llm = OpenAICompatLLM(LLMConfig(model="m", api_key="k"))
+    trace = run_scenario(_ctx(), llm=llm)
+    assert trace.events[-1].channel_value == "final_output"
+    mem = [e for e in trace.events if e.channel_value == "shared_memory"]
+    assert mem and mem[0].content == ""  # malformed JSON -> empty args, no crash
+
+
+def test_live_run_max_steps_exhausted_ends_gracefully(monkeypatch):
+    call_count = {"n": 0}
+
+    def fake(req, timeout=None):
+        call_count["n"] += 1
+        return _Resp(_assistant_msg(tool_calls=[
+            {"id": f"c{call_count['n']}", "function": {"name": "log_event", "arguments": "{}"}}
+        ]))
+
+    monkeypatch.setattr("agentleak.agent.llm.urllib.request.urlopen", fake)
+    llm = OpenAICompatLLM(LLMConfig(model="m", api_key="k"))
+    trace = run_scenario(_ctx(), llm=llm, max_steps=2)
+    assert call_count["n"] == 2
+    assert trace.events[-1].channel_value == "final_output"
+    assert "stopped without a final answer" in str(trace.events[-1].content)
+
+
+def test_live_run_llm_failure_raises_agent_run_error_with_partial_trace(monkeypatch):
+    calls = [
+        _assistant_msg(tool_calls=[{"id": "c1", "function": {"name": "get_records", "arguments": "{}"}}]),
+    ]
+
+    def fake(req, timeout=None):
+        if calls:
+            return _Resp(calls.pop(0))
+        import urllib.error
+        raise urllib.error.URLError("connection reset")
+
+    monkeypatch.setattr("agentleak.agent.llm.urllib.request.urlopen", fake)
+    llm = OpenAICompatLLM(LLMConfig(model="m", api_key="k"))
+
+    with pytest.raises(AgentRunError) as exc_info:
+        run_scenario(_ctx(), llm=llm)
+
+    err = exc_info.value
+    assert err.trace is not None
+    channels = {e.channel_value for e in err.trace.events}
+    # The get_records call (and its response) that ran before the failure
+    # must still be visible on the error, not silently discarded.
+    assert {"user_input", "tool_call", "tool_response"} <= channels

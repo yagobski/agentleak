@@ -70,7 +70,6 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
               scoped project keys for agents, and no client-side token storage.
             </span>
           </div>
-
           <div className="auth-live" aria-label="AgentLeak product preview">
             <div className="auth-platform-window">
               <header>
@@ -126,6 +125,12 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
             <h2 id="auth-title">{isRegister ? "Create your account" : "Sign in"}</h2>
             <span>{isRegister ? "Start with one local account, then create project keys for agents." : "Continue auditing agents, scenarios and project runs."}</span>
           </div>
+
+          <p className="auth-agent-note">
+            This form creates a <b>human</b> account for the browser dashboard. Building an autonomous
+            agent instead? Skip signup entirely — agents onboard through the{" "}
+            <Link to="/docs/agents">machine API</Link>, no browser session required.
+          </p>
 
           <form className="auth-form" onSubmit={submit}>
             {isRegister && (
