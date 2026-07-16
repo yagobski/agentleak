@@ -36,6 +36,7 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/features/ThemeToggle"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
@@ -63,11 +64,15 @@ function sectionFor(pathname: string): { label: string; to: string } {
 
 function AppSidebar() {
   const { pathname } = useLocation()
+  const { setOpenMobile } = useSidebar()
   const { user, logout } = useAuth()
   const [version, setVersion] = useState("")
   useEffect(() => {
     api.meta().then((m) => setVersion(m.version)).catch(() => {})
   }, [])
+  useEffect(() => {
+    setOpenMobile(false)
+  }, [pathname, setOpenMobile])
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="platform-sidebar">
