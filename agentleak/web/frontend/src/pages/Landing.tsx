@@ -43,7 +43,7 @@ const HERO_RUNS = [
 
 // Interactive hero: a faithful miniature of the real Dashboard whose views the
 // visitor can switch, echoing cursor.com/cloud where the preview is navigable.
-const HERO_VIEWS = ["Dashboard", "Runs", "Leaderboard"] as const
+const HERO_VIEWS = ["Dashboard", "Runs", "Playground", "Leaderboard", "Scenarios"] as const
 
 function HeroPlatform() {
   const [view, setView] = useState<(typeof HERO_VIEWS)[number]>("Dashboard")
@@ -69,9 +69,9 @@ function HeroPlatform() {
           <small>Platform</small>
           <button type="button" data-active={view === "Dashboard"} onClick={() => setView("Dashboard")}><LayoutDashboard /> Dashboard</button>
           <button type="button" data-active={view === "Runs"} onClick={() => setView("Runs")}><FolderKanban /> Runs</button>
-          <button type="button"><FlaskConical /> Playground</button>
+          <button type="button" data-active={view === "Playground"} onClick={() => setView("Playground")}><FlaskConical /> Playground</button>
           <button type="button" data-active={view === "Leaderboard"} onClick={() => setView("Leaderboard")}><Trophy /> Leaderboard</button>
-          <button type="button"><Library /> Scenarios</button>
+          <button type="button" data-active={view === "Scenarios"} onClick={() => setView("Scenarios")}><Library /> Scenarios</button>
           <div className="cursor-app-side-foot">
             <button type="button"><Settings /> Settings</button>
             <em>acme-ops</em>
@@ -146,6 +146,38 @@ function HeroPlatform() {
               </div>
             </>
           )}
+          {view === "Playground" && (
+            <>
+              <header className="cursor-app-head">
+                <div><h4>Playground</h4><p>Paste a trace and inspect the privacy decision instantly.</p></div>
+                <b>Run audit</b>
+              </header>
+              <div className="cursor-app-playground">
+                <section>
+                  <header><span>Execution trace</span><code>support-router.json</code></header>
+                  <pre>{`{
+  "agent_name": "support-router",
+  "events": [
+    {"channel": "tool_response", "content": "[private customer record]"},
+    {"channel": "shared_memory", "content": "account_id: acct_••••7F2"},
+    {"channel": "final_output", "content": "Your request is complete."}
+  ]
+}`}</pre>
+                </section>
+                <aside>
+                  <small>PRIVACY SCORE</small>
+                  <strong>62</strong><span>/ 100</span>
+                  <i><b /></i>
+                  <dl>
+                    <div><dt>Risk Index</dt><dd>0.38</dd></div>
+                    <div><dt>Leak paths</dt><dd>2</dd></div>
+                    <div><dt>Decision</dt><dd data-hot="true">Review</dd></div>
+                  </dl>
+                  <p>Redact <code>account_id</code> before shared memory.</p>
+                </aside>
+              </div>
+            </>
+          )}
           {view === "Leaderboard" && (
             <>
               <header className="cursor-app-head">
@@ -162,6 +194,32 @@ function HeroPlatform() {
                     <em>RI {ri}</em>
                   </div>
                 ))}
+              </div>
+            </>
+          )}
+          {view === "Scenarios" && (
+            <>
+              <header className="cursor-app-head">
+                <div><h4>Scenario library</h4><p>Realistic leak probes and clean controls across sensitive domains.</p></div>
+                <b>Import pack</b>
+              </header>
+              <div className="cursor-app-scenarios">
+                <header><span>Scenario</span><span>Domain</span><span>Behavior</span><span>Coverage</span></header>
+                {[
+                  ["Patient summary handoff", "Healthcare", "Leak probe", "PHI · memory · messages"],
+                  ["Loan review assistant", "Finance", "Leak probe", "Account · tools · logs"],
+                  ["Employee onboarding", "HR", "Clean control", "SIN · files · output"],
+                  ["Student support routing", "Education", "Clean control", "ID · tools · output"],
+                  ["CRM escalation", "Support", "Leak probe", "Email · memory · tools"],
+                ].map(([name, domain, behavior, coverage]) => (
+                  <article key={name} data-clean={behavior === "Clean control"}>
+                    <b>{name}</b>
+                    <span>{domain}</span>
+                    <em>{behavior}</em>
+                    <small>{coverage}</small>
+                  </article>
+                ))}
+                <footer><span>10 built in · 5 leak probes · 5 clean controls</span><b>36-scenario research pack available</b></footer>
               </div>
             </>
           )}
