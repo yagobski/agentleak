@@ -924,25 +924,6 @@
 .cursor-feature-visual > * { width: 100%; height: 100%; min-height: 0; }
 .cursor-feature-visual > .cursor-report { overflow-y: auto; }
 
-/* --- supporting diagrams next to feature copy: a bordered card that follows
-  the same theme tokens as the rest of the marketing site (light uses the
-  original artwork; dark inverts neutral black/white while the "-invert"
-  modifier keeps blue hues on their original side of the wheel). --- */
-.cursor-diagram { align-self: start; margin-top: 26px; overflow: hidden; border: 1px solid var(--s-23231f); border-radius: 10px; background: var(--s-0e0e0c); }
-.cursor-diagram img { display: block; width: 100%; height: auto; }
-.cursor-diagram figcaption { padding: 12px 16px; border-top: 1px solid var(--s-23231f); font-size: 12px; line-height: 1.5; color: var(--s-9d9c96); }
-.cursor-diagram-iceberg img { filter: none; }
-:root:not([data-site-theme="light"]) .cursor-diagram-iceberg img { filter: invert(1) hue-rotate(180deg); }
-/* Fixed dark backdrop (not theme-reactive): the source artwork's pale-blue
-  labels are only legible on a dark panel, so the card stays dark in both
-  site themes instead of inverting the pixels. */
-.cursor-diagram-agent { background: #0b1220; border-color: #16233b; }
-.cursor-diagram-agent figcaption { border-top-color: #16233b; color: #93a3c2; }
-@media (min-width: 900px) {
-  .cursor-diagram { max-width: 420px; }
-  .cursor-diagram-iceberg { max-width: 300px; }
-}
-
 /* Dedicated product surfaces. Each feature page gets a different tool-shaped
   composition: explorer, scoring lab, pipeline, or autonomous loop. */
 .product-view {
@@ -1140,7 +1121,6 @@
   .cursor-stay-grid > article { display: flex; min-height: 0; }.cursor-stay-copy { min-height: 170px; padding: 22px 20px 16px; }.cursor-stay-stage { width: auto; height: 350px; min-height: 350px; margin: auto 10px 10px; }.cursor-faq-item button { font-size: 14.5px; padding: 16px 18px; }.cursor-page { padding: 110px var(--gutter) 30px; }
   .cursor-research-stats { grid-template-columns: repeat(2,1fr); }
   .cursor-proof-metrics-grid { grid-template-columns: repeat(2,1fr); }
-  .cursor-diagram { max-width: none; }
   .product-view { min-height: 430px; }.product-view-bar { grid-template-columns: 1fr auto; }.product-view-bar > p { justify-self: end; }.product-view-bar > strong { display: none; }
   .product-trace-body, .product-risk-body, .product-pipeline-body, .product-loop-body { grid-template-columns: 1fr; overflow-y: auto; }.product-rail, .product-pipeline-list, .product-loop-stages { display: none; }.product-trace-body > .product-inspector { display: block; border-top: 1px solid var(--pv-line); border-left: 0; }
   .product-trace-events button { grid-template-columns: 20px minmax(0,1fr) auto; }.product-trace-events button > code { display: none; }.product-flow-line { overflow: hidden; }
