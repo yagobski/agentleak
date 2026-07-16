@@ -360,17 +360,6 @@ export function Landing() {
             <h2>The final output can be clean while the system is leaking.</h2>
             <p>Output-only checks miss what happens inside the run. AgentLeak follows sensitive values through every internal channel, reconstructs where exposure happened, assigns each finding a severity level from L1 to L4, and returns the exact remediation: prose for your team, and structured hints an agent can apply.</p>
             <Link className="cursor-textlink" to="/features/trace-analysis">Understand the trace model <Arrow /></Link>
-            <figure className="cursor-diagram cursor-diagram-iceberg">
-              <img
-                src="/assets/diagrams/hidden-data-iceberg.svg"
-                alt="An iceberg diagram: the visible tip above the waterline is the final answer a reviewer reads, while metadata, credentials, PII, regulated and third-party data sit hidden below the surface, inside tool calls, memory and logs."
-                width={300}
-                height={448}
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>What a transcript shows vs. what a full-trace audit finds: most exposure sits below the waterline, in channels a reviewer never reads.</figcaption>
-            </figure>
           </div>
           <div className="cursor-feature-visual"><RunReportDemo /></div>
         </section>
@@ -381,17 +370,6 @@ export function Landing() {
             <h2>A score your team can explain.</h2>
             <p>Severity-weighted risk from 0 to 1, normalized against the audited sensitive vault. Deterministic and reproducible: the same trace always yields the same score, so a regression in CI means the agent changed, not the judge.</p>
             <Link className="cursor-textlink" to="/features/agentrisk">Learn how scoring works <Arrow /></Link>
-            <figure className="cursor-diagram">
-              <img
-                src="/assets/diagrams/deterministic-detection-trace.svg"
-                alt="An annotated agent trace where regex and model-based detectors label spans of a conversation as name, location, money, SIN and date of birth, each pointing back to the exact text that triggered the finding."
-                width={420}
-                height={309}
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>Every finding points back to the exact span and channel that produced it — deterministic detection, not a model's opinion.</figcaption>
-            </figure>
           </div>
           <div className="cursor-feature-visual"><PlatformWorkbench /></div>
         </section>
@@ -414,17 +392,6 @@ export function Landing() {
             <h2>Agents can discover, test and improve themselves.</h2>
             <p>llms.txt discovery, one-call onboarding, scoped project keys and machine-readable remediation hints. An agent can find AgentLeak, audit itself and fix its own leaks in a bounded loop, with no browser and no human in the middle.</p>
             <Link className="cursor-textlink" to="/features/agent-api">Read agent instructions <Arrow /></Link>
-            <figure className="cursor-diagram cursor-diagram-agent">
-              <img
-                src="/assets/diagrams/agent-coverage-privacy-ai.svg"
-                alt="A hub-and-spoke diagram of an agent's privacy surface: a central shield connects to smart language processing, AI-powered insights, precision PII detection, contextual data analysis and advanced data classification."
-                width={420}
-                height={375}
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>The same coverage an agent gets over its own execution: language, insights, PII detection, context and classification, all reachable from one scoped key.</figcaption>
-            </figure>
           </div>
           <div className="cursor-feature-visual"><AgentTerminal /></div>
         </section>
