@@ -174,6 +174,19 @@ def _ctx_from_report(report: dict[str, Any]) -> Ctx:
     )
 
 
+DISCLAIMER: dict[str, Any] = {
+    "text": (
+        "This flags controls an auditor should review — it is NOT legal "
+        "certification, a compliance attestation, or proof that untested "
+        "behavior is safe. A compliant result reflects only what this run's "
+        "detectors observed for this trace and configured scope."
+    ),
+    "is_legal_certification": False,
+    "is_compliance_attestation": False,
+    "scope": "single-run, detector-observed findings only",
+}
+
+
 def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     """Evaluate every framework's controls against a report dict."""
     ctx = _ctx_from_report(report)
@@ -222,6 +235,10 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
             "controls_at_risk": total_at_risk,
         },
         "posture": _posture(frameworks_out),
+        # Additive, backward-compatible field: a machine-readable disclaimer an
+        # agent/CI consumer can key off (`disclaimer.is_legal_certification`)
+        # instead of relying on humans reading the prose in docs/compliance.md.
+        "disclaimer": DISCLAIMER,
     }
 
 

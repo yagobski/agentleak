@@ -68,9 +68,11 @@ def build_run_context(scenario: dict[str, Any]) -> RunContext:
         )
 
     trace = scenario.get("trace") or {}
+    expected_behavior = scenario.get("expected_behavior") or []
     return RunContext(
         scenario_id=sid,
         request=_request_from_trace(trace, str(scenario.get("description") or "Complete the task.")),
         domain=str(scenario.get("domain") or "general"),
+        privacy_instruction=" ".join(str(item) for item in expected_behavior),
         records=_records_from_trace(trace),
     )

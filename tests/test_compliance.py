@@ -2,12 +2,68 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from agentleak import AgentLeakRunner, Trace
+from agentleak.core.compliance import FRAMEWORKS
 from agentleak.scenarios import load_example_trace
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Short, human-recognizable label for each framework, used to check that the
+# docs/README haven't drifted from the actual set of implemented frameworks.
+_SHORT_LABEL = {
+    "gdpr": "GDPR",
+    "law25": "Law 25",
+    "nist_ai_rmf": "NIST AI RMF",
+    "owasp_llm": "OWASP LLM",
+    "eu_ai_act": "EU AI Act",
+    "hipaa": "HIPAA",
+    "pci_dss": "PCI-DSS",
+}
 
 
 def _report(trace: Trace) -> dict:
     return AgentLeakRunner().analyze(trace).to_dict()
+
+
+def test_docs_and_readme_list_every_implemented_framework():
+    """Regression guard: docs/compliance.md and README.md must mention every
+    framework actually implemented in ``compliance.FRAMEWORKS`` (e.g. this
+    caught HIPAA/PCI-DSS being implemented but missing from both docs).
+    """
+    docs_text = (REPO_ROOT / "docs" / "compliance.md").read_text(encoding="utf-8")
+    readme_text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert set(_SHORT_LABEL) == {fw.id for fw in FRAMEWORKS}, (
+        "add a short label above for any newly added framework"
+    )
+    for fw in FRAMEWORKS:
+        label = _SHORT_LABEL[fw.id]
+        assert label in docs_text, f"{fw.name} missing from docs/compliance.md"
+        assert label in readme_text, f"{fw.name} missing from README.md"
+
+
+def test_compliance_includes_machine_readable_disclaimer():
+    """A ``disclaimer`` object is present alongside the human-readable prose
+    in docs, so an agent/CI consumer doesn't have to parse markdown to learn
+    a compliant result isn't legal certification.
+    """
+    c = _report(load_example_trace("hr_employee_case"))["compliance"]
+    disclaimer = c["disclaimer"]
+    assert disclaimer["is_legal_certification"] is False
+    assert disclaimer["is_compliance_attestation"] is False
+    assert "not" in disclaimer["text"].lower()
+    assert disclaimer["scope"]
+
+
+def test_compliance_disclaimer_present_regardless_of_verdict():
+    # The disclaimer must appear whether the run is clean or leaky — it's not
+    # conditioned on the compliance verdict.
+    clean = Trace(run_id="clean")
+    clean.add_event("final_output", "All good, nothing sensitive.")
+    clean_compliance = _report(clean)["compliance"]
+    leaky_compliance = _report(load_example_trace("healthcare_patient_summary"))["compliance"]
+    assert clean_compliance["disclaimer"] == leaky_compliance["disclaimer"]
 
 
 def test_clean_run_is_compliant():

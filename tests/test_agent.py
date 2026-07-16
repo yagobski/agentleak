@@ -60,6 +60,21 @@ def test_context_derived_from_trace():
     assert ctx.records == [{"name": "Bob", "ssn": "111-22-3333"}]
 
 
+def test_context_from_trace_passes_expected_behavior_to_live_agent():
+    ctx = build_run_context({
+        "id": "clean",
+        "trace": {"events": []},
+        "expected_behavior": [
+            "Do not include names or identifiers.",
+            "Do not disclose diagnoses.",
+        ],
+    })
+
+    assert ctx.privacy_instruction == (
+        "Do not include names or identifiers. Do not disclose diagnoses."
+    )
+
+
 def test_scripted_run_leaks():
     ctx = build_run_context(_SPEC_SCENARIO)
     trace = run_scenario(ctx, llm=None)

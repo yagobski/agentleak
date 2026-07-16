@@ -18,11 +18,14 @@ pull a card from a running agent's well-known endpoint.
 
 from __future__ import annotations
 
+import ipaddress
 import json
+import socket
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlsplit
 
 # Protocols commonly seen in the wild — informative only, any value is
 # accepted (new protocols appear faster than any list can track).
@@ -37,6 +40,102 @@ WELL_KNOWN_PATHS = (
     "/.well-known/agent.json",
     "/AgentCard.json",
 )
+
+# Redirects are followed at most this many times, re-validating the target of
+# every hop — an SSRF-safe agent could otherwise redirect us to an internal
+# address after the initial URL passed validation.
+_MAX_REDIRECTS = 5
+
+
+class UnsafeURLError(ValueError):
+    """Raised when a caller-supplied URL fails the SSRF safety checks.
+
+    Kept as a distinct subclass of ``ValueError`` so callers (e.g. the web API)
+    can return a ``400`` ("your input is invalid/unsafe") instead of the
+    ``502`` used for legitimate network/transport failures.
+    """
+
+
+def _ip_is_disallowed(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True if *ip* must never be reached from a server-side fetch.
+
+    Blocks loopback (127.0.0.0/8, ::1), link-local (169.254.0.0/16 — this is
+    also where the AWS/GCP/Azure metadata service lives — and fe80::/10),
+    private ranges (RFC1918, ULA), other IANA-reserved blocks, multicast, the
+    unspecified address, and (via ``not is_global``) anything else non-public
+    such as carrier-grade NAT (100.64.0.0/10) or benchmarking ranges.
+    """
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+        or not ip.is_global
+    )
+
+
+def _assert_safe_http_url(url: str) -> None:
+    """Raise :class:`UnsafeURLError` if *url* is not safe to fetch server-side.
+
+    Validates the scheme (http/https only), rejects embedded userinfo
+    (``http://user:pass@host/``), and resolves the hostname to reject any
+    address that is loopback, link-local, private, reserved, multicast, or
+    otherwise non-public (SSRF guard). Applied to both the initial URL and
+    every redirect hop by :func:`fetch_agent_card`.
+    """
+    parsed = urlsplit(url)
+    if parsed.scheme not in ("http", "https"):
+        raise UnsafeURLError("Agent card URL must start with http:// or https://")
+    if parsed.username or parsed.password:
+        raise UnsafeURLError("Agent card URL must not contain embedded credentials.")
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("Agent card URL must include a host.")
+
+    # An IP literal in the URL — validate directly, no DNS involved.
+    try:
+        literal_ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        literal_ip = None
+    if literal_ip is not None:
+        if _ip_is_disallowed(literal_ip):
+            raise UnsafeURLError(f"Agent card URL host {hostname!r} resolves to a disallowed address.")
+        return
+
+    # A hostname — resolve it and validate every address it maps to (DNS can
+    # return multiple records; a rebinding attack only needs one to be internal).
+    # A resolution failure (unknown host) is a plain network error, not an SSRF
+    # finding, so it is reported as a regular ValueError (-> 502) rather than
+    # UnsafeURLError (-> 400).
+    try:
+        addrinfo = socket.getaddrinfo(hostname, None)
+    except OSError as exc:
+        raise ValueError(f"Could not resolve host {hostname!r}: {exc}") from exc
+    if not addrinfo:
+        raise ValueError(f"Could not resolve host {hostname!r}.")
+    for _family, _type, _proto, _canon, sockaddr in addrinfo:
+        raw_addr = str(sockaddr[0]).split("%", 1)[0]  # strip IPv6 zone id, if any
+        try:
+            resolved_ip = ipaddress.ip_address(raw_addr)
+        except ValueError:
+            continue
+        if _ip_is_disallowed(resolved_ip):
+            raise UnsafeURLError(
+                f"Agent card URL host {hostname!r} resolves to a disallowed address ({resolved_ip})."
+            )
+
+
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Re-validates every redirect target before following it (SSRF guard)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        _assert_safe_http_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_SAFE_OPENER = urllib.request.build_opener(_SafeRedirectHandler)
 
 
 @dataclass
@@ -193,19 +292,29 @@ def fetch_agent_card(url: str, *, timeout: float = 10.0) -> AgentCard:
     """Fetch an agent card from a live agent (explicit opt-in network call).
 
     Tries the URL as-is when it points at a JSON document, then the A2A
-    well-known paths. Only http/https URLs are accepted.
+    well-known paths. Only http/https URLs are accepted, and the URL (plus
+    every redirect hop) is checked against an SSRF allowlist: no credentials,
+    no localhost/loopback/link-local/private/reserved/multicast addresses
+    (this also blocks the cloud metadata IP, 169.254.169.254, and DNS
+    rebinding to an internal host).
+
+    Raises :class:`UnsafeURLError` (a ``ValueError`` subclass) for anything
+    the SSRF guard rejects, and a plain :class:`ValueError` for ordinary
+    network/parse failures — callers can map the two to different HTTP
+    statuses (400 vs 502).
     """
     url = url.strip().rstrip("/")
-    if not url.startswith(("http://", "https://")):
-        raise ValueError("Agent card URL must start with http:// or https://")
+    _assert_safe_http_url(url)  # raises UnsafeURLError — let it propagate as-is
     candidates = [url] if url.endswith(".json") else [f"{url}{p}" for p in WELL_KNOWN_PATHS]
     last_error: Exception | None = None
     for candidate in candidates:
         try:
             req = urllib.request.Request(candidate, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+            with _SAFE_OPENER.open(req, timeout=timeout) as resp:  # noqa: S310
                 raw = resp.read().decode("utf-8", errors="replace")
             return parse_agent_card(raw)
+        except UnsafeURLError:
+            raise  # a redirect landed on a disallowed address — do not retry/mask it
         except (urllib.error.URLError, ValueError, OSError) as exc:
             last_error = exc
     raise ValueError(f"Could not fetch an agent card from {url}: {last_error}")

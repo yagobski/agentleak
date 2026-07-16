@@ -193,9 +193,10 @@ invariance, rank robustness) — checked in CI. See [docs/scoring.md](docs/scori
 ## Compliance frameworks
 
 Every report maps its findings to the controls of the frameworks privacy
-auditors care about — **GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10, and
-the EU AI Act** — so you see which controls a run puts at risk (e.g. a leaked
-health identifier trips GDPR Art. 9; a leaked key trips Art. 32). Shown in the
+auditors care about — **GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10,
+the EU AI Act, HIPAA, and PCI-DSS** — so you see which controls a run puts at
+risk (e.g. a leaked health identifier trips GDPR Art. 9; a leaked key trips
+Art. 32). Shown in the
 UI, the HTML/Markdown exports, the CLI, and the JSON report. It flags controls to
 review — not legal certification. See [docs/compliance.md](docs/compliance.md).
 

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
+
 from agentleak import AgentLeakRunner, Trace
 from agentleak.core.config import DEFAULT_CONFIG_YAML, Config
 
@@ -22,6 +25,15 @@ def test_config_defaults_when_empty():
     assert cfg.scoring.weights == [1, 2, 3, 4]
     assert cfg.privacy.redact_values is True
     assert cfg.vault.is_set() is False
+
+
+@pytest.mark.parametrize(
+    "weights",
+    ([1, 2, 3], [1, 2, 3, 4, 5], [0, 2, 3, 4], [1, 2, 3, -4]),
+)
+def test_scoring_weights_must_be_four_strictly_positive_values(weights):
+    with pytest.raises(ValidationError, match="strictly positive"):
+        Config.from_dict({"scoring": {"weights": weights}})
 
 
 def test_vault_spec_from_config():

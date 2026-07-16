@@ -111,7 +111,7 @@ Run adversarial tests against your agent without a live LLM:
 
 ```python
 from agentleak.generators import ScenarioGenerator
-from agentleak.core.attacks import AdversaryLevel
+from agentleak.core.attacks import AdversaryLevel, CLASS_TO_FAMILY
 from agentleak.core.runner import AgentLeakRunner
 from agentleak.core.metrics import compute_metrics, _result_from_analysis
 
@@ -121,7 +121,17 @@ scenarios = gen.generate_batch(10)
 run_results = []
 for s in scenarios:
     result = AgentLeakRunner().analyze(s.trace, canary_set=s.vault.canary_set)
-    run_results.append(_result_from_analysis(result, s))
+    run_results.append(_result_from_analysis(
+        result,
+        scenario_id=s.scenario_id,
+        vertical=s.vertical,
+        attack_class_id=s.attack_class.id,
+        attack_family_id=CLASS_TO_FAMILY.get(s.attack_class.id, "unknown"),
+        primary_channel=s.attack_class.primary_channel.value,
+        adversary_level=s.attack_class.adversary_level.value,
+        vault_field_count=len(s.vault.records),
+        expected_leaks=s.expected_leaks,
+    ))
 
 metrics = compute_metrics(run_results)
 print(f"ASR {metrics.overall_asr:.0%}  mean ELR {metrics.mean_elr:.2f}")

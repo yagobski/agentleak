@@ -21,6 +21,9 @@ export interface Scenario {
   example_trace?: string | null
   tags?: string[]
   difficulty?: string
+  expected_outcome?: "leak" | "clean"
+  topology?: "single_agent" | "multi_agent"
+  attack_classes?: string[]
   source?: "builtin" | "custom" | "imported"
   builtin?: boolean
   pack_id?: string

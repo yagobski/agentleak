@@ -36,7 +36,17 @@ MAX_STEPS = 8
 
 
 class AgentRunError(RuntimeError):
-    """Raised when a live agent run cannot complete."""
+    """Raised when a live agent run cannot complete.
+
+    Carries the partial :class:`~agentleak.core.trace.Trace` captured before
+    the failure (if any) on the ``trace`` attribute, so a caller that catches
+    this error doesn't lose the events recorded up to the point of failure —
+    useful for diagnostics even though the run itself didn't finish.
+    """
+
+    def __init__(self, message: str, *, trace: Trace | None = None) -> None:
+        super().__init__(message)
+        self.trace = trace
 
 
 def _system_prompt(ctx: RunContext) -> str:
@@ -79,7 +89,7 @@ def _live_run(ctx: RunContext, llm: OpenAICompatLLM, max_steps: int) -> Trace:
                 result = dispatch_tool(fn.get("name", ""), args, ctx, trace)
                 messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": result})
     except LLMError as exc:
-        raise AgentRunError(str(exc)) from exc
+        raise AgentRunError(str(exc), trace=trace) from exc
 
     trace.add_event("final_output", "(agent stopped without a final answer)", source="agent", target="user")
     return trace

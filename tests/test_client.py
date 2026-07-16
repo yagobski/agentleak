@@ -100,6 +100,40 @@ def test_request_http_error_parses_detail(monkeypatch):
         c.list_projects()
 
 
+def test_request_http_error_with_non_json_body_falls_back_to_raw_text(monkeypatch):
+    """A 500 with an HTML/plain-text body (e.g. from a proxy) must still raise
+    a clean AgentLeakError, not crash while trying to parse it as JSON."""
+    import io
+    import urllib.error
+
+    def boom(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 500, "ISE", {}, io.BytesIO(b"<html>Internal Server Error</html>"))
+
+    monkeypatch.setattr("agentleak.client.urllib.request.urlopen", boom)
+    c = AgentLeakClient(base_url="http://test")
+    with pytest.raises(AgentLeakError, match="500"):
+        c.list_projects()
+
+
+def test_request_malformed_json_success_body_raises_clean_error(monkeypatch):
+    """A 200 response whose body isn't valid JSON must raise AgentLeakError,
+    not leak a raw json.JSONDecodeError to the caller."""
+    class _Resp:
+        def read(self):
+            return b"not valid json {{{"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr("agentleak.client.urllib.request.urlopen", lambda req, timeout=None: _Resp())
+    c = AgentLeakClient(base_url="http://test")
+    with pytest.raises(AgentLeakError, match="non-JSON"):
+        c.list_projects()
+
+
 def test_connect_helper(monkeypatch):
     monkeypatch.setattr(AgentLeakClient, "_request", lambda self, m, p, b=None: [{"id": "proj_0", "name": "x"}])
     from agentleak.client import connect

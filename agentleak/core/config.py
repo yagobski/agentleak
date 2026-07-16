@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .trace import CHANNELS
 
@@ -51,6 +51,13 @@ class ScoringConfig(BaseModel):
     # Per-data-type severity-level overrides (a deployment's data-classification
     # policy), e.g. {"person_name": 3} to treat names as more sensitive.
     level_overrides: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("weights")
+    @classmethod
+    def validate_weights(cls, weights: list[int]) -> list[int]:
+        if len(weights) != 4 or any(weight <= 0 for weight in weights):
+            raise ValueError("weights must contain four strictly positive integers (L1..L4)")
+        return weights
 
 
 class VaultConfig(BaseModel):

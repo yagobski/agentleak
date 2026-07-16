@@ -105,6 +105,11 @@ class Run:
         self._submit = (project is not None) if submit is None else submit
         self.report: AnalysisResult | None = None
         self.submitted: dict[str, Any] | None = None
+        # Set when platform submission was attempted but failed (e.g. the
+        # platform isn't running) — the local analysis in ``report`` is never
+        # discarded because of this, but the failure is surfaced here instead
+        # of being swallowed silently.
+        self.submit_error: str | None = None
         self._token: Any = None
         self._callback: Any = None
         self._crew: Any = None
@@ -224,16 +229,24 @@ class Run:
             print(self.summary())
 
     def _try_submit(self) -> None:
+        """Best-effort platform submission — never destroys the local report.
+
+        The trace has already been analyzed into ``self.report`` before this
+        runs, so a submission failure (platform not running, network error,
+        server-side error) only means ``self.submitted`` stays ``None``; it is
+        recorded on ``self.submit_error`` (surfaced in :meth:`summary`) rather
+        than swallowed. Anything other than the expected client error is a bug
+        and still propagates.
+        """
         try:
             from .client import AgentLeakClient, AgentLeakError
             client = AgentLeakClient(self.project, base_url=self.base_url)
             self.submitted = client.submit(self.trace)
         except Exception as exc:  # noqa: BLE001 — submission is best-effort
             # Most common case: the platform isn't running. Keep local analysis.
-            from .client import AgentLeakError
             if not isinstance(exc, AgentLeakError):
                 raise
-            self._submit_error = str(exc)
+            self.submit_error = str(exc)
 
     # -- presentation ---------------------------------------------------
     def summary(self) -> str:
@@ -255,6 +268,8 @@ class Run:
             lines.append(f"  {ch:<20} {uniq}")
         if self.submitted:
             lines.append(f"  → submitted to platform (run {self.submitted.get('id', '?')})")
+        elif self.submit_error:
+            lines.append(f"  ⚠ platform submission failed (local analysis above is unaffected): {self.submit_error}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:

@@ -91,6 +91,109 @@ def test_agent_card_requires_auth(tmp_path):
     assert anon.get("/api/projects/x/agent-card").status_code == 401
 
 
+# -- agent-card URL fetch: SSRF guard (integration, through the API) -----
+# The endpoint delegates to agentleak.core.agentcard.fetch_agent_card, whose
+# safety checks (scheme, credentials, resolved-IP allowlist) run for real here
+# — only the final network call is ever mocked, and only for the one test
+# that expects a URL to actually be allowed through.
+@pytest.mark.parametrize("url", [
+    "file:///etc/passwd",
+    "ftp://example.com/agent-card.json",
+])
+def test_fetch_agent_card_rejects_disallowed_scheme(client: TestClient, url: str):
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(f"/api/projects/{pid}/agent-card/fetch", json={"url": url})
+    assert r.status_code == 400
+    assert "http" in r.json()["detail"].lower()
+
+
+def test_fetch_agent_card_rejects_localhost(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(f"/api/projects/{pid}/agent-card/fetch", json={"url": "http://localhost:9999/card.json"})
+    assert r.status_code == 400
+    assert "disallowed" in r.json()["detail"].lower()
+
+
+def test_fetch_agent_card_rejects_loopback_ip(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(f"/api/projects/{pid}/agent-card/fetch", json={"url": "http://127.0.0.1:9999/card.json"})
+    assert r.status_code == 400
+    assert "disallowed" in r.json()["detail"].lower()
+
+
+def test_fetch_agent_card_rejects_cloud_metadata_ip(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(
+        f"/api/projects/{pid}/agent-card/fetch",
+        json={"url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/"},
+    )
+    assert r.status_code == 400
+    assert "disallowed" in r.json()["detail"].lower()
+
+
+def test_fetch_agent_card_rejects_embedded_credentials(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(
+        f"/api/projects/{pid}/agent-card/fetch",
+        json={"url": "http://user:pass@example.com/agent-card.json"},
+    )
+    assert r.status_code == 400
+    assert "credential" in r.json()["detail"].lower()
+
+
+def test_fetch_agent_card_requires_url(client: TestClient):
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(f"/api/projects/{pid}/agent-card/fetch", json={})
+    assert r.status_code == 400
+
+
+def test_fetch_agent_card_allows_mocked_https(client: TestClient, monkeypatch):
+    """A safe https:// URL is fetched (network mocked) and attached."""
+    import json as _json
+
+    import agentleak.core.agentcard as agentcard_mod
+
+    class _Resp:
+        def __init__(self, payload: dict) -> None:
+            self._b = _json.dumps(payload).encode()
+
+        def read(self) -> bytes:
+            return self._b
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_open(req, timeout=None):
+        assert req.full_url == "https://example.com/agent-card.json"
+        return _Resp({"name": "remote-agent", "capabilities": ["chat"]})
+
+    monkeypatch.setattr(agentcard_mod._SAFE_OPENER, "open", fake_open)
+
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(
+        f"/api/projects/{pid}/agent-card/fetch",
+        json={"url": "https://example.com/agent-card.json"},
+    )
+    assert r.status_code == 200
+    assert r.json()["agent_card"]["name"] == "remote-agent"
+
+    # Persisted on the project.
+    assert client.get(f"/api/projects/{pid}/agent-card").json()["agent_card"]["name"] == "remote-agent"
+
+
+def test_fetch_agent_card_unreachable_host_returns_502(client: TestClient):
+    """A syntactically-safe URL that simply can't be reached is a 502, not a 400."""
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    r = client.post(
+        f"/api/projects/{pid}/agent-card/fetch",
+        json={"url": "https://this-host-does-not-exist.invalid/agent-card.json"},
+    )
+    assert r.status_code == 502
+
+
 # -- code scans ----------------------------------------------------------
 def test_code_scan_with_inline_files(client: TestClient):
     pid = client.post("/api/projects", json={"name": "P"}).json()["id"]

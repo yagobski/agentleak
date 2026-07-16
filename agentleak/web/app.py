@@ -34,7 +34,7 @@ from ..agent import (
     run_pipeline,
     run_scenario,
 )
-from ..core.agentcard import AgentCard, fetch_agent_card, parse_agent_card
+from ..core.agentcard import AgentCard, UnsafeURLError, fetch_agent_card, parse_agent_card
 from ..core.agentrisk import dominates
 from ..core.codescan import scan_payload
 from ..core.config import Config
@@ -309,7 +309,10 @@ def _builtin_scenario_summary(scenario: Any) -> dict[str, Any]:
         "sensitive_data": d["sensitive_data"],
         "expected_behavior": d["expected_behavior"],
         "tags": [],
-        "difficulty": "",
+        "difficulty": d["difficulty"],
+        "expected_outcome": d["expected_outcome"],
+        "topology": d["topology"],
+        "attack_classes": d["attack_classes"],
         "source": "builtin",
         "builtin": True,
         "pack_id": "",
@@ -320,6 +323,31 @@ def _builtin_scenario_summary(scenario: Any) -> dict[str, Any]:
 def _level_profile_ints(report: dict[str, Any]) -> dict[int, int]:
     lp = report.get("summary", {}).get("level_profile", {})
     return {n: int(lp.get(f"L{n}", 0)) for n in (1, 2, 3, 4)}
+
+
+def _scope_compatibility(a: dict[str, Any], b: dict[str, Any]) -> tuple[bool, str]:
+    """Check whether two reports share the same ρ_S audited scope.
+
+    Dominance (Proposition 5) only implies a weight-robust RI ordering when
+    both runs are normalized against the *same* vault denominator. Comparing
+    across different scopes (e.g. one run scoped to an explicit 21-point
+    vault, the other to its own observed-reachable set) says nothing about
+    which deployment is actually riskier, so we refuse to claim dominance and
+    explain why.
+    """
+    scope_a, scope_b = a.get("scope_def"), b.get("scope_def")
+    rho_a, rho_b = a.get("rho_s"), b.get("rho_s")
+    if scope_a != scope_b:
+        return False, (
+            f"Runs use different audited scopes (a: {scope_a!r}, b: {scope_b!r}); "
+            "dominance is only meaningful when both runs share the same ρ_S vault."
+        )
+    if rho_a != rho_b:
+        return False, (
+            f"Runs report different ρ_S ({rho_a} vs {rho_b}) despite a matching "
+            "scope label; dominance requires an identical denominator."
+        )
+    return True, ""
 
 
 def _safe_project(project: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1474,6 +1502,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             raise HTTPException(status_code=400, detail="'url' is required.")
         try:
             card = fetch_agent_card(url)
+        except UnsafeURLError as exc:
+            # Bad/unsafe input (SSRF guard) — a client error, not a server one.
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         errors = card.validate()
@@ -2066,9 +2097,12 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def compare(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
         a = _owned_run(payload.get("a", ""), user)
         b = _owned_run(payload.get("b", ""), user)
+        comparable, reason = _scope_compatibility(a["report"], b["report"])
+        if not comparable:
+            return {"a": a, "b": b, "dominance": "neither", "comparable": False, "reason": reason}
         pa, pb = _level_profile_ints(a["report"]), _level_profile_ints(b["report"])
         verdict = "a" if dominates(pa, pb) else ("b" if dominates(pb, pa) else "neither")
-        return {"a": a, "b": b, "dominance": verdict}
+        return {"a": a, "b": b, "dominance": verdict, "comparable": True, "reason": ""}
 
     # -- SPA -----------------------------------------------------------
     # Static bundle is only served in production / `agentleak serve` mode.

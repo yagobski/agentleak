@@ -211,7 +211,7 @@ def _live_agent_turn(
                 result = dispatch_tool(fn.get("name", ""), args, ctx, trace, agent=agent.safe_name)
                 messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": result})
     except LLMError as exc:
-        raise AgentRunError(str(exc)) from exc
+        raise AgentRunError(str(exc), trace=trace) from exc
     return ""
 
 

@@ -122,3 +122,85 @@ def test_watch_propagates_user_exception_without_analyzing():
 def test_run_class_exported():
     assert agentleak.Run is Run
     assert callable(agentleak.watch)
+
+
+# -- submission failure handling (network unreachable) -------------------
+# A platform submission failure must never destroy the local analysis result
+# or crash the user's `with` block — it should be surfaced (not swallowed).
+
+def test_watch_submission_failure_keeps_local_report_and_surfaces_error():
+    with agentleak.watch(
+        "some-project", base_url="http://127.0.0.1:59999",  # nothing listening
+        print_summary=False,
+    ) as run:
+        run.tool_call({"ssn": "123-45-6789"}, target="crm")
+        run.final_output("All done.")
+
+    # The local analysis is complete and correct...
+    assert run.report is not None
+    assert any(f.data_type == "ssn" for f in run.report.findings)
+    # ...even though submission failed and was not silently dropped.
+    assert run.submitted is None
+    assert run.submit_error is not None
+    assert "127.0.0.1:59999" in run.submit_error or "agentleak serve" in run.submit_error
+
+
+def test_watch_submission_failure_does_not_crash_the_with_block():
+    # No exception should escape the `with` block just because the platform
+    # submission failed — this must run to completion without raising.
+    with agentleak.watch("p", base_url="http://127.0.0.1:59999", print_summary=False) as run:
+        run.final_output("clean")
+    assert run.report is not None
+
+
+def test_watch_summary_includes_submission_failure_warning():
+    with agentleak.watch("p", base_url="http://127.0.0.1:59999", print_summary=False) as run:
+        run.final_output("clean")
+    summary = run.summary()
+    assert "submission failed" in summary
+    assert run.submit_error in summary
+
+
+def test_watch_successful_submission_leaves_submit_error_none(monkeypatch):
+    from agentleak.client import AgentLeakClient
+
+    class FakeServer:
+        def __init__(self) -> None:
+            self.projects: list[dict] = []
+
+        def request(self, method: str, path: str, body=None):
+            if path == "/api/projects" and method == "GET":
+                return list(self.projects)
+            if path == "/api/projects" and method == "POST":
+                p = {"id": "proj_1", "name": body["name"]}
+                self.projects.append(p)
+                return p
+            if path.endswith("/runs") and method == "POST":
+                return {"id": "run_1", "risk_index": 0.0, "verdict": "Pass"}
+            raise AssertionError(f"unexpected {method} {path}")
+
+    server = FakeServer()
+    monkeypatch.setattr(AgentLeakClient, "_request", lambda self, m, p, b=None: server.request(m, p, b))
+    with agentleak.watch("p", base_url="http://test", print_summary=False) as run:
+        run.final_output("clean")
+    assert run.submit_error is None
+    assert run.submitted is not None
+    assert run.submitted["id"] == "run_1"
+
+
+def test_watch_unexpected_submission_bug_is_not_swallowed(monkeypatch):
+    """Only the client's own AgentLeakError is treated as best-effort; any
+    other exception (a real bug) must still propagate, not be hidden."""
+    import pytest
+
+    from agentleak.client import AgentLeakClient
+
+    def boom(self, project, **kw):
+        raise TypeError("unexpected bug, not a network error")
+
+    monkeypatch.setattr(AgentLeakClient, "ensure_project", boom)
+    with pytest.raises(TypeError, match="unexpected bug"):
+        with agentleak.watch("p", base_url="http://test", print_summary=False) as run:
+            run.final_output("clean")
+    # The local report was still produced before the (re-raised) submission bug.
+    assert run.report is not None

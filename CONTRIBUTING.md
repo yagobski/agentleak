@@ -58,6 +58,68 @@ installed bundle and restart `agentleak serve`.
 2. Bundle a **synthetic** trace under `agentleak/examples/`.
 3. Add it to the registry and to `tests/test_scenarios.py`.
 
+## Test coverage guarantees
+
+The suite under `tests/` asserts real behavior, not just line coverage. The
+following guarantees are enforced by tests and should stay true for any
+follow-up change:
+
+- **Agent-card URL fetch is SSRF-safe** (`agentleak/core/agentcard.py`,
+  exercised end-to-end via the API in `tests/test_agent_api.py` and directly
+  in `tests/test_agentcard.py`). Only `http`/`https` are allowed; URLs with
+  embedded credentials are rejected; the resolved IP (literal or via DNS) is
+  checked against loopback/link-local/private/CGNAT/reserved/multicast/
+  unspecified ranges, including every hop of an HTTP redirect. Disallowed
+  targets return a clear `400` (`UnsafeURLError`); a name that fails to
+  resolve, or a reachable-but-erroring host, returns `502` — that distinction
+  (SSRF finding vs. network failure) is itself covered by tests.
+- **Orchestrator/runner failures don't lose the trace.** `AgentRunError`
+  (raised when the LLM backend fails mid-run, in both the single-agent
+  `agent/runner.py` and multi-agent `agent/orchestrator.py` live paths) carries
+  the partially captured `Trace` on a `.trace` attribute so callers can still
+  inspect what happened before the failure. Also covered: malformed tool-call
+  JSON from the model (falls back to a text answer instead of crashing),
+  max-step exhaustion, non-dict/empty-name tool entries in `_normalize_tools`,
+  and MCP server/tool detection in `_toolbox_for` (`tests/test_orchestrator.py`,
+  `tests/test_runner.py`).
+- **Client (`agentleak/client.py`) never leaks a raw exception for a bad
+  server response.** Both a non-JSON error body and a non-JSON `200` body are
+  turned into a clear `AgentLeakError` instead of an uncaught
+  `json.JSONDecodeError` (`tests/test_client.py`).
+- **OTEL/OpenInference and computer-use ingestion tolerate messy input.**
+  Nested/typed OTLP attribute values, missing attributes, duck-typed span
+  objects, and unknown/failed/browse computer-use actions all convert to a
+  usable `Trace` instead of raising (`tests/test_integrations.py`).
+- **Track/watch submission failures never take down a user's run.**
+  `agentleak.track.Run` records network/API submission failures on a public
+  `submit_error` attribute and surfaces a `⚠ platform submission failed`
+  warning in `summary()` — the local analysis report is always still
+  available, and the failure is never swallowed silently. A submission that
+  fails for an unexpected (non-`AgentLeakError`) reason still propagates, since
+  that indicates a real bug rather than a transient/API issue
+  (`tests/test_track.py`).
+- **`agentleak scan` gives clear, non-crashing errors.** Missing zip files,
+  invalid zip content, a malformed `owner/repo` argument, GitHub `403`s,
+  unreachable GitHub, a non-directory path, and `--fail-under` threshold
+  breaches all exit with code `1` and a `✗ ...` message instead of a traceback
+  (`tests/test_cli.py`).
+
+### Known optional / uncovered areas
+
+These are intentionally out of scope for the guarantees above — don't assume a
+regression here will be caught by CI:
+
+- **Presidio detector** (`agentleak/detectors/presidio_detector.py`, ~17%
+  coverage) — only exercised when the optional `presidio` extra is installed
+  and its NER model downloaded; the default test run stubs/skips it.
+- **Frontend/browser rendering** (`agentleak/web/frontend/`) — no headless
+  browser tests; only the built static bundle and backend API are covered.
+- **Live external LLM calls** — all LLM-backed tests (orchestrator, runner,
+  `llm.py`) mock `urllib.request.urlopen`; nothing in the suite makes a real
+  network call to OpenRouter/OpenAI-compatible endpoints. Run with
+  `OPENROUTER_API_KEY`/`AGENTLEAK_LLM_*` unset (and no local `.env` loaded) to
+  confirm no test accidentally depends on real credentials.
+
 ## Pull requests
 
 Run the full check suite before opening a PR. Describe the leak class or channel

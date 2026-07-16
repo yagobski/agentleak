@@ -16,6 +16,8 @@ scoped to privacy leakage and driven by the AgentRisk severity taxonomy.
 | **NIST AI RMF** (AI 100-1) | MEASURE 2.7 privacy measured · Privacy-Enhanced characteristic · MANAGE 1.3 risk treated |
 | **OWASP LLM Top 10** (2025) | LLM02 Sensitive Information Disclosure · LLM06 Excessive Agency |
 | **EU AI Act** (2024/1689) | Art. 10 Data governance |
+| **HIPAA** (45 CFR 164) | §164.502(b) minimum necessary · §164.312(a) access/transmission security · §164.514 de-identification |
+| **PCI-DSS v4.0** | Req. 3 protect stored account data · Req. 4 protect data in transmission · Req. 3.4 PAN not exposed in logs/tools |
 
 ## How it works
 
@@ -36,8 +38,13 @@ The result appears in:
 - the **web UI** (a Compliance section on every run, framework cards with
   per-control status),
 - the **HTML / Markdown exports**,
-- the **CLI** summary line (`Compliance: 3/5 frameworks clear …`),
+- the **CLI** summary line (`Compliance: 5/7 frameworks clear …`),
 - the **JSON report** under `compliance` (for CI gating).
+
+The JSON report also carries a machine-readable `compliance.disclaimer` object
+(`is_legal_certification: false`, `is_compliance_attestation: false`, plus a
+`text`/`scope` summary) — so an automated consumer doesn't have to parse this
+page's prose to learn that a "compliant" verdict is not a legal guarantee.
 
 ## Add or adjust a framework
 
