@@ -257,6 +257,10 @@ See [docs/integrations.md](docs/integrations.md).
 - [CI policy gate](docs/ci-gate.md) — fail builds on privacy regressions
 - [Declarative privacy policy](docs/privacy-policy.md) — assertions by risk, level, channel and data type
 - [JSON Schema catalog](docs/schemas.md) — versioned machine contracts for every public document
+- [Configuration reference](docs/configuration.md) — complete `agentleak.yaml` sections and validation
+- [CLI reference](docs/cli.md) — commands, flags, exit codes and artifacts
+- [Red-team quickstart](docs/redteam-quickstart.md) — catalog, scripted/live campaigns and metrics
+- [Reports and evidence](docs/reporting.md) — report fields, formats, redaction and retention
 - [Defenses](docs/defenses.md) — Sanitizer, InternalChannelGuard
 - [Scenarios](docs/scenarios.md)
 - [Running agents (live & scripted)](docs/agents.md)

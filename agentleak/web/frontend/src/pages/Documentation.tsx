@@ -8,7 +8,7 @@ type NavItem = { href: string; label: string }
 type Endpoint = {
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"
   path: string
-  auth: "None" | "Session cookie" | "X-AgentLeak-Key" | "Session or project key"
+  auth: "None" | "Session cookie" | "X-AgentLeak-Key" | "Session or project key" | "None or session cookie" | "X-AgentLeak-Key or Session cookie"
   summary: string
   request: string
   response: string
@@ -132,6 +132,94 @@ const SCHEMA_DISCOVERY = [
   "# IDE validation for agentleak.yaml",
   "# yaml-language-server: $schema=" + BASE + "/api/schemas/config",
 ].join("\n")
+const CONFIG_REFERENCE = [
+  "# agentleak.yaml — minimal complete release configuration",
+  "project:",
+  "  name: support-bot",
+  "  description: Privacy regression suite",
+  "agent:",
+  "  name: support-bot",
+  "  type: generic",
+  "  endpoint: null",
+  "scenarios:",
+  "  - id: healthcare_patient_summary",
+  "    enabled: true",
+  "channels: [user_input, tool_call, tool_response, shared_memory, log, generated_file, inter_agent_message, final_output]",
+  "detectors:",
+  "  pii: true",
+  "  secrets: true",
+  "  healthcare: true",
+  "  finance: false",
+  "  hr: false",
+  "detection:",
+  "  mode: fast                 # fast | standard | hybrid | llm_only",
+  "  presidio: {enabled: false, score_threshold: 0.5}",
+  "  llm_judge: {enabled: false, threshold: 0.7}",
+  "scoring:",
+  "  fail_below: 40",
+  "  conditional_below: 70",
+  "  block_on_critical: true",
+  "  weights: [1, 2, 3, 4]",
+  "vault:",
+  "  levels: {\"1\": 40, \"2\": 12, \"3\": 5, \"4\": 2}",
+  "  scope_def: customer records reachable by the support workflow",
+  "privacy_policy:",
+  "  max_risk_index: 0.20",
+  "  max_findings: 0",
+  "  forbid_levels: [4]",
+  "privacy: {redact_values: true, store_raw_traces: false}",
+  "reports: {output_dir: reports, formats: [json, html, markdown]}",
+].join("\n")
+const CLI_REFERENCE = [
+  "agentleak init [PATH] [--force]",
+  "agentleak validate [CONFIG] [--trace TRACE]",
+  "agentleak scenarios",
+  "agentleak schema [NAME]",
+  "agentleak scan PATH [--mode fast|standard|hybrid] [--format json|sarif] [--fail-under N]",
+  "agentleak run [--trace TRACE | --scenario ID] [--config CONFIG] [--format json,html,markdown] [--fail-under N]",
+  "agentleak report --input REPORT.json [--format html,markdown]",
+  "agentleak history PROJECT [--limit N]",
+  "agentleak compare RUN_A RUN_B",
+  "agentleak serve [--host HOST] [--port PORT] [--no-browser]",
+].join("\n")
+const DETECTION_PIPELINE = [
+  "Tier 1  deterministic regex + dictionaries + custom rules",
+  "Tier 2  canaries, entropy, de-obfuscation and domain recognizers",
+  "Tier 2b Presidio recognizers (optional: mode=standard)",
+  "Tier 3  LLM-as-Judge semantic detector (optional BYOK: mode=hybrid)",
+  "",
+  "default: fast      = Tier 1 + local deterministic checks",
+  "standard           = fast + Presidio",
+  "hybrid             = standard + semantic judge",
+  "llm_only           = semantic judge only (use only for controlled experiments)",
+].join("\n")
+const REPORT_EXAMPLE = [
+  "{",
+  '  "report": "agentleak",',
+  '  "run_id": "run_001",',
+  '  "risk_index": 0.44,',
+  '  "privacy_score": 56,',
+  '  "verdict": "High risk",',
+  '  "blocked": true,',
+  '  "summary": {"total_findings": 2, "leaked_secrets": 2},',
+  '  "findings": [{"channel":"shared_memory","data_type":"diagnosis","level":4,"redacted_value":"dia…sis"}],',
+  '  "privacy_policy": {"enabled": true, "passed": false, "violations": []},',
+  '  "leak_paths": [{"data_type":"diagnosis","steps":[...] }],',
+  '  "remediation_hints": [{"channel":"shared_memory","priority":"critical"}]',
+  "}",
+].join("\n")
+const REDTEAM_QUICKSTART = [
+  "# 1. Inspect the supported matrix",
+  "curl -sS " + BASE + "/api/redteam/catalog | jq '.plugins, .strategies, .plugin_presets'",
+  "",
+  "# 2. Run an offline, deterministic campaign",
+  "curl -sS -X POST " + BASE + "/api/projects/$PROJECT_ID/redteam \\",
+  "  -H \"Cookie: $AGENTLEAK_SESSION\" -H 'content-type: application/json' \\",
+  "  -d '{\"vertical\":\"healthcare\",\"adversary_level\":\"A1\",\"n\":10,\"plugin_preset\":\"agent_core\",\"strategy_profile\":\"balanced\",\"mode\":\"scripted\"}'",
+  "",
+  "# 3. Repeat the exact matrix after remediation",
+  "# Compare coverage, ASR, defense_rate, privacy_score and saved run evidence.",
+].join("\n")
 const HOSTED_QUICKSTART = [
   "1. Go to /register and create a human account (email + password).",
   "2. Create a project from the dashboard, or open the Playground for a",
@@ -184,9 +272,12 @@ const AGENT_QUICKSTART = [
 
 const pageNav: Record<Audience, NavItem[]> = {
   overview: [
+    { href: "#start-here", label: "Start here" },
     { href: "#quickstart", label: "5-minute quickstart" },
+    { href: "#configuration", label: "Configuration reference" },
     { href: "#feature-guides", label: "Feature guides" },
     { href: "#trace-analysis", label: "Trace analysis" },
+    { href: "#detection", label: "Detection pipeline" },
     { href: "#agentrisk-guide", label: "AgentRisk scoring" },
     { href: "#code-scan", label: "Static code scan" },
     { href: "#red-team-guide", label: "Red team" },
@@ -194,6 +285,7 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#privacy-policy", label: "Privacy assertions" },
     { href: "#schema-contracts", label: "JSON Schema contracts" },
     { href: "#agent-api-guide", label: "Agent API" },
+    { href: "#report-contract", label: "Report contract" },
     { href: "#model", label: "Mental model" },
     { href: "#how-to-use", label: "How to use AgentLeak" },
     { href: "#agentrisk", label: "AgentRisk" },
@@ -205,7 +297,11 @@ const pageNav: Record<Audience, NavItem[]> = {
   developers: [
     { href: "#start", label: "Install" },
     { href: "#workflow", label: "Developer workflow" },
+    { href: "#configuration", label: "Configuration reference" },
+    { href: "#cli", label: "CLI reference" },
     { href: "#trace", label: "Trace model" },
+    { href: "#detection", label: "Detection pipeline" },
+    { href: "#reports", label: "Reports and redaction" },
     { href: "#sdk", label: "Python SDK" },
     { href: "#integrations", label: "Integrations" },
     { href: "#byok", label: "BYOK: LLM-judge & OpenRouter" },
@@ -251,12 +347,52 @@ const apiEndpoints: Endpoint[] = [
     response: "JSON Schema with x-agentleak-schema-version, or a catalog containing every schema URL.",
   },
   {
+    method: "GET",
+    path: "/api/health | /readyz",
+    auth: "None",
+    summary: "Liveness and readiness probes for local, Docker and reverse-proxy deployments.",
+    request: "No body.",
+    response: "Health status, version and readiness state.",
+  },
+  {
     method: "POST",
     path: "/api/auth/register",
     auth: "None",
     summary: "Create a human account and session cookie for the hosted platform.",
     request: "email, password, optional name.",
     response: "Authenticated user object. The server sets the session cookie.",
+  },
+  {
+    method: "POST",
+    path: "/api/auth/login | /api/auth/logout",
+    auth: "None or session cookie",
+    summary: "Create or clear the human dashboard session.",
+    request: "Login: email and password. Logout: no body.",
+    response: "Authenticated user or a cleared session.",
+  },
+  {
+    method: "GET",
+    path: "/api/auth/me | /api/limits",
+    auth: "Session cookie",
+    summary: "Read the current user, quota and account-level limits.",
+    request: "No body.",
+    response: "User identity, quota counters and reset metadata.",
+  },
+  {
+    method: "GET",
+    path: "/api/scenarios | /api/scenario-packs",
+    auth: "Session cookie",
+    summary: "List built-in, uploaded and importable scenario packs.",
+    request: "Optional filters or pagination depending on the resource.",
+    response: "Scenario metadata, coverage, domains and pack availability.",
+  },
+  {
+    method: "POST",
+    path: "/api/analyze | /api/report/{fmt} | /api/render/{fmt}",
+    auth: "Session cookie",
+    summary: "Analyze a trace or render an existing report in a selected format.",
+    request: "Trace/scenario and optional detectors, vault, privacy policy and redaction settings.",
+    response: "Analysis report or rendered JSON, Markdown or HTML document.",
   },
   {
     method: "POST",
@@ -281,6 +417,22 @@ const apiEndpoints: Endpoint[] = [
     summary: "Generate a project-scoped key for autonomous agent calls.",
     request: "No body.",
     response: "api_key and project_id. Store the key once; treat it like a secret.",
+  },
+  {
+    method: "GET",
+    path: "/api/projects | /api/projects/{project_id}",
+    auth: "Session cookie",
+    summary: "List, read, update or delete projects and their stored configuration.",
+    request: "Project ID for a single resource; PATCH accepts name, description, agent and config.",
+    response: "Project identity, configuration, run counts and latest run summary.",
+  },
+  {
+    method: "GET",
+    path: "/api/projects/{project_id}/connect",
+    auth: "Session cookie",
+    summary: "Return a framework-specific SDK connection snippet.",
+    request: "Project ID and selected agent type.",
+    response: "Integration name, install hints and copy-paste recorder snippet.",
   },
   {
     method: "POST",
@@ -332,6 +484,54 @@ const apiEndpoints: Endpoint[] = [
   },
   {
     method: "GET",
+    path: "/api/agent/card | /api/projects/{project_id}/agent-card",
+    auth: "X-AgentLeak-Key or Session cookie",
+    summary: "Read the registered agent card and declared source/privacy metadata.",
+    request: "No body for GET.",
+    response: "Normalized agent card, capabilities, source and privacy declaration.",
+  },
+  {
+    method: "GET",
+    path: "/api/redteam/catalog",
+    auth: "Session cookie",
+    summary: "List attack classes, plugins, strategies and presets before creating a campaign.",
+    request: "No body.",
+    response: "46 classes, 24 plugins, 9 strategies, profiles and presets.",
+  },
+  {
+    method: "POST",
+    path: "/api/projects/{project_id}/redteam",
+    auth: "Session cookie",
+    summary: "Run a scripted or authorized live adversarial campaign and persist its evidence.",
+    request: "vertical, adversary_level, n, plugins/plugin_preset, strategies/strategy_profile and mode.",
+    response: "coverage, attacks, metrics, remediation, saved run IDs and report references.",
+  },
+  {
+    method: "GET",
+    path: "/api/projects/{project_id}/runs | /api/runs/{run_id}",
+    auth: "Session cookie",
+    summary: "List or retrieve stored runtime, code and red-team evidence.",
+    request: "Project or run ID; optional history filters.",
+    response: "Canonical report, source, label, timestamps and progression metadata.",
+  },
+  {
+    method: "GET",
+    path: "/api/projects/{project_id}/history | /api/projects/{project_id}/compare",
+    auth: "Session cookie",
+    summary: "Compare releases and inspect score progression for a project.",
+    request: "Project ID plus optional run IDs, limit and comparison parameters.",
+    response: "Deltas, regression direction, dominance comparison and evidence references.",
+  },
+  {
+    method: "POST",
+    path: "/api/projects/{project_id}/execute",
+    auth: "Session cookie",
+    summary: "Execute a configured scripted/live agent scenario and store the resulting run.",
+    request: "Scenario ID, mode, label and optional execution settings.",
+    response: "Stored run with trace-derived report and source metadata.",
+  },
+  {
+    method: "GET",
     path: "/openapi.json",
     auth: "None",
     summary: "Machine-readable OpenAPI schema for generated clients, validators and agent planning.",
@@ -359,7 +559,9 @@ function Code({ children }: { children: string }) {
 
 const searchEntries = [
   ["AgentLeak overview", "/docs", "Mental model, channels and safety boundary"],
+  ["Start here", "/docs#start-here", "Choose the local, hosted, developer or autonomous-agent path"],
   ["5-minute quickstart", "/docs#quickstart", "Local pip install vs. the hosted platform"],
+  ["Configuration reference", "/docs#configuration", "Complete agentleak.yaml with detectors, vault, scoring, policy and reports"],
   ["Trace analysis guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md", "Capture, normalize, detect and report every execution channel"],
   ["How to use AgentLeak", "/docs#how-to-use", "Capture, analyze, remediate and gate"],
   ["AgentRisk scoring", "/docs#agentrisk", "Risk Index, privacy score and the explicit-vault caveat"],
@@ -372,6 +574,9 @@ const searchEntries = [
   ["Developer guide", "/docs/developers", "Install, trace schema, SDK and CI"],
   ["Install AgentLeak", "/docs/developers#start", "pip install agentleak, agentleak init"],
   ["Trace model", "/docs/developers#trace", "run_id, agent_name and channel-tagged events"],
+  ["Detection pipeline", "/docs/developers#detection", "Deterministic tiers, Presidio, canaries, entropy and optional LLM judge"],
+  ["CLI reference", "/docs/developers#cli", "Every local command, option and exit-code behavior"],
+  ["Report contract", "/docs#report-contract", "Privacy-safe JSON, Markdown, HTML, leak paths and remediation hints"],
   ["Python SDK", "/docs/developers#sdk", "AgentLeakRunner, Trace and analyze()"],
   ["Framework integrations", "/docs/developers#integrations", "LangChain, CrewAI, MCP, OpenTelemetry and more"],
   ["BYOK: OpenRouter and the LLM-judge", "/docs/developers#byok", "Bring your own key for the Tier-3 semantic detector and live agent runs"],
@@ -381,6 +586,7 @@ const searchEntries = [
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
   ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
   ["Adversarial red-team", "/features/red-team", "24 plugins × 9 strategies, defense rate, vulnerability and remediation reports"],
+  ["Red-team quickstart", "/docs#red-team-guide", "Catalog, scripted/live modes, attack matrix, metrics and iteration loop"],
   ["CI policy gate guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
   ["Privacy assertions", "/docs#privacy-policy", "Deterministic limits by risk, finding count, level, channel and data type"],
   ["JSON Schema contracts", "/docs#schema-contracts", "Versioned schemas for config, traces, findings, reports, red-team and code scans"],
@@ -508,7 +714,7 @@ function PageToc({ audience }: { audience: Audience }) {
 function Overview() {
   return (
     <article className="docs-article">
-      <header className="docs-page-head" id="model">
+      <header className="docs-page-head" id="start-here">
         <p className="docs-kicker">Documentation</p>
         <h1>AgentLeak documentation</h1>
         <p>
@@ -517,6 +723,11 @@ function Overview() {
           It returns evidence, a deterministic AgentRisk score and remediation steps that both
           humans and autonomous agents can act on.
         </p>
+        <div className="docs-callout" role="note">
+          <p><b>Choose your path:</b> use the local CLI for offline regression tests, the Python SDK
+          to instrument an existing agent, the hosted API for projects and CI, or the Agent API when
+          the system under test is itself autonomous.</p>
+        </div>
       </header>
 
       <section className="docs-section" id="quickstart">
@@ -540,6 +751,33 @@ function Overview() {
         <p>
           Building an autonomous agent instead of clicking through a browser? Skip both of these and go
           straight to the <Link to="/docs/agents#quickstart">agent quickstart</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="configuration">
+        <h2>Configuration reference</h2>
+        <p>
+          Configuration is YAML or JSON and is intentionally declarative: the same file can drive
+          local traces, code scans, hosted project runs and CI. Start from <code>agentleak init</code>,
+          remove sections you do not need, and validate before committing it.
+        </p>
+        <Code>{CONFIG_REFERENCE}</Code>
+        <div className="docs-table">
+          {[
+            ["project / agent", "Project identity and the target agent metadata; does not contain provider secrets."],
+            ["scenarios", "Built-in or uploaded scenario IDs. A disabled scenario is ignored by config-driven runs."],
+            ["channels", "Allowlist of channels to inspect. Omitting a disclosure channel creates a coverage gap."],
+            ["detectors", "Enable PII, secrets, healthcare, finance, HR and custom regex detectors."],
+            ["detection", "Select fast, standard, hybrid or llm_only and configure optional providers."],
+            ["scoring / vault", "Risk thresholds, severity weights and the audited denominator for comparisons."],
+            ["privacy_policy", "Hard assertions that can block a run even when the numeric score passes."],
+            ["privacy / reports", "Redaction, raw-trace storage, output directory and report formats."],
+          ].map(([name, body]) => <div key={name}><code>{name}</code><span>{body}</span></div>)}
+        </div>
+        <p>
+          Environment variables belong in the shell or secret manager. Do not put API keys, cookies,
+          private keys or production records in YAML, fixtures or uploaded reports. The configuration
+          contract is available from <a href="/api/schemas/config"><code>/api/schemas/config</code></a>.
         </p>
       </section>
 
@@ -594,6 +832,26 @@ function Overview() {
           and <code>target</code>, and string or JSON-compatible <code>content</code>.
           Validate with <code>agentleak validate --trace traces/latest.json</code>.
           See the <Link to="/features/trace-analysis">trace analysis feature page</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="detection">
+        <h2>Detection pipeline</h2>
+        <p>
+          Detection is layered so a local run remains useful without an LLM, while deployments can
+          opt into broader semantic coverage. Findings preserve their detector tier and confidence,
+          which makes a report auditable instead of presenting one opaque score.
+        </p>
+        <Code>{DETECTION_PIPELINE}</Code>
+        <div className="docs-card-grid">
+          <div><h3>Deterministic first</h3><p>Regex, dictionaries, Luhn checks, canaries, entropy and de-obfuscation run locally and are suitable for every pull request.</p></div>
+          <div><h3>Domain coverage</h3><p>Presidio adds recognizers for standard entities; enable it explicitly and install the optional extra.</p></div>
+          <div><h3>Semantic last</h3><p>The LLM judge is BYOK and receives trace content. Use synthetic or canary data and review retention terms first.</p></div>
+        </div>
+        <p>
+          A detector finding is evidence of a possible sensitive value. The channel determines whether
+          it is source context or an agent disclosure; the AgentRisk level determines how much it weighs.
+          A passing run means only that the configured detectors saw no policy violation in the tested trace.
         </p>
       </section>
 
@@ -655,6 +913,12 @@ function Overview() {
           and 6 families. Run deterministic scripted tests for coverage and
           regression, or live tests against an authorized OpenAI-compatible endpoint.
         </p>
+        <Code>{REDTEAM_QUICKSTART}</Code>
+        <p>
+          A campaign has two independent dimensions: a plugin defines the behavior under test and a
+          strategy defines how the probe is delivered. Keep them separate so a regression can be
+          reproduced with the same plugin/strategy pair instead of relying on one opaque prompt.
+        </p>
         <Code>{"POST /api/projects/{project_id}/redteam\n{\n  \"vertical\": \"healthcare\",\n  \"adversary_level\": \"A1\",\n  \"n\": 10,\n  \"plugin_preset\": \"agent_core\",\n  \"strategy_profile\": \"balanced\",\n  \"mode\": \"scripted\"\n}"}</Code>
         <div className="docs-table">
           {[
@@ -662,6 +926,9 @@ function Overview() {
             ["Strategies", "basic, jailbreak, markup, Base64/hex/ROT13, leetspeak, homoglyph, Crescendo"],
             ["Modes", "scripted offline baseline, live BYOK target, auto when an endpoint is configured"],
             ["Metrics", "ASR, ELR, CLR, defense rate, privacy score and saved run evidence"],
+            ["A0 / A1 / A2", "Baseline benign or low-risk probing, realistic application attacks, then advanced/adversarial coverage."],
+            ["Scripted / live", "Scripted is offline and deterministic; live requires an authorized endpoint and BYOK model configuration."],
+            ["Safety", "Use synthetic data, test-only credentials and an allowlisted target. Never point a campaign at a third-party system without authorization."],
           ].map(([name, body]) => (
             <div key={name}><code>{name}</code><span>{body}</span></div>
           ))}
@@ -768,6 +1035,33 @@ function Overview() {
           response documents directly, including offline CLI workflows where no API request exists.
           Unknown schema names return 404; clients should discover names from the catalog instead of
           guessing them.
+        </p>
+      </section>
+
+      <section className="docs-section" id="report-contract">
+        <h2>Report contract and evidence</h2>
+        <p>
+          Reports are designed to answer four questions: what entered the run, where it moved, how
+          severe the disclosure was, and what should change next. JSON is the canonical machine format;
+          Markdown is for pull requests and HTML is for human review. All formats honor redaction.
+        </p>
+        <Code>{REPORT_EXAMPLE}</Code>
+        <div className="docs-table">
+          {[
+            ["risk_index / privacy_score", "The density-normalized numeric result and its 0–100 presentation."],
+            ["blocked / verdict", "Release posture from score thresholds, critical findings and privacy assertions."],
+            ["findings", "Redacted value, channel, data type, level, detector, confidence and remediation."],
+            ["channel_risks", "Risk contribution by trust boundary; use this to find the first control to fix."],
+            ["leak_paths / flow", "Propagation evidence across agents, tools, memory, files and output."],
+            ["privacy_policy", "Assertions checked, pass/fail state and finding IDs for each violation."],
+            ["remediation_hints", "Prioritized advice and optional copy-paste code fixes for supported channels."],
+            ["compliance", "Technical mappings to frameworks; never a legal certification."],
+          ].map(([name, body]) => <div key={name}><code>{name}</code><span>{body}</span></div>)}
+        </div>
+        <p>
+          Store JSON reports as protected CI artifacts. Do not publish HTML or Markdown reports when
+          they contain operational paths, even if values are redacted. For a stable contract, pin the
+          schema version from <a href="/api/schemas/analysis-report"><code>/api/schemas/analysis-report</code></a>.
         </p>
       </section>
 
@@ -998,6 +1292,42 @@ function Developers() {
         </div>
       </section>
 
+      <section className="docs-section" id="configuration">
+        <h2>Configuration reference</h2>
+        <p>
+          Keep the configuration, synthetic traces and policy in the same repository. This makes a
+          score change explainable: reviewers can see whether the agent changed, the detectors changed,
+          or the audited vault changed.
+        </p>
+        <Code>{CONFIG_REFERENCE}</Code>
+        <p>
+          Validate it with <code>agentleak validate agentleak.yaml</code>. Use the live JSON Schema for
+          editor completion and exact types. Provider keys are resolved from environment variables and
+          should never be serialized into a report.
+        </p>
+      </section>
+
+      <section className="docs-section" id="cli">
+        <h2>CLI reference</h2>
+        <p>
+          The CLI is the smallest complete interface for local and CI use. Commands return zero on a
+          passing operation, 1 for a privacy/code-gate failure or operational error, and 2 for invalid
+          usage or a configuration/trace that cannot be resolved.
+        </p>
+        <Code>{CLI_REFERENCE}</Code>
+        <div className="docs-table">
+          {[
+            ["init", "Create agentleak.yaml, scenarios/, traces/ and reports/ with a runnable example."],
+            ["validate", "Validate YAML and optionally a trace before execution."],
+            ["run", "Analyze a trace, built-in scenario or config-enabled scenario set and write reports."],
+            ["report", "Re-render a saved JSON report as HTML or Markdown without re-running detection."],
+            ["scan", "Inspect source, ZIP or GitHub code; optionally emit SARIF for code scanning."],
+            ["history / compare", "Review progression and compare runs using the stored evidence and score."],
+            ["serve", "Launch the local FastAPI/React UI without sending data to the hosted service."],
+          ].map(([name, body]) => <div key={name}><code>{name}</code><span>{body}</span></div>)}
+        </div>
+      </section>
+
       <section className="docs-section" id="trace">
         <h2>Trace model</h2>
         <p>
@@ -1005,6 +1335,32 @@ function Developers() {
           content. Preserve ordering and use stable names so leak paths stay comparable across runs.
         </p>
         <Code>{TRACE}</Code>
+      </section>
+
+      <section className="docs-section" id="detection">
+        <h2>Detection pipeline</h2>
+        <Code>{DETECTION_PIPELINE}</Code>
+        <p>
+          Use <code>fast</code> for every pull request, <code>standard</code> when entity recognition
+          matters, and <code>hybrid</code> only when semantic coverage justifies sending test content to
+          a provider. The judge is not a replacement for deterministic checks and is never enabled by
+          default.
+        </p>
+      </section>
+
+      <section className="docs-section" id="reports">
+        <h2>Reports, redaction and data handling</h2>
+        <p>
+          The default is privacy-preserving: findings retain masked values and context, while raw
+          traces are not stored unless explicitly configured. Keep the redaction boundary enabled for
+          hosted runs, use canaries in fixtures, and treat finding metadata as sensitive.
+        </p>
+        <Code>{REPORT_EXAMPLE}</Code>
+        <p>
+          Use JSON for automation, Markdown for code review, HTML for local investigation and SARIF
+          for source findings. The report schema is available at <code>/api/schemas/analysis-report</code>;
+          the CLI can print every contract with <code>agentleak schema</code>.
+        </p>
       </section>
 
       <section className="docs-section" id="sdk">
