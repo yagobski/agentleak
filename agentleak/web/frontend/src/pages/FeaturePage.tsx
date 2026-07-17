@@ -283,6 +283,15 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
 
 export const FEATURE_SLUGS = Object.keys(FEATURE_CONTENT)
 
+const FEATURE_GUIDES: Record<string, string> = {
+  "trace-analysis": "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md",
+  agentrisk: "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md",
+  "code-scan": "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md",
+  "red-team": "https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam.md",
+  "ci-gate": "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md",
+  "agent-api": "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md",
+}
+
 export function FeaturePage() {
   const { slug = "" } = useParams()
   const content = FEATURE_CONTENT[slug]
@@ -346,6 +355,11 @@ export function FeaturePage() {
           <div className="cursor-page-snippet">
             <p className="cursor-eyebrow">{content.snippetLabel}</p>
             <Code>{content.snippet}</Code>
+            <p className="mt-4 text-sm text-muted-foreground">
+              <a className="underline underline-offset-4" href={FEATURE_GUIDES[slug]} target="_blank" rel="noreferrer">
+                Read the complete implementation guide →
+              </a>
+            </p>
           </div>
         </section>
 
