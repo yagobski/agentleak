@@ -22,6 +22,10 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 
 - [{base}/docs]({base}/docs): Documentation hub and product model
 - [{base}/docs/developers]({base}/docs/developers): CLI, SDK, integrations, trace schema, and CI guide
+- [configuration reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md): complete agentleak.yaml reference
+- [CLI reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md): commands, options, exit codes and artifacts
+- [red-team quickstart](https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam-quickstart.md): campaign matrix, modes, metrics and safety
+- [reporting guide](https://github.com/yagobski/agentleak-oss/blob/main/docs/reporting.md): report contract, formats and redaction
 - [{base}/docs/agents]({base}/docs/agents): Autonomous onboarding, safety rules, self-test loop, and failure handling
 - [{base}/docs/api]({base}/docs/api): Integrated API reference with auth, endpoint flows, examples, and schema notes
 - [{base}/agents.md]({base}/agents.md): Normative instructions for autonomous agents
@@ -227,6 +231,10 @@ Framework adapters cover LangChain/LangGraph, CrewAI, AutoGen, OpenAI Agents/Swa
 
 - Human documentation: {base}/docs
 - Developer path: {base}/docs/developers
+- Configuration reference: https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md
+- CLI reference: https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md
+- Red-team quickstart: https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam-quickstart.md
+- Reporting guide: https://github.com/yagobski/agentleak-oss/blob/main/docs/reporting.md
 - Agent path: {base}/docs/agents
 - API reference: {base}/docs/api
 - Normative agent instructions: {base}/agents.md
