@@ -21,6 +21,8 @@ class RunContext:
     privacy_instruction: str = ""
     role: str = "assistant"
     records: list[dict[str, Any]] = field(default_factory=list)
+    # Authored attacker turns for stateful red-team strategies.
+    follow_up_requests: list[str] = field(default_factory=list)
 
     @property
     def has_data(self) -> bool:

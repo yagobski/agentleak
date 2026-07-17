@@ -62,36 +62,36 @@ def _system_prompt(ctx: RunContext) -> str:
 
 def _live_run(ctx: RunContext, llm: OpenAICompatLLM, max_steps: int) -> Trace:
     trace = Trace(run_id=f"live_{ctx.scenario_id}", agent_name=llm.model, scenario_id=ctx.scenario_id)
-    trace.add_event("user_input", ctx.request, source="user", target="agent")
-
-    messages: list[dict[str, Any]] = [
-        {"role": "system", "content": _system_prompt(ctx)},
-        {"role": "user", "content": ctx.request},
-    ]
+    messages: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt(ctx)}]
     try:
-        for _ in range(max_steps):
-            msg = llm.chat(messages, TOOLS)
-            messages.append({
-                "role": "assistant",
-                "content": msg.get("content") or "",
-                **({"tool_calls": msg["tool_calls"]} if msg.get("tool_calls") else {}),
-            })
-            tool_calls = msg.get("tool_calls") or []
-            if not tool_calls:
-                trace.add_event("final_output", str(msg.get("content") or ""), source="agent", target="user")
-                return trace
-            for call in tool_calls:
-                fn = call.get("function", {})
-                try:
-                    args: dict[str, Any] = json.loads(fn.get("arguments") or "{}")
-                except json.JSONDecodeError:
-                    args = {}
-                result = dispatch_tool(fn.get("name", ""), args, ctx, trace)
-                messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": result})
+        for request in [ctx.request, *ctx.follow_up_requests]:
+            trace.add_event("user_input", request, source="user", target="agent")
+            messages.append({"role": "user", "content": request})
+            completed_turn = False
+            for _ in range(max_steps):
+                msg = llm.chat(messages, TOOLS)
+                messages.append({
+                    "role": "assistant",
+                    "content": msg.get("content") or "",
+                    **({"tool_calls": msg["tool_calls"]} if msg.get("tool_calls") else {}),
+                })
+                tool_calls = msg.get("tool_calls") or []
+                if not tool_calls:
+                    trace.add_event("final_output", str(msg.get("content") or ""), source="agent", target="user")
+                    completed_turn = True
+                    break
+                for call in tool_calls:
+                    fn = call.get("function", {})
+                    try:
+                        args: dict[str, Any] = json.loads(fn.get("arguments") or "{}")
+                    except json.JSONDecodeError:
+                        args = {}
+                    result = dispatch_tool(fn.get("name", ""), args, ctx, trace)
+                    messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": result})
+            if not completed_turn:
+                trace.add_event("final_output", "(agent reached the per-turn step limit)", source="agent", target="user")
     except LLMError as exc:
         raise AgentRunError(str(exc), trace=trace) from exc
-
-    trace.add_event("final_output", "(agent stopped without a final answer)", source="agent", target="user")
     return trace
 
 
@@ -115,6 +115,9 @@ def _scripted_run(ctx: RunContext) -> Trace:
     if ctx.records:
         import json as _json
         dispatch_tool("save_memory", {"note": _json.dumps(ctx.records[0])}, ctx, trace)
+
+    for request in ctx.follow_up_requests:
+        trace.add_event("user_input", request, source="user", target="agent")
 
     # 3. Produce a final summary that includes the records (worst-case disclosure).
     parts: list[str] = []

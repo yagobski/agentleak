@@ -339,7 +339,7 @@ const searchEntries = [
   ["Cloud API overview", "/docs/developers#api", "The hosted dashboard, project and agent endpoints"],
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
-  ["Adversarial red-team", "/features/red-team", "32 attack classes, defense rate, vulnerability and remediation reports"],
+  ["Adversarial red-team", "/features/red-team", "24 plugins × 9 strategies, defense rate, vulnerability and remediation reports"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
   ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
   ["Agent operating rules", "/docs/agents#rules", "MUST / SHOULD / MUST NOT for autonomous clients"],
@@ -614,7 +614,8 @@ function Overview() {
             ["10", "Built-in scenarios bundled with the open-source package and the hosted Playground."],
             ["5", "Of those, clean controls with no injected leak, used to check for false positives."],
             ["36", "Scenarios in the separate, published benchmark dataset (not bundled)."],
-            ["32", "Attack classes across 6 families (F1\u2013F6) exercised by the benchmark and red-team."],
+            ["46", "Attack classes across 6 families (F1\u2013F6), including 14 agent-application classes mapped from Promptfoo."],
+            ["24 × 9", "Selectable vulnerability plugins and deterministic delivery strategies, including multi-turn Crescendo."],
           ].map(([n, body]) => (
             <div key={body}>
               <code>{n}</code>
@@ -630,10 +631,13 @@ function Overview() {
           traces and channels you tested, not a guarantee about traces you did not test.
         </p>
         <p>
-          Project red-team campaigns turn these scenarios into an operational report: severity counts,
-          Attack Success Rate, defense rate, delivery methods, expandable risk families and a prioritized
-          remediation plan. Every probe is stored as a normal project run, so opening the evidence shows
-          the same findings, leak flow and compliance controls as a production trace.
+          Project red-team campaigns combine a vulnerability plugin (what to test) with a delivery
+          strategy (how to attack): direct, jailbreak framing, trusted-looking markup, Base64, hex,
+          ROT13, leetspeak, Unicode homoglyphs or four-turn Crescendo. The operational report exposes
+          severity counts, Attack Success Rate, defense rate, strategy performance, budget-limited
+          coverage, expandable risk families and a prioritized remediation plan. Every probe is stored
+          as a normal project run, so opening the evidence shows the same findings, leak flow and
+          compliance controls as a production trace.
         </p>
       </section>
 

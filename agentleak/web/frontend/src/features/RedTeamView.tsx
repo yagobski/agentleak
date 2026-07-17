@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   AlertTriangle,
@@ -24,6 +24,7 @@ import {
   api,
   type AdversaryLevel,
   type RedTeamAttackResult,
+  type RedTeamCatalog,
   type RedTeamMetrics,
   type RedTeamResult,
   type RedTeamSeverity,
@@ -55,12 +56,16 @@ const LOCAL_PRESETS = [
   { label: "LM Studio", url: "http://localhost:1234/v1", model: "" },
 ]
 
-const METHOD_META: Record<string, { label: string; description: string }> = {
-  user_message: { label: "Direct prompt delivery", description: "Adversarial instructions enter through the user-facing prompt." },
-  system_prompt: { label: "System instruction override", description: "Tests whether privileged instructions can be displaced or extracted." },
-  tool_output: { label: "Tool-response poisoning", description: "Malicious content arrives through a trusted tool or external API." },
-  memory: { label: "Memory persistence", description: "Payloads exploit retained context, logs or shared state." },
-  rag: { label: "Retrieval poisoning", description: "A retrieved document carries hidden instructions into the agent." },
+const STRATEGY_META: Record<string, { label: string; description: string }> = {
+  basic: { label: "Direct baseline", description: "Original vulnerability probe without transformation." },
+  "jailbreak-template": { label: "Jailbreak template", description: "Authority framing attempts to displace ordinary workflow rules." },
+  "authoritative-markup": { label: "Authoritative markup", description: "Trusted-looking XML policy markup carries the probe." },
+  base64: { label: "Base64 encoding", description: "Decode-and-execute behavior is tested across input filters." },
+  hex: { label: "Hex encoding", description: "UTF-8 hexadecimal encoding tests normalization boundaries." },
+  rot13: { label: "ROT13 encoding", description: "A reversible substitution disguises high-signal words." },
+  leetspeak: { label: "Leetspeak", description: "Common numeric substitutions mutate the attack prompt." },
+  homoglyph: { label: "Unicode homoglyphs", description: "Readable Unicode lookalikes exercise canonicalization." },
+  crescendo: { label: "Crescendo multi-turn", description: "Four authored turns build context before the final extraction request." },
 }
 
 const SEVERITY_META: Record<RedTeamSeverity, { label: string; color: string; background: string }> = {
@@ -176,7 +181,7 @@ function ChannelExposure({ metrics }: { metrics: RedTeamMetrics }) {
 function AttackMethods({ attacks }: { attacks: RedTeamAttackResult[] }) {
   const methods = useMemo(() => {
     const groups = new Map<string, RedTeamAttackResult[]>()
-    attacks.forEach((attack) => groups.set(attack.injection_surface, [...(groups.get(attack.injection_surface) ?? []), attack]))
+    attacks.forEach((attack) => groups.set(attack.strategy_id, [...(groups.get(attack.strategy_id) ?? []), attack]))
     return [...groups.entries()].map(([id, items]) => ({
       id,
       items,
@@ -189,11 +194,11 @@ function AttackMethods({ attacks }: { attacks: RedTeamAttackResult[] }) {
     <Card className="overflow-hidden">
       <div className="border-b border-border px-5 py-4">
         <div className="flex items-center gap-2 text-sm font-semibold"><Target className="size-4" /> Attack methods</div>
-        <p className="mt-1 text-xs text-muted-foreground">Delivery surfaces ranked by attack success rate.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Promptfoo-compatible delivery strategies ranked by attack success rate.</p>
       </div>
       <div className="grid gap-px bg-border [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
         {methods.map((method) => {
-          const meta = METHOD_META[method.id] ?? { label: method.id.replace(/_/g, " "), description: "Adversarial delivery method used in this batch." }
+          const meta = STRATEGY_META[method.id] ?? { label: method.items[0].strategy_name, description: "Adversarial delivery method used in this batch." }
           return (
             <div key={method.id} className="bg-card p-4">
               <div className="flex items-start justify-between gap-3">
@@ -204,7 +209,7 @@ function AttackMethods({ attacks }: { attacks: RedTeamAttackResult[] }) {
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full" style={{ width: pct(method.asr), background: riskColor(method.asr) }} />
               </div>
-              <div className="mt-2 text-[10px] text-muted-foreground">{method.successful}/{method.items.length} attacks succeeded</div>
+              <div className="mt-2 text-[10px] text-muted-foreground">{method.successful}/{method.items.length} attacks succeeded · up to {Math.max(...method.items.map((item) => item.attack_turns))} turn(s)</div>
             </div>
           )
         })}
@@ -282,7 +287,7 @@ function RiskCategories({ attacks }: { attacks: RedTeamAttackResult[] }) {
                             <span className="text-xs font-semibold">{attack.attack_name}</span>
                             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">{attack.attack_class_id}</code>
                           </div>
-                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{attack.primary_channel} · {attack.injection_surface.replace(/_/g, " ")}</p>
+                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{attack.strategy_name} · {attack.primary_channel} · {attack.plugin_ids.join(", ") || "AgentLeak taxonomy"}</p>
                         </div>
                         <div className="hidden text-right sm:block">
                           <div className="font-mono text-[10px] text-muted-foreground">RI {attack.risk_index.toFixed(3)}</div>
@@ -377,15 +382,62 @@ export function RedTeamView({ projectId }: Props) {
   const [mode, setMode] = useState<"live" | "scripted">("live")
   const [baseUrl, setBaseUrl] = useState("")
   const [model, setModel] = useState("")
+  const [catalog, setCatalog] = useState<RedTeamCatalog | null>(null)
+  const [pluginPreset, setPluginPreset] = useState("agent_core")
+  const [strategyProfile, setStrategyProfile] = useState("balanced")
+  const [selectedPlugins, setSelectedPlugins] = useState<string[]>([])
+  const [selectedStrategies, setSelectedStrategies] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<RedTeamResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const pluginGroups = useMemo(() => {
+    const groups = new Map<string, NonNullable<RedTeamCatalog>["plugins"]>()
+    for (const plugin of catalog?.plugins ?? []) groups.set(plugin.category, [...(groups.get(plugin.category) ?? []), plugin])
+    return [...groups.entries()]
+  }, [catalog])
+
+  useEffect(() => {
+    api.redTeamCatalog().then((nextCatalog) => {
+      setCatalog(nextCatalog)
+      setSelectedPlugins(nextCatalog.plugin_presets.find((preset) => preset.id === "agent_core")?.plugin_ids ?? [])
+      setSelectedStrategies(nextCatalog.strategy_profiles.find((profile) => profile.id === "balanced")?.strategy_ids ?? ["basic"])
+    }).catch((catalogError: unknown) => setError(catalogError instanceof Error ? catalogError.message : String(catalogError)))
+  }, [])
+
+  const choosePluginPreset = (presetId: string) => {
+    setPluginPreset(presetId)
+    const preset = catalog?.plugin_presets.find((item) => item.id === presetId)
+    if (preset) setSelectedPlugins(preset.plugin_ids)
+  }
+
+  const chooseStrategyProfile = (profileId: string) => {
+    setStrategyProfile(profileId)
+    const profile = catalog?.strategy_profiles.find((item) => item.id === profileId)
+    if (profile) setSelectedStrategies(profile.strategy_ids)
+  }
+
+  const togglePlugin = (pluginId: string) => {
+    setPluginPreset("custom")
+    setSelectedPlugins((current) => current.includes(pluginId) ? current.filter((item) => item !== pluginId) : [...current, pluginId])
+  }
+
+  const toggleStrategy = (strategyId: string) => {
+    setStrategyProfile("custom")
+    setSelectedStrategies((current) => current.includes(strategyId) ? current.filter((item) => item !== strategyId) : [...current, strategyId])
+  }
 
   const run = async () => {
     setLoading(true)
     setError(null)
     try {
-      const payload: Parameters<typeof api.runRedTeam>[1] = { vertical, adversary_level: adversaryLevel, n, mode }
+      const payload: Parameters<typeof api.runRedTeam>[1] = {
+        vertical,
+        adversary_level: adversaryLevel,
+        n,
+        mode,
+        plugins: selectedPlugins,
+        strategies: selectedStrategies,
+      }
       if (baseUrl.trim()) payload.base_url = baseUrl.trim()
       if (model.trim()) payload.model = model.trim()
       setResult(await api.runRedTeam(projectId, payload))
@@ -409,7 +461,7 @@ export function RedTeamView({ projectId }: Props) {
       {!result && (
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-5">
-            <div><div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-sev-l3" /> Configure the attack campaign</div><p className="mt-1 text-xs text-muted-foreground">Six risk families, 32 attack classes and seven observable execution channels.</p></div>
+            <div><div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-sev-l3" /> Configure the attack campaign</div><p className="mt-1 text-xs text-muted-foreground">{catalog ? `${catalog.plugins.length} vulnerability plugins, ${catalog.attack_classes} attack classes, ${catalog.strategies.length} delivery strategies` : "Loading the attack catalog…"} across seven observable execution channels.</p></div>
             <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">results persist as project runs</span>
           </div>
           <div className="space-y-6 p-6">
@@ -417,6 +469,50 @@ export function RedTeamView({ projectId }: Props) {
               <div className="space-y-1.5"><label className="text-xs font-semibold">Industry context</label><select value={vertical} onChange={(event) => setVertical(event.target.value as Vertical)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{VERTICALS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><p className="text-[10px] text-muted-foreground">Shapes the private vault and realistic task context.</p></div>
               <div className="space-y-1.5"><label className="text-xs font-semibold">Adversary capability</label><select value={adversaryLevel} onChange={(event) => setAdversaryLevel(event.target.value as AdversaryLevel)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{ADVERSARY_LEVELS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><p className="text-[10px] text-muted-foreground">{ADVERSARY_LEVELS.find((item) => item.value === adversaryLevel)?.desc}</p></div>
               <div className="space-y-1.5"><label className="text-xs font-semibold">Probe budget</label><div className="grid grid-cols-3 gap-1.5">{[5, 10, 20].map((value) => <button key={value} type="button" onClick={() => setN(value)} className={`rounded-md border px-3 py-2 font-mono text-sm transition-colors ${n === value ? "border-foreground bg-foreground text-background" : "hover:bg-muted"}`}>{value}</button>)}</div><p className="text-[10px] text-muted-foreground">More probes increase class coverage and API usage.</p></div>
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><div className="text-xs font-semibold">Vulnerability plugins</div><p className="mt-1 text-[10px] text-muted-foreground">What to test. The catalog maps high-signal Promptfoo plugin IDs to observable AgentLeak classes.</p></div>
+                <div className="flex items-center gap-2"><span className="font-mono text-xs font-semibold">{selectedPlugins.length}/{catalog?.plugins.length ?? 0}</span><span className="text-[10px] text-muted-foreground">selected</span></div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {catalog?.plugin_presets.map((preset) => <button key={preset.id} type="button" title={preset.description} onClick={() => choosePluginPreset(preset.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors ${pluginPreset === preset.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{preset.name}</button>)}
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {pluginGroups.map(([category, plugins]) => (
+                  <div key={category} className="rounded-md border bg-background p-3">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {plugins.map((plugin) => {
+                        const active = selectedPlugins.includes(plugin.id)
+                        return <button key={plugin.id} type="button" onClick={() => togglePlugin(plugin.id)} title={`${plugin.name}: ${plugin.description}`} className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors ${active ? "border-primary/45 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>{active ? "✓ " : ""}{plugin.id}</button>
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><div className="text-xs font-semibold">Attack strategies</div><p className="mt-1 text-[10px] text-muted-foreground">How to deliver each probe: direct, guardrail bypass, encoding, Unicode, or multi-turn escalation.</p></div>
+                <span className="font-mono text-xs font-semibold">{selectedStrategies.length} selected</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {catalog?.strategy_profiles.map((profile) => <button key={profile.id} type="button" title={profile.description} onClick={() => chooseStrategyProfile(profile.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors ${strategyProfile === profile.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{profile.name}</button>)}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {catalog?.strategies.map((strategy) => {
+                  const active = selectedStrategies.includes(strategy.id)
+                  return (
+                    <button key={strategy.id} type="button" onClick={() => toggleStrategy(strategy.id)} className={`rounded-md border p-3 text-left transition-colors ${active ? "border-primary/45 bg-primary/[0.06]" : "hover:bg-muted/40"}`}>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{active ? "✓ " : ""}{strategy.name}</span><span className="font-mono text-[9px] text-muted-foreground">{strategy.estimated_turns}t</span></div>
+                      <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{strategy.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div>
@@ -436,7 +532,7 @@ export function RedTeamView({ projectId }: Props) {
             )}
 
             {error && <div className="flex gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"><FileWarning className="mt-0.5 size-4 shrink-0" /> {error}</div>}
-            <button type="button" onClick={run} disabled={loading} className="inline-flex items-center gap-2 rounded-md bg-sev-l4 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">{loading ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}{loading ? (mode === "live" ? `Running ${n} live probes…` : "Building baseline…") : `Launch ${n}-probe campaign`}</button>
+            <button type="button" onClick={run} disabled={loading || !catalog || !selectedPlugins.length || !selectedStrategies.length} className="inline-flex items-center gap-2 rounded-md bg-sev-l4 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">{loading ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}{loading ? (mode === "live" ? `Running ${n} live probes…` : "Building baseline…") : `Launch ${n}-probe campaign`}</button>
           </div>
         </Card>
       )}
@@ -447,8 +543,16 @@ export function RedTeamView({ projectId }: Props) {
             <span>Target context <strong className="text-foreground">{VERTICALS.find((item) => item.value === result.vertical)?.label ?? result.vertical}</strong></span>
             <span>Capability <strong className="text-foreground">{result.adversary_level}</strong></span>
             <span><strong className="text-foreground">{result.scenarios_run}</strong> probes executed</span>
+            <span><strong className="text-foreground">{result.coverage.plugins_exercised.length}</strong> plugins exercised</span>
+            <span><strong className="text-foreground">{result.coverage.strategies_exercised.length}</strong> strategies exercised</span>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${result.live ? "bg-sev-l4/10 text-sev-l4" : "bg-muted text-muted-foreground"}`}>{result.live ? "Live agent" : "Scripted baseline"}</span>
           </div>
+          {result.coverage.plugins_not_exercised.length > 0 && (
+            <div className="rounded-lg border border-sev-l2/25 bg-sev-l2/[0.045] px-4 py-3 text-xs">
+              <span className="font-semibold">Coverage budget reached.</span>{" "}
+              <span className="text-muted-foreground">Increase the probe budget or adversary capability to exercise: {result.coverage.plugins_not_exercised.join(", ")}.</span>
+            </div>
+          )}
           <Tabs defaultValue="vulnerabilities">
             <TabsList>
               <TabsTrigger value="vulnerabilities"><AlertTriangle className="size-3.5" /> Vulnerability report</TabsTrigger>
