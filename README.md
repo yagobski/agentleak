@@ -57,10 +57,11 @@ self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
 - **Projects** — each is an agent under test. **Run a real agent** against any
   scenario, or use the built-in scripted agent offline. Connect your own agent
   via the SDK (the Connect tab generates a copy-paste snippet).
-- **Red Team** — adversarial batch testing with 32 attack classes across 6
-  families (prompt injection, tool-surface, memory, multi-agent, reasoning,
-  evasion). Generates synthetic traces, runs detection, and reports ASR / ELR /
-  CLR metrics — no live LLM required.
+- **Red Team** — 24 Promptfoo-compatible vulnerability plugins mapped to 46
+  observable attack classes across 6 families, combined with 9 delivery
+  strategies (direct, jailbreak framing, markup, encodings, Unicode, and
+  multi-turn Crescendo). Run a zero-cost scripted baseline or attack the real
+  configured agent; every probe persists with ASR / ELR / CLR evidence.
 - **Runs** — every analysis is stored locally (SQLite); view, **compare**
   (weight-robust dominance), export (JSON / MD / HTML), delete.
 - **Dashboard** — average Risk Index, blocked runs, recent activity.

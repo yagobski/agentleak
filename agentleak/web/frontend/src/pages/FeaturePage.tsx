@@ -155,14 +155,14 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
   "red-team": {
     eyebrow: "Adversarial red-team",
     title: "Replay real attacks against your agent, not just clean traces.",
-    lede: "32 scripted attack classes across 6 families \u2014 prompt & instruction, indirect & tool-surface, memory & persistence, multi-agent coordination, reasoning manipulation and evasion \u2014 run against your own agent, scripted or live.",
+    lede: "24 Promptfoo-compatible vulnerability plugins map to 46 observable attack classes, then combine with 9 delivery strategies across prompts, tools, RAG, MCP, memory and multi-agent execution \u2014 scripted or live.",
     metaTitle: "Adversarial red-team · AgentLeak",
-    metaDescription: "AgentLeak replays 32 scripted attack classes across 6 families (prompt injection, tool-surface poisoning, memory persistence, multi-agent, reasoning and evasion) against your agent and scores the result with AgentRisk.",
+    metaDescription: "AgentLeak combines 24 agent-security vulnerability plugins with 9 adversarial delivery strategies, executes them scripted or live, and scores every execution channel with AgentRisk.",
     sections: [
       {
-        title: "Six attack families, three adversary levels",
-        body: "Every attack class is tagged with the internal channel it targets and an adversary level from A0 (passive) to A2 (an attacker who controls tool outputs or shared memory).",
-        points: ["F1 prompt & instruction", "F2 indirect & tool-surface", "F3 memory & persistence", "F4 multi-agent coordination", "F5 reasoning manipulation", "F6 evasion & obfuscation"],
+        title: "Plugins say what; strategies say how",
+        body: "Select PII, prompt extraction, BOLA/BFLA/RBAC, SQL/shell/SSRF, MCP, memory poisoning or excessive agency, then deliver each probe directly, through guardrail-bypass framing, encoding, Unicode or multi-turn escalation.",
+        points: ["24 Promptfoo-compatible plugins", "46 observable classes across F1–F6", "9 deterministic delivery strategies", "A0 passive through A2 internal access"],
       },
       {
         title: "Scripted or live",
@@ -174,22 +174,32 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         body: "Every probe is analyzed by the same AgentRisk pipeline, then organized into severity, defense rate, delivery method, risk category and a prioritized remediation report.",
         points: ["Critical-to-low vulnerability counts", "Attack Success Rate and defense rate", "Expandable families with one stored trace per probe", "Prioritized fixes linked to the exact execution evidence"],
       },
+      {
+        title: "A five-minute campaign",
+        body: "Start with the deterministic scripted mode: select a vertical, A1, the agent_core preset and the balanced strategy profile, then run ten scenarios. Inspect the stored traces, fix the weakest channel, and repeat the same selection.",
+        points: ["Healthcare, finance, legal, HR and customer support vaults", "A0 benign, A1 external and A2 internal adversaries", "Campaigns capped at 20 scenarios per request", "Coverage tells you which plugins and strategies actually ran"],
+      },
+      {
+        title: "Designed for safe regression testing",
+        body: "Use baseline on every pull request, balanced on protected branches, and complete or evasion on a scheduled security run. Live campaigns require an authorized OpenAI-compatible endpoint and BYOK; scripted campaigns stay offline and deterministic.",
+        points: ["No platform LLM key required for scripted tests", "Live mode replays the same scenario against the configured agent", "Metrics: ASR, ELR, CLR and privacy score", "Full reference: docs/redteam.md in the repository"],
+      },
     ],
     concept: {
       title: "A clean benign trace does not tell you what an attacker would find.",
-      body: "Passive testing only shows what your agent does when nothing is trying to break it. Red-team replay scripts the same 32-class taxonomy the published benchmark uses, so you see whether prompt injection, tool-response poisoning or a memory hand-off can pull sensitive data out of your agent before someone else tries it first.",
+      body: "Passive testing only shows what your agent does when nothing is trying to break it. AgentLeak preserves the published 32-class benchmark and extends it with 14 application-security classes, then varies the delivery strategy so a single direct refusal is not mistaken for complete protection.",
       before: "The only adversary your agent has faced is your own test suite.",
-      after: "32 scripted attack classes across 3 adversary levels probe it first.",
-      principles: ["Attack classes are grounded in a published 6-family / 32-class taxonomy", "Findings reuse the same channels, severity and AgentRisk score as any run", "Live mode never runs without an explicit agent endpoint you configure"],
+      after: "A plugin × strategy matrix probes the exact boundaries the agent can cross.",
+      principles: ["The published 32-class taxonomy remains intact and 14 application-security classes extend it", "Promptfoo-compatible plugins and delivery strategies remain separately measurable", "Findings reuse the same channels, severity and AgentRisk score as any run"],
     },
     steps: [
-      { title: "Choose a target", body: "Pick a vertical (healthcare, finance, HR, customer support), an adversary level (A0-A2), and optionally one specific attack class." },
-      { title: "Pick scripted or live", body: "Scripted replays a deterministic agent for regression testing; live sends the attack to your own configured model endpoint." },
+      { title: "Choose vulnerabilities", body: "Start with Privacy core, Agent security, Tool & MCP, or the complete 24-plugin suite; customize individual plugins when needed." },
+      { title: "Choose delivery", body: "Use the balanced profile or combine direct, jailbreak, markup, encoding, Unicode and four-turn Crescendo strategies." },
       { title: "The batch runs", body: "Each generated scenario is executed and analyzed by the standard AgentLeak pipeline, exactly like a captured production trace." },
       { title: "Investigate and fix", body: "Use the vulnerability report to rank weak attack surfaces, open the stored trace for any probe, then follow the remediation report and re-run the same batch." },
     ],
     snippetLabel: "Request body for a red-team batch",
-    snippet: "POST /api/projects/{project_id}/redteam\n{\n  \"vertical\": \"healthcare\",\n  \"n\": 5,\n  \"adversary_level\": \"A1\",\n  \"mode\": \"scripted\"\n}",
+    snippet: "POST /api/projects/{project_id}/redteam\n{\n  \"vertical\": \"healthcare\",\n  \"n\": 10,\n  \"adversary_level\": \"A2\",\n  \"plugins\": [\"pii:direct\", \"mcp\", \"agentic:memory-poisoning\"],\n  \"strategies\": [\"basic\", \"jailbreak-template\", \"crescendo\"],\n  \"mode\": \"live\"\n}",
   },
   "ci-gate": {
     eyebrow: "CI policy gate",

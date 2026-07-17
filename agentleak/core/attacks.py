@@ -18,6 +18,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import cast
+
+from .promptfoo_attacks import (
+    EXISTING_PLUGIN_MAPPINGS,
+    PROMPTFOO_ATTACK_SPECS,
+    REDTEAM_PLUGIN_PRESET_SPECS,
+    REDTEAM_PLUGIN_SPECS,
+)
 
 
 class AdversaryLevel(str, Enum):
@@ -53,6 +61,9 @@ class AttackClass:
     # Short payload template — ``{secret}`` is replaced with vault data.
     payload_template: str = ""
     tags: list[str] = field(default_factory=list)
+    # Promptfoo-compatible vulnerability identifiers covered by this class.
+    # Metadata only: AgentLeak never imports Promptfoo at runtime.
+    promptfoo_plugins: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -63,6 +74,19 @@ class AttackFamily:
     name: str
     description: str
     classes: list[AttackClass] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class RedTeamPlugin:
+    """A selectable vulnerability type, distinct from delivery strategy."""
+
+    id: str
+    name: str
+    description: str
+    category: str
+    severity: str
+    attack_classes: tuple[str, ...]
+    requires: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -549,6 +573,30 @@ F6 = AttackFamily(
     ],
 )
 
+# Extend the published 32-class taxonomy with application-security classes
+# adapted from Promptfoo's high-signal agent plugin set.
+_family_by_id = {family.id: family for family in (F1, F2, F3, F4, F5, F6)}
+for _spec in PROMPTFOO_ATTACK_SPECS:
+    _family_by_id[str(_spec["family"])].classes.append(AttackClass(
+        id=str(_spec["id"]),
+        name=str(_spec["name"]),
+        description=str(_spec["description"]),
+        adversary_level=AdversaryLevel(str(_spec["adversary_level"])),
+        primary_channel=Channel(str(_spec["primary_channel"])),
+        injection_surface=str(_spec["injection_surface"]),
+        payload_template=str(_spec["payload_template"]),
+        tags=list(cast(list[str], _spec["tags"])),
+        promptfoo_plugins=list(cast(list[str], _spec["plugins"])),
+    ))
+
+for _family in _family_by_id.values():
+    for _attack_class in _family.classes:
+        mapped = EXISTING_PLUGIN_MAPPINGS.get(_attack_class.id, [])
+        _attack_class.promptfoo_plugins = list(dict.fromkeys([
+            *_attack_class.promptfoo_plugins,
+            *mapped,
+        ]))
+
 # ---------------------------------------------------------------------------
 # Public catalog
 # ---------------------------------------------------------------------------
@@ -567,6 +615,55 @@ CLASS_TO_FAMILY: dict[str, str] = {
     for family in ATTACK_FAMILIES
     for ac in family.classes
 }
+
+REDTEAM_PLUGINS: list[RedTeamPlugin] = [
+    RedTeamPlugin(*plugin_spec) for plugin_spec in REDTEAM_PLUGIN_SPECS
+]
+REDTEAM_PLUGIN_INDEX: dict[str, RedTeamPlugin] = {
+    plugin.id: plugin for plugin in REDTEAM_PLUGINS
+}
+REDTEAM_PLUGIN_PRESETS: list[dict[str, object]] = [
+    {"id": preset_id, "name": name, "description": description, "plugin_ids": list(plugin_ids)}
+    for preset_id, name, description, plugin_ids in REDTEAM_PLUGIN_PRESET_SPECS
+]
+REDTEAM_PLUGIN_PRESET_INDEX: dict[str, dict[str, object]] = {
+    str(preset["id"]): preset for preset in REDTEAM_PLUGIN_PRESETS
+}
+
+
+def plugins_for_class(attack_class_id: str) -> list[RedTeamPlugin]:
+    """Return selectable vulnerability plugins covered by an attack class."""
+    attack_class = ATTACK_INDEX.get(attack_class_id)
+    if attack_class is None:
+        return []
+    return [
+        REDTEAM_PLUGIN_INDEX[plugin_id]
+        for plugin_id in attack_class.promptfoo_plugins
+        if plugin_id in REDTEAM_PLUGIN_INDEX
+    ]
+
+
+def get_classes_for_plugins(
+    plugin_ids: list[str],
+    level: AdversaryLevel,
+) -> list[AttackClass]:
+    """Resolve plugin selections to de-duplicated classes allowed at *level*."""
+    unknown = [plugin_id for plugin_id in plugin_ids if plugin_id not in REDTEAM_PLUGIN_INDEX]
+    if unknown:
+        raise ValueError(f"Unknown red-team plugin(s): {', '.join(unknown)}")
+    allowed = {attack_class.id for attack_class in get_classes_for_level(level)}
+    selected_ids = {
+        attack_class_id
+        for plugin_id in plugin_ids
+        for attack_class_id in REDTEAM_PLUGIN_INDEX[plugin_id].attack_classes
+        if attack_class_id in allowed
+    }
+    return [
+        attack_class
+        for family in ATTACK_FAMILIES
+        for attack_class in family.classes
+        if attack_class.id in selected_ids
+    ]
 
 
 def get_classes_for_level(level: AdversaryLevel) -> list[AttackClass]:

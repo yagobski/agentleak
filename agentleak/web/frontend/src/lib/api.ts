@@ -417,6 +417,10 @@ export interface RedTeamAttackResult {
   attack_family_name: string
   attack_family_description: string
   injection_surface: string
+  strategy_id: string
+  strategy_name: string
+  attack_turns: number
+  plugin_ids: string[]
   primary_channel: string
   adversary_level: string
   success: boolean
@@ -439,6 +443,57 @@ export interface RedTeamResult {
   run_ids: string[]
   metrics: RedTeamMetrics
   attacks: RedTeamAttackResult[]
+  coverage: {
+    plugins_requested: string[]
+    plugins_exercised: string[]
+    plugins_not_exercised: string[]
+    strategies_requested: string[]
+    strategies_exercised: string[]
+    plugin_preset: string
+    strategy_profile: string
+  }
+}
+
+export interface RedTeamPlugin {
+  id: string
+  name: string
+  description: string
+  category: string
+  severity: RedTeamSeverity
+  attack_classes: string[]
+  requires: string[]
+}
+
+export interface RedTeamPluginPreset {
+  id: string
+  name: string
+  description: string
+  plugin_ids: string[]
+}
+
+export interface RedTeamStrategy {
+  id: string
+  name: string
+  description: string
+  category: string
+  estimated_turns: number
+}
+
+export interface RedTeamStrategyProfile {
+  id: string
+  name: string
+  description: string
+  strategy_ids: string[]
+}
+
+export interface RedTeamCatalog {
+  catalog_version: string
+  attack_classes: number
+  families: number
+  plugins: RedTeamPlugin[]
+  plugin_presets: RedTeamPluginPreset[]
+  strategies: RedTeamStrategy[]
+  strategy_profiles: RedTeamStrategyProfile[]
 }
 
 export type AdversaryLevel = "A0" | "A1" | "A2"
@@ -452,6 +507,10 @@ export interface RedTeamPayload {
   mode?: "auto" | "live" | "scripted"
   base_url?: string
   model?: string
+  plugins?: string[]
+  plugin_preset?: string
+  strategies?: string[]
+  strategy_profile?: string
 }
 
 // ----------- Run history & progression --------------------------------
@@ -746,6 +805,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  redTeamCatalog: () => jsonFetch<RedTeamCatalog>("/api/redteam/catalog"),
 
   // agent card & code scans (agent-first layer)
   agentCard: (id: string) =>
