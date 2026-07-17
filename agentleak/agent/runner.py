@@ -89,7 +89,12 @@ def _live_run(ctx: RunContext, llm: OpenAICompatLLM, max_steps: int) -> Trace:
                     result = dispatch_tool(fn.get("name", ""), args, ctx, trace)
                     messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": result})
             if not completed_turn:
-                trace.add_event("final_output", "(agent reached the per-turn step limit)", source="agent", target="user")
+                trace.add_event(
+                    "final_output",
+                    "(agent stopped without a final answer after reaching the per-turn step limit)",
+                    source="agent",
+                    target="user",
+                )
     except LLMError as exc:
         raise AgentRunError(str(exc), trace=trace) from exc
     return trace

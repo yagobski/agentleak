@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient  # noqa: E402
+
 from agentleak.agent.context import RunContext
 from agentleak.agent.runner import _live_run
 from agentleak.core.attack_strategies import (
@@ -19,7 +22,14 @@ from agentleak.core.attacks import (
     AdversaryLevel,
     get_classes_for_plugins,
 )
+from agentleak.core.store import Store  # noqa: E402
 from agentleak.generators import ScenarioGenerator
+from agentleak.web import create_app  # noqa: E402
+
+
+@pytest.fixture()
+def client(tmp_path, login) -> TestClient:
+    return login(TestClient(create_app(store=Store(str(tmp_path / "redteam.db")))))
 
 
 def test_promptfoo_compatible_catalog_maps_every_plugin_to_real_classes():

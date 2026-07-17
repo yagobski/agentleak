@@ -16,6 +16,7 @@ Scan other sources:
 ```bash
 agentleak scan ./agent.zip --output reports/code.json
 agentleak scan --repo acme/support-bot --branch main --fail-under 90
+agentleak scan ./my-agent --format sarif --output reports/agentleak.sarif
 ```
 
 `--fail-under` makes the command exit 1 when the code privacy score is below
@@ -81,6 +82,11 @@ Use `--output` for the complete JSON result. The report contains scan source,
 files scanned, detection tiers, score, verdict, finding locations, confidence,
 and redacted snippets.
 
+Use `--format sarif` for GitHub Code Scanning, VS Code SARIF viewers, or any
+SARIF 2.1.0 consumer. SARIF results preserve the rule, file, line, privacy
+level, detector tier, confidence, recommendation, and redacted snippet. They
+never contain the raw matched secret.
+
 Prioritize L4 credentials first, then secrets in logs or external calls, then
 PII fixtures and quasi-identifier correlations. Confirm a suspected finding in
 the source before changing behavior; entropy findings can be false positives.
@@ -113,14 +119,20 @@ source declared on the stored agent card.
 
 ```yaml
 - name: Scan agent source
-  run: agentleak scan . --mode standard --fail-under 90 --output reports/code.json
+  run: agentleak scan . --mode standard --fail-under 90 --format sarif --output reports/agentleak.sarif
+
+- name: Upload to GitHub code scanning
+  if: always()
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: reports/agentleak.sarif
 
 - name: Upload scan evidence
   if: always()
   uses: actions/upload-artifact@v4
   with:
     name: agentleak-code-scan
-    path: reports/code.json
+    path: reports/agentleak.sarif
 ```
 
 Do not upload unredacted source or reports as public artifacts. Use a protected

@@ -29,6 +29,7 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 ## Machine interfaces
 
 - [{base}/openapi.json]({base}/openapi.json): OpenAPI 3 schema
+- [{base}/api/schemas]({base}/api/schemas): JSON Schema catalog for config, traces, reports, policies, code scans, red-team requests, and agent cards
 - [{base}/api/docs]({base}/api/docs): Swagger UI fallback for raw schema exploration
 - [{base}/api/meta]({base}/api/meta): Runtime capabilities, channels, limits, and endpoint map
 - [{base}/.well-known/agent-card.json]({base}/.well-known/agent-card.json): Agent capability manifest with a documented custom HTTP+JSON binding
@@ -135,6 +136,7 @@ An agent's final answer can be clean while sensitive data leaks through tool arg
 - Capabilities and current limits: `GET /api/meta`
 - Integrated API reference: `GET /docs/api`
 - OpenAPI: `GET /openapi.json`
+- JSON Schema catalog: `GET /api/schemas`
 - Swagger fallback: `GET /api/docs`
 - Authentication after onboarding: `X-AgentLeak-Key: ak_...`
 
@@ -180,7 +182,23 @@ pip install agentleak
 agentleak init
 agentleak run --scenario healthcare_patient_summary
 agentleak run --trace traces/latest.json --fail-under 70
+agentleak schema
+agentleak scan . --format sarif --output reports/agentleak.sarif
 ```
+
+## Declarative privacy assertions
+
+Configure `privacy_policy` with `max_risk_index`, `max_findings`, forbidden
+levels, channels or data types, and optionally `require_explicit_vault`. Every
+configured assertion must pass. Violations block the run and include affected
+finding IDs in the report. Fetch the exact contract from
+`GET {base}/api/schemas/privacy-policy`.
+
+## Machine contracts
+
+`GET {base}/api/schemas` lists versioned Draft 2020-12 schemas for config,
+traces, events, findings, reports, privacy policies, red-team requests, code
+scans and agent cards. The local equivalent is `agentleak schema [name]`.
 
 ```python
 from agentleak import AgentLeakRunner, Trace

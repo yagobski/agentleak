@@ -46,6 +46,19 @@ def render(data: dict[str, Any]) -> str:
         a("- ⛔ **Blocked:** this run would fail a CI gate.")
     a("")
 
+    policy = data.get("privacy_policy", {})
+    if policy.get("enabled"):
+        status = "✅ passed" if policy.get("passed") else "⛔ failed"
+        a(f"## Privacy policy — {status}")
+        a("")
+        checked = ", ".join(policy.get("assertions_checked", [])) or "none"
+        a(f"- Assertions checked: `{checked}`")
+        for violation in policy.get("violations", []):
+            ids = ", ".join(violation.get("finding_ids", []))
+            evidence = f" Evidence: `{ids}`." if ids else ""
+            a(f"- **{violation['rule']}** — {violation['message']}{evidence}")
+        a("")
+
     a("## Risk by channel")
     a("")
     channel_risks = data.get("channel_risks", [])

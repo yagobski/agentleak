@@ -12,6 +12,7 @@ from . import compliance as _compliance
 from . import flow as _flow
 from .agentrisk import BASELINE_CHANNELS, LEVEL_LABELS
 from .detector import Finding, Severity
+from .privacy_policy import PolicyEvaluation
 from .scoring import Score, badge_for_level
 
 # Standard, channel-level guidance surfaced when a given channel leaks
@@ -174,6 +175,7 @@ class AnalysisResult:
     # Lightweight event log ({event_id, channel, source, target, agent}) for
     # building the leak-path and topology views. Filled by the runner.
     events: list[dict[str, Any]] = field(default_factory=list)
+    policy_evaluation: PolicyEvaluation = field(default_factory=PolicyEvaluation)
 
     # -- convenience accessors (used by the SDK and reporters) -----------
     @property
@@ -201,7 +203,7 @@ class AnalysisResult:
     @property
     def blocked(self) -> bool:
         """True when this run should fail a CI gate."""
-        return self.privacy_score < self.fail_below or (
+        return not self.policy_evaluation.passed or self.privacy_score < self.fail_below or (
             self.block_on_critical and self.has_critical
         )
 
@@ -284,6 +286,7 @@ class AnalysisResult:
             "rho_s": self.score.rho_s,
             "scope_def": self.score.agentrisk.scope_def,
             "blocked": self.blocked,
+            "privacy_policy": self.policy_evaluation.to_dict(),
             "summary": {
                 "total_findings": len(leaked),
                 "detected_total": len(self.findings),

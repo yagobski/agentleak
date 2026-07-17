@@ -357,6 +357,86 @@ class CodeScanResult:
             "findings": [f.to_dict() for f in self.findings],
         }
 
+    def to_sarif(self) -> dict[str, Any]:
+        """Return a SARIF 2.1.0 report consumable by code-scanning tools.
+
+        Findings contain redacted snippets only, so exporting SARIF never
+        reintroduces the sensitive values removed by the scanner.
+        """
+        rules: dict[str, dict[str, Any]] = {}
+        results: list[dict[str, Any]] = []
+        sarif_levels = {
+            Severity.CRITICAL: "error",
+            Severity.HIGH: "error",
+            Severity.MEDIUM: "warning",
+            Severity.LOW: "note",
+        }
+        for finding in self.findings:
+            rules.setdefault(
+                finding.rule,
+                {
+                    "id": finding.rule,
+                    "name": finding.rule.replace("_", " ").title(),
+                    "shortDescription": {"text": finding.recommendation or finding.data_type},
+                    "properties": {
+                        "privacyLevel": f"L{finding.level}",
+                        "dataType": finding.data_type,
+                    },
+                },
+            )
+            results.append(
+                {
+                    "ruleId": finding.rule,
+                    "level": sarif_levels[finding.severity],
+                    "message": {
+                        "text": (
+                            f"{finding.data_type} privacy exposure (L{finding.level}). "
+                            f"{finding.recommendation}"
+                        ).strip()
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {"uri": finding.file},
+                                "region": {
+                                    "startLine": max(1, finding.line),
+                                    "snippet": {"text": finding.snippet},
+                                },
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "privacyLevel": f"L{finding.level}",
+                        "dataType": finding.data_type,
+                        "detectorTier": finding.tier,
+                        "confidence": round(finding.confidence, 3),
+                        "redacted": True,
+                    },
+                }
+            )
+        return {
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+                {
+                    "tool": {
+                        "driver": {
+                            "name": "AgentLeak",
+                            "informationUri": "https://agents.fomox.com/docs#code-scan",
+                            "rules": list(rules.values()),
+                        }
+                    },
+                    "automationDetails": {"id": "agentleak/privacy-code-scan"},
+                    "properties": {
+                        "privacyScore": self.score,
+                        "verdict": self.verdict,
+                        "detectionMode": self.detection_mode,
+                    },
+                    "results": results,
+                }
+            ],
+        }
+
 
 # ----------------------------------------------------------------------
 # Helpers

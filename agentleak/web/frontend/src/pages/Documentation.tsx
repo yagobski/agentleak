@@ -111,6 +111,27 @@ const VAULT_YAML = [
   "# Without a vault block, rho_S falls back to the observed reachable set:",
   "# only the distinct secrets this one trace happened to expose.",
 ].join("\n")
+const PRIVACY_POLICY_YAML = [
+  "# agentleak.yaml — deterministic assertions evaluated after every run",
+  "privacy_policy:",
+  "  max_risk_index: 0.20",
+  "  max_findings: 0",
+  "  forbid_levels: [4]",
+  "  forbid_channels: [log, shared_memory]",
+  "  forbid_data_types: [llm_api_key, credit_card]",
+  "  require_explicit_vault: true",
+].join("\n")
+const SCHEMA_DISCOVERY = [
+  "# List every versioned machine contract",
+  "curl -sS " + BASE + "/api/schemas | jq",
+  "",
+  "# Fetch one Draft 2020-12 JSON Schema",
+  "curl -sS " + BASE + "/api/schemas/trace > trace.schema.json",
+  "agentleak schema analysis-report > report.schema.json",
+  "",
+  "# IDE validation for agentleak.yaml",
+  "# yaml-language-server: $schema=" + BASE + "/api/schemas/config",
+].join("\n")
 const HOSTED_QUICKSTART = [
   "1. Go to /register and create a human account (email + password).",
   "2. Create a project from the dashboard, or open the Playground for a",
@@ -170,6 +191,8 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#code-scan", label: "Static code scan" },
     { href: "#red-team-guide", label: "Red team" },
     { href: "#ci-gate-guide", label: "CI policy gate" },
+    { href: "#privacy-policy", label: "Privacy assertions" },
+    { href: "#schema-contracts", label: "JSON Schema contracts" },
     { href: "#agent-api-guide", label: "Agent API" },
     { href: "#model", label: "Mental model" },
     { href: "#how-to-use", label: "How to use AgentLeak" },
@@ -218,6 +241,14 @@ const apiEndpoints: Endpoint[] = [
     summary: "Discover runtime version, supported channels, detectors, framework labels, docs links and free-tier limits.",
     request: "No body.",
     response: "version, channels, detectors, agent_api, documentation, free_tier.",
+  },
+  {
+    method: "GET",
+    path: "/api/schemas/{name}",
+    auth: "None",
+    summary: "Fetch a versioned Draft 2020-12 JSON Schema. Omit {name} to list the catalog.",
+    request: "Name: config, trace, event, finding, analysis-report, privacy-policy, privacy-policy-evaluation, redteam-request, code-scan or agent-card.",
+    response: "JSON Schema with x-agentleak-schema-version, or a catalog containing every schema URL.",
   },
   {
     method: "POST",
@@ -351,6 +382,8 @@ const searchEntries = [
   ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
   ["Adversarial red-team", "/features/red-team", "24 plugins × 9 strategies, defense rate, vulnerability and remediation reports"],
   ["CI policy gate guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
+  ["Privacy assertions", "/docs#privacy-policy", "Deterministic limits by risk, finding count, level, channel and data type"],
+  ["JSON Schema contracts", "/docs#schema-contracts", "Versioned schemas for config, traces, findings, reports, red-team and code scans"],
   ["Agent API guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md", "Autonomous discovery, onboarding, self-test and improvement"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
   ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
@@ -453,6 +486,7 @@ function DocSidebar({ audience }: { audience: Audience }) {
         <a href="/llms.txt">llms.txt</a>
         <a href="/llms-full.txt">llms-full.txt</a>
         <a href="/agents.md">agents.md</a>
+        <a href="/api/schemas">JSON Schema catalog</a>
       </div>
     </aside>
   )
@@ -524,6 +558,8 @@ function Overview() {
             ["#code-scan", "Static code scan", "Find secrets and PII before the agent runs."],
             ["#red-team-guide", "Adversarial red team", "Exercise plugins, strategies and live targets."],
             ["#ci-gate-guide", "CI policy gate", "Fail releases when the privacy boundary is crossed."],
+            ["#privacy-policy", "Privacy assertions", "Express the release boundary as reviewable YAML."],
+            ["#schema-contracts", "JSON Schema contracts", "Validate every public document in IDEs, CI and agents."],
             ["#agent-api-guide", "Agent API", "Discover, self-test and improve without a browser."],
           ].map(([href, title, body]) => (
             <a key={href} href={href} className="docs-link-card">
@@ -597,7 +633,7 @@ function Overview() {
           external sends, entropy findings, de-obfuscated identifiers and
           quasi-identifier correlation.
         </p>
-        <Code>{"pip install agentleak\nagentleak scan ./my-agent --mode fast\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json"}</Code>
+        <Code>{"pip install agentleak\nagentleak scan ./my-agent --mode fast\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json\nagentleak scan ./my-agent --format sarif --output reports/agentleak.sarif"}</Code>
         <div className="docs-card-grid">
           <div><h3>Fast</h3><p>Local regex, dictionaries, entropy and canary checks. No key required.</p></div>
           <div><h3>Standard</h3><p>Adds Presidio and domain recognizers. Install <code>agentleak[presidio]</code>.</p></div>
@@ -681,6 +717,57 @@ function Overview() {
           in prompts, logs, URLs or long-term agent memory. Read the{" "}
           <Link to="/docs/agents">agent operating contract</Link> and the{" "}
           <Link to="/features/agent-api">Agent API page</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="privacy-policy">
+        <h2>Declarative privacy assertions</h2>
+        <p>
+          A score threshold alone cannot express that credentials must never enter logs, or that
+          every production comparison requires an audited vault. The <code>privacy_policy</code>
+          block adds small, deterministic assertions at the same analysis seam used by the CLI,
+          SDK, web platform and agent self-tests. Any violation sets <code>blocked=true</code> and
+          appears in <code>privacy_policy.violations</code> with the affected finding IDs.
+        </p>
+        <Code>{PRIVACY_POLICY_YAML}</Code>
+        <div className="docs-table">
+          {[
+            ["max_risk_index", "Maximum AgentRisk RI from 0 to 1; use an explicit vault for comparable releases."],
+            ["max_findings", "Maximum findings on disclosure channels. Source channels user_input and tool_response do not count as agent leaks."],
+            ["forbid_levels", "Reject selected AgentRisk levels L1–L4, for example every L4 credential or health leak."],
+            ["forbid_channels", "Reject exposure in selected channels such as log, shared_memory or generated_file."],
+            ["forbid_data_types", "Reject exact detector data types such as llm_api_key, credit_card, diagnosis or email."],
+            ["require_explicit_vault", "Reject runs whose Risk Index used the observed-reachable fallback denominator."],
+          ].map(([name, body]) => (
+            <div key={name}><code>{name}</code><span>{body}</span></div>
+          ))}
+        </div>
+        <p>
+          Assertions are conjunctive: a run passes only when every configured rule passes. Keep the
+          policy beside synthetic traces in version control. Start with one or two meaningful rules,
+          then tighten them after measuring the baseline; an empty policy remains disabled.
+        </p>
+      </section>
+
+      <section className="docs-section" id="schema-contracts">
+        <h2>Versioned JSON Schema contracts</h2>
+        <p>
+          Every public document has a discoverable Draft 2020-12 contract, so humans, IDEs, CI jobs
+          and autonomous agents can validate payloads before sending them. The catalog version is
+          independent of the package version and every named document includes
+          <code>x-agentleak-schema-version</code>.
+        </p>
+        <Code>{SCHEMA_DISCOVERY}</Code>
+        <div className="docs-token-grid">
+          {["config", "trace", "event", "finding", "analysis-report", "privacy-policy", "privacy-policy-evaluation", "redteam-request", "code-scan", "agent-card"].map((name) => (
+            <a key={name} href={`/api/schemas/${name}`}><code>{name}</code></a>
+          ))}
+        </div>
+        <p>
+          OpenAPI remains authoritative for HTTP operations. These smaller schemas cover files and
+          response documents directly, including offline CLI workflows where no API request exists.
+          Unknown schema names return 404; clients should discover names from the catalog instead of
+          guessing them.
         </p>
       </section>
 
@@ -1023,6 +1110,10 @@ function Developers() {
             <code>GET /api/meta</code>
             <span>Runtime capabilities</span>
           </a>
+          <a href="/api/schemas">
+            <code>GET /api/schemas</code>
+            <span>Versioned JSON Schema catalog</span>
+          </a>
         </div>
       </section>
 
@@ -1273,13 +1364,22 @@ function ApiReference() {
 
       <section className="docs-section" id="schemas">
         <h2>Core schemas</h2>
+        <p>
+          The live catalog at <a href="/api/schemas"><code>/api/schemas</code></a> is the
+          authoritative contract for files and response documents. Fetch schemas over HTTPS or use
+          <code>agentleak schema NAME</code> offline.
+        </p>
+        <Code>{SCHEMA_DISCOVERY}</Code>
         <div className="docs-table">
           {[
             ["Trace", "run_id, agent_name and ordered events with channel, source, target and content."],
             ["Finding", "channel, data_type, severity, level_label, confidence, redacted_value and recommendation."],
-            ["Report", "risk_index, privacy_score, verdict, channel_risks, findings, remediation_hints and compliance."],
+            ["Report", "risk_index, privacy_score, blocked, privacy_policy, channel_risks, findings, remediation_hints and compliance."],
+            ["Privacy policy", "Risk, count, level, channel, data-type and explicit-vault assertions."],
+            ["Policy evaluation", "enabled, passed, assertions_checked and violations with finding IDs."],
+            ["Red-team request", "Vertical, adversary level, plugin preset, strategies, execution mode and target."],
+            ["Code scan", "Source, score, verdict, findings, detector tier, confidence and redacted snippets."],
             ["Agent card", "name, capabilities, protocol metadata, declared data types and optional source location."],
-            ["Next step", "kind, priority, action, channel or framework context, and optional code_fix."],
           ].map(([name, description]) => (
             <div key={name}>
               <code>{name}</code>

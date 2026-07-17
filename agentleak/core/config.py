@@ -140,6 +140,32 @@ class PolicyGateConfig(BaseModel):
     fail_on_any: bool = False
 
 
+class PrivacyPolicyConfig(BaseModel):
+    """Simple declarative assertions applied to every runtime trace."""
+
+    max_risk_index: float | None = Field(default=None, ge=0.0, le=1.0)
+    max_findings: int | None = Field(default=None, ge=0)
+    forbid_levels: list[int] = Field(default_factory=list)
+    forbid_channels: list[str] = Field(default_factory=list)
+    forbid_data_types: list[str] = Field(default_factory=list)
+    require_explicit_vault: bool = False
+
+    @field_validator("forbid_levels")
+    @classmethod
+    def validate_forbid_levels(cls, levels: list[int]) -> list[int]:
+        if any(level not in (1, 2, 3, 4) for level in levels):
+            raise ValueError("forbid_levels values must be between 1 and 4")
+        return list(dict.fromkeys(levels))
+
+    @field_validator("forbid_channels")
+    @classmethod
+    def validate_forbid_channels(cls, channels: list[str]) -> list[str]:
+        unknown = [channel for channel in channels if channel not in CHANNELS]
+        if unknown:
+            raise ValueError(f"unknown privacy policy channel(s): {', '.join(unknown)}")
+        return list(dict.fromkeys(channels))
+
+
 class DefenseConfig(BaseModel):
     """Runtime sanitizer applied before findings are stored/returned."""
 
@@ -169,6 +195,7 @@ class Config(BaseModel):
     detection: DetectionConfig = Field(default_factory=DetectionConfig)
     defense: DefenseConfig = Field(default_factory=DefenseConfig)
     policy_gate: PolicyGateConfig = Field(default_factory=PolicyGateConfig)
+    privacy_policy: PrivacyPolicyConfig = Field(default_factory=PrivacyPolicyConfig)
 
     # ------------------------------------------------------------------
     @classmethod
@@ -197,6 +224,7 @@ class Config(BaseModel):
 
 
 DEFAULT_CONFIG_YAML = """\
+# yaml-language-server: $schema=https://agents.fomox.com/api/schemas/config
 project:
   name: my-agent-test
   description: Privacy leakage test for my AI agent
@@ -267,6 +295,16 @@ reports:
 privacy:
   redact_values: true
   store_raw_traces: false
+
+# Optional privacy assertions. Any violation blocks the run in CLI, CI, SDK,
+# the web platform, and autonomous-agent self-tests.
+# privacy_policy:
+#   max_risk_index: 0.20
+#   max_findings: 0
+#   forbid_levels: [4]
+#   forbid_channels: [log, shared_memory]
+#   forbid_data_types: [llm_api_key, credit_card]
+#   require_explicit_vault: true
 
 # custom_detectors:
 #   - name: internal_project_code

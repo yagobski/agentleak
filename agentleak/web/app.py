@@ -154,6 +154,9 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     detection = settings.get("detection")
     if isinstance(detection, dict):
         data["detection"] = detection
+    privacy_policy = settings.get("privacy_policy")
+    if isinstance(privacy_policy, dict):
+        data["privacy_policy"] = privacy_policy
     vault = settings.get("vault") or {}
     if vault.get("mode") == "explicit" and vault.get("levels"):
         levels = {int(k): int(v) for k, v in vault["levels"].items() if int(v) > 0}
@@ -1038,6 +1041,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 "llms": "/llms.txt",
                 "llms_full": "/llms-full.txt",
                 "openapi": "/openapi.json",
+                "schemas": "/api/schemas",
                 "interactive_api": "/api/docs",
             },
             "agent_api": {
@@ -1061,6 +1065,23 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 ),
             },
         }
+
+    @app.get("/api/schemas")
+    def schemas_catalog() -> dict[str, Any]:
+        """List versioned JSON Schemas for every public AgentLeak document."""
+        from ..core.schemas import schema_catalog
+
+        return schema_catalog()
+
+    @app.get("/api/schemas/{name}")
+    def schema_document(name: str) -> dict[str, Any]:
+        """Return one versioned JSON Schema by catalog name."""
+        from ..core.schemas import get_schema
+
+        try:
+            return get_schema(name)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=exc.args[0]) from exc
 
     @app.get("/api/limits")
     def get_limits(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
@@ -1224,7 +1245,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         name = str(payload.get("name", "")).strip()
         if not name:
             raise HTTPException(status_code=400, detail="Project name is required.")
-        config = {
+        supplied_config = payload.get("config")
+        config = dict(supplied_config) if isinstance(supplied_config, dict) else {}
+        direct_config = {
             "detectors": payload.get("detectors"),
             "vault": payload.get("vault"),
             "custom_detectors": payload.get("custom_detectors"),
@@ -1232,11 +1255,12 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "agent": payload.get("agent"),
             "agents": payload.get("agents"),
         }
+        config.update({key: value for key, value in direct_config.items() if value is not None})
         return _safe_project(db.create_project(
             name,
             agent_type=payload.get("agent_type", "generic"),
             description=payload.get("description", ""),
-            config={k: v for k, v in config.items() if v is not None},
+            config=config,
             owner_id=user["id"],
         ))
 
