@@ -115,6 +115,11 @@ agentleak run --trace traces/example_trace.json --format json,html,markdown
 
 You'll get a console summary plus `reports/<run_id>.{json,html,md}`.
 
+Declare deterministic release assertions in `privacy_policy` (risk, finding
+count, level, channel, data type and audited-vault requirements), and validate
+all public formats through the versioned [JSON Schema catalog](docs/schemas.md).
+See [privacy policy](docs/privacy-policy.md) for the complete reference.
+
 ## Quickstart (Python SDK)
 
 ```python
@@ -250,6 +255,8 @@ See [docs/integrations.md](docs/integrations.md).
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
 - [Static code scan](docs/code-scan.md) — local, ZIP and GitHub source scanning
 - [CI policy gate](docs/ci-gate.md) — fail builds on privacy regressions
+- [Declarative privacy policy](docs/privacy-policy.md) — assertions by risk, level, channel and data type
+- [JSON Schema catalog](docs/schemas.md) — versioned machine contracts for every public document
 - [Defenses](docs/defenses.md) — Sanitizer, InternalChannelGuard
 - [Scenarios](docs/scenarios.md)
 - [Running agents (live & scripted)](docs/agents.md)

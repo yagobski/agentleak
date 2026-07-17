@@ -32,6 +32,23 @@ def test_agent_card_prints_valid_a2a_card():
     assert "/api/selftest" in card["endpoints"]
 
 
+def test_schema_prints_catalog_and_named_schema():
+    catalog_result = runner.invoke(app, ["schema"])
+    assert catalog_result.exit_code == 0
+    names = {entry["name"] for entry in json.loads(catalog_result.stdout)["schemas"]}
+    assert "analysis-report" in names
+
+    schema_result = runner.invoke(app, ["schema", "trace"])
+    assert schema_result.exit_code == 0
+    assert json.loads(schema_result.stdout)["x-agentleak-schema-version"]
+
+
+def test_schema_rejects_unknown_name():
+    result = runner.invoke(app, ["schema", "missing"])
+    assert result.exit_code == 1
+    assert "Unknown AgentLeak schema" in result.stdout
+
+
 def test_init_scaffolds_project(tmp_path):
     result = runner.invoke(app, ["init", str(tmp_path)])
     assert result.exit_code == 0
@@ -241,6 +258,26 @@ def test_scan_directory_reports_score(tmp_path):
     result = runner.invoke(app, ["scan", str(tmp_path)])
     assert result.exit_code == 0
     assert "Code privacy score" in result.stdout
+
+
+def test_scan_writes_sarif(tmp_path):
+    (tmp_path / "agent.py").write_text('password = "hunter2secret99"\n')
+    output = tmp_path / "agentleak.sarif"
+    result = runner.invoke(app, [
+        "scan", str(tmp_path), "--format", "sarif", "--output", str(output),
+    ])
+    assert result.exit_code == 0
+    sarif = json.loads(output.read_text())
+    assert sarif["version"] == "2.1.0"
+    finding = sarif["runs"][0]["results"][0]
+    assert finding["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "agent.py"
+    assert finding["properties"]["redacted"] is True
+
+
+def test_scan_rejects_unknown_format(tmp_path):
+    result = runner.invoke(app, ["scan", str(tmp_path), "--format", "xml"])
+    assert result.exit_code == 2
+    assert "json' or 'sarif" in result.stdout
 
 
 def test_scan_missing_zip_file_clear_error(tmp_path):

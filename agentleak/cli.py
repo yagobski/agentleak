@@ -149,6 +149,21 @@ def agent_card_cmd() -> None:
     typer.echo(json.dumps(platform_card(__version__).to_dict(), indent=2))
 
 
+@app.command()
+def schema(
+    name: str = typer.Argument("catalog", help="Schema name, or 'catalog'."),
+) -> None:
+    """Print a public AgentLeak JSON Schema for IDEs, CI, or agents."""
+    from .core.schemas import get_schema, schema_catalog
+
+    try:
+        payload = schema_catalog() if name == "catalog" else get_schema(name)
+    except KeyError as exc:
+        typer.secho(f"✗ {exc.args[0]}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(payload, indent=2))
+
+
 # ----------------------------------------------------------------------
 # scan (static code privacy scan)
 # ----------------------------------------------------------------------
@@ -159,7 +174,8 @@ def scan(
     branch: str = typer.Option("main", "--branch", help="Branch to scan with --repo."),
     config: str | None = typer.Option(None, "--config", "-c", help="agentleak.yaml (detector toggles, custom rules, detection mode)."),
     mode: str | None = typer.Option(None, "--mode", "-m", help="Detection mode: fast | standard (Presidio) | hybrid (Presidio + LLM-judge)."),
-    output: str | None = typer.Option(None, "--output", "-o", help="Write the full JSON result to a file."),
+    output: str | None = typer.Option(None, "--output", "-o", help="Write the full result to a file."),
+    fmt: str = typer.Option("json", "--format", "-f", help="Output format: json | sarif."),
     fail_under: int | None = typer.Option(None, "--fail-under", help="Exit non-zero when the code score is below this value."),
 ) -> None:
     """Static privacy scan of agent source code (local dir, zip, or GitHub repo).
@@ -169,6 +185,11 @@ def scan(
     de-obfuscation of decomposed PII, and quasi-identifier correlation.
     """
     from .core.codescan import scan_dir, scan_github_repo, scan_zip_bytes
+
+    fmt = fmt.lower().strip()
+    if fmt not in {"json", "sarif"}:
+        typer.secho("✗ format must be 'json' or 'sarif'", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
 
     cfg: Config | None = None
     if config:
@@ -222,7 +243,8 @@ def scan(
         typer.echo(f"  … and {len(result.findings) - 25} more (use --output for the full list)")
 
     if output:
-        Path(output).write_text(json.dumps(result.to_dict(), indent=2))
+        payload = result.to_sarif() if fmt == "sarif" else result.to_dict()
+        Path(output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
         typer.secho(f"✓ wrote {output}", fg=typer.colors.GREEN)
 
     if fail_under is not None and result.score < fail_under:
@@ -382,6 +404,16 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
             f"({cs['controls_at_risk']} control(s) at risk)",
             fg=color,
         )
+    policy = data.get("privacy_policy", {})
+    if policy.get("enabled"):
+        color = typer.colors.GREEN if policy.get("passed") else typer.colors.RED
+        status = "passed" if policy.get("passed") else "failed"
+        typer.secho(
+            f"Privacy policy: {status} · {len(policy.get('violations', []))} violation(s)",
+            fg=color,
+        )
+        for violation in policy.get("violations", []):
+            typer.echo(f"  - {violation['rule']}: {violation['message']}")
 
     if data["channel_risks"]:
         typer.echo("")

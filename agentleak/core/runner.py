@@ -15,6 +15,7 @@ from .canary import CanarySet
 from .config import Config
 from .detector import Detector, Finding
 from .pipeline import DetectionMode, HybridPipeline
+from .privacy_policy import evaluate_privacy_policy
 from .report import AnalysisResult
 from .scoring import score_findings
 from .trace import Trace
@@ -84,6 +85,7 @@ class AgentLeakRunner:
             self._level_overrides: dict[str, int] = {}
             self._vault: Any = None
             self._scope_def: str | None = None
+            self._privacy_policy: Any = None
         else:
             raw_detectors = build_detectors(
                 config.detectors.as_dict(), config.custom_rules_raw()
@@ -96,6 +98,7 @@ class AgentLeakRunner:
             self._weights = tuple(config.scoring.weights) or DEFAULT_WEIGHTS
             self._level_overrides = dict(config.scoring.level_overrides)
             self._vault, self._scope_def = config.vault_spec()
+            self._privacy_policy = config.privacy_policy
 
         self.detectors = raw_detectors
         self._pipeline = _build_pipeline(config, raw_detectors)
@@ -152,6 +155,14 @@ class AgentLeakRunner:
             scope_def=scope_def or self._scope_def,
         )
 
+        selected_vault = vault if vault is not None else self._vault
+        policy_evaluation = evaluate_privacy_policy(
+            self._privacy_policy,
+            findings,
+            risk_index=score.risk_index,
+            explicit_vault=selected_vault is not None,
+        )
+
         return AnalysisResult(
             run_id=trace.run_id,
             agent_name=trace.agent_name,
@@ -162,6 +173,7 @@ class AgentLeakRunner:
             redact_values=self._redact,
             block_on_critical=self._block_on_critical,
             fail_below=self._fail_below,
+            policy_evaluation=policy_evaluation,
             event_count=len(trace.events),
             events=[
                 {

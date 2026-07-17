@@ -58,6 +58,21 @@ def test_run_creation_and_retrieval(client: TestClient):
 
     runs = client.get(f"/api/projects/{pid}/runs").json()
     assert len(runs) == 1
+
+
+def test_project_run_enforces_declarative_privacy_policy(client: TestClient):
+    project = client.post("/api/projects", json={
+        "name": "No logs policy",
+        "config": {"privacy_policy": {"forbid_channels": ["shared_memory"]}},
+    }).json()
+    run = client.post(
+        f"/api/projects/{project['id']}/runs",
+        json={"scenario_id": "healthcare_patient_summary"},
+    ).json()
+    policy = run["report"]["privacy_policy"]
+    assert policy["enabled"] is True
+    assert policy["passed"] is False
+    assert policy["violations"][0]["rule"] == "forbid_channels"
     full = client.get(f"/api/runs/{run['id']}").json()
     assert full["report"]["risk_index"] == run["report"]["risk_index"]
 

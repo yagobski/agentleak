@@ -74,7 +74,22 @@ def test_meta_links_every_documentation_surface(client: TestClient):
         "llms_full": "/llms-full.txt",
         "openapi": "/openapi.json",
         "interactive_api": "/api/docs",
+        "schemas": "/api/schemas",
     }
+
+
+def test_public_schema_catalog_and_documents(client: TestClient):
+    catalog = client.get("/api/schemas")
+    assert catalog.status_code == 200
+    names = {item["name"] for item in catalog.json()["schemas"]}
+    assert {"config", "trace", "analysis-report", "privacy-policy", "code-scan"} <= names
+
+    schema = client.get("/api/schemas/privacy-policy")
+    assert schema.status_code == 200
+    assert schema.json()["$schema"].endswith("2020-12/schema")
+    assert "max_risk_index" in schema.json()["properties"]
+
+    assert client.get("/api/schemas/not-real").status_code == 404
 
 
 def test_public_mode_emits_https_behind_an_http_reverse_proxy(tmp_path, monkeypatch):
