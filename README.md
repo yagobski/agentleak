@@ -242,16 +242,21 @@ See [docs/integrations.md](docs/integrations.md).
 ## Docs
 
 - [Quickstart](docs/quickstart.md)
+- [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report
 - [Concepts](docs/concepts.md)
 - [Detection pipeline](docs/detection.md) — Tier 1+2 regex, Tier 2b Presidio, Tier 3 LLM-judge
+- [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
+- [Static code scan](docs/code-scan.md) — local, ZIP and GitHub source scanning
+- [CI policy gate](docs/ci-gate.md) — fail builds on privacy regressions
 - [Defenses](docs/defenses.md) — Sanitizer, InternalChannelGuard
 - [Scenarios](docs/scenarios.md)
 - [Running agents (live & scripted)](docs/agents.md)
 - [Autonomous agents — agent card, code scan, improvement loop](docs/selftest-agents.md)
 - [Integrations](docs/integrations.md)
 - [Platform (projects, runs, SDK)](docs/platform.md)
+- [Agent API](docs/agent-api.md) — autonomous discovery, self-test and improvement loop
 - [Compliance frameworks](docs/compliance.md)
 - [Web GUI](docs/gui.md)
 - [AGENTS.md](AGENTS.md) — architecture map & contributor/agent guide

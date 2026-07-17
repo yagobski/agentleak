@@ -322,8 +322,10 @@ function Code({ children }: { children: string }) {
 const searchEntries = [
   ["AgentLeak overview", "/docs", "Mental model, channels and safety boundary"],
   ["5-minute quickstart", "/docs#quickstart", "Local pip install vs. the hosted platform"],
+  ["Trace analysis guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md", "Capture, normalize, detect and report every execution channel"],
   ["How to use AgentLeak", "/docs#how-to-use", "Capture, analyze, remediate and gate"],
   ["AgentRisk scoring", "/docs#agentrisk", "Risk Index, privacy score and the explicit-vault caveat"],
+  ["AgentRisk guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md", "Formula, vault scope, thresholds and release comparisons"],
   ["Explicit vault vs. observed reachable set", "/docs#agentrisk", "Why an audited vault scope changes what the Risk Index means"],
   ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
   ["Scenario coverage and clean controls", "/docs#scenarios", "10 built-in scenarios, 5 clean controls, the 36-scenario benchmark, limitations"],
@@ -339,7 +341,10 @@ const searchEntries = [
   ["Cloud API overview", "/docs/developers#api", "The hosted dashboard, project and agent endpoints"],
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
+  ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
   ["Adversarial red-team", "/features/red-team", "24 plugins × 9 strategies, defense rate, vulnerability and remediation reports"],
+  ["CI policy gate guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
+  ["Agent API guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md", "Autonomous discovery, onboarding, self-test and improvement"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
   ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
   ["Agent operating rules", "/docs/agents#rules", "MUST / SHOULD / MUST NOT for autonomous clients"],
@@ -380,9 +385,12 @@ function DocSearch() {
       <kbd>⌘K</kbd>
       {open && query && (
         <div className="docs-search-results">
-          {results.length ? results.map(([title, href, description]) => (
-            <Link key={href} to={href} onClick={() => setOpen(false)}><strong>{title}</strong><span>{description}</span></Link>
-          )) : <p>No documentation found.</p>}
+          {results.length ? results.map(([title, href, description]) => {
+            const content = <><strong>{title}</strong><span>{description}</span></>
+            return href.startsWith("http")
+              ? <a key={href} href={href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>{content}</a>
+              : <Link key={href} to={href} onClick={() => setOpen(false)}>{content}</Link>
+          }) : <p>No documentation found.</p>}
         </div>
       )}
     </div>

@@ -139,4 +139,4 @@ print(f"ASR {metrics.overall_asr:.0%}  mean ELR {metrics.mean_elr:.2f}")
 
 Or via the web UI — open a project → **Red Team** tab, pick a vertical, and click **Run**.
 
-Next: [Concepts](concepts.md) · [Detection pipeline](detection.md) · [Scoring](scoring.md) · [Red Team](redteam.md) · [Defenses](defenses.md) · [Integrations](integrations.md)
+Next: [Trace analysis](trace-analysis.md) · [AgentRisk scoring](agentrisk.md) · [Detection pipeline](detection.md) · [Red Team](redteam.md) · [Static code scan](code-scan.md) · [CI gate](ci-gate.md) · [Agent API](agent-api.md) · [Defenses](defenses.md) · [Integrations](integrations.md)
