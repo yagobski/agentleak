@@ -1,12 +1,5 @@
-import type { ReactNode } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
-import {
-  AgentLoopDemo,
-  Arrow,
-  PipelineGateDemo,
-  RiskModelDemo,
-  TraceExplorerDemo,
-} from "@/features/ProductDemos"
+import { Arrow } from "@/features/ProductDemos"
 import {
   FAQ_ITEMS,
   FEATURE_PAGES,
@@ -25,7 +18,6 @@ type FeatureContent = {
   lede: string
   metaTitle: string
   metaDescription: string
-  demo: ReactNode
   sections: Section[]
   concept: Concept
   steps: Step[]
@@ -41,8 +33,7 @@ function Code({ children }: { children: string }) {
   )
 }
 
-// One dedicated, SEO-oriented page per capability. Each reuses the exact same
-// live preview shown on the landing page, sized identically to the hero.
+// One dedicated, SEO-oriented page per capability.
 const FEATURE_CONTENT: Record<string, FeatureContent> = {
   "trace-analysis": {
     eyebrow: "Complete trace analysis",
@@ -50,7 +41,6 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "AgentLeak replays the whole execution trace and follows every sensitive value through 8 normalized channels. A clean final answer no longer hides a leak in a tool call, shared memory, a log or a generated file.",
     metaTitle: "Trace analysis · AgentLeak",
     metaDescription: "AgentLeak replays the whole agent execution trace across 8 normalized channels (user input, tool calls, tool responses, inter-agent messages, shared memory, logs, generated files, final output) and pinpoints every exposure with a severity level and an exact fix.",
-    demo: <TraceExplorerDemo />,
     sections: [
       {
         title: "8 channels, one schema",
@@ -90,7 +80,6 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "AgentRisk is a deterministic, severity-weighted risk index from 0 to 1, defined in a published benchmark. The same trace always yields the same score, so a regression in CI means the agent changed, not the judge.",
     metaTitle: "AgentRisk scoring · AgentLeak",
     metaDescription: "AgentRisk is a deterministic, severity-weighted privacy risk index from 0 to 1 with a readable 0-100 privacy score. Reproducible by design, so CI regressions are real.",
-    demo: <RiskModelDemo />,
     sections: [
       {
         title: "Deterministic by design",
@@ -130,7 +119,6 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "Static code scan reads an agent's own source \u2014 a local directory, an uploaded zip, or a GitHub repo \u2014 for hardcoded secrets, PII in log statements and sensitive values sent to third parties, before a single trace is captured.",
     metaTitle: "Static code scan · AgentLeak",
     metaDescription: "AgentLeak's static code scan catches hardcoded secrets, logged PII and third-party data sends in an agent's own source before runtime, via `agentleak scan` or POST /api/agent/code.",
-    demo: <AgentLoopDemo />,
     sections: [
       {
         title: "Three ways to submit code",
@@ -170,7 +158,6 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "32 scripted attack classes across 6 families \u2014 prompt & instruction, indirect & tool-surface, memory & persistence, multi-agent coordination, reasoning manipulation and evasion \u2014 run against your own agent, scripted or live.",
     metaTitle: "Adversarial red-team · AgentLeak",
     metaDescription: "AgentLeak replays 32 scripted attack classes across 6 families (prompt injection, tool-surface poisoning, memory persistence, multi-agent, reasoning and evasion) against your agent and scores the result with AgentRisk.",
-    demo: <PipelineGateDemo />,
     sections: [
       {
         title: "Six attack families, three adversary levels",
@@ -210,7 +197,6 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "Set a policy per project and wire AgentLeak into CI. When an agent crosses its boundary, the check fails and the pull request is blocked, with the offending channel and severity attached to the run.",
     metaTitle: "CI policy gate · AgentLeak",
     metaDescription: "Wire AgentLeak into GitHub Actions, GitLab CI or any runner with a non-zero exit code. A privacy boundary crossing fails the job, and marking that job required blocks the merge with the trace, channel and severity attached as evidence.",
-    demo: <PipelineGateDemo />,
     sections: [
       {
         title: "One boundary per project",
@@ -250,7 +236,6 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
     lede: "llms.txt discovery, one-call onboarding, scoped project keys and machine-readable remediation hints. An agent can find AgentLeak, audit itself and fix its own leaks in a bounded loop, with no browser and no human in the middle.",
     metaTitle: "Agent API · AgentLeak",
     metaDescription: "AgentLeak exposes a machine-first API: llms.txt discovery, one-call onboarding, scoped keys and structured remediation hints so autonomous agents can self-test and improve in a loop.",
-    demo: <AgentLoopDemo />,
     sections: [
       {
         title: "Discoverable by machines",
@@ -312,10 +297,6 @@ export function FeaturePage() {
             </div>
           </div>
         </section>
-
-        <div className="cursor-page-preview">
-          <div className="cursor-feature-visual">{content.demo}</div>
-        </div>
 
         <div className="cursor-page-sections">
           {content.sections.map((section) => (
