@@ -405,6 +405,30 @@ export interface RedTeamMetrics {
   elr_per_run: { scenario_id: string; elr: number; leaked: number; total: number }[]
 }
 
+export type RedTeamSeverity = "critical" | "high" | "medium" | "low" | "informational"
+
+export interface RedTeamAttackResult {
+  run_id: string
+  scenario_id: string
+  attack_class_id: string
+  attack_name: string
+  attack_description: string
+  attack_family_id: string
+  attack_family_name: string
+  attack_family_description: string
+  injection_surface: string
+  primary_channel: string
+  adversary_level: string
+  success: boolean
+  max_level: number
+  severity: RedTeamSeverity
+  risk_index: number
+  privacy_score: number
+  leaked_types: string[]
+  leak_channels: string[]
+  recommendations: string[]
+}
+
 export interface RedTeamResult {
   project_id: string
   vertical: string
@@ -414,6 +438,7 @@ export interface RedTeamResult {
   scenarios_run: number
   run_ids: string[]
   metrics: RedTeamMetrics
+  attacks: RedTeamAttackResult[]
 }
 
 export type AdversaryLevel = "A0" | "A1" | "A2"

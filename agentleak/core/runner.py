@@ -169,6 +169,7 @@ class AgentLeakRunner:
                     "channel": e.channel_value,
                     "source": e.source,
                     "target": e.target,
+                    "agent": trace.agent_name,
                 }
                 for e in trace.events
             ],

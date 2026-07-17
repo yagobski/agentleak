@@ -1,5 +1,6 @@
-import { AlertTriangle, CheckCircle2, ExternalLink, Info, ShieldCheck } from "lucide-react"
-import type { Compliance, ControlResult } from "@/lib/api"
+import { useEffect, useMemo, useState } from "react"
+import { AlertTriangle, CheckCircle2, ChevronRight, ExternalLink, FileCheck2, Info, Scale, ShieldCheck } from "lucide-react"
+import type { Compliance, ControlResult, FrameworkResult } from "@/lib/api"
 import { Card } from "@/components/ui/card"
 
 function StatusIcon({ status }: { status: ControlResult["status"] }) {
@@ -8,99 +9,164 @@ function StatusIcon({ status }: { status: ControlResult["status"] }) {
   return <CheckCircle2 className="size-4 shrink-0 text-sev-ok" />
 }
 
-export function ComplianceView({ compliance }: { compliance: Compliance }) {
-  if (!compliance?.frameworks?.length) return null
-  const s = compliance.summary
-  const posture = compliance.posture
+function FrameworkTab({ framework, active, onSelect }: { framework: FrameworkResult; active: boolean; onSelect: () => void }) {
+  const clear = framework.status === "compliant"
+  const defended = framework.controls.length - framework.at_risk
+  const pct = Math.round((defended / Math.max(1, framework.controls.length)) * 100)
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Compliance
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onSelect}
+      className={`group w-full rounded-lg border p-3 text-left transition-all ${active ? "border-foreground/20 bg-card shadow-sm" : "border-transparent hover:bg-muted/50"}`}
+    >
+      <div className="flex items-start gap-2.5">
+        <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md ${clear ? "bg-sev-ok/10 text-sev-ok" : "bg-sev-l4/10 text-sev-l4"}`}>
+          {clear ? <ShieldCheck className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {s.compliant}/{s.total} frameworks clear · {s.controls_at_risk} control(s) at risk
-        </span>
-      </div>
-      {posture && (
-        <div
-          className="mb-3 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm"
-          style={
-            posture.status === "compliant"
-              ? { color: "hsl(var(--sev-ok))", backgroundColor: "hsl(var(--sev-ok) / 0.07)", borderColor: "hsl(var(--sev-ok) / 0.25)" }
-              : { color: "hsl(var(--sev-l4))", backgroundColor: "hsl(var(--sev-l4) / 0.06)", borderColor: "hsl(var(--sev-l4) / 0.25)" }
-          }
-        >
-          {posture.status === "compliant" ? (
-            <>
-              <ShieldCheck className="size-4 shrink-0" />
-              <span className="font-medium text-foreground">Compliant across all {s.total} frameworks.</span>
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="size-4 shrink-0" />
-              <span className="text-foreground">
-                <span className="font-medium">Not compliant.</span> Regulations to address:{" "}
-                {posture.failed.map((f) => f.name).join(", ")}.
-              </span>
-            </>
-          )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <span className="min-w-0 flex-1 text-xs font-semibold leading-snug">{framework.name}</span>
+            <ChevronRight className={`mt-0.5 size-3 shrink-0 transition-transform ${active ? "translate-x-0.5 text-foreground" : "text-muted-foreground"}`} />
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: clear ? "hsl(var(--sev-ok))" : "hsl(var(--sev-l4))" }} />
+            </div>
+            <span className="font-mono text-[10px] text-muted-foreground tnum">{pct}%</span>
+          </div>
+          <div className="mt-1.5 text-[10px] text-muted-foreground">{framework.at_risk ? `${framework.at_risk} control${framework.at_risk === 1 ? "" : "s"} at risk` : `${framework.controls.length} controls clear`}</div>
         </div>
-      )}
-      <div className="grid gap-3 md:grid-cols-2">
-        {compliance.frameworks.map((fw) => {
-          const ok = fw.status === "compliant"
-          return (
-            <Card key={fw.id} className="overflow-hidden">
-              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-                <a
-                  href={fw.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex items-center gap-1.5 text-sm font-medium hover:text-primary"
-                >
-                  {fw.name}
-                  <ExternalLink className="size-3 opacity-0 transition-opacity group-hover:opacity-60" />
-                </a>
-                <span
-                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                  style={
-                    ok
-                      ? { color: "hsl(var(--sev-ok))", backgroundColor: "hsl(var(--sev-ok) / 0.14)" }
-                      : { color: "hsl(var(--sev-l4))", backgroundColor: "hsl(var(--sev-l4) / 0.14)" }
-                  }
-                >
-                  {ok ? <ShieldCheck className="size-3" /> : <AlertTriangle className="size-3" />}
-                  {ok ? "Clear" : `${fw.at_risk} at risk`}
-                </span>
-              </div>
-              <ul className="divide-y divide-border">
-                {fw.controls.map((ctrl) => (
-                  <li key={ctrl.id} className="flex gap-2.5 px-4 py-2.5">
-                    <StatusIcon status={ctrl.status} />
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-medium leading-tight">{ctrl.name}</div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">{ctrl.rationale}</div>
-                      {ctrl.evidence.length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {ctrl.evidence.slice(0, 6).map((e, i) => (
-                            <code
-                              key={i}
-                              className="rounded bg-sev-l4/10 px-1.5 py-0.5 text-[10px] text-sev-l4"
-                            >
-                              {e}
-                            </code>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )
-        })}
       </div>
+    </button>
+  )
+}
+
+function FrameworkDetail({ framework }: { framework: FrameworkResult }) {
+  const clear = framework.status === "compliant"
+  const controls = useMemo(
+    () => [...framework.controls].sort((a, b) => Number(b.status === "at_risk") - Number(a.status === "at_risk")),
+    [framework.controls],
+  )
+  const infoCount = framework.controls.filter((control) => control.status === "info").length
+  const clearCount = framework.controls.filter((control) => control.status === "ok").length
+
+  return (
+    <div role="tabpanel" className="min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <Scale className="size-4 text-primary" />
+            <h3 className="text-base font-semibold">{framework.name}</h3>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Control mapping for this run · evidence is derived from the captured trace.</p>
+        </div>
+        <a href={framework.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          Official source <ExternalLink className="size-3" />
+        </a>
+      </div>
+
+      <div className="grid gap-px border-b border-border bg-border sm:grid-cols-3">
+        {[
+          { label: "At risk", value: framework.at_risk, color: framework.at_risk ? "text-sev-l4" : "text-sev-ok" },
+          { label: "Clear", value: clearCount, color: "text-sev-ok" },
+          { label: "Context", value: infoCount, color: "text-primary" },
+        ].map((item) => (
+          <div key={item.label} className="bg-card px-5 py-3">
+            <div className={`font-mono text-xl font-semibold tnum ${item.color}`}>{item.value}</div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.label} controls</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4">
+        {!clear && (
+          <div className="mb-3 flex gap-3 rounded-lg border border-sev-l4/20 bg-sev-l4/[0.045] p-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-sev-l4" />
+            <p className="text-xs leading-relaxed"><span className="font-semibold">Priority review required.</span> Resolve the flagged controls below before treating this run as release-ready.</p>
+          </div>
+        )}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <ul className="divide-y divide-border">
+            {controls.map((control) => (
+              <li key={control.id} className={`flex gap-3 px-4 py-3.5 ${control.status === "at_risk" ? "bg-sev-l4/[0.025]" : ""}`}>
+                <StatusIcon status={control.status} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold leading-tight">{control.name}</span>
+                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">{control.id}</code>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{control.rationale}</p>
+                  {control.evidence.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {control.evidence.slice(0, 8).map((evidence, index) => (
+                        <code key={`${evidence}-${index}`} className={`rounded px-1.5 py-0.5 text-[9px] ${control.status === "at_risk" ? "bg-sev-l4/10 text-sev-l4" : "bg-muted text-muted-foreground"}`}>
+                          {evidence}
+                        </code>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className={`self-start shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${control.status === "at_risk" ? "bg-sev-l4/10 text-sev-l4" : control.status === "info" ? "bg-primary/10 text-primary" : "bg-sev-ok/10 text-sev-ok"}`}>
+                  {control.status === "at_risk" ? "At risk" : control.status === "info" ? "Context" : "Clear"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ComplianceView({ compliance }: { compliance: Compliance }) {
+  const frameworks = compliance?.frameworks ?? []
+  const firstPriority = frameworks.find((framework) => framework.status === "non_compliant")?.id ?? frameworks[0]?.id ?? ""
+  const [selectedId, setSelectedId] = useState(firstPriority)
+
+  useEffect(() => {
+    if (!frameworks.some((framework) => framework.id === selectedId)) setSelectedId(firstPriority)
+  }, [firstPriority, frameworks, selectedId])
+
+  if (!frameworks.length) return null
+  const summary = compliance.summary
+  const posture = compliance.posture
+  const selected = frameworks.find((framework) => framework.id === selectedId) ?? frameworks[0]
+  const clear = posture?.status === "compliant"
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold"><FileCheck2 className="size-4 text-primary" /> Compliance navigator</div>
+          <p className="mt-1 text-xs text-muted-foreground">Select a law or framework to inspect its mapped controls and trace evidence.</p>
+        </div>
+        <span className="text-xs text-muted-foreground">{summary.compliant}/{summary.total} frameworks clear · {summary.controls_at_risk} controls at risk</span>
+      </div>
+
+      <div className={`flex gap-3 rounded-lg border px-4 py-3 ${clear ? "border-sev-ok/25 bg-sev-ok/[0.055]" : "border-sev-l4/25 bg-sev-l4/[0.045]"}`}>
+        {clear ? <ShieldCheck className="mt-0.5 size-4 shrink-0 text-sev-ok" /> : <AlertTriangle className="mt-0.5 size-4 shrink-0 text-sev-l4" />}
+        <div>
+          <div className="text-sm font-semibold">{clear ? `Clear across all ${summary.total} frameworks` : `${summary.non_compliant} framework${summary.non_compliant === 1 ? "" : "s"} require action`}</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{clear ? "No mapped control was triggered by this trace." : `Start with ${posture?.failed.map((item) => item.name).join(", ") || "the flagged framework"}; the highest-risk controls are listed first.`}</p>
+        </div>
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="grid lg:grid-cols-[285px_minmax(0,1fr)]">
+          <div role="tablist" aria-orientation="vertical" className="border-b border-border bg-muted/20 p-3 lg:border-b-0 lg:border-r">
+            <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Laws &amp; frameworks</div>
+            <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
+              {frameworks.map((framework) => (
+                <FrameworkTab key={framework.id} framework={framework} active={selected.id === framework.id} onSelect={() => setSelectedId(framework.id)} />
+              ))}
+            </div>
+          </div>
+          <FrameworkDetail framework={selected} />
+        </div>
+      </Card>
+      <p className="text-[10px] leading-relaxed text-muted-foreground">This is an engineering control mapping, not legal certification. Confirm regulatory interpretation with qualified counsel.</p>
     </div>
   )
 }

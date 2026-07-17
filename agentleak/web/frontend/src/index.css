@@ -127,9 +127,18 @@
 .bar-grow {
   animation: bar-grow 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes flow-edge-travel {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+.flow-edge-leak {
+  animation: flow-edge-travel 1.25s linear infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .arc-draw,
   .bar-grow,
+  .flow-edge-leak,
   .animate-fade-up,
   .animate-scan {
     animation: none !important;

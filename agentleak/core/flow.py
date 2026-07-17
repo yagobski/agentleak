@@ -48,6 +48,21 @@ _KIND_LANE = {
     "memory": 2, "log": 2, "file": 2, "external": 2, "output": 2,
 }
 
+# Synthetic participant labels used only when a framework did not attach
+# explicit ``source`` / ``target`` metadata to an event.  The channel still
+# tells us the direction of travel, so preserving that structure is more useful
+# (and more truthful) than collapsing every endpoint into one ``unknown`` node.
+_IMPLIED_NODE_ID = {
+    "user": "user",
+    "tool": "tool / data",
+    "agent": "agent",
+    "memory": "shared memory",
+    "log": "logs",
+    "file": "generated file",
+    "external": "external tool",
+    "output": "final output",
+}
+
 
 def _roles_for(channel: str) -> tuple[str, str]:
     return _CHANNEL_ROLES.get(channel, ("agent", "external"))
@@ -60,13 +75,38 @@ def _pick_kind(tags: set[str]) -> str:
     return "agent"
 
 
+def _event_endpoints(event: dict[str, Any]) -> tuple[str, str]:
+    """Return explicit endpoints, or infer them from channel semantics.
+
+    Real framework adapters normally provide participant names.  Scripted
+    scenarios and minimal SDK traces may not; in that case the channel roles
+    still define a reliable source → agent → sink flow.  ``agent`` is carried
+    as display-only metadata by the runner and falls back to a generic label.
+    """
+    source_role, target_role = _roles_for(str(event["channel"]))
+    agent = str(event.get("agent") or "agent")
+
+    def implied(role: str) -> str:
+        return agent if role == "agent" else _IMPLIED_NODE_ID.get(role, role)
+
+    def explicit(value: Any) -> str | None:
+        text = str(value or "").strip()
+        return None if text.lower() in {"", "unknown", "?"} else text
+
+    return (
+        explicit(event.get("source")) or implied(source_role),
+        explicit(event.get("target")) or implied(target_role),
+    )
+
+
 def build_topology(events: list[dict[str, Any]], findings: list[Finding]) -> dict[str, Any]:
     """Build the participant graph with leak-carrying edges highlighted."""
     role_tags: dict[str, set[str]] = {}
     for ev in events:
         src_role, tgt_role = _roles_for(ev["channel"])
-        role_tags.setdefault(ev.get("source") or "unknown", set()).add(src_role)
-        role_tags.setdefault(ev.get("target") or "unknown", set()).add(tgt_role)
+        source, target = _event_endpoints(ev)
+        role_tags.setdefault(source, set()).add(src_role)
+        role_tags.setdefault(target, set()).add(tgt_role)
 
     nodes = [
         {"id": node, "kind": (kind := _pick_kind(tags)), "lane": _KIND_LANE.get(kind, 1)}
@@ -75,16 +115,24 @@ def build_topology(events: list[dict[str, Any]], findings: list[Finding]) -> dic
     nodes.sort(key=lambda n: (n["lane"], n["id"]))
 
     # Highest leaked level per (source, target, channel).
+    events_by_id = {str(ev["event_id"]): ev for ev in events}
     leak_level: dict[tuple[str, str, str], int] = {}
     for f in findings:
         if f.channel in BASELINE_CHANNELS:
             continue
-        key = (f.source, f.target, f.channel)
+        event = events_by_id.get(f.event_id, {
+            "channel": f.channel,
+            "source": f.source,
+            "target": f.target,
+        })
+        source, target = _event_endpoints(event)
+        key = (source, target, f.channel)
         leak_level[key] = max(leak_level.get(key, 0), f.level)
 
     edges_acc: dict[tuple[str, str, str], int] = {}
     for ev in events:
-        key = (ev.get("source") or "unknown", ev.get("target") or "unknown", ev["channel"])
+        source, target = _event_endpoints(ev)
+        key = (source, target, ev["channel"])
         edges_acc[key] = edges_acc.get(key, 0) + 1
 
     edges: list[dict[str, Any]] = []
@@ -113,6 +161,7 @@ def build_leak_paths(
     at least one non-baseline channel.
     """
     order = {ev["event_id"]: i for i, ev in enumerate(events)}
+    events_by_id = {str(ev["event_id"]): ev for ev in events}
 
     # Group all occurrences (sources + disclosures) of each distinct secret.
     groups: dict[tuple[str, str], list[Finding]] = {}
@@ -122,18 +171,23 @@ def build_leak_paths(
     paths: list[dict[str, Any]] = []
     for (data_type, value), occ in groups.items():
         occ.sort(key=lambda f: order.get(f.event_id, 1_000_000))
-        steps = [
-            {
-                "event_id": f.event_id,
+        steps = []
+        for f in occ:
+            event = events_by_id.get(f.event_id, {
                 "channel": f.channel,
                 "source": f.source,
                 "target": f.target,
+            })
+            source, target = _event_endpoints(event)
+            steps.append({
+                "event_id": f.event_id,
+                "channel": f.channel,
+                "source": source,
+                "target": target,
                 "kind": "source" if f.channel in BASELINE_CHANNELS else "leak",
                 "level": f.level,
                 "level_label": LEVEL_LABELS.get(f.level, ""),
-            }
-            for f in occ
-        ]
+            })
         leak_findings = [f for f in occ if f.channel not in BASELINE_CHANNELS]
         if not leak_findings:
             continue  # entered but never disclosed — not a leak path
@@ -149,7 +203,12 @@ def build_leak_paths(
             "origin": origin,
             "leak_count": len(leak_findings),
             "channels": sorted({f.channel for f in leak_findings}),
-            "agents": sorted({f.source for f in leak_findings if f.source}),
+            "agents": sorted({
+                step["source"]
+                for step in steps
+                if step["kind"] == "leak"
+                and _roles_for(str(step["channel"]))[0] == "agent"
+            }),
             "steps": steps,
         })
 

@@ -1721,7 +1721,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         """
         import logging as _log
 
-        from ..core.attacks import CLASS_TO_FAMILY, AdversaryLevel
+        from ..core.attacks import ATTACK_FAMILIES, CLASS_TO_FAMILY, AdversaryLevel
         from ..core.metrics import RunResult, _result_from_analysis, compute_metrics
         from ..generators import ScenarioGenerator
 
@@ -1783,6 +1783,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
         run_results: list[RunResult] = []
         run_ids: list[str] = []
+        attack_runs: list[dict[str, Any]] = []
+        family_index = {family.id: family for family in ATTACK_FAMILIES}
         live = llm is not None
         source = "redteam:live" if live else "redteam"
 
@@ -1799,7 +1801,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 run_ids.append(run["id"])
 
                 fam_id = CLASS_TO_FAMILY.get(scenario.attack_class.id, "F1")
-                run_results.append(_result_from_analysis(
+                run_result = _result_from_analysis(
                     result,
                     scenario_id=scenario.scenario_id,
                     vertical=scenario.vertical,
@@ -1809,7 +1811,38 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                     adversary_level=scenario.attack_class.adversary_level.value,
                     vault_field_count=len(scenario.vault.records),
                     expected_leaks=scenario.expected_leaks,
-                ))
+                )
+                run_results.append(run_result)
+
+                leaked_findings = result.leaked_findings()
+                max_level = max((finding.level for finding in leaked_findings), default=0)
+                attack_success = bool(
+                    set(run_result.detected_on_primary) & set(run_result.expected_leaks)
+                )
+                family = family_index.get(fam_id)
+                attack_runs.append({
+                    "run_id": run["id"],
+                    "scenario_id": scenario.scenario_id,
+                    "attack_class_id": scenario.attack_class.id,
+                    "attack_name": scenario.attack_class.name,
+                    "attack_description": scenario.attack_class.description,
+                    "attack_family_id": fam_id,
+                    "attack_family_name": family.name if family else fam_id,
+                    "attack_family_description": family.description if family else "",
+                    "injection_surface": scenario.attack_class.injection_surface,
+                    "primary_channel": scenario.attack_class.primary_channel.value,
+                    "adversary_level": scenario.attack_class.adversary_level.value,
+                    "success": attack_success,
+                    "max_level": max_level,
+                    "severity": {
+                        4: "critical", 3: "high", 2: "medium", 1: "low",
+                    }.get(max_level, "informational"),
+                    "risk_index": round(result.risk_index, 4),
+                    "privacy_score": round(result.score.privacy_score, 1),
+                    "leaked_types": sorted({finding.data_type for finding in leaked_findings}),
+                    "leak_channels": sorted({finding.channel for finding in leaked_findings}),
+                    "recommendations": list(report_data.get("recommendations") or [])[:3],
+                })
             except AgentRunError as exc:
                 # Live endpoint unreachable / misconfigured — surface it immediately.
                 raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -1833,6 +1866,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "scenarios_run": len(run_results),
             "run_ids": run_ids,
             "metrics": metrics.to_dict(),
+            "attacks": attack_runs,
         }
 
 
