@@ -164,6 +164,13 @@ const AGENT_QUICKSTART = [
 const pageNav: Record<Audience, NavItem[]> = {
   overview: [
     { href: "#quickstart", label: "5-minute quickstart" },
+    { href: "#feature-guides", label: "Feature guides" },
+    { href: "#trace-analysis", label: "Trace analysis" },
+    { href: "#agentrisk-guide", label: "AgentRisk scoring" },
+    { href: "#code-scan", label: "Static code scan" },
+    { href: "#red-team-guide", label: "Red team" },
+    { href: "#ci-gate-guide", label: "CI policy gate" },
+    { href: "#agent-api-guide", label: "Agent API" },
     { href: "#model", label: "Mental model" },
     { href: "#how-to-use", label: "How to use AgentLeak" },
     { href: "#agentrisk", label: "AgentRisk" },
@@ -499,6 +506,181 @@ function Overview() {
         <p>
           Building an autonomous agent instead of clicking through a browser? Skip both of these and go
           straight to the <Link to="/docs/agents#quickstart">agent quickstart</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="feature-guides">
+        <h2>Feature guides</h2>
+        <p>
+          AgentLeak is a complete testing loop, not a single output checker.
+          Start with trace analysis, quantify exposure with AgentRisk, scan source
+          code before runtime, attack the agent with red-team campaigns, enforce
+          the policy in CI, or let the agent operate through the Agent API.
+        </p>
+        <div className="docs-card-grid">
+          {[
+            ["#trace-analysis", "Trace analysis", "Capture and audit all eight execution channels."],
+            ["#agentrisk-guide", "AgentRisk scoring", "Turn findings into a deterministic 0–1 risk index."],
+            ["#code-scan", "Static code scan", "Find secrets and PII before the agent runs."],
+            ["#red-team-guide", "Adversarial red team", "Exercise plugins, strategies and live targets."],
+            ["#ci-gate-guide", "CI policy gate", "Fail releases when the privacy boundary is crossed."],
+            ["#agent-api-guide", "Agent API", "Discover, self-test and improve without a browser."],
+          ].map(([href, title, body]) => (
+            <a key={href} href={href} className="docs-link-card">
+              <h3>{title}</h3>
+              <p>{body}</p>
+              <span>Read guide →</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="docs-section" id="trace-analysis">
+        <h2>Trace analysis</h2>
+        <p>
+          Trace analysis follows sensitive values through the complete run, not
+          only the final response. Use the CLI for local files, the SDK for
+          instrumentation, or the hosted Audit tab for an interactive report.
+        </p>
+        <div className="docs-steps">
+          {[
+            ["1", "Capture", "Record user input, tool calls and responses, memory, hand-offs, logs, files and final output."],
+            ["2", "Normalize", "Map framework events to one channel-tagged Trace schema with source and target."],
+            ["3", "Detect", "Run regex, canary, entropy, optional Presidio and optional semantic LLM-judge detectors."],
+            ["4", "Remediate", "Read the finding channel, severity, masked value, leak path and recommended fix."],
+          ].map(([step, title, body]) => (
+            <div key={step}><b>{step}</b><h3>{title}</h3><p>{body}</p></div>
+          ))}
+        </div>
+        <Code>{INSTALL + "\n\n" + TRACE}</Code>
+        <p>
+          A valid event has a supported <code>channel</code>, optional <code>source</code>
+          and <code>target</code>, and string or JSON-compatible <code>content</code>.
+          Validate with <code>agentleak validate --trace traces/latest.json</code>.
+          See the <Link to="/features/trace-analysis">trace analysis feature page</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="agentrisk-guide">
+        <h2>AgentRisk scoring</h2>
+        <p>
+          AgentRisk weights distinct leaked values by severity and normalizes them
+          against the audited vault, so the same trace and policy produce the same
+          score in local runs, the dashboard and CI.
+        </p>
+        <Code>{RISK_FORMULA}</Code>
+        <div className="docs-table">
+          {[
+            ["L4 · 4", "Health data, SIN/SSN, payment cards and credentials"],
+            ["L3 · 3", "Income, salary, address and date of birth"],
+            ["L2 · 2", "Email, phone and contextual contact data"],
+            ["L1 · 1", "Names and organizational identifiers"],
+          ].map(([level, meaning]) => (
+            <div key={level}><code>{level}</code><span>{meaning}</span></div>
+          ))}
+        </div>
+        <Code>{VAULT_YAML}</Code>
+        <p>
+          Use an explicit vault for release comparisons. Without one, the
+          denominator falls back to the observed reachable set and can understate
+          risk. The report includes RI, privacy score, verdict, WSL/ρ<sub>S</sub>,
+          leaked-versus-vault profile and risk per channel. Read the{" "}
+          <Link to="/features/agentrisk">AgentRisk feature page</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="code-scan">
+        <h2>Static code scan</h2>
+        <p>
+          Scan a local directory, ZIP archive or GitHub repository before runtime.
+          The scanner reports hardcoded secrets, PII in fixtures and logs, unsafe
+          external sends, entropy findings, de-obfuscated identifiers and
+          quasi-identifier correlation.
+        </p>
+        <Code>{"pip install agentleak\nagentleak scan ./my-agent --mode fast\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json"}</Code>
+        <div className="docs-card-grid">
+          <div><h3>Fast</h3><p>Local regex, dictionaries, entropy and canary checks. No key required.</p></div>
+          <div><h3>Standard</h3><p>Adds Presidio and domain recognizers. Install <code>agentleak[presidio]</code>.</p></div>
+          <div><h3>Hybrid</h3><p>Adds an opt-in BYOK semantic judge through an OpenAI-compatible endpoint.</p></div>
+        </div>
+        <p>
+          Findings include file, line, rule, data type, severity, tier, confidence
+          and a redacted snippet. Use <code>--fail-under</code> in CI and rotate
+          any real credential immediately. See the{" "}
+          <Link to="/features/code-scan">code scan feature page</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="red-team-guide">
+        <h2>Adversarial red team</h2>
+        <p>
+          Red-team campaigns combine 24 vulnerability plugins (“what to test”) with
+          9 delivery strategies (“how to deliver it”), across 46 attack classes
+          and 6 families. Run deterministic scripted tests for coverage and
+          regression, or live tests against an authorized OpenAI-compatible endpoint.
+        </p>
+        <Code>{"POST /api/projects/{project_id}/redteam\n{\n  \"vertical\": \"healthcare\",\n  \"adversary_level\": \"A1\",\n  \"n\": 10,\n  \"plugin_preset\": \"agent_core\",\n  \"strategy_profile\": \"balanced\",\n  \"mode\": \"scripted\"\n}"}</Code>
+        <div className="docs-table">
+          {[
+            ["Plugins", "privacy_core, agent_core, tool_security, complete, or explicit plugin IDs"],
+            ["Strategies", "basic, jailbreak, markup, Base64/hex/ROT13, leetspeak, homoglyph, Crescendo"],
+            ["Modes", "scripted offline baseline, live BYOK target, auto when an endpoint is configured"],
+            ["Metrics", "ASR, ELR, CLR, defense rate, privacy score and saved run evidence"],
+          ].map(([name, body]) => (
+            <div key={name}><code>{name}</code><span>{body}</span></div>
+          ))}
+        </div>
+        <p>
+          Start at A1 with a scripted campaign, inspect <code>coverage</code>, open
+          the saved run IDs, remediate the weakest channel, and rerun the same
+          matrix. The endpoint caps a campaign at 20 scenarios. See the{" "}
+          <Link to="/features/red-team">red-team feature page</Link> and the{" "}
+          <a href="https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam.md" target="_blank" rel="noreferrer">campaign reference</a>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="ci-gate-guide">
+        <h2>CI policy gate</h2>
+        <p>
+          Make privacy a required check with a non-zero exit code. Keep the
+          detector mode, explicit vault, fixtures and score policy versioned with
+          the agent.
+        </p>
+        <Code>{CI}</Code>
+        <p>
+          Use <code>scoring.fail_below</code> and <code>scoring.block_on_critical</code>
+          for project policy, or override a run with <code>--fail-under</code>.
+          Upload JSON/HTML/Markdown reports as protected CI artifacts. A green job
+          covers only the tested traces and policy; it is not a certification.
+          See the <Link to="/features/ci-gate">CI gate feature page</Link>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="agent-api-guide">
+        <h2>Agent API</h2>
+        <p>
+          Autonomous agents can discover the service, onboard, register an agent
+          card, scan authorized source, submit traces, apply prioritized fixes and
+          verify progression without a browser.
+        </p>
+        <Code>{AGENT_QUICKSTART}</Code>
+        <div className="docs-steps">
+          {[
+            ["1", "Discover", "Read /api/meta, /llms.txt, /llms-full.txt and OpenAPI."],
+            ["2", "Onboard", "Create a project-scoped ak_ key and store it as a secret."],
+            ["3", "Test", "Call /api/selftest or /api/agent/improve with a trace."],
+            ["4", "Improve", "Apply authorized next_steps, create a fresh trace and verify /api/agent/status."],
+          ].map(([step, title, body]) => (
+            <div key={step}><b>{step}</b><h3>{title}</h3><p>{body}</p></div>
+          ))}
+        </div>
+        <p>
+          Use <code>X-AgentLeak-Key</code> only over HTTPS. On 401 stop, on 422
+          repair against OpenAPI, on 429 honor <code>X-Quota-Reset</code>, and on
+          5xx retry with bounded backoff. Never put keys or raw sensitive values
+          in prompts, logs, URLs or long-term agent memory. Read the{" "}
+          <Link to="/docs/agents">agent operating contract</Link> and the{" "}
+          <Link to="/features/agent-api">Agent API page</Link>.
         </p>
       </section>
 
