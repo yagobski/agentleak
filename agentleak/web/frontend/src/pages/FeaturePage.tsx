@@ -170,9 +170,9 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
         points: ["Scripted mode: deterministic, no LLM cost", "Live mode: your own model via BYOK", "Pick a vertical, a count, or one specific class", "Same detection pipeline as any other trace"],
       },
       {
-        title: "Same score, adversarial input",
-        body: "Every red-team run is analyzed by the same AgentRisk pipeline as a normal trace, so an attack result is directly comparable to your project's baseline.",
-        points: ["Risk Index and privacy score per scenario", "Attack class and family recorded per run", "Delta versus the project's prior best score", "Feeds the same leaderboard and history"],
+        title: "A vulnerability report you can act on",
+        body: "Every probe is analyzed by the same AgentRisk pipeline, then organized into severity, defense rate, delivery method, risk category and a prioritized remediation report.",
+        points: ["Critical-to-low vulnerability counts", "Attack Success Rate and defense rate", "Expandable families with one stored trace per probe", "Prioritized fixes linked to the exact execution evidence"],
       },
     ],
     concept: {
@@ -186,7 +186,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
       { title: "Choose a target", body: "Pick a vertical (healthcare, finance, HR, customer support), an adversary level (A0-A2), and optionally one specific attack class." },
       { title: "Pick scripted or live", body: "Scripted replays a deterministic agent for regression testing; live sends the attack to your own configured model endpoint." },
       { title: "The batch runs", body: "Each generated scenario is executed and analyzed by the standard AgentLeak pipeline, exactly like a captured production trace." },
-      { title: "Compare the results", body: "Every run records its attack class, family and channel alongside the Risk Index, so you can see which attack surface is weakest." },
+      { title: "Investigate and fix", body: "Use the vulnerability report to rank weak attack surfaces, open the stored trace for any probe, then follow the remediation report and re-run the same batch." },
     ],
     snippetLabel: "Request body for a red-team batch",
     snippet: "POST /api/projects/{project_id}/redteam\n{\n  \"vertical\": \"healthcare\",\n  \"n\": 5,\n  \"adversary_level\": \"A1\",\n  \"mode\": \"scripted\"\n}",

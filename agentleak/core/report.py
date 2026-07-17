@@ -171,8 +171,8 @@ class AnalysisResult:
     fail_below: int = 40
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     event_count: int = 0
-    # Lightweight event log ({event_id, channel, source, target}) for building
-    # the leak-path and topology views. Filled by the runner.
+    # Lightweight event log ({event_id, channel, source, target, agent}) for
+    # building the leak-path and topology views. Filled by the runner.
     events: list[dict[str, Any]] = field(default_factory=list)
 
     # -- convenience accessors (used by the SDK and reporters) -----------

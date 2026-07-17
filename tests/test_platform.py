@@ -455,6 +455,20 @@ def test_redteam_returns_metrics(client: TestClient):
     assert "overall_asr" in metrics
     assert "clr_per_channel" in metrics
     assert "asr_by_family" in metrics
+    assert len(body["attacks"]) == body["scenarios_run"]
+    attack = body["attacks"][0]
+    assert attack["run_id"] in body["run_ids"]
+    assert attack["attack_class_id"].startswith("F")
+    assert attack["attack_family_name"]
+    assert attack["injection_surface"]
+    assert attack["primary_channel"]
+    assert attack["severity"] in {
+        "critical", "high", "medium", "low", "informational",
+    }
+    assert isinstance(attack["success"], bool)
+    # Report details contain types and channels only; raw matched values must
+    # never be exposed by the red-team summary.
+    assert "matched_value" not in attack
 
 
 def test_redteam_saves_runs(client: TestClient):

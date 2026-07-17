@@ -339,7 +339,7 @@ const searchEntries = [
   ["Cloud API overview", "/docs/developers#api", "The hosted dashboard, project and agent endpoints"],
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
-  ["Adversarial red-team", "/features/red-team", "32 attack classes across 6 families, POST /api/projects/{id}/redteam"],
+  ["Adversarial red-team", "/features/red-team", "32 attack classes, defense rate, vulnerability and remediation reports"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
   ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
   ["Agent operating rules", "/docs/agents#rules", "MUST / SHOULD / MUST NOT for autonomous clients"],
@@ -628,6 +628,12 @@ function Overview() {
           <Link to="/docs/developers#byok">BYOK</Link>). Canary-based detection assumes the audited
           values are actually distinct from ordinary text in your domain. A passing run reflects the
           traces and channels you tested, not a guarantee about traces you did not test.
+        </p>
+        <p>
+          Project red-team campaigns turn these scenarios into an operational report: severity counts,
+          Attack Success Rate, defense rate, delivery methods, expandable risk families and a prioritized
+          remediation plan. Every probe is stored as a normal project run, so opening the evidence shows
+          the same findings, leak flow and compliance controls as a production trace.
         </p>
       </section>
 
