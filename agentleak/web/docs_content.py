@@ -25,6 +25,11 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 - [configuration reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md): complete agentleak.yaml reference
 - [CLI reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md): commands, options, exit codes and artifacts
 - [red-team quickstart](https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam-quickstart.md): campaign matrix, modes, metrics and safety
+- [{base}/docs/red-team]({base}/docs/red-team): Hosted red-team getting started guide
+- [{base}/docs/red-team/architecture]({base}/docs/red-team/architecture): Generation, target, trace, evaluation and evidence architecture
+- [{base}/docs/red-team/llm-vulnerability-types]({base}/docs/red-team/llm-vulnerability-types): F1-F6 LLM and agent vulnerability taxonomy
+- [{base}/docs/red-team/plugins]({base}/docs/red-team/plugins): Live native and Promptfoo-compatible plugin catalog
+- [{base}/docs/red-team/strategies]({base}/docs/red-team/strategies): Delivery strategies, profiles and attack matrices
 - [reporting guide](https://github.com/yagobski/agentleak-oss/blob/main/docs/reporting.md): report contract, formats and redaction
 - [{base}/docs/agents]({base}/docs/agents): Autonomous onboarding, safety rules, self-test loop, and failure handling
 - [{base}/docs/api]({base}/docs/api): Integrated API reference with auth, endpoint flows, examples, and schema notes

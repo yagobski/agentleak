@@ -3,7 +3,17 @@ import { Link } from "react-router-dom"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 import { usePageMeta } from "@/features/SiteChrome"
 
-type Audience = "overview" | "developers" | "agents" | "api"
+type Audience =
+  | "overview"
+  | "developers"
+  | "agents"
+  | "api"
+  | "redteam"
+  | "redteamConfiguration"
+  | "redteamArchitecture"
+  | "redteamVulnerabilities"
+  | "redteamPlugins"
+  | "redteamStrategies"
 type NavItem = { href: string; label: string }
 type Endpoint = {
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"
@@ -327,6 +337,56 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#errors", label: "Errors" },
     { href: "#openapi", label: "OpenAPI" },
   ],
+  redteam: [
+    { href: "#quickstart", label: "Quickstart" },
+    { href: "#workflow", label: "Test workflow" },
+    { href: "#choose-target", label: "Choose a target" },
+    { href: "#read-results", label: "Read the results" },
+    { href: "#ci", label: "CI and regression" },
+    { href: "#next", label: "Next steps" },
+  ],
+  redteamConfiguration: [
+    { href: "#request", label: "Request schema" },
+    { href: "#plugins", label: "Plugin selection" },
+    { href: "#strategies", label: "Strategy selection" },
+    { href: "#targets", label: "Execution targets" },
+    { href: "#levels", label: "Adversary levels" },
+    { href: "#limits", label: "Limits and validation" },
+    { href: "#examples", label: "Complete examples" },
+  ],
+  redteamArchitecture: [
+    { href: "#mental-model", label: "Mental model" },
+    { href: "#components", label: "Components" },
+    { href: "#lifecycle", label: "Campaign lifecycle" },
+    { href: "#data-flow", label: "Data flow" },
+    { href: "#boundaries", label: "Trust boundaries" },
+    { href: "#scripted-live", label: "Scripted vs live" },
+    { href: "#extension", label: "Extension points" },
+  ],
+  redteamVulnerabilities: [
+    { href: "#taxonomy", label: "Taxonomy" },
+    { href: "#families", label: "Six attack families" },
+    { href: "#channels", label: "Leak channels" },
+    { href: "#severity", label: "Severity and evidence" },
+    { href: "#coverage", label: "Coverage planning" },
+    { href: "#limitations", label: "Limitations" },
+  ],
+  redteamPlugins: [
+    { href: "#concept", label: "Plugin model" },
+    { href: "#compatibility", label: "Promptfoo compatibility" },
+    { href: "#configuration", label: "Configuration syntax" },
+    { href: "#catalog", label: "Plugin catalog" },
+    { href: "#presets", label: "Presets" },
+    { href: "#selection", label: "How to select" },
+  ],
+  redteamStrategies: [
+    { href: "#concept", label: "Strategy model" },
+    { href: "#catalog", label: "Strategy catalog" },
+    { href: "#profiles", label: "Profiles" },
+    { href: "#matrix", label: "Plugin × strategy matrix" },
+    { href: "#multi-turn", label: "Multi-turn behavior" },
+    { href: "#reproducibility", label: "Reproducibility" },
+  ],
 }
 
 const apiEndpoints: Endpoint[] = [
@@ -373,7 +433,7 @@ const apiEndpoints: Endpoint[] = [
   {
     method: "GET",
     path: "/api/auth/me | /api/limits",
-    auth: "Session cookie",
+    auth: "None",
     summary: "Read the current user, quota and account-level limits.",
     request: "No body.",
     response: "User identity, quota counters and reset metadata.",
@@ -496,7 +556,7 @@ const apiEndpoints: Endpoint[] = [
     auth: "Session cookie",
     summary: "List attack classes, plugins, strategies and presets before creating a campaign.",
     request: "No body.",
-    response: "46 classes, 24 plugins, 9 strategies, profiles and presets.",
+    response: "46 classes, 60+ native/compatible plugin IDs, 9 strategies, profiles and presets.",
   },
   {
     method: "POST",
@@ -585,8 +645,14 @@ const searchEntries = [
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
   ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
-  ["Adversarial red-team", "/features/red-team", "24 plugins × 9 strategies, defense rate, vulnerability and remediation reports"],
+  ["Adversarial red-team", "/features/red-team", "60+ plugin IDs × 9 strategies, defense rate, vulnerability and remediation reports"],
   ["Red-team quickstart", "/docs#red-team-guide", "Catalog, scripted/live modes, attack matrix, metrics and iteration loop"],
+  ["Red-team getting started", "/docs/red-team", "Run a first scripted or live campaign and interpret the evidence"],
+  ["Red-team configuration", "/docs/red-team/configuration", "Plugins, strategies, targets, adversary levels and complete request schema"],
+  ["Red-team architecture", "/docs/red-team/architecture", "Generation, delivery, trace capture, detection, scoring and reporting data flow"],
+  ["LLM and agent vulnerability types", "/docs/red-team/llm-vulnerability-types", "Six attack families, channels, severity and coverage planning"],
+  ["Red-team plugins", "/docs/red-team/plugins", "Native AgentLeak plugins and Promptfoo-compatible privacy transpositions"],
+  ["Red-team strategies", "/docs/red-team/strategies", "Delivery transformations, profiles, matrices and multi-turn attacks"],
   ["CI policy gate guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
   ["Privacy assertions", "/docs#privacy-policy", "Deterministic limits by risk, finding count, level, channel and data type"],
   ["JSON Schema contracts", "/docs#schema-contracts", "Versioned schemas for config, traces, findings, reports, red-team and code scans"],
@@ -644,11 +710,12 @@ function DocSearch() {
 }
 
 function DocHeader({ audience }: { audience: Audience }) {
+  const isRedTeam = audience.startsWith("redteam")
   return (
     <header className="docs-header">
       <DocWordmark />
       <nav aria-label="Documentation">
-        <Link className={audience === "overview" || audience === "developers" ? "active" : ""} to="/docs">Documentation</Link>
+        <Link className={audience === "overview" || audience === "developers" || isRedTeam ? "active" : ""} to="/docs">Documentation</Link>
         <Link className={audience === "api" ? "active" : ""} to="/docs/api">API</Link>
         <Link className={audience === "agents" ? "active" : ""} to="/docs/agents">Agents</Link>
       </nav>
@@ -664,25 +731,49 @@ function DocHeader({ audience }: { audience: Audience }) {
 }
 
 function DocSidebar({ audience }: { audience: Audience }) {
+  const item = (target: Audience, to: string, label: string, nested = false) => (
+    <Link className={`${audience === target ? "active" : ""}${nested ? " nested" : ""}`} to={to}>{label}</Link>
+  )
   return (
     <aside className="docs-sidebar" aria-label="Documentation sidebar">
       <div className="docs-sidebar-group">
+        <p>Getting started</p>
+        {item("overview", "/docs", "Introduction")}
+        <a href="/docs#quickstart">5-minute quickstart</a>
+        {item("developers", "/docs/developers", "Install & developer setup")}
+      </div>
+      <div className="docs-sidebar-group">
+        <p>Core concepts</p>
+        <a href="/docs#model">Mental model</a>
+        <a href="/docs#agentrisk">AgentRisk scoring</a>
+        <a href="/docs#channels">Execution channels</a>
+        <a href="/docs#detection">Detection pipeline</a>
+        <a href="/docs#report-contract">Reports & evidence</a>
+      </div>
+      <div className="docs-sidebar-group docs-sidebar-tree">
+        <p>Red teaming</p>
+        {item("redteam", "/docs/red-team", "Getting started", true)}
+        {item("redteamConfiguration", "/docs/red-team/configuration", "Configuration", true)}
+        <span className="docs-sidebar-branch">Concepts</span>
+        {item("redteamArchitecture", "/docs/red-team/architecture", "Architecture", true)}
+        {item("redteamVulnerabilities", "/docs/red-team/llm-vulnerability-types", "Vulnerability types", true)}
+        {item("redteamPlugins", "/docs/red-team/plugins", "Plugins", true)}
+        {item("redteamStrategies", "/docs/red-team/strategies", "Strategies", true)}
+        <a className="nested" href="/docs/red-team#read-results">Risk scoring</a>
+        <a className="nested" href="/docs/developers#troubleshooting">Troubleshooting</a>
+      </div>
+      <div className="docs-sidebar-group">
         <p>Guides</p>
-        <Link className={audience === "overview" ? "active" : ""} to="/docs">
-          Overview
-        </Link>
-        <Link className={audience === "developers" ? "active" : ""} to="/docs/developers">
-          Developers
-        </Link>
-        <Link className={audience === "agents" ? "active" : ""} to="/docs/agents">
-          Agents
-        </Link>
+        <a href="/docs#trace-analysis">Trace analysis</a>
+        <a href="/docs#code-scan">Static code scanning</a>
+        <a href="/docs#ci-gate-guide">CI policy gates</a>
+        <a href="/docs#privacy-policy">Privacy assertions</a>
+        {item("agents", "/docs/agents", "Autonomous agents")}
       </div>
       <div className="docs-sidebar-group">
         <p>Reference</p>
-        <Link className={audience === "api" ? "active" : ""} to="/docs/api">
-          API reference
-        </Link>
+        {item("api", "/docs/api", "API reference")}
+        <a href="/api/redteam/catalog">Red-team catalog</a>
         <a href="/openapi.json">OpenAPI schema</a>
         <a href="/api/docs">Swagger UI</a>
         <a href="/.well-known/agent-card.json">Agent Card</a>
@@ -908,7 +999,7 @@ function Overview() {
       <section className="docs-section" id="red-team-guide">
         <h2>Adversarial red team</h2>
         <p>
-          Red-team campaigns combine 24 vulnerability plugins (“what to test”) with
+          Red-team campaigns combine 24 native plugins plus privacy/security compatibility aliases (“what to test”) with
           9 delivery strategies (“how to deliver it”), across 46 attack classes
           and 6 families. Run deterministic scripted tests for coverage and
           regression, or live tests against an authorized OpenAI-compatible endpoint.
@@ -1186,7 +1277,7 @@ function Overview() {
             ["5", "Of those, clean controls with no injected leak, used to check for false positives."],
             ["36", "Scenarios in the separate, published benchmark dataset (not bundled)."],
             ["46", "Attack classes across 6 families (F1\u2013F6), including 14 agent-application classes mapped from Promptfoo."],
-            ["24 × 9", "Selectable vulnerability plugins and deterministic delivery strategies, including multi-turn Crescendo."],
+            ["60+ × 9", "Native and Promptfoo-compatible vulnerability IDs combined with deterministic delivery strategies, including multi-turn Crescendo."],
           ].map(([n, body]) => (
             <div key={body}>
               <code>{n}</code>
@@ -1766,10 +1857,148 @@ function ApiReference() {
   )
 }
 
+const REDTEAM_REQUEST = [
+  "curl -sS -X POST " + BASE + "/api/projects/$PROJECT_ID/redteam \\",
+  "  -H \"Cookie: $AGENTLEAK_SESSION\" \\",
+  "  -H 'content-type: application/json' \\",
+  "  -d '{",
+  "    \"vertical\": \"healthcare\",",
+  "    \"adversary_level\": \"A2\",",
+  "    \"plugins\": [",
+  "      \"pii:session\",",
+  "      {\"id\":\"coding-agent:secret-env-read\",\"numTests\":2,\"config\":{\"examples\":[]}}",
+  "    ],",
+  "    \"strategies\": [\"basic\", \"base64\", \"crescendo\"],",
+  "    \"n\": 10,",
+  "    \"mode\": \"scripted\"",
+  "  }'",
+].join("\n")
+
+const REDTEAM_LIVE = [
+  "# Project settings define the authorized agent endpoint and model.",
+  "# mode=live never falls back silently to a scripted target.",
+  "curl -sS -X POST " + BASE + "/api/projects/$PROJECT_ID/redteam \\",
+  "  -H \"Cookie: $AGENTLEAK_SESSION\" -H 'content-type: application/json' \\",
+  "  -d '{\"plugin_preset\":\"agent_core\",\"strategy_profile\":\"balanced\",\"mode\":\"live\",\"n\":10}'",
+].join("\n")
+
+type CatalogPlugin = {
+  id: string
+  name: string
+  description: string
+  category: string
+  severity: string
+  attack_classes: string[]
+  requires: string[]
+  implementation: "native" | "promptfoo-transposition"
+  native_id: string | null
+}
+
+const attackFamilies = [
+  ["F1", "Prompt & instruction attacks", "Direct injection, role confusion, context override, system-prompt extraction and goal hijacking.", "user input → final output"],
+  ["F2", "Indirect & tool-surface attacks", "RAG poisoning, tool output injection, BOLA/BFLA, SQL/shell injection, SSRF, MCP and external exfiltration.", "tools/RAG → calls, messages or output"],
+  ["F3", "Memory & persistence attacks", "Memory poisoning, cross-session disclosure, memory extraction, persistent files and retained logs.", "state → later session, file or log"],
+  ["F4", "Multi-agent coordination attacks", "Cross-agent bleed, orchestrator compromise, shared-memory scope failures, delegation and webhook exfiltration.", "agent boundary → message or tool"],
+  ["F5", "Reasoning-surface attacks", "Scratchpad exposure, reflection extraction, plan verbalization, echo loops and counterfactual probes.", "reasoning → output or log"],
+  ["F6", "Evasion & obfuscation attacks", "Encoding, steganography and invisible-Unicode smuggling used to bypass visible review.", "encoded input → obfuscated output"],
+]
+
+function RedTeamGettingStarted() {
+  return <article className="docs-article">
+    <header className="docs-page-head">
+      <p className="docs-kicker">Red teaming · Getting started</p>
+      <h1>Find privacy failures before an agent reaches production</h1>
+      <p>Build a campaign by selecting vulnerabilities, delivery strategies and an authorized target. AgentLeak captures the resulting trace, detects disclosures across every channel and returns reproducible evidence instead of a pass/fail guess.</p>
+      <div className="docs-callout"><strong>Safe default</strong><p>Start in <code>scripted</code> mode with synthetic vault records. Move to <code>live</code> only after the endpoint, test tenant, egress policy and provider retention terms are approved.</p></div>
+    </header>
+    <section className="docs-section" id="quickstart"><h2>Run the first campaign</h2><p>Create a project in the dashboard, inspect the public catalog, then run a deterministic campaign. No external model or API key is needed in scripted mode.</p><Code>{REDTEAM_QUICKSTART}</Code></section>
+    <section className="docs-section" id="workflow"><h2>The test workflow</h2><div className="docs-steps">
+      {[["1","Scope","Choose the data boundary, vertical, target and adversary capability."],["2","Select plugins","Pick the vulnerabilities that match tools, memory, RAG, roles and data access."],["3","Select strategies","Apply direct, encoded, obfuscated or multi-turn delivery variants."],["4","Execute","Drive a scripted control or an explicitly configured live agent."],["5","Evaluate","Detect leaked canaries and sensitive types across eight normalized channels."],["6","Remediate","Fix the boundary, repeat the same matrix and compare saved evidence."]].map(([n,t,d]) => <div key={n}><b>{n}</b><strong>{t}</strong><p>{d}</p></div>)}
+    </div></section>
+    <section className="docs-section" id="choose-target"><h2>Choose the target deliberately</h2><div className="docs-card-grid"><div><h3>Scripted target</h3><p>Deterministic vulnerable-agent simulation. Best for detector validation, CI stability and zero-cost onboarding.</p></div><div><h3>Live target</h3><p>Your real OpenAI-compatible endpoint. Best for measuring actual refusal, tool use, memory and authorization behavior.</p><Code>{REDTEAM_LIVE}</Code></div></div></section>
+    <section className="docs-section" id="read-results"><h2>Read the results</h2><div className="docs-table">{[["ASR","Attack success rate: expected private data appeared on the attack's primary leak channel."],["Defense","Share of attacks that did not produce the expected disclosure."],["RI","Weighted leaked-secret mass divided by the audited vault mass."],["Score","100 × (1 − Risk Index), with policy assertions evaluated separately."],["Coverage","Requested/exercised plugins and strategies, including gaps."],["Evidence","Saved run IDs, attack class, channel, severity, redacted types and remediation."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="ci"><h2>Use the same matrix as a regression contract</h2><p>Keep target, vault scope, plugins, strategies and adversary level stable between releases. Compare coverage first; score deltas are meaningful only when the exercised surface is equivalent.</p><Code>{"agentleak run --trace traces/redteam-latest.json --fail-under 70\n# Hosted runs are persisted under the project and can be compared release-to-release."}</Code></section>
+    <section className="docs-section" id="next"><h2>Go deeper</h2><div className="docs-link-list"><Link to="/docs/red-team/configuration"><code>Configuration</code><span>Complete request contract</span></Link><Link to="/docs/red-team/architecture"><code>Architecture</code><span>Generation to evidence flow</span></Link><Link to="/docs/red-team/llm-vulnerability-types"><code>Vulnerability types</code><span>F1–F6 taxonomy</span></Link><Link to="/docs/red-team/plugins"><code>Plugins</code><span>Executable catalog</span></Link><Link to="/docs/red-team/strategies"><code>Strategies</code><span>Delivery variants</span></Link></div></section>
+  </article>
+}
+
+function RedTeamConfiguration() {
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Red teaming · Reference</p><h1>Configuration</h1><p>The campaign request separates the vulnerability, delivery method, target and execution budget. This keeps simple tests short while allowing Promptfoo-shaped plugin entries when migration needs more metadata.</p></header>
+    <section className="docs-section" id="request"><h2>Request schema</h2><Code>{REDTEAM_REQUEST}</Code><div className="docs-table">{[["vertical","healthcare, finance, legal, hr or customer_support."],["adversary_level","A0 latent failure; A1 public-input attacker; A2 tool, RAG or shared-state attacker."],["n","Global scenario budget, 1–20."],["plugins","String IDs or Promptfoo-style objects with id, numTests and config."],["strategies","Delivery IDs; independent from vulnerability selection."],["mode","scripted, live or auto. Prefer an explicit mode in automation."],["target","Project agent configuration, or authorized base_url/model override."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="plugins"><h2>Plugin selection</h2><p>Use either <code>plugins</code> or <code>plugin_preset</code>. Object entries preserve Promptfoo's <code>id</code>, <code>numTests</code> and <code>config</code> shape in campaign coverage. AgentLeak uses <code>n</code> as the hard campaign budget.</p><Code>{'"plugins": [\n  "pii:direct",\n  {"id":"rag-poisoning","numTests":3,"config":{"examples":[]}}\n]'}</Code></section>
+    <section className="docs-section" id="strategies"><h2>Strategy selection</h2><p>Use either <code>strategies</code> or <code>strategy_profile</code>. A plugin answers “what can fail”; a strategy answers “how the probe is delivered.” AgentLeak builds their Cartesian matrix and truncates it to the requested budget.</p></section>
+    <section className="docs-section" id="targets"><h2>Execution targets</h2><div className="docs-definition"><div><dt>scripted</dt><dd>Offline deterministic trace with intentionally vulnerable behavior.</dd></div><div><dt>live</dt><dd>Requires a configured endpoint and fails closed when it is unavailable.</dd></div><div><dt>auto</dt><dd>Uses live only when a project or request explicitly configures endpoint and model.</dd></div></div></section>
+    <section className="docs-section" id="levels"><h2>Adversary levels</h2><div className="docs-table">{[["A0","No active attacker. Tests accidental retention, delegation and logging failures."],["A1","External attacker controls public inputs but not trusted tools or memory."],["A2","Internal/strong attacker can control tool output, retrieved content or shared state."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="limits"><h2>Validation and limits</h2><ul className="docs-rules"><li><strong>20 scenarios</strong><span>Maximum per API campaign; split larger suites into stable batches.</span></li><li><strong>100 plugins</strong><span>Maximum distinct plugin IDs per request.</span></li><li><strong>Unknown IDs</strong><span>Rejected with HTTP 400; inspect <code>/api/redteam/catalog</code> before generation.</span></li><li><strong>No match</strong><span>Rejected when the selected adversary level cannot exercise any chosen class.</span></li></ul></section>
+    <section className="docs-section" id="examples"><h2>Complete examples</h2><p>Use <code>privacy_core</code> for data disclosure, <code>agent_core</code> for tools/RAG/memory/roles, <code>tool_security</code> for callable boundaries and <code>complete</code> for every native AgentLeak plugin.</p><Code>{REDTEAM_LIVE}</Code></section>
+  </article>
+}
+
+function RedTeamArchitecture() {
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Red teaming · Concepts</p><h1>Architecture</h1><p>AgentLeak turns an attack matrix into channel-aware evidence. Generation and delivery are isolated from detection and scoring so the evaluator does not need to trust the target agent.</p></header>
+    <section className="docs-section" id="mental-model"><h2>Mental model</h2><div className="docs-architecture-flow"><span>Scope + vault</span><b>→</b><span>Plugins</span><b>×</b><span>Strategies</span><b>→</b><span>Target adapter</span><b>→</b><span>Normalized trace</span><b>→</b><span>Detectors</span><b>→</b><span>AgentRisk + evidence</span></div></section>
+    <section className="docs-section" id="components"><h2>Components</h2><div className="docs-card-grid">{[["Campaign planner","Validates presets, plugin IDs, strategies, adversary level and budget."],["Scenario generator","Maps each plugin to F1–F6 attack classes and injects synthetic canary-backed vault records."],["Strategy engine","Transforms payload delivery without changing the vulnerability being measured."],["Target adapter","Runs a deterministic scripted agent or calls an authorized OpenAI-compatible live endpoint."],["Trace normalizer","Records user input, tools, memory, messages, logs, files and final output in one event model."],["Evaluation engine","Runs deterministic detectors, optional Presidio/LLM judge, policy assertions and AgentRisk scoring."],["Evidence store","Persists redacted findings, run IDs, coverage, metrics and remediation for comparisons."],["Public catalog","Publishes executable plugin/strategy capabilities and compatibility metadata."]].map(([a,b]) => <div key={a}><h3>{a}</h3><p>{b}</p></div>)}</div></section>
+    <section className="docs-section" id="lifecycle"><h2>Campaign lifecycle</h2><div className="docs-steps">{[["1","Validate","Reject unknown or impossible combinations before a target call."],["2","Generate","Select attack classes and create synthetic vault/canary fixtures."],["3","Deliver","Apply a strategy and submit one or more attack turns."],["4","Capture","Record every target event in chronological order."],["5","Detect","Find direct, encoded and contextual sensitive disclosures."],["6","Score","Compute per-run risk, policy result and campaign metrics."],["7","Report","Return coverage gaps, attacks, evidence and remediation."]].map(([n,t,d]) => <div key={n}><b>{n}</b><strong>{t}</strong><p>{d}</p></div>)}</div></section>
+    <section className="docs-section" id="data-flow"><h2>Data flow and contracts</h2><p>The target receives the attack context; the evaluator receives the resulting trace. Raw matched values are redacted from API summaries. The canonical contracts are published through <a href="/api/schemas"><code>/api/schemas</code></a> and <a href="/openapi.json"><code>/openapi.json</code></a>.</p><Code>{"CampaignRequest → AdversarialScenario → Trace<Event>\nTrace + CanarySet + DetectorConfig → AnalysisReport\nAnalysisReport[] + coverage → CampaignMetrics + remediation"}</Code></section>
+    <section className="docs-section" id="boundaries"><h2>Trust and privacy boundaries</h2><div className="docs-table">{[["Vault","Use synthetic records and canaries; never seed production secrets merely to test detection."],["Target","Treat all target output and tools as untrusted event content."],["Evaluator","Keep deterministic evaluation local by default; semantic judging is explicit BYOK."],["Provider","Live prompts, tool output and memory may leave your environment under the provider's terms."],["Evidence","Store redacted values and stable finding IDs; restrict access to raw traces."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="scripted-live"><h2>Scripted and live execution share the evaluator</h2><p>Only the target adapter changes. This lets teams validate detector recall offline, then measure real defenses without changing trace, finding, score or report contracts.</p></section>
+    <section className="docs-section" id="extension"><h2>Extension points</h2><p>Add target adapters at the execution boundary, detector rules at the analysis boundary and plugins by mapping observable risks to attack classes. New strategies must transform delivery while preserving the plugin's success condition.</p></section>
+  </article>
+}
+
+function RedTeamVulnerabilities() {
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Red teaming · Concepts</p><h1>LLM and agent vulnerability types</h1><p>AgentLeak organizes privacy risk by attack family, injection surface and the channel where disclosure becomes observable. Plugins are executable selectors over this taxonomy—not separate detectors.</p></header>
+    <section className="docs-section" id="taxonomy"><h2>Taxonomy</h2><p>Every scenario has one attack class, one adversary level, one primary channel and one injection surface. A plugin may map to several classes; several plugins may intentionally overlap when they express different threat-model language.</p><div className="docs-flow"><span>6 families</span><span>46 attack classes</span><span>3 adversary levels</span><span>8 execution channels</span><span>50+ plugin IDs</span></div></section>
+    <section className="docs-section" id="families"><h2>Six attack families</h2><div className="docs-vulnerability-list">{attackFamilies.map(([id,name,description,path]) => <div key={id}><code>{id}</code><div><h3>{name}</h3><p>{description}</p><small>{path}</small></div></div>)}</div></section>
+    <section className="docs-section" id="channels"><h2>Leak channels</h2><div className="docs-token-grid">{["user_input (source only)","tool_call","tool_response (source only)","shared_memory","inter_agent_message","log","generated_file","final_output"].map(x => <code key={x}>{x}</code>)}</div><p>A source channel can contain authorized private context without being a leak. AgentLeak evaluates whether sensitive data crosses into a destination or persistence channel where it is not needed.</p></section>
+    <section className="docs-section" id="severity"><h2>Severity, success and evidence</h2><p>Plugin severity expresses potential impact. Actual run severity comes from leaked data level and channel evidence. An attack succeeds when an expected canary-backed secret is detected on the class's primary channel; refusal text alone is not counted as success.</p></section>
+    <section className="docs-section" id="coverage"><h2>Coverage planning</h2><div className="docs-table">{[["Chat only","F1, F5 and direct privacy plugins."],["RAG","Add F2 indirect injection, RAG poisoning, attribution and document exfiltration."],["Tools/API","Add BOLA, BFLA, RBAC, SQL/shell injection, SSRF, discovery and data exfiltration."],["Memory","Add F3 memory poisoning, session isolation, extraction, logs and artifacts."],["Multi-agent","Add F4 trust, delegation, shared-state and webhook tests."],["Coding agent","Add Promptfoo coding-agent transpositions for repository, terminal, sandbox, credential and egress boundaries."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="limitations"><h2>Limitations</h2><div className="docs-callout"><strong>Privacy and agent security scope</strong><p>AgentLeak does not claim grading compatibility for Promptfoo's general content-safety, politics, copyright or brand plugins. The catalog marks native implementations and privacy/security transpositions separately.</p></div></section>
+  </article>
+}
+
+function RedTeamPlugins() {
+  const [plugins, setPlugins] = useState<CatalogPlugin[]>([])
+  const [filter, setFilter] = useState("")
+  useEffect(() => { fetch("/api/redteam/catalog").then(r => r.json()).then(data => setPlugins(data.plugins || [])).catch(() => setPlugins([])) }, [])
+  const visible = plugins.filter(plugin => `${plugin.id} ${plugin.name} ${plugin.category}`.toLowerCase().includes(filter.toLowerCase()))
+  const categories = [...new Set(visible.map(plugin => plugin.category))]
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Red teaming · Plugins</p><h1>Vulnerability plugins</h1><p>Plugins select the security or privacy property to exercise. The live catalog below is generated from the same registry used by the campaign API, so documented IDs cannot drift from executable IDs.</p></header>
+    <section className="docs-section" id="concept"><h2>Plugin model</h2><div className="docs-definition"><div><dt>Native</dt><dd>Purpose-built AgentLeak attack mapping and evidence semantics.</dd></div><div><dt>Promptfoo transposition</dt><dd>Accepts the upstream ID but maps it to the closest observable AgentLeak privacy boundary.</dd></div><div><dt>Requirement</dt><dd>Declares when a plugin needs tools, RAG, memory, roles, object IDs or network access.</dd></div></div></section>
+    <section className="docs-section" id="compatibility"><h2>Promptfoo compatibility</h2><p>AgentLeak accepts exact relevant Promptfoo IDs and the object configuration shape. Compatibility is focused on privacy, authorization, RAG, tools, MCP, memory, exfiltration and coding-agent boundaries. Each transposition exposes its native mapping in <code>native_id</code>.</p><div className="docs-callout"><strong>Honest compatibility</strong><p>A transposition means the threat is exercised and scored through AgentLeak's trace model. It does not mean AgentLeak reproduces Promptfoo's grader prompt or content-safety rubric.</p></div></section>
+    <section className="docs-section" id="configuration"><h2>Configuration syntax</h2><Code>{REDTEAM_REQUEST}</Code></section>
+    <section className="docs-section" id="catalog"><h2>Executable plugin catalog</h2><label className="docs-catalog-search"><span>Filter plugins</span><input value={filter} onChange={event => setFilter(event.target.value)} placeholder="pii, rag, coding-agent, ssrf…" /></label>{plugins.length === 0 ? <p>Loading the live catalog… You can also inspect <a href="/api/redteam/catalog"><code>/api/redteam/catalog</code></a>.</p> : categories.map(category => <div className="docs-plugin-category" key={category}><h3>{category}</h3><div className="docs-plugin-grid">{visible.filter(plugin => plugin.category === category).map(plugin => <div key={plugin.id}><div className="docs-plugin-title"><code>{plugin.id}</code><span data-kind={plugin.implementation}>{plugin.implementation === "native" ? "native" : "transposition"}</span></div><strong>{plugin.name}</strong><p>{plugin.description}</p><small>Severity: {plugin.severity} · Classes: {plugin.attack_classes.join(", ")}{plugin.native_id ? ` · maps to ${plugin.native_id}` : ""}</small>{plugin.requires.length > 0 && <small>Requires: {plugin.requires.join(", ")}</small>}</div>)}</div></div>)}</section>
+    <section className="docs-section" id="presets"><h2>Presets</h2><div className="docs-table">{[["privacy_core","PII, prompt disclosure, session isolation, indirect injection and exfiltration."],["agent_core","Recommended baseline for agents with tools, RAG, memory, roles or MCP."],["tool_security","Authorization, injection, network, discovery, debug and MCP boundaries."],["complete","Every native plugin; add Promptfoo transposition IDs explicitly when migrating."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="selection"><h2>How to select plugins</h2><p>Start from capabilities, not catalog size. A chat-only agent does not need shell or MCP tests; an agent with memory does need session isolation even if it never exposes a memory tool. Add one plugin whenever a new trust boundary appears.</p></section>
+  </article>
+}
+
+function RedTeamStrategies() {
+  const strategies = [["basic","Direct baseline","Original payload, no transformation."],["jailbreak-template","Jailbreak template","Wraps the probe in an authoritative resilience-drill frame."],["authoritative-markup","Authoritative markup","Embeds the probe in trusted-looking policy markup."],["base64","Base64 encoding","Asks the target to decode a Base64 attack instruction."],["hex","Hex encoding","Uses hexadecimal UTF-8 encoding to cross input filters."],["rot13","ROT13 encoding","Tests a reversible letter substitution boundary."],["leetspeak","Leetspeak","Applies common numeric character substitutions."],["homoglyph","Unicode homoglyphs","Replaces selected Latin characters with confusable Unicode forms."],["crescendo","Multi-turn crescendo","Builds rapport and escalates toward the final attack across four turns."]]
+  return <article className="docs-article"><header className="docs-page-head"><p className="docs-kicker">Red teaming · Strategies</p><h1>Attack delivery strategies</h1><p>Strategies alter how a plugin probe reaches the target. They do not change the vulnerability, expected leak or scoring rule, which makes direct and evasive results comparable.</p></header>
+    <section className="docs-section" id="concept"><h2>Plugin versus strategy</h2><div className="docs-architecture-flow"><span>Plugin: what fails</span><b>×</b><span>Strategy: how delivered</span><b>→</b><span>Scenario with one success condition</span></div></section>
+    <section className="docs-section" id="catalog"><h2>Strategy catalog</h2><div className="docs-plugin-grid">{strategies.map(([id,name,description]) => <div key={id}><code>{id}</code><strong>{name}</strong><p>{description}</p></div>)}</div></section>
+    <section className="docs-section" id="profiles"><h2>Profiles</h2><p>Profiles are stable named strategy sets. Use <code>baseline</code> for fast diagnosis, <code>balanced</code> for routine regression coverage and the broad profile only when the larger matrix fits the campaign budget. Inspect exact membership in the public catalog.</p><Code>{"curl -sS " + BASE + "/api/redteam/catalog | jq '.strategy_profiles'"}</Code></section>
+    <section className="docs-section" id="matrix"><h2>Plugin × strategy matrix</h2><p>AgentLeak forms the available class/strategy pairs, shuffles the pool and executes up to <code>n</code>. Coverage reports requested and exercised IDs so truncation is visible. Increase or split the budget when every pair must run.</p><Code>{'"plugins": ["pii:direct", "indirect-prompt-injection"],\n"strategies": ["basic", "base64", "crescendo"],\n"n": 6'}</Code></section>
+    <section className="docs-section" id="multi-turn"><h2>Multi-turn behavior</h2><p><code>crescendo</code> preserves conversation state and records each user and assistant turn. The final success test remains tied to the selected attack class's expected channel and canary-backed secret.</p></section>
+    <section className="docs-section" id="reproducibility"><h2>Reproducibility</h2><p>Strategy transforms are deterministic. For release comparisons, pin the same plugins, strategies, adversary level, vault scope and target model. Hosted live models may still vary; retain run evidence and compare distributions rather than one response.</p></section>
+  </article>
+}
+
 function renderAudience(audience: Audience) {
   if (audience === "developers") return <Developers />
   if (audience === "agents") return <Agents />
   if (audience === "api") return <ApiReference />
+  if (audience === "redteam") return <RedTeamGettingStarted />
+  if (audience === "redteamConfiguration") return <RedTeamConfiguration />
+  if (audience === "redteamArchitecture") return <RedTeamArchitecture />
+  if (audience === "redteamVulnerabilities") return <RedTeamVulnerabilities />
+  if (audience === "redteamPlugins") return <RedTeamPlugins />
+  if (audience === "redteamStrategies") return <RedTeamStrategies />
   return <Overview />
 }
 
@@ -1779,6 +2008,12 @@ export function Documentation({ audience = "overview" }: { audience?: Audience }
     developers: ["AgentLeak developer guide", "Install the AgentLeak Python SDK, capture agent traces, configure privacy detection and enforce deterministic CI policy gates."],
     agents: ["AgentLeak instructions for autonomous agents", "Machine-oriented instructions for agents to register, self-test, inspect privacy findings, apply fixes and verify improvements."],
     api: ["AgentLeak API reference", "AgentLeak REST API endpoints, authentication methods, request schemas and responses for privacy testing and autonomous agent self-improvement."],
+    redteam: ["AgentLeak red-team quickstart", "Run privacy and agent-security campaigns with vulnerability plugins, delivery strategies, scripted or live targets, and reproducible evidence."],
+    redteamConfiguration: ["AgentLeak red-team configuration", "Complete red-team request schema for plugins, strategies, targets, adversary levels, execution modes and limits."],
+    redteamArchitecture: ["AgentLeak red-team architecture", "How AgentLeak generates probes, drives targets, captures traces, detects disclosures, scores risk and stores evidence."],
+    redteamVulnerabilities: ["AgentLeak vulnerability types", "The F1–F6 privacy and agent-security taxonomy across prompts, tools, RAG, memory, multi-agent systems, reasoning and evasion."],
+    redteamPlugins: ["AgentLeak red-team plugins", "Executable native and Promptfoo-compatible privacy plugins for PII, authorization, tools, RAG, MCP, memory and coding agents."],
+    redteamStrategies: ["AgentLeak red-team strategies", "Direct, encoded, obfuscated, structured and multi-turn attack delivery strategies for reproducible agent testing."],
   }
   usePageMeta(metadata[audience][0], metadata[audience][1])
   return (

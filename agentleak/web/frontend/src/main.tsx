@@ -96,6 +96,13 @@ function AppRoutes() {
         <Route path="/docs/developers" element={<Documentation audience="developers" />} />
         <Route path="/docs/agents" element={<Documentation audience="agents" />} />
         <Route path="/docs/api" element={<Documentation audience="api" />} />
+        <Route path="/docs/red-team" element={<Documentation audience="redteam" />} />
+        <Route path="/docs/red-team/configuration" element={<Documentation audience="redteamConfiguration" />} />
+        <Route path="/docs/red-team/architecture" element={<Documentation audience="redteamArchitecture" />} />
+        <Route path="/docs/red-team/vulnerabilities" element={<Documentation audience="redteamVulnerabilities" />} />
+        <Route path="/docs/red-team/llm-vulnerability-types" element={<Documentation audience="redteamVulnerabilities" />} />
+        <Route path="/docs/red-team/plugins" element={<Documentation audience="redteamPlugins" />} />
+        <Route path="/docs/red-team/strategies" element={<Documentation audience="redteamStrategies" />} />
         <Route path="/login" element={<Login initialMode="login" />} />
         <Route path="/register" element={<Login initialMode="register" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -112,6 +119,13 @@ function AppRoutes() {
       <Route path="docs/developers" element={<Documentation audience="developers" />} />
       <Route path="docs/agents" element={<Documentation audience="agents" />} />
       <Route path="docs/api" element={<Documentation audience="api" />} />
+      <Route path="docs/red-team" element={<Documentation audience="redteam" />} />
+      <Route path="docs/red-team/configuration" element={<Documentation audience="redteamConfiguration" />} />
+      <Route path="docs/red-team/architecture" element={<Documentation audience="redteamArchitecture" />} />
+      <Route path="docs/red-team/vulnerabilities" element={<Documentation audience="redteamVulnerabilities" />} />
+      <Route path="docs/red-team/llm-vulnerability-types" element={<Documentation audience="redteamVulnerabilities" />} />
+      <Route path="docs/red-team/plugins" element={<Documentation audience="redteamPlugins" />} />
+      <Route path="docs/red-team/strategies" element={<Documentation audience="redteamStrategies" />} />
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />

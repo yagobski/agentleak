@@ -57,7 +57,8 @@ self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
 - **Projects** — each is an agent under test. **Run a real agent** against any
   scenario, or use the built-in scripted agent offline. Connect your own agent
   via the SDK (the Connect tab generates a copy-paste snippet).
-- **Red Team** — 24 Promptfoo-compatible vulnerability plugins mapped to 46
+- **Red Team** — 24 native vulnerability plugins plus 38 Promptfoo-compatible
+  privacy/security transpositions, mapped to 46
   observable attack classes across 6 families, combined with 9 delivery
   strategies (direct, jailbreak framing, markup, encodings, Unicode, and
   multi-turn Crescendo). Run a zero-cost scripted baseline or attack the real

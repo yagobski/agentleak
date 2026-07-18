@@ -149,6 +149,52 @@ REDTEAM_PLUGIN_SPECS: list[tuple[str, str, str, str, str, tuple[str, ...], tuple
     ("ascii-smuggling", "ASCII smuggling", "Uses invisible formatting to hide instructions.", "Evasion", "high", ("F6.3",), ()),
 ]
 
+# Promptfoo plugin IDs that have a faithful privacy/security transposition in
+# AgentLeak.  The alias keeps the upstream identifier in requests and reports,
+# while execution uses the native AgentLeak attack classes of ``native_id``.
+# This is deliberately not a blanket claim of compatibility with content-safety
+# plugins that AgentLeak does not grade (politics, hate, copyright, etc.).
+PROMPTFOO_PLUGIN_ALIASES: list[tuple[str, str, str, str]] = [
+    ("rag-poisoning", "indirect-prompt-injection", "RAG poisoning", "Injects persistent malicious instructions into retrieved knowledge."),
+    ("rag-source-attribution", "rag-document-exfiltration", "RAG source attribution", "Checks whether retrieved private material is disclosed without a safe provenance boundary."),
+    ("reasoning-dos", "excessive-agency", "Reasoning denial of service", "Exercises unbounded agent planning and resource use as an excessive-agency risk."),
+    ("special-token-injection", "system-prompt-override", "Special-token injection", "Uses model control tokens to cross the instruction boundary."),
+    ("model-identification", "prompt-extraction", "Model identification", "Probes hidden runtime and model metadata exposed with privileged context."),
+    ("harmful:privacy", "pii:direct", "Privacy harm", "Tests unsafe disclosure of personal or confidential information."),
+    ("coppa", "pii:direct", "COPPA privacy", "Tests disclosure of children's personal information."),
+    ("ferpa", "pii:api-db", "FERPA privacy", "Tests unauthorized access to education records through agent data tools."),
+    ("insurance:data-disclosure", "pii:api-db", "Insurance data disclosure", "Tests disclosure of policyholder and claims data."),
+    ("insurance:phi-disclosure", "pii:api-db", "Insurance PHI disclosure", "Tests unauthorized disclosure of protected health information in insurance workflows."),
+    ("ecommerce:pci-dss", "pii:api-db", "PCI data disclosure", "Tests exposure of payment-card data reached through commerce tools."),
+    ("ecommerce:compliance-bypass", "rbac", "Commerce compliance bypass", "Attempts to bypass policy and approval controls in commerce tools."),
+    ("ecommerce:order-fraud", "bola", "Order fraud", "Attempts to access or alter another customer's order object."),
+    ("ecommerce:price-manipulation", "bfla", "Price manipulation", "Attempts to invoke privileged pricing functions without authorization."),
+    ("financial:confidential-disclosure", "pii:direct", "Financial confidential disclosure", "Tests direct disclosure of confidential financial information."),
+    ("financial:data-leakage", "data-exfil", "Financial data leakage", "Tests financial data leaving its authorized processing boundary."),
+    ("financial:compliance-violation", "rbac", "Financial compliance violation", "Tests whether role and approval boundaries are enforced in regulated financial actions."),
+    ("medical:fda:cyber-access-control", "rbac", "Medical cyber access control", "Tests role enforcement around medical systems and records."),
+    ("medical:fda:cyber-audit-tampering", "debug-access", "Medical audit tampering", "Attempts to alter or suppress security audit evidence."),
+    ("telecom:account-takeover", "rbac", "Telecom account takeover", "Attempts to cross subscriber authentication and role boundaries."),
+    ("telecom:cpni-disclosure", "pii:api-db", "CPNI disclosure", "Tests unauthorized disclosure of customer proprietary network information."),
+    ("telecom:location-disclosure", "pii:direct", "Telecom location disclosure", "Tests exposure of subscriber location information."),
+    ("telecom:law-enforcement-request-handling", "rbac", "Law-enforcement request handling", "Tests authorization and approval controls for protected telecom disclosures."),
+    ("coding-agent:automation-poisoning", "agentic:memory-poisoning", "Automation poisoning", "Persists malicious instructions in automation or agent state."),
+    ("coding-agent:core", "indirect-prompt-injection", "Coding agent core", "Baseline repository prompt-injection and secret-exposure coverage."),
+    ("coding-agent:all", "indirect-prompt-injection", "Coding agent complete", "Broad coding-agent privacy attack entry point mapped to AgentLeak's observable surfaces."),
+    ("coding-agent:delayed-ci-exfil", "data-exfil", "Delayed CI exfiltration", "Places a delayed data-exfiltration action in generated automation."),
+    ("coding-agent:generated-vulnerability", "shell-injection", "Generated vulnerability", "Induces unsafe generated code that can expose runtime data."),
+    ("coding-agent:network-egress-bypass", "ssrf", "Network egress bypass", "Attempts to cross network allowlists through an agent tool."),
+    ("coding-agent:procfs-credential-read", "debug-access", "procfs credential read", "Attempts to read process credentials through diagnostic access."),
+    ("coding-agent:repo-prompt-injection", "indirect-prompt-injection", "Repository prompt injection", "Loads malicious instructions from repository content."),
+    ("coding-agent:sandbox-read-escape", "debug-access", "Sandbox read escape", "Attempts to read sensitive files outside the authorized workspace."),
+    ("coding-agent:sandbox-write-escape", "excessive-agency", "Sandbox write escape", "Attempts an unauthorized write outside the authorized workspace."),
+    ("coding-agent:secret-env-read", "debug-access", "Secret environment read", "Attempts to disclose credentials from environment variables."),
+    ("coding-agent:secret-file-read", "prompt-extraction", "Secret file read", "Attempts to disclose credentials from local configuration files."),
+    ("coding-agent:steganographic-exfil", "ascii-smuggling", "Steganographic exfiltration", "Hides extracted data in generated text or artifacts."),
+    ("coding-agent:terminal-output-injection", "indirect-prompt-injection", "Terminal output injection", "Treats attacker-controlled terminal output as trusted instructions."),
+    ("coding-agent:verifier-sabotage", "excessive-agency", "Verifier sabotage", "Attempts to disable or weaken the agent's verification controls."),
+]
+
 
 REDTEAM_PLUGIN_PRESET_SPECS: list[tuple[str, str, str, tuple[str, ...]]] = [
     ("privacy_core", "Privacy core", "PII, prompt disclosure, session isolation, indirect injection, and exfiltration.", ("pii:direct", "pii:api-db", "pii:session", "pii:social", "prompt-extraction", "indirect-prompt-injection", "data-exfil", "cross-session-leak")),

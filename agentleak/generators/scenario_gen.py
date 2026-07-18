@@ -31,6 +31,7 @@ from ..core.attack_strategies import apply_strategy, resolve_strategy_ids
 from ..core.attacks import (
     ATTACK_INDEX,
     CLASS_TO_FAMILY,
+    REDTEAM_PLUGIN_INDEX,
     AdversaryLevel,
     AttackClass,
     get_classes_for_level,
@@ -133,7 +134,10 @@ class ScenarioGenerator:
         covered_plugins = [
             plugin_id
             for plugin_id in (self.plugin_ids or ac.promptfoo_plugins)
-            if plugin_id in ac.promptfoo_plugins
+            if (
+                plugin_id in ac.promptfoo_plugins
+                or ac.id in REDTEAM_PLUGIN_INDEX[plugin_id].attack_classes
+            )
         ]
         return AdversarialScenario(
             scenario_id=sid,

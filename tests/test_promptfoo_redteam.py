@@ -40,7 +40,7 @@ def test_promptfoo_compatible_catalog_maps_every_plugin_to_real_classes():
         "ssrf", "tool-discovery", "mcp", "agentic:memory-poisoning",
         "cross-session-leak", "excessive-agency",
     }
-    assert len(REDTEAM_PLUGINS) == 24
+    assert len(REDTEAM_PLUGINS) >= 50
     assert expected <= set(REDTEAM_PLUGIN_INDEX)
     for plugin in REDTEAM_PLUGINS:
         assert plugin.attack_classes
@@ -110,9 +110,38 @@ def test_redteam_catalog_endpoint_exposes_plugins_strategies_and_presets(client)
     body = response.json()
     assert body["attack_classes"] == 46
     assert body["families"] == 6
-    assert len(body["plugins"]) == 24
+    assert len(body["plugins"]) >= 50
     assert len(body["strategies"]) == 9
     assert any(preset["id"] == "complete" for preset in body["plugin_presets"])
+    alias = next(plugin for plugin in body["plugins"] if plugin["id"] == "coding-agent:secret-env-read")
+    assert alias["implementation"] == "promptfoo-transposition"
+    assert alias["native_id"] == "debug-access"
+
+
+def test_redteam_catalog_is_public_and_machine_discoverable(tmp_path):
+    anonymous = TestClient(create_app(store=Store(str(tmp_path / "public-catalog.db"))))
+    response = anonymous.get("/api/redteam/catalog")
+    assert response.status_code == 200
+    assert any(plugin["id"] == "telecom:cpni-disclosure" for plugin in response.json()["plugins"])
+
+
+def test_redteam_endpoint_accepts_promptfoo_plugin_object_shape(client):
+    project_id = client.post("/api/projects", json={"name": "Promptfoo object config"}).json()["id"]
+    response = client.post(f"/api/projects/{project_id}/redteam", json={
+        "n": 1,
+        "adversary_level": "A2",
+        "plugins": [{
+            "id": "coding-agent:secret-env-read",
+            "numTests": 1,
+            "config": {"examples": ["Never print environment secrets"]},
+        }],
+        "strategies": ["basic"],
+        "mode": "scripted",
+    })
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["coverage"]["plugins_exercised"] == ["coding-agent:secret-env-read"]
+    assert body["coverage"]["plugin_options"][0]["numTests"] == 1
 
 
 def test_redteam_endpoint_runs_selected_plugin_strategy_matrix(client):
