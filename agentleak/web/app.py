@@ -1732,9 +1732,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
     # -- red-team (adversarial batch testing) --------------------------
     @app.get("/api/redteam/catalog")
-    def redteam_catalog(
-        user: dict[str, Any] = Depends(require_user),
-    ) -> dict[str, Any]:
+    def redteam_catalog() -> dict[str, Any]:
         """Return selectable vulnerabilities, delivery strategies, and presets."""
         from ..core.attack_strategies import ATTACK_STRATEGIES, STRATEGY_PROFILES
         from ..core.attacks import ATTACK_FAMILIES, REDTEAM_PLUGIN_PRESETS, REDTEAM_PLUGINS
@@ -1752,6 +1750,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                     "severity": plugin.severity,
                     "attack_classes": list(plugin.attack_classes),
                     "requires": list(plugin.requires),
+                    "implementation": plugin.implementation,
+                    "native_id": plugin.native_id,
                 }
                 for plugin in REDTEAM_PLUGINS
             ],
@@ -1821,18 +1821,42 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         raw_plugins = payload.get("plugins")
         preset_id = str(payload.get("plugin_preset") or "agent_core")
         if raw_plugins is not None and not isinstance(raw_plugins, list):
-            raise HTTPException(status_code=400, detail="plugins must be an array of plugin ids")
+            raise HTTPException(status_code=400, detail="plugins must be an array of plugin ids or plugin objects")
+        plugin_options: list[dict[str, Any]] = []
         if raw_plugins is None:
             preset = REDTEAM_PLUGIN_PRESET_INDEX.get(preset_id)
             if preset is None:
                 raise HTTPException(status_code=400, detail=f"Unknown plugin preset: {preset_id}")
             selected_plugin_ids = list(cast(list[str], preset["plugin_ids"]))
         else:
-            selected_plugin_ids = list(dict.fromkeys(str(item) for item in raw_plugins))
+            normalized_plugin_ids: list[str] = []
+            for item in raw_plugins:
+                if isinstance(item, str):
+                    plugin_id = item
+                    options: dict[str, Any] = {"id": plugin_id}
+                elif isinstance(item, dict) and isinstance(item.get("id"), str):
+                    plugin_id = str(item["id"])
+                    options = {
+                        "id": plugin_id,
+                        "numTests": item.get("numTests"),
+                        "config": item.get("config") or {},
+                    }
+                    if options["numTests"] is not None and (
+                        not isinstance(options["numTests"], int)
+                        or not 1 <= options["numTests"] <= 20
+                    ):
+                        raise HTTPException(status_code=400, detail=f"plugins[{plugin_id}].numTests must be between 1 and 20")
+                    if not isinstance(options["config"], dict):
+                        raise HTTPException(status_code=400, detail=f"plugins[{plugin_id}].config must be an object")
+                else:
+                    raise HTTPException(status_code=400, detail="Each plugin must be a string or an object with a string id")
+                normalized_plugin_ids.append(plugin_id)
+                plugin_options.append(options)
+            selected_plugin_ids = list(dict.fromkeys(normalized_plugin_ids))
             if not selected_plugin_ids:
                 raise HTTPException(status_code=400, detail="Select at least one red-team plugin")
-        if len(selected_plugin_ids) > 30:
-            raise HTTPException(status_code=400, detail="A campaign supports at most 30 plugins")
+        if len(selected_plugin_ids) > 100:
+            raise HTTPException(status_code=400, detail="A campaign supports at most 100 plugins")
 
         raw_strategies = payload.get("strategies")
         if raw_strategies is not None and not isinstance(raw_strategies, list):
@@ -2009,6 +2033,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 "strategies_requested": strategy_ids,
                 "strategies_exercised": strategies_exercised,
                 "plugin_preset": preset_id if raw_plugins is None else "custom",
+                "plugin_options": plugin_options,
                 "strategy_profile": (
                     str(payload.get("strategy_profile") or "balanced")
                     if raw_strategies is None else "custom"

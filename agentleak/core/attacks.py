@@ -23,6 +23,7 @@ from typing import cast
 from .promptfoo_attacks import (
     EXISTING_PLUGIN_MAPPINGS,
     PROMPTFOO_ATTACK_SPECS,
+    PROMPTFOO_PLUGIN_ALIASES,
     REDTEAM_PLUGIN_PRESET_SPECS,
     REDTEAM_PLUGIN_SPECS,
 )
@@ -87,6 +88,8 @@ class RedTeamPlugin:
     severity: str
     attack_classes: tuple[str, ...]
     requires: tuple[str, ...] = ()
+    implementation: str = "native"
+    native_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -619,6 +622,20 @@ CLASS_TO_FAMILY: dict[str, str] = {
 REDTEAM_PLUGINS: list[RedTeamPlugin] = [
     RedTeamPlugin(*plugin_spec) for plugin_spec in REDTEAM_PLUGIN_SPECS
 ]
+_native_plugins = {plugin.id: plugin for plugin in REDTEAM_PLUGINS}
+for _alias_id, _native_id, _alias_name, _alias_description in PROMPTFOO_PLUGIN_ALIASES:
+    _native_plugin = _native_plugins[_native_id]
+    REDTEAM_PLUGINS.append(RedTeamPlugin(
+        id=_alias_id,
+        name=_alias_name,
+        description=_alias_description,
+        category=_native_plugin.category,
+        severity=_native_plugin.severity,
+        attack_classes=_native_plugin.attack_classes,
+        requires=_native_plugin.requires,
+        implementation="promptfoo-transposition",
+        native_id=_native_id,
+    ))
 REDTEAM_PLUGIN_INDEX: dict[str, RedTeamPlugin] = {
     plugin.id: plugin for plugin in REDTEAM_PLUGINS
 }

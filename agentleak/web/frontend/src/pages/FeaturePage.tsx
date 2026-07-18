@@ -155,14 +155,14 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
   "red-team": {
     eyebrow: "Adversarial red-team",
     title: "Replay real attacks against your agent, not just clean traces.",
-    lede: "24 Promptfoo-compatible vulnerability plugins map to 46 observable attack classes, then combine with 9 delivery strategies across prompts, tools, RAG, MCP, memory and multi-agent execution \u2014 scripted or live.",
+    lede: "24 native plugins plus 38 Promptfoo privacy/security transpositions map to 46 observable attack classes, then combine with 9 delivery strategies across prompts, tools, RAG, MCP, memory and multi-agent execution \u2014 scripted or live.",
     metaTitle: "Adversarial red-team · AgentLeak",
-    metaDescription: "AgentLeak combines 24 agent-security vulnerability plugins with 9 adversarial delivery strategies, executes them scripted or live, and scores every execution channel with AgentRisk.",
+    metaDescription: "AgentLeak combines 60+ native and Promptfoo-compatible privacy plugin IDs with 9 delivery strategies, executes them scripted or live, and scores every execution channel with AgentRisk.",
     sections: [
       {
         title: "Plugins say what; strategies say how",
         body: "Select PII, prompt extraction, BOLA/BFLA/RBAC, SQL/shell/SSRF, MCP, memory poisoning or excessive agency, then deliver each probe directly, through guardrail-bypass framing, encoding, Unicode or multi-turn escalation.",
-        points: ["24 Promptfoo-compatible plugins", "46 observable classes across F1–F6", "9 deterministic delivery strategies", "A0 passive through A2 internal access"],
+        points: ["60+ native/compatible plugin IDs", "46 observable classes across F1–F6", "9 deterministic delivery strategies", "A0 passive through A2 internal access"],
       },
       {
         title: "Scripted or live",

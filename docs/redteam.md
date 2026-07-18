@@ -301,7 +301,8 @@ in version control. A useful CI split is:
 ## REST reference
 
 `GET /api/redteam/catalog` returns the catalog version, 46 attack classes, six
-families, 24 plugins, nine strategies, plugin presets, and strategy profiles.
+families, 24 native plugins, 38 Promptfoo privacy/security transpositions,
+nine strategies, plugin presets, and strategy profiles.
 `POST /api/projects/{project_id}/redteam` accepts the following optional fields:
 
 | Field | Values | Default |
@@ -310,7 +311,7 @@ families, 24 plugins, nine strategies, plugin presets, and strategy profiles.
 | `n` | integer, 1–20 | `5` |
 | `adversary_level` | `A0`, `A1`, `A2` | `A1` |
 | `attack_class` | class ID such as `F1.1` | balanced batch |
-| `plugins` | plugin ID array | preset |
+| `plugins` | plugin ID strings or `{id, numTests, config}` objects | preset |
 | `plugin_preset` | `privacy_core`, `agent_core`, `tool_security`, `complete` | `agent_core` |
 | `strategies` | strategy ID array | profile |
 | `strategy_profile` | `baseline`, `balanced`, `evasion`, `complete` | `balanced` |

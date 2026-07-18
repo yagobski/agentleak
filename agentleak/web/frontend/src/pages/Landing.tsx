@@ -401,7 +401,7 @@ export function Landing() {
             <div><strong>8</strong><span>normalized channels every trace is scored across</span></div>
             <div><strong>10</strong><span>built-in scenarios, 5 of them clean controls with no injected leak</span></div>
             <div><strong>36</strong><span>scenarios in the published benchmark (a superset, not what ships by default)</span></div>
-            <div><strong>46</strong><span>attack classes across 24 vulnerability plugins and 9 delivery strategies</span></div>
+            <div><strong>46</strong><span>attack classes across 60+ native/compatible plugin IDs and 9 delivery strategies</span></div>
             <div><strong>7</strong><span>compliance frameworks mapped per finding, none of them a certification</span></div>
           </div>
           <p className="cursor-proof-metrics-note">

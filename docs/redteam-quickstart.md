@@ -10,10 +10,12 @@ campaign reproducible and lets teams compare the same matrix after a fix.
 curl -sS https://agents.fomox.com/api/redteam/catalog | jq
 ```
 
-The catalog exposes 46 attack classes, 24 plugins, 9 strategies, presets and
+The catalog exposes 46 attack classes, 24 native plugins, 38 Promptfoo privacy/security
+transpositions, 9 strategies, presets and
 strategy profiles. Use `privacy_core` for privacy boundaries, `agent_core` for
 agent/application behavior, `tool_security` for tool and MCP boundaries, or
-`complete` for the full supported matrix.
+`complete` for the full native matrix. Add transposition IDs explicitly when
+migrating an existing Promptfoo privacy or agent-security configuration.
 
 ## 2. Run a scripted campaign
 
