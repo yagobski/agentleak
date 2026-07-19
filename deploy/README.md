@@ -10,7 +10,8 @@ and a reverse proxy terminates TLS for `agentleak.org`.
 ## 0. Prerequisites
 
 - Docker + Docker Compose v2 on the server.
-- DNS: an `A` (and `AAAA` if you have IPv6) record for `agentleak.org` pointing
+- DNS: `A` records for `agentleak.org` and `www.agentleak.org` (and `AAAA` if
+  you have IPv6) pointing
   at the server's public IP. Verify before requesting TLS:
   ```bash
   dig +short agentleak.org
@@ -46,7 +47,7 @@ Add the vhost and provision TLS:
 sudo cp deploy/nginx-agentleak.org.conf /etc/nginx/sites-available/agentleak.org
 sudo ln -s /etc/nginx/sites-available/agentleak.org /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d agentleak.org     # obtains + wires the certificate
+sudo certbot --nginx -d agentleak.org -d www.agentleak.org  # obtains + wires the certificate
 ```
 
 `certbot` edits the vhost to add the TLS block and the 80→443 redirect. Done.

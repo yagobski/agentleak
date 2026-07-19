@@ -67,6 +67,7 @@ accidentally become the server-wide default and intercept unrelated traffic.
 sudo tee /etc/apache2/sites-available/zzz-agentleak.conf >/dev/null << 'CONF'
 <VirtualHost *:80>
     ServerName agentleak.org
+    ServerAlias www.agentleak.org
     ServerAdmin admin@fomox.com
 
     ProxyPreserveHost On
@@ -99,7 +100,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://<some-other-site-you-host>/
 ## 4. TLS via certbot's Apache plugin
 
 ```bash
-sudo certbot --apache -d agentleak.org --non-interactive --agree-tos \
+sudo certbot --apache -d agentleak.org -d www.agentleak.org --non-interactive --agree-tos \
   -m admin@fomox.com --redirect
 ```
 
