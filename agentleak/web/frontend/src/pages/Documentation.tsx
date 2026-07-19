@@ -657,7 +657,7 @@ const searchEntries = [
   ["Explicit vault vs. observed reachable set", "/docs#agentrisk", "Why an audited vault scope changes what the Risk Index means"],
   ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
   ["Scenario coverage and clean controls", "/docs#scenarios", "10 built-in scenarios, 5 clean controls, the 36-scenario benchmark, limitations"],
-  ["Compliance mappings", "/docs#compliance", "7 frameworks per finding \u2014 not a certification"],
+  ["Compliance mappings", "/docs#compliance", "14 frameworks and sector profiles per finding \u2014 not a certification"],
   ["Privacy compliance evidence", "/docs/privacy-compliance", "Assurance levels, finding-to-control matrix, governance assertions and integrity manifest"],
   ["Safety boundary", "/docs#safety", "What a passing run does and does not prove"],
   ["Developer guide", "/docs/developers", "Install, trace schema, SDK and CI"],
@@ -1336,12 +1336,12 @@ function Overview() {
       <section className="docs-section" id="compliance">
         <h2>Compliance mappings</h2>
         <p>
-          Every finding carries severity tags mapped to 7 regulatory and industry frameworks. Use these
+          Every finding carries severity tags mapped to 14 regulatory and sector profiles. Use these
           mappings to prioritize remediation and to write policy gates that fail a build when a specific
           framework's findings are unresolved.
         </p>
         <div className="docs-token-grid">
-          {["GDPR", "Quebec Law 25", "NIST AI RMF", "OWASP LLM Top 10", "EU AI Act", "HIPAA", "PCI-DSS v4.0"].map(
+          {["GDPR", "Quebec Law 25", "NIST AI RMF", "OWASP LLM Top 10", "EU AI Act", "HIPAA", "PCI-DSS v4.0", "FERPA", "COPPA", "GLBA", "TCPA", "Insurance", "Telecom / CPNI", "Real estate"].map(
             (framework) => (
               <code key={framework}>{framework}</code>
             ),
@@ -1982,7 +1982,7 @@ function RedTeamArchitecture() {
 function RedTeamVulnerabilities() {
   return <article className="docs-article">
     <header className="docs-page-head"><p className="docs-kicker">Red teaming · Concepts</p><h1>LLM and agent vulnerability types</h1><p>AgentLeak organizes privacy risk by attack family, injection surface and the channel where disclosure becomes observable. Plugins are executable selectors over this taxonomy—not separate detectors.</p></header>
-    <section className="docs-section" id="taxonomy"><h2>Taxonomy</h2><p>Every scenario has one attack class, one adversary level, one primary channel and one injection surface. A plugin may map to several classes; several plugins may intentionally overlap when they express different threat-model language.</p><div className="docs-flow"><span>6 families</span><span>46 attack classes</span><span>3 adversary levels</span><span>8 execution channels</span><span>50+ plugin IDs</span></div></section>
+    <section className="docs-section" id="taxonomy"><h2>Taxonomy</h2><p>Every scenario has one attack class, one adversary level, one primary channel and one injection surface. A plugin may map to several classes; several plugins may intentionally overlap when they express different threat-model language.</p><div className="docs-flow"><span>6 families</span><span>46 attack classes</span><span>3 adversary levels</span><span>8 execution channels</span><span>62 executable plugin IDs</span></div><div className="docs-callout"><strong>Auditable catalog</strong><p>The exact count is computed from the public runtime registry, not typed into marketing copy. <a href="/api/redteam/catalog">GET /api/redteam/catalog</a> exposes every plugin, implementation type, native mapping, attack classes, requirements, source URL and MIT license. Each ID also has a stable <code>/api/redteam/plugins/:id</code> permalink.</p></div></section>
     <section className="docs-section" id="families"><h2>Six attack families</h2><div className="docs-vulnerability-list">{attackFamilies.map(([id,name,description,path]) => <div key={id}><code>{id}</code><div><h3>{name}</h3><p>{description}</p><small>{path}</small></div></div>)}</div></section>
     <section className="docs-section" id="channels"><h2>Leak channels</h2><div className="docs-token-grid">{["user_input (source only)","tool_call","tool_response (source only)","shared_memory","inter_agent_message","log","generated_file","final_output"].map(x => <code key={x}>{x}</code>)}</div><p>A source channel can contain authorized private context without being a leak. AgentLeak evaluates whether sensitive data crosses into a destination or persistence channel where it is not needed.</p></section>
     <section className="docs-section" id="severity"><h2>Severity, success and evidence</h2><p>Plugin severity expresses potential impact. Actual run severity comes from leaked data level and channel evidence. An attack succeeds when an expected canary-backed secret is detected on the class's primary channel; refusal text alone is not counted as success.</p></section>
@@ -2086,7 +2086,7 @@ function PrivacyCompliance() {
       ["max_risk_index", "The weighted disclosure density must remain below the release threshold."],
     ].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
 
-    <section className="docs-section" id="frameworks"><h2>Framework coverage</h2><p>The same observed findings are mapped to GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10, EU AI Act, HIPAA and PCI-DSS. Controls are transparent predicates over leaked level, data type, channel, Risk Index and policy violations; no hidden compliance grader decides the result.</p><div className="docs-callout"><strong>One event, several obligations</strong><p>A health identifier written to shared memory can affect minimisation, confidentiality, special-category processing, HIPAA minimum-necessary and security controls. The matrix keeps the single finding as the source of truth while showing every mapped obligation.</p></div></section>
+    <section className="docs-section" id="frameworks"><h2>Framework and sector coverage</h2><p>The same observed findings are mapped to GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10, EU AI Act, HIPAA, PCI-DSS, FERPA, COPPA, GLBA, TCPA, plus insurance, telecom/CPNI and real-estate privacy profiles. Controls are transparent predicates over leaked level, data type, channel, Risk Index and policy violations; no hidden compliance grader decides the result.</p><div className="docs-callout"><strong>One event, several obligations</strong><p>A health identifier written to shared memory can affect minimisation, confidentiality, special-category processing, HIPAA minimum-necessary and security controls. The matrix keeps the single finding as the source of truth while showing every mapped obligation.</p></div></section>
 
     <section className="docs-section" id="workflow"><h2>DPO and engineering workflow</h2><div className="docs-steps">{[
       ["1","Scope","Declare purpose, reachable vault, prohibited channels/data types and authorized test target."],

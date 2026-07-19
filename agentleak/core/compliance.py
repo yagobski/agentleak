@@ -32,6 +32,11 @@ INTERNAL_CHANNELS = frozenset({"tool_call", "shared_memory", "inter_agent_messag
 
 # Cardholder data in scope for PCI-DSS.
 CARDHOLDER_TYPES = frozenset({"credit_card", "account_number", "iban"})
+EDUCATION_TYPES = frozenset({"student_id", "education_record", "school_record", "grade", "transcript"})
+CHILD_TYPES = frozenset({"child", "minor", "student_id", "education_record"})
+FINANCIAL_TYPES = frozenset({"account_number", "iban", "income", "credit_score", "loan_amount", "account_balance", "financial_record"})
+TELECOM_TYPES = frozenset({"phone_number", "subscriber_id", "location", "ip_address", "client_identifier"})
+INSURANCE_TYPES = frozenset({"insurance_id", "policy_number", "claim_number", "health_identifier", "health_condition"})
 # Direct identifiers that, combined with health data, make it PHI under HIPAA.
 PII_IDENTIFIERS = frozenset({
     "person_name", "name", "ssn", "sin", "date_of_birth", "address",
@@ -175,6 +180,83 @@ FRAMEWORKS: list[Framework] = [
                     "Cardholder data written to logs, tool calls, or generated files.",
                     lambda c: (sorted(c.channels & {"log", "tool_call", "generated_file"})
                                if (c.data_types & CARDHOLDER_TYPES) else [])),
+        ],
+    ),
+    Framework(
+        "ferpa", "FERPA (20 U.S.C. §1232g)", "https://www.ecfr.gov/current/title-34/subtitle-A/part-99",
+        [
+            Control("ferpa.education_records", "Education records confidentiality",
+                    "Student or education records crossed an agent channel.",
+                    lambda c: sorted(c.data_types & EDUCATION_TYPES)),
+            Control("ferpa.authority", "Access and disclosure authority",
+                    "Education data was sent to a tool, log, memory or external recipient.",
+                    lambda c: sorted(c.channels & (INTERNAL_CHANNELS | {"final_output"}))),
+        ],
+    ),
+    Framework(
+        "coppa", "COPPA (16 CFR Part 312)", "https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-312",
+        [
+            Control("coppa.child_data", "Children's personal information",
+                    "Child or student data was disclosed by the agent.",
+                    lambda c: sorted(c.data_types & CHILD_TYPES)),
+            Control("coppa.disclosure", "Parental-consent boundary",
+                    "Child data reached a tool or external output without a declared boundary.",
+                    lambda c: sorted(c.channels & (INTERNAL_CHANNELS | {"final_output"}))),
+        ],
+    ),
+    Framework(
+        "glba", "GLBA (15 U.S.C. §§6801–6809)", "https://www.ftc.gov/legal-library/browse/statutes/gramm-leach-bliley-act",
+        [
+            Control("glba.nonpublic_personal_information", "Non-public personal information",
+                    "Financial identity, account or income data was disclosed.",
+                    lambda c: sorted(c.data_types & FINANCIAL_TYPES)),
+            Control("glba.safeguards", "Safeguards rule boundary",
+                    "Financial information crossed an internal or external execution channel.",
+                    lambda c: sorted(c.channels & (INTERNAL_CHANNELS | {"final_output"}))),
+        ],
+    ),
+    Framework(
+        "tcpa", "TCPA (47 U.S.C. §227)", "https://www.fcc.gov/general/telemarketing-and-robocalls",
+        [
+            Control("tcpa.contact_data", "Contact data protection",
+                    "A phone number or subscriber identifier was disclosed.",
+                    lambda c: sorted(c.data_types & {"phone_number", "subscriber_id"})),
+            Control("tcpa.outbound_action", "Outbound communication authorization",
+                    "Contact data reached an action tool or final output.",
+                    lambda c: sorted(c.channels & {"tool_call", "final_output"})),
+        ],
+    ),
+    Framework(
+        "insurance", "Insurance privacy profile", "https://content.naic.org/insurance-topics/privacy-protection",
+        [
+            Control("insurance.policyholder_data", "Policyholder and claims data",
+                    "Insurance identifiers or claims/health data were disclosed.",
+                    lambda c: sorted(c.data_types & INSURANCE_TYPES)),
+            Control("insurance.minimum_necessary", "Minimum necessary disclosure",
+                    "Insurance data crossed a tool, memory, log or generated-file boundary.",
+                    lambda c: sorted(c.channels & INTERNAL_CHANNELS)),
+        ],
+    ),
+    Framework(
+        "telecom", "Telecom privacy profile (CPNI)", "https://www.fcc.gov/general/customer-proprietary-network-information-cpni",
+        [
+            Control("telecom.cpni", "Customer proprietary network information",
+                    "Subscriber, network, phone or location data was disclosed.",
+                    lambda c: sorted(c.data_types & TELECOM_TYPES)),
+            Control("telecom.account_boundary", "Subscriber account boundary",
+                    "Telecom data crossed a tool, memory, log or external output.",
+                    lambda c: sorted(c.channels & (INTERNAL_CHANNELS | {"final_output"}))),
+        ],
+    ),
+    Framework(
+        "real_estate", "Real-estate privacy profile", "https://www.nar.realtor/about-nar/policies/code-of-ethics",
+        [
+            Control("real_estate.client_data", "Client and transaction data",
+                    "Address, income, account or identity data was disclosed.",
+                    lambda c: sorted(c.data_types & (PII_IDENTIFIERS | FINANCIAL_TYPES | {"address"}))),
+            Control("real_estate.transaction_boundary", "Transaction confidentiality",
+                    "Client data crossed an execution channel beyond the final authorized recipient.",
+                    lambda c: sorted(c.channels & INTERNAL_CHANNELS)),
         ],
     ),
 ]

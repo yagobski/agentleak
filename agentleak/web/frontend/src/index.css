@@ -506,11 +506,11 @@
 .docs-api-endpoint dl div { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; }
 .docs-api-endpoint dt { font-size: 12px; font-weight: 700; color: var(--s-9e9e96); }
 .docs-api-endpoint dd { margin: 0; font-size: 14px; line-height: 1.6; color: var(--s-babab4); }
-.docs-footer { display: flex; align-items: center; gap: 32px; min-height: 84px; padding: 18px 28px; border-top: 1px solid var(--s-1a1a18); background: var(--s-0c0c0b); color: var(--s-babab4); }
-.docs-footer .docs-wordmark { flex: 0 0 auto; }
-.docs-footer p, .docs-footer > a { font-size: 13px; }
-.docs-footer p { flex: 1 1 auto; min-width: 0; text-align: center; }
-.docs-footer > a { flex: 0 0 auto; margin-left: auto; text-decoration: underline; text-underline-offset: 3px; }
+.docs-footer { box-sizing: border-box; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; align-items: center; width: 100%; min-height: 104px; gap: 32px; padding: 24px clamp(20px, 5vw, 72px); border-top: 1px solid var(--s-1a1a18); background: var(--s-0c0c0b); color: var(--s-babab4); overflow: hidden; }
+.docs-footer .docs-wordmark { min-width: 0; }
+.docs-footer p, .docs-footer > a { min-width: 0; font-size: 13px; }
+.docs-footer p { margin: 0; overflow-wrap: anywhere; text-align: center; }
+.docs-footer > a { justify-self: end; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .docs-architecture-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 20px; }
 .docs-architecture-flow span { border: 1px solid var(--s-2a2a27); border-radius: 7px; background: var(--s-101010); padding: 11px 13px; font-size: 13px; font-weight: 650; color: var(--s-d9d8d2); }
 .docs-architecture-flow b { color: var(--s-73736d); }
@@ -545,7 +545,7 @@
   .docs-layout > main { padding: 42px 0 76px; }
   .docs-page-head h1 { font-size: 38px; }
   .docs-definition { grid-template-columns: 1fr; }
-  .docs-footer { gap: 20px; padding: 18px 20px; }.docs-footer p { display: none; }
+  .docs-footer { grid-template-columns: minmax(0, auto) auto; gap: 18px; padding: 20px; }.docs-footer p { display: none; }
 }
 @media (max-width: 560px) {
   .docs-header-actions { display: none; }
