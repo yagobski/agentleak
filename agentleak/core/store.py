@@ -421,21 +421,48 @@ class Store:
 
     def admin_overview(self) -> dict[str, Any]:
         """Platform-wide stats for the admin console (all users)."""
+        since_24h = _now() - 86400
         with self._conn() as c:
             users = c.execute(
                 "SELECT COUNT(*) n, SUM(disabled) d, SUM(is_admin) a FROM users"
             ).fetchone()
             projects = int(c.execute("SELECT COUNT(*) n FROM projects").fetchone()["n"])
             runs = c.execute(
-                "SELECT COUNT(*) n, AVG(risk_index) ri, SUM(blocked) b FROM runs"
+                "SELECT COUNT(*) n, AVG(risk_index) ri, AVG(privacy_score) ps, "
+                "SUM(blocked) b, MAX(created_at) last_at FROM runs"
             ).fetchone()
+            runs_24h = c.execute(
+                "SELECT COUNT(*) n, SUM(blocked) b FROM runs WHERE created_at >= ?",
+                (since_24h,),
+            ).fetchone()
+            verdict_rows = c.execute(
+                "SELECT verdict, COUNT(*) n FROM runs GROUP BY verdict"
+            ).fetchall()
             scans = int(c.execute("SELECT COUNT(*) n FROM code_scans").fetchone()["n"])
+            scans_24h = int(c.execute(
+                "SELECT COUNT(*) n FROM code_scans WHERE created_at >= ?", (since_24h,)
+            ).fetchone()["n"])
             api_total = int(c.execute("SELECT COUNT(*) n FROM api_usage").fetchone()["n"])
             api_24h = int(
                 c.execute(
-                    "SELECT COUNT(*) n FROM api_usage WHERE created_at >= ?", (_now() - 86400,)
+                    "SELECT COUNT(*) n FROM api_usage WHERE created_at >= ?", (since_24h,)
                 ).fetchone()["n"]
             )
+            active_projects_24h = int(c.execute(
+                """
+                SELECT COUNT(DISTINCT project_id) n FROM (
+                    SELECT project_id FROM runs WHERE created_at >= ?
+                    UNION
+                    SELECT project_id FROM api_usage WHERE created_at >= ?
+                    UNION
+                    SELECT project_id FROM code_scans WHERE created_at >= ?
+                )
+                """,
+                (since_24h, since_24h, since_24h),
+            ).fetchone()["n"])
+            redteam_runs = int(c.execute(
+                "SELECT COUNT(*) n FROM runs WHERE source LIKE 'redteam%'"
+            ).fetchone()["n"])
             recent = c.execute(
                 "SELECT * FROM runs ORDER BY created_at DESC LIMIT 15"
             ).fetchall()
@@ -446,8 +473,16 @@ class Store:
             "projects": projects,
             "runs": int(runs["n"] or 0),
             "avg_risk_index": round(runs["ri"], 4) if runs["ri"] is not None else None,
+            "avg_privacy_score": round(runs["ps"], 1) if runs["ps"] is not None else None,
             "blocked_runs": int(runs["b"] or 0),
+            "runs_24h": int(runs_24h["n"] or 0),
+            "blocked_24h": int(runs_24h["b"] or 0),
+            "active_projects_24h": active_projects_24h,
+            "last_activity_at": runs["last_at"],
+            "verdict_counts": {str(r["verdict"] or "unknown"): int(r["n"] or 0) for r in verdict_rows},
+            "redteam_runs": redteam_runs,
             "code_scans": scans,
+            "code_scans_24h": scans_24h,
             "api_calls_total": api_total,
             "api_calls_24h": api_24h,
             "recent_runs": [self._run_summary(r) for r in recent],
@@ -629,7 +664,7 @@ class Store:
         cutoff = _now() - days * 86400
         with self._conn() as c:
             run_rows = c.execute(
-                "SELECT date(created_at, 'unixepoch') d, COUNT(*) n FROM runs"
+                "SELECT date(created_at, 'unixepoch') d, COUNT(*) n, SUM(blocked) blocked FROM runs"
                 " WHERE created_at >= ? GROUP BY d",
                 (cutoff,),
             ).fetchall()
@@ -638,13 +673,50 @@ class Store:
                 " WHERE created_at >= ? GROUP BY d",
                 (cutoff,),
             ).fetchall()
+            scan_rows = c.execute(
+                "SELECT date(created_at, 'unixepoch') d, COUNT(*) n FROM code_scans"
+                " WHERE created_at >= ? GROUP BY d",
+                (cutoff,),
+            ).fetchall()
         runs_by_day = {r["d"]: r["n"] for r in run_rows}
+        blocked_by_day = {r["d"]: r["blocked"] or 0 for r in run_rows}
         api_by_day = {r["d"]: r["n"] for r in api_rows}
+        scans_by_day = {r["d"]: r["n"] for r in scan_rows}
         out = []
         for i in range(days - 1, -1, -1):
             d = time.strftime("%Y-%m-%d", time.gmtime(_now() - i * 86400))
-            out.append({"date": d, "runs": runs_by_day.get(d, 0), "api_calls": api_by_day.get(d, 0)})
+            out.append({
+                "date": d,
+                "runs": runs_by_day.get(d, 0),
+                "blocked_runs": blocked_by_day.get(d, 0),
+                "api_calls": api_by_day.get(d, 0),
+                "code_scans": scans_by_day.get(d, 0),
+            })
         return out
+
+    def admin_endpoint_usage(self, *, limit: int = 20) -> list[dict[str, Any]]:
+        """Most-used autonomous-agent endpoints with recency for operations."""
+        with self._conn() as c:
+            rows = c.execute(
+                """
+                SELECT endpoint, COUNT(*) n, MAX(created_at) last_at,
+                       COUNT(DISTINCT project_id) projects
+                FROM api_usage
+                GROUP BY endpoint
+                ORDER BY n DESC, last_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "endpoint": row["endpoint"],
+                "count": int(row["n"] or 0),
+                "projects": int(row["projects"] or 0),
+                "last_called_at": row["last_at"],
+            }
+            for row in rows
+        ]
 
     # -- audit log --------------------------------------------------------
     def log_admin_action(

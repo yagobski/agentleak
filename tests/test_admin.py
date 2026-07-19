@@ -51,6 +51,9 @@ def test_admin_overview_counts_all_accounts(app):
     assert overview["users"] == 2
     assert overview["admins"] == 1
     assert overview["projects"] == 1  # admin sees ALL projects, not just theirs
+    assert overview["runs_24h"] == 0
+    assert overview["active_projects_24h"] == 0
+    assert overview["verdict_counts"] == {}
 
     users = admin.get("/api/admin/users").json()
     by_email = {u["email"]: u for u in users}

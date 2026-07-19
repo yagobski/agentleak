@@ -126,6 +126,13 @@ export interface AnalyzePayload {
   custom_detectors?: CustomRule[]
   vault?: { mode: "observed" | "explicit"; levels?: Record<string, number> }
   redact?: boolean
+  privacy_policy?: {
+    max_risk_index?: number
+    max_findings?: number
+    forbid_levels?: number[]
+    forbid_channels?: string[]
+    require_explicit_vault?: boolean
+  }
 }
 
 export interface AgentEndpoint {
@@ -611,8 +618,16 @@ export interface AdminOverview {
   projects: number
   runs: number
   avg_risk_index: number | null
+  avg_privacy_score: number | null
   blocked_runs: number
+  runs_24h: number
+  blocked_24h: number
+  active_projects_24h: number
+  last_activity_at: number | null
+  verdict_counts: Record<string, number>
+  redteam_runs: number
   code_scans: number
+  code_scans_24h: number
   api_calls_total: number
   api_calls_24h: number
   recent_runs: RunSummary[]
@@ -635,12 +650,22 @@ export interface AdminProjectUsage {
 export interface AdminDailyUsage {
   date: string
   runs: number
+  blocked_runs: number
   api_calls: number
+  code_scans: number
+}
+
+export interface AdminEndpointUsage {
+  endpoint: string
+  count: number
+  projects: number
+  last_called_at: number | null
 }
 
 export interface AdminUsage {
   projects: AdminProjectUsage[]
   daily: AdminDailyUsage[]
+  endpoints: AdminEndpointUsage[]
 }
 
 export interface AuditLogEntry {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Loader2, Play, Plus, Trash2, Wand2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Play, Plus, Trash2, Upload, Wand2 } from "lucide-react"
 import { toast } from "sonner"
 import { api, type AnalyzePayload, type CustomRule, type Scenario, DETECTORS, DETECTOR_LABEL } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { AgentLeakMark } from "@/features/AgentLeakLogo"
 
 const LEVEL_TO_SEVERITY: Record<string, string> = { "4": "critical", "3": "high", "2": "medium", "1": "low" }
 
@@ -30,6 +31,12 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
   const [vaultMode, setVaultMode] = useState<"observed" | "explicit">("observed")
   const [vault, setVault] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 })
   const [redact, setRedact] = useState(true)
+  const [policyEnabled, setPolicyEnabled] = useState(false)
+  const [maxRiskIndex, setMaxRiskIndex] = useState(0.2)
+  const [maxFindings, setMaxFindings] = useState(0)
+  const [forbidCritical, setForbidCritical] = useState(true)
+  const [requireExplicitVault, setRequireExplicitVault] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!scenarios.length) return
@@ -78,7 +85,29 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
     if (vaultMode === "explicit") {
       payload.vault = { mode: "explicit", levels: vault as unknown as Record<string, number> }
     }
+    if (policyEnabled) {
+      payload.privacy_policy = {
+        max_risk_index: maxRiskIndex,
+        max_findings: maxFindings,
+        forbid_levels: forbidCritical ? [4] : [],
+        require_explicit_vault: requireExplicitVault,
+      }
+    }
     onAnalyze(payload, traceText)
+  }
+
+  async function importTrace(file?: File) {
+    if (!file) return
+    try {
+      const parsed = JSON.parse(await file.text())
+      setScenarioId("")
+      setTraceText(JSON.stringify(parsed, null, 2))
+      toast.success(`${file.name} imported`)
+    } catch {
+      toast.error("The selected file is not valid JSON")
+    } finally {
+      if (fileInput.current) fileInput.current.value = ""
+    }
   }
 
   return (
@@ -104,14 +133,13 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
 
           {/* trace */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Label className="eyebrow">Trace (JSON)</Label>
-              <button
-                onClick={formatJson}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Wand2 className="size-3" /> Format
-              </button>
+              <div className="flex items-center gap-3">
+                <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(event) => importTrace(event.target.files?.[0])} />
+                <button onClick={() => fileInput.current?.click()} className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"><Upload className="size-3" /> Import</button>
+                <button onClick={formatJson} className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"><Wand2 className="size-3" /> Format</button>
+              </div>
             </div>
             <Textarea
               value={traceText}
@@ -239,12 +267,31 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
             <span className="text-sm">Redact sensitive values</span>
             <Switch checked={redact} onCheckedChange={setRedact} />
           </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div><Label className="eyebrow">Evaluation gate</Label><p className="mt-1 text-[10px] text-muted-foreground">Deterministic assertions, evaluated with the report.</p></div>
+              <Switch checked={policyEnabled} onCheckedChange={setPolicyEnabled} />
+            </div>
+            {policyEnabled && (
+              <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-[10px] text-muted-foreground">Max Risk Index</Label><Input type="number" min={0} max={1} step={0.05} value={maxRiskIndex} onChange={(event) => setMaxRiskIndex(Math.min(1, Math.max(0, +event.target.value)))} className="mt-1 h-8 font-mono text-xs" /></div>
+                  <div><Label className="text-[10px] text-muted-foreground">Max leaked findings</Label><Input type="number" min={0} value={maxFindings} onChange={(event) => setMaxFindings(Math.max(0, +event.target.value))} className="mt-1 h-8 font-mono text-xs" /></div>
+                </div>
+                <label className="flex items-center justify-between gap-3 text-xs"><span>Forbid critical L4 disclosures</span><Switch checked={forbidCritical} onCheckedChange={setForbidCritical} /></label>
+                <label className="flex items-center justify-between gap-3 text-xs"><span>Require an explicit vault scope</span><Switch checked={requireExplicitVault} onCheckedChange={setRequireExplicitVault} /></label>
+              </div>
+            )}
+          </div>
         </div>
       </ScrollArea>
 
       <div className="border-t border-border p-4">
         <Button className="w-full" size="lg" onClick={run} disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" /> : <Play />}
+          {loading ? <AgentLeakMark className="agentleak-mark-loading !h-5 !w-4" label="" /> : <Play />}
           {loading ? "Analyzing…" : "Analyze"}
         </Button>
       </div>

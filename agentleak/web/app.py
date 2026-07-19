@@ -1491,6 +1491,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         return {
             "projects": db.admin_projects_usage(),
             "daily": db.admin_daily_usage(days=14),
+            "endpoints": db.admin_endpoint_usage(),
         }
 
     # -- agent card (session-authenticated management) ------------------
