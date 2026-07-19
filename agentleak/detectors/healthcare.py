@@ -17,19 +17,34 @@ from ..core.detector import Detector, RawMatch, Severity
 
 # Synthetic NAM shape: 4 letters + 8 digits (e.g. TREM12345678).
 NAM_LIKE_RE = re.compile(r"\b[A-Z]{4}\d{8}\b")
-# US-style MRN / medical record number anchored on a keyword.
-MRN_RE = re.compile(r"(?i)\b(?:mrn|medical record(?: number)?|health id)\b[:\s#]*([A-Z0-9-]{5,})")
+# Same identifier written with spaces or hyphens between groups, optionally with
+# an explicit ``NAM`` label (e.g. ``NAM TREM 8842 0197`` / ``TREM-8842-0197``).
+# Kept separate from the tight form so the tight form's matched value (and its
+# redaction) is unchanged.
+NAM_SPACED_RE = re.compile(r"\b(?:NAM\s+)?[A-Z]{4}(?:[\s-]\d{2,4}){2,4}\b")
+# US-style MRN / medical record number anchored on a keyword. Allows a leading
+# ``NAM`` label and internal spaces/hyphens in the identifier body.
+MRN_RE = re.compile(
+    r"(?i)\b(?:mrn|medical record(?: number)?|health[_ ]?id)\b[:\s#]*"
+    r"((?:NAM\s*)?[A-Z0-9][A-Z0-9 \-]{4,})"
+)
 
 HEALTH_CONDITIONS = [
     "diabetes", "cancer", "hypertension", "asthma", "depression", "anxiety",
     "pregnancy", "hiv", "aids", "hepatitis", "schizophrenia", "bipolar",
     "epilepsy", "alzheimer", "parkinson", "leukemia", "tumor", "stroke",
-    "diabète", "cancer du", "hypertension", "asthme", "dépression", "grossesse",
+    # Oncology and other common clinical terms that realistic records use.
+    "carcinoma", "colorectal", "melanoma", "lymphoma", "sarcoma", "metastatic",
+    "myocardial infarction", "copd", "cirrhosis", "sclerosis", "psychosis",
+    "diabète", "cancer du", "asthme", "dépression", "grossesse", "carcinome",
 ]
 
 MEDICATIONS = [
     "insulin", "metformin", "chemotherapy", "morphine", "oxycodone",
     "antidepressant", "antiretroviral", "lithium", "warfarin", "prednisone",
+    # Common chemotherapy agents and regimens found in oncology records.
+    "folfox", "folfiri", "oxaliplatin", "5-fu", "fluorouracil", "cisplatin",
+    "carboplatin", "paclitaxel", "docetaxel", "rituximab", "tamoxifen",
     "insuline", "chimiothérapie",
 ]
 
@@ -49,10 +64,25 @@ class HealthcareDetector(Detector):
     def detect(self, text: str) -> list[RawMatch]:
         matches: list[RawMatch] = []
 
+        seen_ids: set[str] = set()
         for m in NAM_LIKE_RE.finditer(text):
+            seen_ids.add(m.group(0))
             matches.append(self._match(
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
                 matched_value=m.group(0),
+                recommendation="Remove or mask health identifiers before calling external tools.",
+            ))
+
+        for m in NAM_SPACED_RE.finditer(text):
+            value = m.group(0)
+            # Don't double-report a tight identifier that also matched above.
+            if value.replace(" ", "").replace("-", "").removeprefix("NAM") in {
+                s for s in seen_ids
+            } or value in seen_ids:
+                continue
+            matches.append(self._match(
+                data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.8,
+                matched_value=value,
                 recommendation="Remove or mask health identifiers before calling external tools.",
             ))
 

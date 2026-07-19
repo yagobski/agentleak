@@ -176,8 +176,18 @@ class AnalysisResult:
     # building the leak-path and topology views. Filled by the runner.
     events: list[dict[str, Any]] = field(default_factory=list)
     policy_evaluation: PolicyEvaluation = field(default_factory=PolicyEvaluation)
+    # Non-fatal warnings raised during analysis — most importantly, detection
+    # tiers that were requested but could not run (missing dependency or API
+    # key). A degraded run must never be mistaken for a clean one.
+    warnings: list[str] = field(default_factory=list)
 
     # -- convenience accessors (used by the SDK and reporters) -----------
+    @property
+    def degraded(self) -> bool:
+        """True when a requested detection tier did not run — the score may
+        under-report leakage and must not be read as a clean bill of health."""
+        return bool(self.warnings)
+
     @property
     def privacy_score(self) -> int:
         return self.score.privacy_score
@@ -286,6 +296,8 @@ class AnalysisResult:
             "rho_s": self.score.rho_s,
             "scope_def": self.score.agentrisk.scope_def,
             "blocked": self.blocked,
+            "degraded": self.degraded,
+            "warnings": list(self.warnings),
             "privacy_policy": self.policy_evaluation.to_dict(),
             "summary": {
                 "total_findings": len(leaked),

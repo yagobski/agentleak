@@ -317,6 +317,16 @@ def run(
         written = write_reports(result, out_dir, formats, basename=result.run_id)
         if not quiet:
             _print_result(result, written)
+        elif result.warnings:
+            # Degradation warnings are safety-critical — surface them even in
+            # --quiet mode so a degraded run is never mistaken for a clean pass.
+            typer.secho(
+                f"⚠ {result.run_id}: degraded run — a requested detection tier "
+                "did not run; score may under-report leakage.",
+                fg=typer.colors.BRIGHT_YELLOW, bold=True,
+            )
+            for w in result.warnings:
+                typer.secho(f"  · {w}", fg=typer.colors.BRIGHT_YELLOW)
         worst_blocked = worst_blocked or result.blocked
 
     raise typer.Exit(code=1 if worst_blocked else 0)
@@ -404,6 +414,16 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
             f"({cs['controls_at_risk']} control(s) at risk)",
             fg=color,
         )
+    if result.warnings:
+        typer.echo("")
+        typer.secho(
+            "⚠ Degraded run — a requested detection tier did not run. "
+            "This score may under-report leakage; do not read it as a clean pass.",
+            fg=typer.colors.BRIGHT_YELLOW, bold=True,
+        )
+        for w in result.warnings:
+            typer.secho(f"  · {w}", fg=typer.colors.BRIGHT_YELLOW)
+
     policy = data.get("privacy_policy", {})
     if policy.get("enabled"):
         color = typer.colors.GREEN if policy.get("passed") else typer.colors.RED

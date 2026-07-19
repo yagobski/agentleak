@@ -21,13 +21,24 @@ from .scoring import score_findings
 from .trace import Trace
 
 
-def _build_pipeline(config: Config | None, detectors: list[Detector]) -> HybridPipeline:
-    """Construct a HybridPipeline from optional config."""
+def _build_pipeline(
+    config: Config | None, detectors: list[Detector]
+) -> tuple[HybridPipeline, list[str]]:
+    """Construct a HybridPipeline from optional config.
+
+    Returns the pipeline and a list of degradation warnings: when the selected
+    ``mode`` asks for a tier that cannot run (missing dependency or API key), we
+    surface it loudly rather than silently scoring with fewer tiers. A gate that
+    turns "I couldn't check" into a green pass is worse than one that errors.
+    """
+    warnings: list[str] = []
     if config is None:
-        return HybridPipeline(detectors, mode=DetectionMode.FAST)
+        return HybridPipeline(detectors, mode=DetectionMode.FAST), warnings
 
     det_cfg = config.detection
     mode = DetectionMode(det_cfg.mode) if det_cfg.mode else DetectionMode.FAST
+    wants_presidio = mode in (DetectionMode.STANDARD, DetectionMode.HYBRID)
+    wants_llm = mode in (DetectionMode.HYBRID, DetectionMode.LLM_ONLY)
 
     # Tier 2b: Presidio (optional extra)
     presidio = None
@@ -35,32 +46,62 @@ def _build_pipeline(config: Config | None, detectors: list[Detector]) -> HybridP
         try:
             from ..detectors.presidio_detector import PresidioDetector
             presidio = PresidioDetector(score_threshold=det_cfg.presidio.score_threshold)
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.append(
+                "Presidio tier requested but could not load "
+                f"({exc.__class__.__name__}); install 'agentleak[presidio]'. "
+                "Entity detection (names, locations, etc.) did NOT run."
+            )
+    if wants_presidio and presidio is None:
+        warnings.append(
+            f"Detection mode '{mode.value}' includes Presidio, but it is not "
+            "active; results rely on the regex tier only."
+        )
 
     # Tier 3: LLM-judge (requires API key)
     llm_judge = None
     if det_cfg.llm_judge.enabled:
-        try:
-            from ..detectors.llm_judge import LLMJudgeDetector
-            api_key = os.environ.get(det_cfg.llm_judge.api_key_env, "")
-            llm_judge = LLMJudgeDetector(
-                base_url=det_cfg.llm_judge.base_url,
-                model=det_cfg.llm_judge.model,
-                api_key=api_key,
-                threshold=det_cfg.llm_judge.threshold,
-                timeout=det_cfg.llm_judge.timeout,
+        api_key = os.environ.get(det_cfg.llm_judge.api_key_env, "")
+        if not api_key:
+            warnings.append(
+                f"LLM-judge tier requested but ${det_cfg.llm_judge.api_key_env} "
+                "is not set; semantic detection did NOT run. Paraphrased or "
+                "unseen sensitive values may be missed."
             )
-        except Exception:
-            pass
+        else:
+            try:
+                from ..detectors.llm_judge import LLMJudgeDetector
+                llm_judge = LLMJudgeDetector(
+                    base_url=det_cfg.llm_judge.base_url,
+                    model=det_cfg.llm_judge.model,
+                    api_key=api_key,
+                    threshold=det_cfg.llm_judge.threshold,
+                    timeout=det_cfg.llm_judge.timeout,
+                )
+            except Exception as exc:
+                warnings.append(
+                    "LLM-judge tier requested but could not initialise "
+                    f"({exc.__class__.__name__}); semantic detection did NOT run."
+                )
+    if wants_llm and llm_judge is None and det_cfg.llm_judge.enabled and os.environ.get(
+        det_cfg.llm_judge.api_key_env, ""
+    ):
+        # Enabled + keyed but still absent — construction failed above.
+        pass
+    elif wants_llm and llm_judge is None and not det_cfg.llm_judge.enabled:
+        warnings.append(
+            f"Detection mode '{mode.value}' includes the LLM-judge, but no judge "
+            "is configured (detection.llm_judge.enabled is false)."
+        )
 
-    return HybridPipeline(
+    pipeline = HybridPipeline(
         detectors,
         mode=mode,
         llm_judge=llm_judge,
         presidio=presidio,
         level_overrides=config.scoring.level_overrides if config else {},
     )
+    return pipeline, warnings
 
 
 class AgentLeakRunner:
@@ -101,7 +142,7 @@ class AgentLeakRunner:
             self._privacy_policy = config.privacy_policy
 
         self.detectors = raw_detectors
-        self._pipeline = _build_pipeline(config, raw_detectors)
+        self._pipeline, self._warnings = _build_pipeline(config, raw_detectors)
 
     def analyze(
         self,
@@ -174,6 +215,7 @@ class AgentLeakRunner:
             block_on_critical=self._block_on_critical,
             fail_below=self._fail_below,
             policy_evaluation=policy_evaluation,
+            warnings=list(self._warnings),
             event_count=len(trace.events),
             events=[
                 {
