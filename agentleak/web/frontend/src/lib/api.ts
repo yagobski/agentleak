@@ -295,9 +295,17 @@ export interface Meta {
 export interface ControlResult {
   id: string
   name: string
-  status: "at_risk" | "ok" | "info"
+  status: "at_risk" | "ok" | "info" | "not_assessed"
   rationale: string
   evidence: string[]
+  evidence_details: {
+    finding_ids: string[]
+    channels: string[]
+    data_types: string[]
+    levels: number[]
+    policy_rules: string[]
+  }
+  assessment_basis: "trace_observation" | "trace_and_policy"
 }
 
 export interface FrameworkResult {
@@ -306,16 +314,31 @@ export interface FrameworkResult {
   url: string
   status: "compliant" | "non_compliant"
   at_risk: number
+  not_assessed: number
   controls: ControlResult[]
 }
 
 export interface Compliance {
   frameworks: FrameworkResult[]
-  summary: { total: number; compliant: number; non_compliant: number; controls_at_risk: number }
+  summary: { total: number; compliant: number; non_compliant: number; controls_at_risk: number; controls_not_assessed: number }
   posture?: {
     status: "compliant" | "non_compliant"
     failed_frameworks: string[]
     failed: { id: string; name: string; at_risk: number }[]
+  }
+  assurance: {
+    status: "observed_clear" | "controls_at_risk"
+    evidence_grade: "trace_only" | "trace_and_policy"
+    controls_not_assessed: number
+    policy_assertions: string[]
+  }
+  evidence_matrix: { finding_id: string; frameworks: string[]; controls: string[] }[]
+  integrity: {
+    algorithm: "sha256"
+    digest: string
+    canonical_fields: string[]
+    signed: false
+    note: string
   }
 }
 

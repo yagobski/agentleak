@@ -30,6 +30,7 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 - [{base}/docs/red-team/llm-vulnerability-types]({base}/docs/red-team/llm-vulnerability-types): F1-F6 LLM and agent vulnerability taxonomy
 - [{base}/docs/red-team/plugins]({base}/docs/red-team/plugins): Live native and Promptfoo-compatible plugin catalog
 - [{base}/docs/red-team/strategies]({base}/docs/red-team/strategies): Delivery strategies, profiles and attack matrices
+- [{base}/docs/privacy-compliance]({base}/docs/privacy-compliance): Privacy assurance levels, finding-to-control evidence matrix, governance assertions and CI workflow
 - [reporting guide](https://github.com/yagobski/agentleak-oss/blob/main/docs/reporting.md): report contract, formats and redaction
 - [{base}/docs/agents]({base}/docs/agents): Autonomous onboarding, safety rules, self-test loop, and failure handling
 - [{base}/docs/api]({base}/docs/api): Integrated API reference with auth, endpoint flows, examples, and schema notes
@@ -235,6 +236,7 @@ Framework adapters cover LangChain/LangGraph, CrewAI, AutoGen, OpenAI Agents/Swa
 ## Further reading
 
 - Human documentation: {base}/docs
+- Privacy compliance evidence: {base}/docs/privacy-compliance
 - Developer path: {base}/docs/developers
 - Configuration reference: https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md
 - CLI reference: https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md

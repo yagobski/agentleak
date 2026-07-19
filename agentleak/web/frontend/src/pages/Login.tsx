@@ -19,7 +19,10 @@ const auditRows = [
 export function Login({ initialMode = "login" }: { initialMode?: "login" | "register" }) {
   const { login, register } = useAuth()
   const navigate = useNavigate()
-  const [mode] = useState<"login" | "register">(initialMode)
+  // React Router reuses this component when switching between /register and
+  // /login. Derive the mode from the route prop so both links update the form
+  // immediately instead of retaining the first mounted page's state.
+  const mode = initialMode
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")

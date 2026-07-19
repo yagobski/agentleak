@@ -8,6 +8,7 @@ type Audience =
   | "developers"
   | "agents"
   | "api"
+  | "privacyCompliance"
   | "redteam"
   | "redteamConfiguration"
   | "redteamArchitecture"
@@ -337,6 +338,16 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#errors", label: "Errors" },
     { href: "#openapi", label: "OpenAPI" },
   ],
+  privacyCompliance: [
+    { href: "#difference", label: "Why privacy-specific" },
+    { href: "#assurance", label: "Assurance model" },
+    { href: "#evidence", label: "Evidence matrix" },
+    { href: "#governance", label: "Governance assertions" },
+    { href: "#frameworks", label: "Framework coverage" },
+    { href: "#workflow", label: "DPO & engineering workflow" },
+    { href: "#ci", label: "CI enforcement" },
+    { href: "#limitations", label: "Limits" },
+  ],
   redteam: [
     { href: "#quickstart", label: "Quickstart" },
     { href: "#workflow", label: "Test workflow" },
@@ -630,6 +641,7 @@ const searchEntries = [
   ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
   ["Scenario coverage and clean controls", "/docs#scenarios", "10 built-in scenarios, 5 clean controls, the 36-scenario benchmark, limitations"],
   ["Compliance mappings", "/docs#compliance", "7 frameworks per finding \u2014 not a certification"],
+  ["Privacy compliance evidence", "/docs/privacy-compliance", "Assurance levels, finding-to-control matrix, governance assertions and integrity manifest"],
   ["Safety boundary", "/docs#safety", "What a passing run does and does not prove"],
   ["Developer guide", "/docs/developers", "Install, trace schema, SDK and CI"],
   ["Install AgentLeak", "/docs/developers#start", "pip install agentleak, agentleak init"],
@@ -768,6 +780,7 @@ function DocSidebar({ audience }: { audience: Audience }) {
         <a href="/docs#code-scan">Static code scanning</a>
         <a href="/docs#ci-gate-guide">CI policy gates</a>
         <a href="/docs#privacy-policy">Privacy assertions</a>
+        {item("privacyCompliance", "/docs/privacy-compliance", "Privacy compliance")}
         {item("agents", "/docs/agents", "Autonomous agents")}
       </div>
       <div className="docs-sidebar-group">
@@ -1972,8 +1985,74 @@ function RedTeamPlugins() {
     <section className="docs-section" id="compatibility"><h2>Promptfoo compatibility</h2><p>AgentLeak accepts exact relevant Promptfoo IDs and the object configuration shape. Compatibility is focused on privacy, authorization, RAG, tools, MCP, memory, exfiltration and coding-agent boundaries. Each transposition exposes its native mapping in <code>native_id</code>.</p><div className="docs-callout"><strong>Honest compatibility</strong><p>A transposition means the threat is exercised and scored through AgentLeak's trace model. It does not mean AgentLeak reproduces Promptfoo's grader prompt or content-safety rubric.</p></div></section>
     <section className="docs-section" id="configuration"><h2>Configuration syntax</h2><Code>{REDTEAM_REQUEST}</Code></section>
     <section className="docs-section" id="catalog"><h2>Executable plugin catalog</h2><label className="docs-catalog-search"><span>Filter plugins</span><input value={filter} onChange={event => setFilter(event.target.value)} placeholder="pii, rag, coding-agent, ssrf…" /></label>{plugins.length === 0 ? <p>Loading the live catalog… You can also inspect <a href="/api/redteam/catalog"><code>/api/redteam/catalog</code></a>.</p> : categories.map(category => <div className="docs-plugin-category" key={category}><h3>{category}</h3><div className="docs-plugin-grid">{visible.filter(plugin => plugin.category === category).map(plugin => <div key={plugin.id}><div className="docs-plugin-title"><code>{plugin.id}</code><span data-kind={plugin.implementation}>{plugin.implementation === "native" ? "native" : "transposition"}</span></div><strong>{plugin.name}</strong><p>{plugin.description}</p><small>Severity: {plugin.severity} · Classes: {plugin.attack_classes.join(", ")}{plugin.native_id ? ` · maps to ${plugin.native_id}` : ""}</small>{plugin.requires.length > 0 && <small>Requires: {plugin.requires.join(", ")}</small>}</div>)}</div></div>)}</section>
-    <section className="docs-section" id="presets"><h2>Presets</h2><div className="docs-table">{[["privacy_core","PII, prompt disclosure, session isolation, indirect injection and exfiltration."],["agent_core","Recommended baseline for agents with tools, RAG, memory, roles or MCP."],["tool_security","Authorization, injection, network, discovery, debug and MCP boundaries."],["complete","Every native plugin; add Promptfoo transposition IDs explicitly when migrating."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="presets"><h2>Presets</h2><div className="docs-table">{[["privacy_core","PII, prompt disclosure, session isolation, indirect injection and exfiltration."],["compliance_core","Regulated-data, authorization, session isolation and exfiltration coverage linked to compliance evidence."],["agent_core","Recommended baseline for agents with tools, RAG, memory, roles or MCP."],["tool_security","Authorization, injection, network, discovery, debug and MCP boundaries."],["complete","Every native plugin; add Promptfoo transposition IDs explicitly when migrating."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
     <section className="docs-section" id="selection"><h2>How to select plugins</h2><p>Start from capabilities, not catalog size. A chat-only agent does not need shell or MCP tests; an agent with memory does need session isolation even if it never exposes a memory tool. Add one plugin whenever a new trust boundary appears.</p></section>
+  </article>
+}
+
+const COMPLIANCE_EVIDENCE = [
+  '"compliance": {',
+  '  "assurance": {',
+  '    "status": "controls_at_risk",',
+  '    "evidence_grade": "trace_and_policy",',
+  '    "controls_not_assessed": 0',
+  '  },',
+  '  "evidence_matrix": [{',
+  '    "finding_id": "fnd_7ac1",',
+  '    "frameworks": ["gdpr", "law25"],',
+  '    "controls": ["gdpr.art5.1b", "gdpr.art5.1f", "law25.confidentiality"]',
+  '  }],',
+  '  "integrity": {',
+  '    "algorithm": "sha256",',
+  '    "digest": "…",',
+  '    "signed": false',
+  '  }',
+  '}',
+].join("\n")
+
+function PrivacyCompliance() {
+  return <article className="docs-article">
+    <header className="docs-page-head">
+      <p className="docs-kicker">Privacy · Compliance engineering</p>
+      <h1>Privacy compliance with trace-linked evidence</h1>
+      <p>AgentLeak evaluates what an agent actually did across prompts, tools, memory, messages, logs and files, then links each observed disclosure to deterministic policy assertions and regulatory controls. The result is an engineering evidence package—not a legal certification.</p>
+      <div className="docs-callout"><strong>Safe interpretation</strong><p><code>observed_clear</code> means no configured control was triggered in the tested trace. It never means the organization, model or all future behavior is legally compliant.</p></div>
+    </header>
+
+    <section className="docs-section" id="difference"><h2>Why this is different from a generic red-team grader</h2><p>General red-team platforms are excellent at generating broad malicious prompts. Privacy compliance requires additional evidence: where data entered, which execution boundary it crossed, whether that boundary was allowed, which stable finding proves the event, and which control needs review.</p><div className="docs-table">{[
+      ["Full trace", "Eight normalized channels cover tool arguments and responses, shared memory, inter-agent messages, logs, generated files and final output."],
+      ["Deterministic joins", "Every mapped control links to stable finding IDs instead of relying only on a free-form grader explanation."],
+      ["Governance gaps", "Unconfigured purpose and vault assertions are marked not_assessed rather than silently treated as tested."],
+      ["Local-first", "Regex, canary, entropy, policy and compliance evaluation stay local by default; semantic judging is explicit BYOK."],
+      ["Reproducibility", "The evidence manifest carries a canonical SHA-256 digest for artifact comparison without claiming a signature."],
+    ].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+
+    <section className="docs-section" id="assurance"><h2>Assurance model</h2><div className="docs-definition"><div><dt>trace_only</dt><dd>Leak detectors and channel evidence ran, but governance assertions were not configured.</dd></div><div><dt>trace_and_policy</dt><dd>The trace was evaluated together with explicit privacy assertions such as forbidden channels, data types and audited vault scope.</dd></div><div><dt>not_assessed</dt><dd>A control needs configuration that was absent. This is a visible evidence gap, not a pass or a failure.</dd></div></div><p>The legacy per-framework <code>compliant/non_compliant</code> field remains for CI compatibility. Use <code>compliance.assurance</code> when presenting the strength and scope of the evidence.</p></section>
+
+    <section className="docs-section" id="evidence"><h2>Finding-to-control evidence matrix</h2><p>Each at-risk control contains redaction-safe <code>evidence_details</code>: finding IDs, channels, data types, levels and policy rules. The top-level matrix provides the inverse index—one finding to every affected framework and control.</p><Code>{COMPLIANCE_EVIDENCE}</Code><div className="docs-callout"><strong>Integrity, not attestation</strong><p>The digest detects accidental artifact drift when recomputed over the canonical fields. Because it is unsigned and stored beside the report, it is not tamper-proof and does not establish third-party provenance.</p></div></section>
+
+    <section className="docs-section" id="governance"><h2>Turn privacy obligations into deterministic assertions</h2><p>Configure only boundaries the system owner can state truthfully. AgentLeak currently maps forbidden channel/data-type violations to GDPR purpose limitation and explicit vault requirements to privacy by design.</p><Code>{PRIVACY_POLICY_YAML}</Code><div className="docs-table">{[
+      ["forbid_channels", "Data must not persist in logs, shared memory or generated files."],
+      ["forbid_data_types", "Selected categories may not leave the authorized source boundary."],
+      ["forbid_levels", "Critical or special-category data is release-blocking."],
+      ["require_explicit_vault", "Risk scoring must use an audited reachable-data denominator, not the observed fallback."],
+      ["max_risk_index", "The weighted disclosure density must remain below the release threshold."],
+    ].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+
+    <section className="docs-section" id="frameworks"><h2>Framework coverage</h2><p>The same observed findings are mapped to GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10, EU AI Act, HIPAA and PCI-DSS. Controls are transparent predicates over leaked level, data type, channel, Risk Index and policy violations; no hidden compliance grader decides the result.</p><div className="docs-callout"><strong>One event, several obligations</strong><p>A health identifier written to shared memory can affect minimisation, confidentiality, special-category processing, HIPAA minimum-necessary and security controls. The matrix keeps the single finding as the source of truth while showing every mapped obligation.</p></div></section>
+
+    <section className="docs-section" id="workflow"><h2>DPO and engineering workflow</h2><div className="docs-steps">{[
+      ["1","Scope","Declare purpose, reachable vault, prohibited channels/data types and authorized test target."],
+      ["2","Exercise","Run baseline scenarios plus red-team plugins matching tools, RAG, memory, roles and data access."],
+      ["3","Review","Start from at-risk controls, open linked finding IDs and reconstruct the leak path."],
+      ["4","Remediate","Minimize tool schemas, isolate memory, redact persistence channels and enforce authorization."],
+      ["5","Regress","Repeat the same vault, plugins, strategies and target configuration; compare scores and evidence."],
+      ["6","Retain","Export redacted JSON/HTML/Markdown artifacts under the organization’s evidence-retention policy."],
+    ].map(([n,t,d]) => <div key={n}><b>{n}</b><strong>{t}</strong><p>{d}</p></div>)}</div></section>
+
+    <section className="docs-section" id="ci"><h2>Enforce the privacy contract in CI</h2><p>Fail on deterministic assertions or selected framework mappings. Keep the JSON report as the machine artifact and publish HTML/Markdown only after verifying redaction settings.</p><Code>{"# Assertions block the run\nagentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80\n\n# Inspect evidence gaps and the manifest\njq '.compliance | {assurance, evidence_matrix, integrity}' reports/*.json"}</Code></section>
+
+    <section className="docs-section" id="limitations"><h2>What AgentLeak does not prove</h2><ul className="docs-rules"><li><strong>Legal status</strong><span>No report is legal advice, certification, attestation or proof of organization-wide compliance.</span></li><li><strong>Untested paths</strong><span>A passing trace says nothing about workflows, tenants, roles, languages or attack paths that were not exercised.</span></li><li><strong>Detector recall</strong><span>Unknown, encrypted or semantic data may require canaries, Presidio, custom detectors or an explicitly approved LLM judge.</span></li><li><strong>Provenance</strong><span>The built-in digest is reproducible but unsigned. External signing and controlled evidence storage remain deployment responsibilities.</span></li><li><strong>Regulatory scope</strong><span>Confirm applicable laws, lawful basis, retention, DPIA and data-subject obligations with qualified privacy counsel.</span></li></ul></section>
   </article>
 }
 
@@ -1993,6 +2072,7 @@ function renderAudience(audience: Audience) {
   if (audience === "developers") return <Developers />
   if (audience === "agents") return <Agents />
   if (audience === "api") return <ApiReference />
+  if (audience === "privacyCompliance") return <PrivacyCompliance />
   if (audience === "redteam") return <RedTeamGettingStarted />
   if (audience === "redteamConfiguration") return <RedTeamConfiguration />
   if (audience === "redteamArchitecture") return <RedTeamArchitecture />
@@ -2008,6 +2088,7 @@ export function Documentation({ audience = "overview" }: { audience?: Audience }
     developers: ["AgentLeak developer guide", "Install the AgentLeak Python SDK, capture agent traces, configure privacy detection and enforce deterministic CI policy gates."],
     agents: ["AgentLeak instructions for autonomous agents", "Machine-oriented instructions for agents to register, self-test, inspect privacy findings, apply fixes and verify improvements."],
     api: ["AgentLeak API reference", "AgentLeak REST API endpoints, authentication methods, request schemas and responses for privacy testing and autonomous agent self-improvement."],
+    privacyCompliance: ["AgentLeak privacy compliance", "Trace-linked privacy compliance evidence for GDPR, Law 25, HIPAA, PCI-DSS, NIST AI RMF, OWASP LLM and EU AI Act controls."],
     redteam: ["AgentLeak red-team quickstart", "Run privacy and agent-security campaigns with vulnerability plugins, delivery strategies, scripted or live targets, and reproducible evidence."],
     redteamConfiguration: ["AgentLeak red-team configuration", "Complete red-team request schema for plugins, strategies, targets, adversary levels, execution modes and limits."],
     redteamArchitecture: ["AgentLeak red-team architecture", "How AgentLeak generates probes, drives targets, captures traces, detects disclosures, scores risk and stores evidence."],

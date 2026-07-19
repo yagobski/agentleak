@@ -14,6 +14,8 @@ controls an auditor should review.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -44,6 +46,10 @@ class Ctx:
     channels: set[str]
     risk_index: float
     blocked: bool
+    findings: list[dict[str, Any]]
+    policy_enabled: bool
+    policy_assertions: set[str]
+    policy_violations: list[dict[str, Any]]
 
 
 @dataclass
@@ -53,6 +59,7 @@ class Control:
     rationale: str
     detect: Callable[[Ctx], list[str]]  # returns evidence tokens; empty == compliant
     info: bool = False  # informational (never "at risk")
+    requires_any_assertion: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -74,6 +81,11 @@ FRAMEWORKS: list[Framework] = [
             Control("gdpr.art5.1c", "Art. 5(1)(c) — Data minimisation",
                     "Sensitive data forwarded to internal channels beyond what the task needs.",
                     lambda c: sorted(c.channels & INTERNAL_CHANNELS)),
+            Control("gdpr.art5.1b", "Art. 5(1)(b) — Purpose limitation",
+                    "A declared channel or data-use boundary was violated.",
+                    lambda c: [f"policy:{v.get('rule')}" for v in c.policy_violations
+                               if v.get("rule") in {"forbid_channels", "forbid_data_types"}],
+                    requires_any_assertion=frozenset({"forbid_channels", "forbid_data_types"})),
             Control("gdpr.art5.1f", "Art. 5(1)(f) — Integrity & confidentiality",
                     "Any personal data exposed beyond its intended recipient.",
                     lambda c: sorted(c.channels)),
@@ -83,6 +95,11 @@ FRAMEWORKS: list[Framework] = [
             Control("gdpr.art32", "Art. 32 — Security of processing",
                     "Credentials / secrets disclosed (access to systems compromised).",
                     lambda c: sorted(c.data_types & SECRET_TYPES)),
+            Control("gdpr.art25", "Art. 25 — Data protection by design and by default",
+                    "The release policy requires an explicit audited vault, but the run used an observed scope.",
+                    lambda c: [f"policy:{v.get('rule')}" for v in c.policy_violations
+                               if v.get("rule") == "require_explicit_vault"],
+                    requires_any_assertion=frozenset({"require_explicit_vault"})),
         ],
     ),
     Framework(
@@ -165,13 +182,87 @@ FRAMEWORKS: list[Framework] = [
 
 def _ctx_from_report(report: dict[str, Any]) -> Ctx:
     findings = report.get("findings", [])  # leaked findings only
+    policy = report.get("privacy_policy") or {}
     return Ctx(
         leaked_levels={int(f.get("level", 0)) for f in findings},
         data_types={f.get("data_type", "") for f in findings},
         channels={f.get("channel", "") for f in findings},
         risk_index=float(report.get("risk_index", 0.0)),
         blocked=bool(report.get("blocked", False)),
+        findings=findings,
+        policy_enabled=bool(policy.get("enabled", False)),
+        policy_assertions=set(policy.get("assertions_checked") or []),
+        policy_violations=list(policy.get("violations") or []),
     )
+
+
+def _evidence_details(ctx: Ctx, evidence: list[str]) -> dict[str, Any]:
+    """Resolve human tokens to stable finding and policy identifiers.
+
+    Raw matched values are deliberately excluded: the matrix is safe to retain
+    in CI artifacts and gives an auditor a deterministic join back to the
+    redacted finding records in the report.
+    """
+    tokens = set(evidence)
+    policy_rules = {token.removeprefix("policy:") for token in tokens if token.startswith("policy:")}
+    finding_ids: set[str] = set()
+    for violation in ctx.policy_violations:
+        if violation.get("rule") in policy_rules:
+            finding_ids.update(str(fid) for fid in violation.get("finding_ids") or [])
+    matched = []
+    for finding in ctx.findings:
+        level = f"L{int(finding.get('level', 0))}"
+        if (finding.get("channel") in tokens or finding.get("data_type") in tokens
+                or level in tokens or finding.get("finding_id") in finding_ids):
+            matched.append(finding)
+            if finding.get("finding_id"):
+                finding_ids.add(str(finding["finding_id"]))
+    return {
+        "finding_ids": sorted(finding_ids),
+        "channels": sorted({str(f.get("channel")) for f in matched if f.get("channel")}),
+        "data_types": sorted({str(f.get("data_type")) for f in matched if f.get("data_type")}),
+        "levels": sorted({int(f.get("level", 0)) for f in matched if f.get("level")}),
+        "policy_rules": sorted(policy_rules),
+    }
+
+
+def _evidence_matrix(frameworks: list[dict[str, Any]], findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    mapped: dict[str, dict[str, set[str]]] = {
+        str(f["finding_id"]): {"frameworks": set(), "controls": set()}
+        for f in findings if f.get("finding_id")
+    }
+    for framework in frameworks:
+        for control in framework["controls"]:
+            for finding_id in control["evidence_details"]["finding_ids"]:
+                if finding_id in mapped:
+                    mapped[finding_id]["frameworks"].add(framework["id"])
+                    mapped[finding_id]["controls"].add(control["id"])
+    return [
+        {
+            "finding_id": finding_id,
+            "frameworks": sorted(links["frameworks"]),
+            "controls": sorted(links["controls"]),
+        }
+        for finding_id, links in sorted(mapped.items())
+    ]
+
+
+def _integrity_digest(report: dict[str, Any], matrix: list[dict[str, Any]]) -> dict[str, Any]:
+    payload = {
+        "run_id": report.get("run_id"),
+        "generated_at": report.get("generated_at"),
+        "risk_index": report.get("risk_index"),
+        "privacy_score": report.get("privacy_score"),
+        "evidence_matrix": matrix,
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return {
+        "algorithm": "sha256",
+        "digest": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+        "canonical_fields": sorted(payload),
+        "signed": False,
+        "note": "Reproducible integrity check, not a digital signature or third-party attestation.",
+    }
 
 
 DISCLAIMER: dict[str, Any] = {
@@ -193,13 +284,22 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
     frameworks_out: list[dict[str, Any]] = []
     total_at_risk = 0
     compliant_frameworks = 0
+    total_not_assessed = 0
 
     for fw in FRAMEWORKS:
         controls_out = []
         fw_at_risk = 0
+        fw_not_assessed = 0
         for ctrl in fw.controls:
             evidence = ctrl.detect(ctx)
-            if ctrl.info:
+            assessed = not ctrl.requires_any_assertion or bool(
+                ctrl.requires_any_assertion & ctx.policy_assertions
+            )
+            if not assessed:
+                status = "not_assessed"
+                fw_not_assessed += 1
+                total_not_assessed += 1
+            elif ctrl.info:
                 status = "info"
             elif evidence:
                 status = "at_risk"
@@ -213,6 +313,10 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
                 "status": status,
                 "rationale": ctrl.rationale,
                 "evidence": evidence,
+                "evidence_details": _evidence_details(ctx, evidence),
+                "assessment_basis": (
+                    "trace_and_policy" if ctrl.requires_any_assertion else "trace_observation"
+                ),
             })
         fw_status = "non_compliant" if fw_at_risk else "compliant"
         if fw_status == "compliant":
@@ -223,9 +327,11 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
             "url": fw.url,
             "status": fw_status,
             "at_risk": fw_at_risk,
+            "not_assessed": fw_not_assessed,
             "controls": controls_out,
         })
 
+    matrix = _evidence_matrix(frameworks_out, ctx.findings)
     return {
         "frameworks": frameworks_out,
         "summary": {
@@ -233,8 +339,17 @@ def evaluate(report: dict[str, Any]) -> dict[str, Any]:
             "compliant": compliant_frameworks,
             "non_compliant": len(FRAMEWORKS) - compliant_frameworks,
             "controls_at_risk": total_at_risk,
+            "controls_not_assessed": total_not_assessed,
         },
         "posture": _posture(frameworks_out),
+        "assurance": {
+            "status": "controls_at_risk" if total_at_risk else "observed_clear",
+            "evidence_grade": "trace_and_policy" if ctx.policy_enabled else "trace_only",
+            "controls_not_assessed": total_not_assessed,
+            "policy_assertions": sorted(ctx.policy_assertions),
+        },
+        "evidence_matrix": matrix,
+        "integrity": _integrity_digest(report, matrix),
         # Additive, backward-compatible field: a machine-readable disclaimer an
         # agent/CI consumer can key off (`disclaimer.is_legal_certification`)
         # instead of relying on humans reading the prose in docs/compliance.md.

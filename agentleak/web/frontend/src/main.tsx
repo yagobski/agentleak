@@ -96,6 +96,7 @@ function AppRoutes() {
         <Route path="/docs/developers" element={<Documentation audience="developers" />} />
         <Route path="/docs/agents" element={<Documentation audience="agents" />} />
         <Route path="/docs/api" element={<Documentation audience="api" />} />
+        <Route path="/docs/privacy-compliance" element={<Documentation audience="privacyCompliance" />} />
         <Route path="/docs/red-team" element={<Documentation audience="redteam" />} />
         <Route path="/docs/red-team/configuration" element={<Documentation audience="redteamConfiguration" />} />
         <Route path="/docs/red-team/architecture" element={<Documentation audience="redteamArchitecture" />} />
@@ -119,6 +120,7 @@ function AppRoutes() {
       <Route path="docs/developers" element={<Documentation audience="developers" />} />
       <Route path="docs/agents" element={<Documentation audience="agents" />} />
       <Route path="docs/api" element={<Documentation audience="api" />} />
+      <Route path="docs/privacy-compliance" element={<Documentation audience="privacyCompliance" />} />
       <Route path="docs/red-team" element={<Documentation audience="redteam" />} />
       <Route path="docs/red-team/configuration" element={<Documentation audience="redteamConfiguration" />} />
       <Route path="docs/red-team/architecture" element={<Documentation audience="redteamArchitecture" />} />

@@ -113,6 +113,9 @@ def test_redteam_catalog_endpoint_exposes_plugins_strategies_and_presets(client)
     assert len(body["plugins"]) >= 50
     assert len(body["strategies"]) == 9
     assert any(preset["id"] == "complete" for preset in body["plugin_presets"])
+    compliance = next(preset for preset in body["plugin_presets"] if preset["id"] == "compliance_core")
+    assert "insurance:phi-disclosure" in compliance["plugin_ids"]
+    assert "cross-session-leak" in compliance["plugin_ids"]
     alias = next(plugin for plugin in body["plugins"] if plugin["id"] == "coding-agent:secret-env-read")
     assert alias["implementation"] == "promptfoo-transposition"
     assert alias["native_id"] == "debug-access"

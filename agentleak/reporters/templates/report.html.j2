@@ -187,7 +187,8 @@
   <h2>Compliance
     <span style="font-size:12px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">
       {{ d.compliance.summary.compliant }}/{{ d.compliance.summary.total }} frameworks clear ·
-      {{ d.compliance.summary.controls_at_risk }} control(s) at risk
+      {{ d.compliance.summary.controls_at_risk }} control(s) at risk ·
+      {{ d.compliance.summary.controls_not_assessed|default(0) }} not assessed
     </span>
   </h2>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
@@ -204,13 +205,14 @@
       <div>
         {% for ctrl in fw.controls %}
         <div style="display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);">
-          <span style="color: {% if ctrl.status=='at_risk' %}var(--critical){% elif ctrl.status=='info' %}var(--accent){% else %}var(--low){% endif %};font-weight:700;">
-            {{ '✗' if ctrl.status=='at_risk' else ('ℹ' if ctrl.status=='info' else '✓') }}
+          <span style="color: {% if ctrl.status=='at_risk' %}var(--critical){% elif ctrl.status=='info' %}var(--accent){% elif ctrl.status=='not_assessed' %}var(--muted){% else %}var(--low){% endif %};font-weight:700;">
+            {{ '✗' if ctrl.status=='at_risk' else ('ℹ' if ctrl.status=='info' else ('○' if ctrl.status=='not_assessed' else '✓')) }}
           </span>
           <div>
             <div style="font-size:13px;">{{ ctrl.name }}</div>
             <div style="font-size:11px;color:var(--muted);">{{ ctrl.rationale }}</div>
             {% if ctrl.evidence %}<div style="margin-top:4px;">{% for e in ctrl.evidence[:6] %}<code style="font-size:10px;color:var(--critical);background:rgba(255,77,79,0.1);">{{ e }}</code> {% endfor %}</div>{% endif %}
+            {% if ctrl.evidence_details and ctrl.evidence_details.finding_ids %}<div style="margin-top:4px;font-size:10px;color:var(--muted);">Findings: {{ ctrl.evidence_details.finding_ids|join(', ') }}</div>{% endif %}
           </div>
         </div>
         {% endfor %}
@@ -218,6 +220,12 @@
     </div>
     {% endfor %}
   </div>
+  {% if d.compliance.integrity %}
+  <div class="panel" style="margin-top:12px;padding:12px 14px;font-size:11px;color:var(--muted);overflow-wrap:anywhere;">
+    Evidence manifest: <code>{{ d.compliance.integrity.algorithm }}:{{ d.compliance.integrity.digest }}</code><br>
+    Reproducible integrity check; not a digital signature or third-party attestation.
+  </div>
+  {% endif %}
   {% endif %}
 
   <footer>Generated locally by AgentLeak OSS · no data left this machine.</footer>
