@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://agents.fomox.com/sitemap.xml
+Sitemap: https://agentleak.org/sitemap.xml

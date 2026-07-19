@@ -190,7 +190,7 @@ export function AgentTerminal() {
         <small>Machine-readable privacy testing for autonomous agents</small>
       </section>
       <code>
-        <span><i>$</i> curl agents.fomox.com/llms.txt</span>
+        <span><i>$</i> curl agentleak.org/llms.txt</span>
         <span><i>$</i> POST /api/agent/onboard</span>
         <span><b>project created · scoped key issued</b></span>
         <span><i>$</i> POST /api/selftest</span>

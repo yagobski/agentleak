@@ -6,7 +6,7 @@ is used by the CLI, Python runner, hosted project settings and agent self-tests.
 ## Complete example
 
 ```yaml
-# yaml-language-server: $schema=https://agents.fomox.com/api/schemas/config
+# yaml-language-server: $schema=https://agentleak.org/api/schemas/config
 project: {name: support-bot, description: Privacy regression suite}
 agent: {name: support-bot, type: generic, endpoint: null}
 scenarios:

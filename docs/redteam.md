@@ -338,7 +338,7 @@ tools, memory paths, integrations, or future model versions are safe.
 - [Scenarios](scenarios.md) — built-in vaults and scenario coverage
 - [Defenses](defenses.md) — sanitization and internal-channel controls
 - [Integrations](integrations.md) — capture traces from supported frameworks
-- [Hosted red-team feature](https://agents.fomox.com/features/red-team) — visual campaign workflow
+- [Hosted red-team feature](https://agentleak.org/features/red-team) — visual campaign workflow
 
 ## Vault generator
 

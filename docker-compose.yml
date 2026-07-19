@@ -2,7 +2,7 @@
 #
 # The app binds to 127.0.0.1:8787 on the host ONLY, so it is never exposed
 # directly to the internet. A reverse proxy (your existing nginx, or the
-# optional Caddy service below) terminates TLS for agents.fomox.com and forwards
+# optional Caddy service below) terminates TLS for agentleak.org and forwards
 # to it. This lets AgentLeak coexist with other sites already on the box.
 #
 #   docker compose up -d --build        # app only, behind your existing proxy
@@ -36,7 +36,7 @@ services:
 
   # Optional: only if the server has NO existing reverse proxy on 80/443.
   # Enable with `--profile caddy`. If ournia.com already uses nginx/Apache,
-  # DO NOT enable this — add deploy/nginx-agents.fomox.com.conf to that proxy
+  # DO NOT enable this — add deploy/nginx-agentleak.org.conf to that proxy
   # instead (see deploy/README.md).
   caddy:
     image: caddy:2-alpine

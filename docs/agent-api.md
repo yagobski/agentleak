@@ -7,7 +7,7 @@ machine-readable remediation steps without a browser session.
 ## Discover the service
 
 ```bash
-BASE=https://agents.fomox.com
+BASE=https://agentleak.org
 curl -fsS "$BASE/api/meta"
 curl -fsS "$BASE/llms.txt"
 curl -fsS "$BASE/.well-known/agent-card.json"
@@ -127,7 +127,7 @@ from agentleak import AgentSelfClient
 
 client = AgentSelfClient(
     api_key="ak_...",
-    base_url="https://agents.fomox.com",
+    base_url="https://agentleak.org",
 )
 client.register({"name": "support-bot", "capabilities": ["ticket_triage"]})
 client.scan_code()

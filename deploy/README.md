@@ -1,19 +1,19 @@
-# Deploying AgentLeak Cloud to agents.fomox.com
+# Deploying AgentLeak Cloud to agentleak.org
 
 This deploys the hosted, free-for-agents service in **public mode** (quotas,
 per-IP throttling, BYOK, secure cookies) behind a reverse proxy, coexisting
 with anything already running on the box (e.g. ournia.com).
 
 The app **never binds a public port itself** — it listens on `127.0.0.1:8787`
-and a reverse proxy terminates TLS for `agents.fomox.com`.
+and a reverse proxy terminates TLS for `agentleak.org`.
 
 ## 0. Prerequisites
 
 - Docker + Docker Compose v2 on the server.
-- DNS: an `A` (and `AAAA` if you have IPv6) record for `agents.fomox.com` pointing
+- DNS: an `A` (and `AAAA` if you have IPv6) record for `agentleak.org` pointing
   at the server's public IP. Verify before requesting TLS:
   ```bash
-  dig +short agents.fomox.com
+  dig +short agentleak.org
   ```
 - Decide the proxy path:
   - **The server already runs nginx** (likely, if ournia.com is on nginx) →
@@ -43,10 +43,10 @@ curl -fsS http://127.0.0.1:8787/readyz    # {"status":"ready", ...}
 Add the vhost and provision TLS:
 
 ```bash
-sudo cp deploy/nginx-agents.fomox.com.conf /etc/nginx/sites-available/agents.fomox.com
-sudo ln -s /etc/nginx/sites-available/agents.fomox.com /etc/nginx/sites-enabled/
+sudo cp deploy/nginx-agentleak.org.conf /etc/nginx/sites-available/agentleak.org
+sudo ln -s /etc/nginx/sites-available/agentleak.org /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d agents.fomox.com     # obtains + wires the certificate
+sudo certbot --nginx -d agentleak.org     # obtains + wires the certificate
 ```
 
 `certbot` edits the vhost to add the TLS block and the 80→443 redirect. Done.
@@ -57,23 +57,23 @@ sudo certbot --nginx -d agents.fomox.com     # obtains + wires the certificate
 docker compose --profile caddy up -d --build
 ```
 
-Caddy obtains and renews the `agents.fomox.com` certificate automatically. Nothing
+Caddy obtains and renews the `agentleak.org` certificate automatically. Nothing
 else to do.
 
 ## 3. Verify
 
 ```bash
-curl -fsS https://agents.fomox.com/api/health     # {"status":"ok","version":"0.7.x"}
-curl -fsS https://agents.fomox.com/api/meta | jq .free_tier
+curl -fsS https://agentleak.org/api/health     # {"status":"ok","version":"0.7.x"}
+curl -fsS https://agentleak.org/api/meta | jq .free_tier
 
 # Full agent flow, end to end:
-curl -sX POST https://agents.fomox.com/api/agent/onboard \
+curl -sX POST https://agentleak.org/api/agent/onboard \
   -H 'content-type: application/json' \
   -d '{"email":"smoke@fomox.com","agent_name":"SmokeBot"}'
 ```
 
 The first account created becomes the **admin** — register your own account
-first at `https://agents.fomox.com`, then use the admin console at `/admin`.
+first at `https://agentleak.org`, then use the admin console at `/admin`.
 
 ## 4. Operations
 

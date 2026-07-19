@@ -3,10 +3,10 @@
 # Use ONLY if the server has no other web server bound to 80/443.
 # Enable with: docker compose --profile caddy up -d
 #
-# Caddy obtains and renews the TLS certificate for agents.fomox.com automatically.
-# Point the agents.fomox.com DNS A/AAAA record at this server first.
+# Caddy obtains and renews the TLS certificate for agentleak.org automatically.
+# Point the agentleak.org DNS A/AAAA record at this server first.
 
-agents.fomox.com {
+agentleak.org {
 	encode zstd gzip
 
 	# Forward the real client IP so the app's per-IP throttle is accurate.

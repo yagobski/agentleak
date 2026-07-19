@@ -95,7 +95,7 @@ def test_public_schema_catalog_and_documents(client: TestClient):
 def test_public_mode_emits_https_behind_an_http_reverse_proxy(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTLEAK_PUBLIC_MODE", "1")
     public = TestClient(create_app(store=Store(str(tmp_path / "public-docs.db"))))
-    response = public.get("/llms.txt", headers={"host": "agents.fomox.com"})
-    assert "https://agents.fomox.com/docs/agents" in response.text
-    card = public.get("/.well-known/agent-card.json", headers={"host": "agents.fomox.com"}).json()
-    assert card["documentationUrl"] == "https://agents.fomox.com/docs/agents"
+    response = public.get("/llms.txt", headers={"host": "agentleak.org"})
+    assert "https://agentleak.org/docs/agents" in response.text
+    card = public.get("/.well-known/agent-card.json", headers={"host": "agentleak.org"}).json()
+    assert card["documentationUrl"] == "https://agentleak.org/docs/agents"

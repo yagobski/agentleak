@@ -92,7 +92,7 @@ repair and keep stable.
 ## JSON Schema
 
 ```bash
-curl -sS https://agents.fomox.com/api/schemas/privacy-policy
+curl -sS https://agentleak.org/api/schemas/privacy-policy
 agentleak schema privacy-policy
 ```
 

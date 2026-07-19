@@ -5,7 +5,7 @@ import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 
 export const PAPER_URL = "https://arxiv.org/abs/2602.11510"
 export const REPO_URL = "https://github.com/yagobski/agentleak-oss"
-export const SITE_URL = "https://agents.fomox.com"
+export const SITE_URL = "https://agentleak.org"
 
 type PageMetaOptions = {
   noIndex?: boolean

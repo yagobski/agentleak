@@ -1812,13 +1812,13 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "requires": list(plugin.requires),
             "implementation": plugin.implementation,
             "native_id": plugin.native_id,
-            "docs_url": f"https://agents.fomox.com/docs/red-team/plugins/{plugin.id}",
+            "docs_url": f"https://agentleak.org/docs/red-team/plugins/{plugin.id}",
             "source_url": (
                 "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/attacks.py"
                 if plugin.implementation == "native"
                 else "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/promptfoo_attacks.py"
             ),
-            "catalog_url": "https://agents.fomox.com/api/redteam/catalog",
+            "catalog_url": "https://agentleak.org/api/redteam/catalog",
         }
 
     @app.post("/api/projects/{pid}/redteam")

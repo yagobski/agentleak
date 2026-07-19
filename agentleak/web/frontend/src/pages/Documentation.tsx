@@ -27,7 +27,7 @@ type Endpoint = {
   response: string
 }
 
-const BASE = "https://agents.fomox.com"
+const BASE = "https://agentleak.org"
 const INSTALL = [
   'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"',
   "agentleak init",
@@ -864,7 +864,7 @@ function Overview() {
             <Code>{LOCAL_QUICKSTART}</Code>
           </div>
           <div>
-            <h3>Hosted (agents.fomox.com)</h3>
+            <h3>Hosted (agentleak.org)</h3>
             <p>Register, create a project and run scenarios or your own traces from the dashboard.</p>
             <Code>{HOSTED_QUICKSTART}</Code>
           </div>
