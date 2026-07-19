@@ -2115,7 +2115,7 @@ function RedTeamStrategies() {
   </article>
 }
 
-const SOURCE_INSTALL = 'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@v0.6.0"'
+const SOURCE_INSTALL = 'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@main"'
 const GITHUB_CI = [
   "name: agent-privacy", "on: [pull_request]", "jobs:", "  agentleak:",
   "    runs-on: ubuntu-latest", "    steps:", "      - uses: actions/checkout@v4",
@@ -2137,7 +2137,7 @@ const JENKINS_CI = [
 function CiCdGuide() {
   return <article className="docs-article">
     <header className="docs-page-head"><p className="docs-kicker">Guides · CI/CD</p><h1>Enforce privacy regressions in every pipeline</h1><p>Install from the public repository, generate machine-readable evidence and fail releases on deterministic thresholds. These workflows require no AgentLeak account and send no telemetry.</p><div className="docs-callout"><strong>Package availability</strong><p>The official PyPI project is not published yet. Pin a public Git tag or commit; do not assume <code>pip install agentleak</code> resolves to this project.</p></div></header>
-    <section className="docs-section" id="contract"><h2>Define the release contract</h2><Code>{SOURCE_INSTALL + "\nagentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json"}</Code><p>Pin the vault scope, detectors, assertions, plugins and strategies between releases. Keep the JSON report even when the job fails.</p></section>
+    <section className="docs-section" id="contract"><h2>Define the release contract</h2><Code>{SOURCE_INSTALL + "\nagentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json"}</Code><p>The examples use the current public branch. For a controlled release, replace <code>@main</code> with the reviewed commit SHA, then pin the vault scope, detectors, assertions, plugins and strategies. Keep the JSON report even when the job fails.</p></section>
     <section className="docs-section" id="github"><h2>GitHub Actions</h2><Code>{GITHUB_CI}</Code><p>Compare against AgentLeak’s <a href="https://github.com/yagobski/agentleak-oss/actions">public CI history</a> and the copy-ready repository examples.</p></section>
     <section className="docs-section" id="gitlab"><h2>GitLab CI</h2><Code>{GITLAB_CI}</Code></section>
     <section className="docs-section" id="jenkins"><h2>Jenkins</h2><Code>{JENKINS_CI}</Code></section>
