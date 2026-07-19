@@ -13,7 +13,7 @@ import { AuthProvider, useAuth } from "./lib/auth"
 import { AppShell } from "./layout/AppShell"
 import { Admin } from "./pages/Admin"
 import { Dashboard } from "./pages/Dashboard"
-import { Documentation } from "./pages/Documentation"
+import { Documentation, RedTeamPluginDocumentation } from "./pages/Documentation"
 import { FeaturePage } from "./pages/FeaturePage"
 import { Landing } from "./pages/Landing"
 import { Login } from "./pages/Login"
@@ -103,7 +103,9 @@ function AppRoutes() {
         <Route path="/docs/red-team/vulnerabilities" element={<Documentation audience="redteamVulnerabilities" />} />
         <Route path="/docs/red-team/llm-vulnerability-types" element={<Documentation audience="redteamVulnerabilities" />} />
         <Route path="/docs/red-team/plugins" element={<Documentation audience="redteamPlugins" />} />
+        <Route path="/docs/red-team/plugins/:pluginId" element={<RedTeamPluginDocumentation />} />
         <Route path="/docs/red-team/strategies" element={<Documentation audience="redteamStrategies" />} />
+        <Route path="/docs/ci-cd" element={<Documentation audience="ciCd" />} />
         <Route path="/login" element={<Login initialMode="login" />} />
         <Route path="/register" element={<Login initialMode="register" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -127,7 +129,9 @@ function AppRoutes() {
       <Route path="docs/red-team/vulnerabilities" element={<Documentation audience="redteamVulnerabilities" />} />
       <Route path="docs/red-team/llm-vulnerability-types" element={<Documentation audience="redteamVulnerabilities" />} />
       <Route path="docs/red-team/plugins" element={<Documentation audience="redteamPlugins" />} />
+      <Route path="docs/red-team/plugins/:pluginId" element={<RedTeamPluginDocumentation />} />
       <Route path="docs/red-team/strategies" element={<Documentation audience="redteamStrategies" />} />
+      <Route path="docs/ci-cd" element={<Documentation audience="ciCd" />} />
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />

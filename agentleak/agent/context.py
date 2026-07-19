@@ -23,6 +23,8 @@ class RunContext:
     records: list[dict[str, Any]] = field(default_factory=list)
     # Authored attacker turns for stateful red-team strategies.
     follow_up_requests: list[str] = field(default_factory=list)
+    adaptive_strategy: str = ""
+    attack_objective: str = ""
 
     @property
     def has_data(self) -> bool:

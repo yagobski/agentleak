@@ -30,17 +30,17 @@ no data ever leaves your machine.
 ## Install
 
 ```bash
-pip install agentleak                     # core — CLI + SDK, zero optional deps
-pip install 'agentleak[gui]'              # + local web UI (FastAPI + React)
-pip install 'agentleak[presidio]'         # + Tier-2b detector (Presidio)
-pip install 'agentleak[full]'             # gui + presidio
+pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"  # public source install
+pip install "agentleak[gui] @ git+https://github.com/yagobski/agentleak-oss.git"       # + local web UI
+pip install "agentleak[presidio] @ git+https://github.com/yagobski/agentleak-oss.git"  # + Presidio
+pip install "agentleak[full] @ git+https://github.com/yagobski/agentleak-oss.git"      # gui + presidio
 ```
 
 From source:
 
 ```bash
-git clone https://github.com/Privatris/AgentLeak
-cd AgentLeak/agentleak-oss
+git clone https://github.com/yagobski/agentleak-oss.git
+cd agentleak-oss
 pip install -e ".[dev]"
 ```
 
@@ -59,7 +59,7 @@ self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
   via the SDK (the Connect tab generates a copy-paste snippet).
 - **Red Team** — 24 native vulnerability plugins plus 38 Promptfoo-compatible
   privacy/security transpositions, mapped to 46
-  observable attack classes across 6 families, combined with 9 delivery
+  observable attack classes across 6 families, combined with 10 delivery
   strategies (direct, jailbreak framing, markup, encodings, Unicode, and
   multi-turn Crescendo). Run a zero-cost scripted baseline or attack the real
   configured agent; every probe persists with ASR / ELR / CLR evidence.
