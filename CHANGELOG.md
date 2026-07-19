@@ -6,7 +6,44 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Detection quality (0.9.0)
+
+Findings from an end-to-end dogfood of a real LangGraph coordinator-worker
+agent. All changes ship with regression tests (`tests/test_improvements.py`).
+
+**Breaking (behavioural):** the new key-name detector is on by default and
+raises recall, so traces that previously scored clean may now report findings.
+Anyone with a wired CI privacy gate should re-baseline after upgrading.
+
 ### Added
+- **Key-name-aware detector** (`detectors/keyname.py`, config flag `keyname`,
+  on by default) — flags values carried by sensitive field names (`diagnosis`,
+  `medication`, `ssn`, `account_number`, `salary`, `address`, …) even when no
+  dictionary recognises the value. Closes the main recall gap on realistic,
+  unseen PII/PHI leaked through internal channels.
+- **Degraded-run signalling** — when a requested detection tier (Presidio,
+  LLM-judge) cannot run because a dependency or API key is missing, the run is
+  now flagged `degraded` with explicit `warnings` in the report JSON and a
+  prominent CLI banner (shown even under `--quiet`). A run that could not fully
+  check is never silently reported as a clean pass. (`core/runner.py`,
+  `core/report.py`, `cli.py`)
+
+### Improved
+- **Healthcare recall** — added common oncology conditions (carcinoma,
+  colorectal, melanoma, lymphoma, metastatic, …) and chemotherapy agents
+  (FOLFOX, oxaliplatin, cisplatin, paclitaxel, …); the NAM/health-identifier
+  shape now tolerates spaces, hyphens and an optional `NAM` label
+  (`NAM TREM 8842 0197`). (`detectors/healthcare.py`)
+
+### Fixed
+- **Secret-assignment false positives** — reading a credential from the
+  environment (`api_key = os.environ.get("KEY")`) and passing an ALL-CAPS
+  constant reference (`api_key=API_KEY`) are no longer flagged as hardcoded
+  secrets. Real quoted literals and lowercase in-trace secrets are still
+  caught. Removes the dominant code-scan false positive. (`detectors/secrets.py`)
+
+### Added
+
 - **Agent-first layer — autonomous self-registration, code scans, and a
   self-improvement loop.** An agent can now test and fix *itself* through the
   API, with no human in the loop:

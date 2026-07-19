@@ -548,7 +548,7 @@ class CodeScanner:
         else:
             detectors = build_detectors(None, None)
             self._level_overrides = {}
-        self.pipeline = _build_pipeline(config, detectors)
+        self.pipeline, self.warnings = _build_pipeline(config, detectors)
         self.rules = _compile_code_rules(extra_identifiers)
 
     # -- single file ----------------------------------------------------

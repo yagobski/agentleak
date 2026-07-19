@@ -40,6 +40,26 @@ SECRET_ASSIGNMENT_RE = re.compile(
     r"\s*[:=]\s*[\"']?([^\"'\s,}]{6,})"
 )
 
+# A captured "value" that is really a function call or attribute access is a
+# reference, not a hardcoded secret — e.g. ``api_key = os.environ.get("KEY")``
+# or ``token = settings.API_KEY``. Reading a credential from the environment is
+# the *correct* pattern and must not be flagged. Matching one of these means the
+# assignment does not embed a literal secret.
+_SECRET_REFERENCE_RE = re.compile(
+    r"""^(?:
+        os\.environ|os\.getenv|getenv|environ|          # env reads
+        .*\.get\(|.*\(|                                  # any function/method call
+        (?:self|settings|config|cfg|conf|env|os|process)\.  # attribute lookups
+    )""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# An ALL-CAPS identifier (``API_KEY``, ``ACCESS_TOKEN``) assigned as a value is a
+# constant/variable reference — ``api_key=API_KEY`` — not an embedded secret.
+# Real inline secrets are quoted literals or mixed-case tokens; a genuinely
+# random ALL-CAPS token is still caught by the entropy tier.
+_CONSTANT_REFERENCE_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")
+
 
 class SecretsDetector(Detector):
     name = "secrets_detector"
@@ -129,6 +149,10 @@ class SecretsDetector(Detector):
             value = m.group(2)
             # Skip obvious placeholders to reduce false positives.
             if value.lower() in {"none", "null", "true", "false", "redacted", "xxxxxx", "******"}:
+                continue
+            # Skip references (env reads, function calls, attribute lookups,
+            # ALL-CAPS constants): they point at a secret, they don't embed one.
+            if _SECRET_REFERENCE_RE.match(value) or _CONSTANT_REFERENCE_RE.match(value):
                 continue
             matches.append(self._match(
                 data_type="secret_assignment", severity=Severity.HIGH, confidence=0.65,

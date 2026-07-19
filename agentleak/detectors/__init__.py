@@ -9,6 +9,7 @@ from .custom import CustomDetector, CustomRule
 from .finance import FinanceDetector
 from .healthcare import HealthcareDetector
 from .hr import HRDetector
+from .keyname import SensitiveKeyDetector
 from .pii import PIIDetector
 from .secrets import SecretsDetector
 
@@ -19,6 +20,7 @@ BUILTIN_DETECTORS: dict[str, type[Detector]] = {
     "healthcare": HealthcareDetector,
     "finance": FinanceDetector,
     "hr": HRDetector,
+    "keyname": SensitiveKeyDetector,
 }
 
 
@@ -48,6 +50,7 @@ __all__ = [
     "HealthcareDetector",
     "FinanceDetector",
     "HRDetector",
+    "SensitiveKeyDetector",
     "CustomDetector",
     "CustomRule",
     "BUILTIN_DETECTORS",

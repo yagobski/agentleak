@@ -36,6 +36,10 @@ class DetectorToggles(BaseModel):
     healthcare: bool = True
     finance: bool = False
     hr: bool = False
+    # Key-name-aware detection: flags values under sensitive field names even
+    # when no dictionary recognises the value. On by default — it closes the
+    # main recall gap on realistic, unseen PII/PHI.
+    keyname: bool = True
 
     def as_dict(self) -> dict[str, bool]:
         return self.model_dump()

@@ -150,7 +150,7 @@ def test_build_detectors_respects_toggles():
 
 def test_build_detectors_none_enables_all_builtins():
     detectors = build_detectors(None, None)
-    assert len(detectors) == 5
+    assert len(detectors) == 6
 
 
 # -- Redaction ----------------------------------------------------------
