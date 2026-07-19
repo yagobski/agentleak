@@ -1744,10 +1744,20 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         from ..core.attack_strategies import ATTACK_STRATEGIES, STRATEGY_PROFILES
         from ..core.attacks import ATTACK_FAMILIES, REDTEAM_PLUGIN_PRESETS, REDTEAM_PLUGINS
 
+        native_plugins = [p for p in REDTEAM_PLUGINS if p.implementation == "native"]
+        transposed_plugins = [p for p in REDTEAM_PLUGINS if p.implementation == "promptfoo-transposition"]
+
         return {
             "catalog_version": "2026.07",
             "attack_classes": sum(len(family.classes) for family in ATTACK_FAMILIES),
             "families": len(ATTACK_FAMILIES),
+            "plugin_count": len(REDTEAM_PLUGINS),
+            "native_plugin_count": len(native_plugins),
+            "promptfoo_transposition_count": len(transposed_plugins),
+            "catalog_is_executable": True,
+            "catalog_source_url": "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/attacks.py",
+            "promptfoo_source_url": "https://github.com/promptfoo/promptfoo/tree/main/src/redteam/plugins",
+            "license": "MIT",
             "plugins": [
                 {
                     "id": plugin.id,

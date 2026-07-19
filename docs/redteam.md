@@ -301,7 +301,8 @@ in version control. A useful CI split is:
 ## REST reference
 
 `GET /api/redteam/catalog` returns the catalog version, 46 attack classes, six
-families, 24 native plugins, 38 Promptfoo privacy/security transpositions,
+families, 24 native plugins, 38 Promptfoo privacy/security transpositions (62
+executable plugin IDs total),
 nine strategies, plugin presets, and strategy profiles.
 `POST /api/projects/{project_id}/redteam` accepts the following optional fields:
 

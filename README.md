@@ -57,7 +57,7 @@ self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
 - **Projects** — each is an agent under test. **Run a real agent** against any
   scenario, or use the built-in scripted agent offline. Connect your own agent
   via the SDK (the Connect tab generates a copy-paste snippet).
-- **Red Team** — 24 native vulnerability plugins plus 38 Promptfoo-compatible
+- **Red Team** — 62 executable plugin IDs (24 native plus 38 Promptfoo-compatible)
   privacy/security transpositions, mapped to 46
   observable attack classes across 6 families, combined with 10 delivery
   strategies (direct, jailbreak framing, markup, encodings, Unicode, and
@@ -201,11 +201,16 @@ invariance, rank robustness) — checked in CI. See [docs/scoring.md](docs/scori
 
 Every report maps its findings to the controls of the frameworks privacy
 auditors care about — **GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10,
-the EU AI Act, HIPAA, and PCI-DSS** — so you see which controls a run puts at
-risk (e.g. a leaked health identifier trips GDPR Art. 9; a leaked key trips
-Art. 32). Shown in the
-UI, the HTML/Markdown exports, the CLI, and the JSON report. It flags controls to
-review — not legal certification. See [docs/compliance.md](docs/compliance.md).
+  the EU AI Act, HIPAA, PCI-DSS, FERPA, COPPA, GLBA, TCPA, insurance, telecom and
+  real-estate profiles** — so you see which controls a run puts at
+  risk (e.g. a leaked health identifier trips GDPR Art. 9; a leaked key trips
+  Art. 32). Shown in the
+  UI, the HTML/Markdown exports, the CLI, and the JSON report. It flags controls to
+  review — not legal certification. See [docs/compliance.md](docs/compliance.md).
+
+The sector profiles are explicit in the report as **Insurance**, **Telecom / CPNI**
+and **Real-estate**, alongside **FERPA**, **COPPA**, **GLBA** and **TCPA**. They are
+technical evidence mappings, not legal attestations.
 
 ## Integrations
 

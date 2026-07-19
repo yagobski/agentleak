@@ -36,6 +36,13 @@ Presidio and the BYOK semantic judge remain optional.
 | **EU AI Act** (2024/1689) | Art. 10 Data governance |
 | **HIPAA** (45 CFR 164) | §164.502(b) minimum necessary · §164.312(a) access/transmission security · §164.514 de-identification |
 | **PCI-DSS v4.0** | Req. 3 protect stored account data · Req. 4 protect data in transmission · Req. 3.4 PAN not exposed in logs/tools |
+| **FERPA** (20 U.S.C. §1232g) | Education-record confidentiality · access and disclosure authority |
+| **COPPA** (16 CFR Part 312) | Children's personal information · parental-consent boundary |
+| **GLBA** (15 U.S.C. §§6801–6809) | Non-public personal information · Safeguards Rule boundary |
+| **TCPA** (47 U.S.C. §227) | Contact-data protection · outbound communication authorization |
+| **Insurance profile** | Policyholder/claims data · minimum-necessary disclosure |
+| **Telecom / CPNI profile** | Customer proprietary network information · subscriber account boundary |
+| **Real-estate profile** | Client/transaction data · transaction confidentiality |
 
 Framework mappings are engineering aids. Applicability, lawful basis,
 retention, DPIA requirements, data-subject rights, contractual duties, and the

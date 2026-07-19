@@ -21,6 +21,13 @@ _SHORT_LABEL = {
     "eu_ai_act": "EU AI Act",
     "hipaa": "HIPAA",
     "pci_dss": "PCI-DSS",
+    "ferpa": "FERPA",
+    "coppa": "COPPA",
+    "glba": "GLBA",
+    "tcpa": "TCPA",
+    "insurance": "Insurance",
+    "telecom": "Telecom",
+    "real_estate": "Real-estate",
 }
 
 
@@ -103,8 +110,8 @@ def test_nist_privacy_measured_is_info():
 def test_all_frameworks_present():
     c = _report(load_example_trace("hr_employee_case"))["compliance"]
     ids = {f["id"] for f in c["frameworks"]}
-    assert ids == {"gdpr", "law25", "nist_ai_rmf", "owasp_llm", "eu_ai_act", "hipaa", "pci_dss"}
-    assert c["summary"]["total"] == 7
+    assert ids == {"gdpr", "law25", "nist_ai_rmf", "owasp_llm", "eu_ai_act", "hipaa", "pci_dss", "ferpa", "coppa", "glba", "tcpa", "insurance", "telecom", "real_estate"}
+    assert c["summary"]["total"] == 14
 
 
 def test_health_leak_trips_hipaa():
