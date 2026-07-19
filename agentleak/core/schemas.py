@@ -111,7 +111,7 @@ _REDTEAM_REQUEST_SCHEMA: dict[str, Any] = {
         "attack_class": {"type": "string", "pattern": "^F[1-6]\\.[0-9]+$"},
         "plugins": {"type": "array", "items": {"type": "string"}, "maxItems": 30},
         "plugin_preset": {
-            "enum": ["privacy_core", "agent_core", "tool_security", "complete"],
+            "enum": ["privacy_core", "compliance_core", "agent_core", "tool_security", "complete"],
             "default": "agent_core",
         },
         "strategies": {"type": "array", "items": {"type": "string"}},

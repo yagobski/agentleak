@@ -6,6 +6,7 @@ from pathlib import Path
 
 from agentleak import AgentLeakRunner, Trace
 from agentleak.core.compliance import FRAMEWORKS
+from agentleak.core.config import Config
 from agentleak.scenarios import load_example_trace
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -150,3 +151,38 @@ def test_posture_digest_on_leaky_run():
     # failed list is sorted by number of controls at risk (desc)
     counts = [f["at_risk"] for f in posture["failed"]]
     assert counts == sorted(counts, reverse=True)
+
+
+def test_governance_controls_are_honestly_marked_not_assessed_without_policy():
+    compliance = _report(Trace(run_id="no-policy"))["compliance"]
+    gdpr = next(f for f in compliance["frameworks"] if f["id"] == "gdpr")
+    controls = {control["id"]: control for control in gdpr["controls"]}
+    assert controls["gdpr.art5.1b"]["status"] == "not_assessed"
+    assert controls["gdpr.art25"]["status"] == "not_assessed"
+    assert compliance["summary"]["controls_not_assessed"] == 2
+    assert compliance["assurance"]["evidence_grade"] == "trace_only"
+
+
+def test_policy_violation_links_finding_to_framework_control():
+    config = Config.from_dict({"privacy_policy": {"forbid_channels": ["log"]}})
+    trace = Trace(run_id="policy-evidence")
+    trace.add_event("log", "customer email jane@example.com")
+    compliance = AgentLeakRunner(config).analyze(trace).to_dict()["compliance"]
+    gdpr = next(f for f in compliance["frameworks"] if f["id"] == "gdpr")
+    purpose = next(c for c in gdpr["controls"] if c["id"] == "gdpr.art5.1b")
+    assert purpose["status"] == "at_risk"
+    assert purpose["evidence_details"]["policy_rules"] == ["forbid_channels"]
+    assert purpose["evidence_details"]["finding_ids"]
+    finding_id = purpose["evidence_details"]["finding_ids"][0]
+    matrix_row = next(row for row in compliance["evidence_matrix"] if row["finding_id"] == finding_id)
+    assert "gdpr" in matrix_row["frameworks"]
+    assert "gdpr.art5.1b" in matrix_row["controls"]
+
+
+def test_compliance_integrity_digest_is_reproducible_and_unsigned():
+    report = _report(load_example_trace("healthcare_patient_summary"))
+    integrity = report["compliance"]["integrity"]
+    assert integrity["algorithm"] == "sha256"
+    assert len(integrity["digest"]) == 64
+    assert integrity["signed"] is False
+    assert "digital signature" in integrity["note"]

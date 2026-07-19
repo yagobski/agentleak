@@ -125,16 +125,26 @@ def render(data: dict[str, Any]) -> str:
         a("## Compliance")
         a("")
         a(f"_{cs.get('compliant', 0)}/{cs.get('total', 0)} frameworks clear · "
-          f"{cs.get('controls_at_risk', 0)} control(s) at risk_")
+          f"{cs.get('controls_at_risk', 0)} control(s) at risk · "
+          f"{cs.get('controls_not_assessed', 0)} not assessed_")
         a("")
         for fw in frameworks:
             status = "✅ clear" if fw["status"] == "compliant" else f"⚠️ {fw['at_risk']} at risk"
             a(f"### {fw['name']} — {status}")
             a("")
             for ctrl in fw["controls"]:
-                mark = {"at_risk": "✗", "ok": "✓", "info": "ℹ"}.get(ctrl["status"], "·")
+                mark = {"at_risk": "✗", "ok": "✓", "info": "ℹ", "not_assessed": "○"}.get(ctrl["status"], "·")
                 ev = f" ({', '.join(ctrl['evidence'])})" if ctrl["evidence"] else ""
                 a(f"- {mark} **{ctrl['name']}**{ev}")
+                finding_ids = ctrl.get("evidence_details", {}).get("finding_ids", [])
+                if finding_ids:
+                    a(f"  - findings: `{', '.join(finding_ids)}`")
+            a("")
+
+        integrity = compliance.get("integrity", {})
+        if integrity.get("digest"):
+            a(f"_Evidence manifest: `{integrity.get('algorithm', 'sha256')}:{integrity['digest']}` "
+              "(integrity check, not a digital signature)_")
             a("")
 
     a("---")
