@@ -11,7 +11,7 @@ curl -sS https://agents.fomox.com/api/redteam/catalog | jq
 ```
 
 The catalog exposes 46 attack classes, 24 native plugins, 38 Promptfoo privacy/security
-transpositions, 9 strategies, presets and
+transpositions, 10 strategies, presets and
 strategy profiles. Use `privacy_core` for privacy boundaries, `agent_core` for
 agent/application behavior, `tool_security` for tool and MCP boundaries, or
 `complete` for the full native matrix. Add transposition IDs explicitly when

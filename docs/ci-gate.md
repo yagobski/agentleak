@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install agentleak
+      - run: pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@v0.6.0"
       - run: agentleak run --trace traces/latest.json --fail-under 80 --format json,markdown
 ```
 

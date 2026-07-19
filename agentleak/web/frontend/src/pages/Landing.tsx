@@ -86,7 +86,7 @@ function HeroPlatform() {
               </header>
               <div className="cursor-app-stats">
                 <div><small>Projects <FolderKanban /></small><strong>6</strong><span>Agents under test</span></div>
-                <div><small>Runs <Activity /></small><strong>128</strong><span>Analyses stored</span></div>
+                <div><small>Runs <Activity /></small><strong>12</strong><span>Synthetic preview</span></div>
                 <div><small>Avg risk index <Gauge /></small><strong>0.24</strong><span>Conditional pass</span></div>
                 <div><small>Blocked runs <ShieldAlert /></small><strong>3</strong><span>Would fail a CI gate</span></div>
               </div>
@@ -133,7 +133,7 @@ function HeroPlatform() {
                 <b>New run</b>
               </header>
               <div className="cursor-app-runs cursor-app-runs-full">
-                <header><span>All runs</span><code>128 total</code></header>
+                <header><span>Example runs</span><code>synthetic data</code></header>
                 {HERO_RUNS.map(([agent, source, when, ri, verdict, leaks, hot]) => (
                   <article key={agent} data-hot={hot}>
                     <b>{agent}</b>
@@ -401,7 +401,7 @@ export function Landing() {
             <div><strong>8</strong><span>normalized channels every trace is scored across</span></div>
             <div><strong>10</strong><span>built-in scenarios, 5 of them clean controls with no injected leak</span></div>
             <div><strong>36</strong><span>scenarios in the published benchmark (a superset, not what ships by default)</span></div>
-            <div><strong>46</strong><span>attack classes across 60+ native/compatible plugin IDs and 9 delivery strategies</span></div>
+            <div><strong>46</strong><span>attack classes across a public live plugin registry and 10 delivery strategies</span></div>
             <div><strong>7</strong><span>compliance frameworks mapped per finding, none of them a certification</span></div>
           </div>
           <p className="cursor-proof-metrics-note">

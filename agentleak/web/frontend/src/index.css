@@ -488,9 +488,9 @@
 .docs-steps b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: var(--s-efefed); color: var(--s-0b0b0a); font-size: 12px; font-weight: 650; }
 .docs-steps p { margin: 0; font-size: 14px; }
 .docs-table { display: grid; margin-top: 18px; border: 1px solid var(--s-1a1a18); border-radius: 8px; overflow: hidden; }
-.docs-table div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 13px 15px; border-bottom: 1px solid var(--s-121211); }
+.docs-table div { display: grid; grid-template-columns: minmax(112px, 160px) minmax(0, 1fr); gap: 16px; padding: 13px 15px; border-bottom: 1px solid var(--s-121211); }
 .docs-table div:last-child { border-bottom: 0; }
-.docs-table code { font-size: 12px; font-weight: 650; color: var(--s-efefed); }
+.docs-table code { overflow-wrap: anywhere; font-size: 12px; font-weight: 650; color: var(--s-efefed); }
 .docs-table span { font-size: 14px; line-height: 1.6; color: var(--s-babab4); }
 .docs-api-list { display: grid; gap: 12px; margin-top: 18px; }
 .docs-api-endpoint { border: 1px solid var(--s-1a1a18); border-radius: 8px; padding: 18px; background: var(--s-0b0b0a); }
@@ -506,10 +506,11 @@
 .docs-api-endpoint dl div { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; }
 .docs-api-endpoint dt { font-size: 12px; font-weight: 700; color: var(--s-9e9e96); }
 .docs-api-endpoint dd { margin: 0; font-size: 14px; line-height: 1.6; color: var(--s-babab4); }
-.docs-footer { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr); align-items: center; gap: 28px; min-height: 84px; padding: 18px 28px; border-top: 1px solid var(--s-1a1a18); background: var(--s-0c0c0b); color: var(--s-babab4); }
-.docs-footer .docs-wordmark { justify-self: start; }
+.docs-footer { display: flex; align-items: center; gap: 32px; min-height: 84px; padding: 18px 28px; border-top: 1px solid var(--s-1a1a18); background: var(--s-0c0c0b); color: var(--s-babab4); }
+.docs-footer .docs-wordmark { flex: 0 0 auto; }
 .docs-footer p, .docs-footer > a { font-size: 13px; }
-.docs-footer > a { justify-self: end; text-decoration: underline; text-underline-offset: 3px; }
+.docs-footer p { flex: 1 1 auto; min-width: 0; text-align: center; }
+.docs-footer > a { flex: 0 0 auto; margin-left: auto; text-decoration: underline; text-underline-offset: 3px; }
 .docs-architecture-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 20px; }
 .docs-architecture-flow span { border: 1px solid var(--s-2a2a27); border-radius: 7px; background: var(--s-101010); padding: 11px 13px; font-size: 13px; font-weight: 650; color: var(--s-d9d8d2); }
 .docs-architecture-flow b { color: var(--s-73736d); }
@@ -524,8 +525,9 @@
 .docs-plugin-category + .docs-plugin-category { margin-top: 34px; }
 .docs-plugin-category > h3 { margin-bottom: 12px; font-size: 18px; }
 .docs-plugin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.docs-plugin-grid > div { min-width: 0; border: 1px solid var(--s-1a1a18); border-radius: 8px; background: var(--s-0f0f0d); padding: 16px; }
-.docs-plugin-grid > div > code, .docs-plugin-title code { overflow-wrap: anywhere; font-size: 11px; color: var(--s-efefed); }
+.docs-plugin-grid > div, .docs-plugin-grid > a { display: block; min-width: 0; border: 1px solid var(--s-1a1a18); border-radius: 8px; background: var(--s-0f0f0d); padding: 16px; color: inherit; text-decoration: none; }
+.docs-plugin-grid > a:hover { border-color: var(--s-73736d); }
+.docs-plugin-grid > div > code, .docs-plugin-grid > a > code, .docs-plugin-title code { overflow-wrap: anywhere; font-size: 11px; color: var(--s-efefed); }
 .docs-plugin-grid strong { display: block; margin-top: 9px; font-size: 14px; }
 .docs-plugin-grid p { margin-top: 7px; font-size: 13px; line-height: 1.6; }
 .docs-plugin-grid small { display: block; margin-top: 9px; font-size: 11px; line-height: 1.55; color: var(--s-73736d); }
@@ -543,7 +545,7 @@
   .docs-layout > main { padding: 42px 0 76px; }
   .docs-page-head h1 { font-size: 38px; }
   .docs-definition { grid-template-columns: 1fr; }
-  .docs-footer { grid-template-columns: minmax(0,1fr) auto; gap: 20px; padding: 18px 20px; }.docs-footer p { display: none; }
+  .docs-footer { gap: 20px; padding: 18px 20px; }.docs-footer p { display: none; }
 }
 @media (max-width: 560px) {
   .docs-header-actions { display: none; }

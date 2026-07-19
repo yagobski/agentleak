@@ -1,0 +1,18 @@
+name: agent-privacy
+on: [pull_request]
+
+jobs:
+  agentleak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@v0.6.0"
+      - run: mkdir -p reports && agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentleak-evidence
+          path: reports/

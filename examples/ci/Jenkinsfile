@@ -1,0 +1,14 @@
+pipeline {
+  agent { docker { image 'python:3.12-slim' } }
+  stages {
+    stage('Agent privacy gate') {
+      steps {
+        sh 'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@v0.6.0"'
+        sh 'mkdir -p reports && agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json'
+      }
+    }
+  }
+  post {
+    always { archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true }
+  }
+}

@@ -272,7 +272,13 @@ def _redteam_run_context(scenario: Any, vertical: str) -> RunContext:
         privacy_instruction=privacy,
         role=f"{vertical} assistant",
         records=records,
-        follow_up_requests=authored_turns[1:] if surface in ("user_message", "rag") else [],
+        follow_up_requests=(
+            authored_turns[1:]
+            if surface in ("user_message", "rag") and scenario.strategy_id != "adaptive-branch"
+            else []
+        ),
+        adaptive_strategy=scenario.strategy_id if scenario.strategy_id == "adaptive-branch" else "",
+        attack_objective=payload if scenario.strategy_id == "adaptive-branch" else "",
     )
 
 
@@ -1776,6 +1782,33 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 }
                 for profile in STRATEGY_PROFILES
             ],
+        }
+
+    @app.get("/api/redteam/plugins/{plugin_id}")
+    def redteam_plugin(plugin_id: str) -> dict[str, Any]:
+        """Return one executable plugin through a stable public permalink."""
+        from ..core.attacks import REDTEAM_PLUGIN_INDEX
+
+        plugin = REDTEAM_PLUGIN_INDEX.get(plugin_id)
+        if plugin is None:
+            raise HTTPException(status_code=404, detail=f"Unknown red-team plugin: {plugin_id}")
+        return {
+            "id": plugin.id,
+            "name": plugin.name,
+            "description": plugin.description,
+            "category": plugin.category,
+            "severity": plugin.severity,
+            "attack_classes": list(plugin.attack_classes),
+            "requires": list(plugin.requires),
+            "implementation": plugin.implementation,
+            "native_id": plugin.native_id,
+            "docs_url": f"https://agents.fomox.com/docs/red-team/plugins/{plugin.id}",
+            "source_url": (
+                "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/attacks.py"
+                if plugin.implementation == "native"
+                else "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/promptfoo_attacks.py"
+            ),
+            "catalog_url": "https://agents.fomox.com/api/redteam/catalog",
         }
 
     @app.post("/api/projects/{pid}/redteam")

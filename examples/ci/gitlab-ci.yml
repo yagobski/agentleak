@@ -1,0 +1,11 @@
+agentleak:
+  image: python:3.12-slim
+  script:
+    - pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@v0.6.0"
+    - mkdir -p reports
+    - agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 30 days

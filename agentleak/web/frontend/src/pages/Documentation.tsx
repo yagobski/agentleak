@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 import { usePageMeta } from "@/features/SiteChrome"
 
@@ -14,7 +14,9 @@ type Audience =
   | "redteamArchitecture"
   | "redteamVulnerabilities"
   | "redteamPlugins"
+  | "redteamPluginDetail"
   | "redteamStrategies"
+  | "ciCd"
 type NavItem = { href: string; label: string }
 type Endpoint = {
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"
@@ -27,12 +29,12 @@ type Endpoint = {
 
 const BASE = "https://agents.fomox.com"
 const INSTALL = [
-  "pip install agentleak",
+  'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"',
   "agentleak init",
   "agentleak run --scenario healthcare_patient_summary",
   "",
   "# With the local web interface",
-  "pip install 'agentleak[gui]'",
+  'pip install "agentleak[gui] @ git+https://github.com/yagobski/agentleak-oss.git"',
   "agentleak serve",
 ].join("\n")
 const TRACE = [
@@ -240,7 +242,7 @@ const HOSTED_QUICKSTART = [
   "4. Read the AgentRisk report: findings, channels, severity and the fix.",
 ].join("\n")
 const LOCAL_QUICKSTART = [
-  "pip install agentleak",
+  'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"',
   "agentleak init",
   "agentleak run --scenario healthcare_patient_summary",
   "open reports/*.html   # or --format json for machine-readable output",
@@ -387,8 +389,15 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#compatibility", label: "Promptfoo compatibility" },
     { href: "#configuration", label: "Configuration syntax" },
     { href: "#catalog", label: "Plugin catalog" },
+    { href: "#sector-coverage", label: "Sector coverage" },
     { href: "#presets", label: "Presets" },
     { href: "#selection", label: "How to select" },
+  ],
+  redteamPluginDetail: [
+    { href: "#definition", label: "Definition" },
+    { href: "#execution", label: "Run this plugin" },
+    { href: "#verification", label: "Public verification" },
+    { href: "#semantics", label: "Compatibility semantics" },
   ],
   redteamStrategies: [
     { href: "#concept", label: "Strategy model" },
@@ -397,6 +406,14 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#matrix", label: "Plugin × strategy matrix" },
     { href: "#multi-turn", label: "Multi-turn behavior" },
     { href: "#reproducibility", label: "Reproducibility" },
+  ],
+  ciCd: [
+    { href: "#contract", label: "Release contract" },
+    { href: "#github", label: "GitHub Actions" },
+    { href: "#gitlab", label: "GitLab CI" },
+    { href: "#jenkins", label: "Jenkins" },
+    { href: "#artifacts", label: "Artifacts" },
+    { href: "#troubleshooting", label: "Troubleshooting" },
   ],
 }
 
@@ -567,7 +584,7 @@ const apiEndpoints: Endpoint[] = [
     auth: "Session cookie",
     summary: "List attack classes, plugins, strategies and presets before creating a campaign.",
     request: "No body.",
-    response: "46 classes, 60+ native/compatible plugin IDs, 9 strategies, profiles and presets.",
+    response: "46 classes, the complete executable plugin registry, 10 strategies, profiles and presets.",
   },
   {
     method: "POST",
@@ -644,7 +661,7 @@ const searchEntries = [
   ["Privacy compliance evidence", "/docs/privacy-compliance", "Assurance levels, finding-to-control matrix, governance assertions and integrity manifest"],
   ["Safety boundary", "/docs#safety", "What a passing run does and does not prove"],
   ["Developer guide", "/docs/developers", "Install, trace schema, SDK and CI"],
-  ["Install AgentLeak", "/docs/developers#start", "pip install agentleak, agentleak init"],
+  ["Install AgentLeak", "/docs/developers#start", "Install from the public GitHub repository, then run agentleak init"],
   ["Trace model", "/docs/developers#trace", "run_id, agent_name and channel-tagged events"],
   ["Detection pipeline", "/docs/developers#detection", "Deterministic tiers, Presidio, canaries, entropy and optional LLM judge"],
   ["CLI reference", "/docs/developers#cli", "Every local command, option and exit-code behavior"],
@@ -657,7 +674,7 @@ const searchEntries = [
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
   ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
-  ["Adversarial red-team", "/features/red-team", "60+ plugin IDs × 9 strategies, defense rate, vulnerability and remediation reports"],
+  ["Adversarial red-team", "/features/red-team", "Public plugin registry × 10 strategies, defense rate, vulnerability and remediation reports"],
   ["Red-team quickstart", "/docs#red-team-guide", "Catalog, scripted/live modes, attack matrix, metrics and iteration loop"],
   ["Red-team getting started", "/docs/red-team", "Run a first scripted or live campaign and interpret the evidence"],
   ["Red-team configuration", "/docs/red-team/configuration", "Plugins, strategies, targets, adversary levels and complete request schema"],
@@ -778,7 +795,7 @@ function DocSidebar({ audience }: { audience: Audience }) {
         <p>Guides</p>
         <a href="/docs#trace-analysis">Trace analysis</a>
         <a href="/docs#code-scan">Static code scanning</a>
-        <a href="/docs#ci-gate-guide">CI policy gates</a>
+        {item("ciCd", "/docs/ci-cd", "CI/CD policy gates")}
         <a href="/docs#privacy-policy">Privacy assertions</a>
         {item("privacyCompliance", "/docs/privacy-compliance", "Privacy compliance")}
         {item("agents", "/docs/agents", "Autonomous agents")}
@@ -995,7 +1012,7 @@ function Overview() {
           external sends, entropy findings, de-obfuscated identifiers and
           quasi-identifier correlation.
         </p>
-        <Code>{"pip install agentleak\nagentleak scan ./my-agent --mode fast\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json\nagentleak scan ./my-agent --format sarif --output reports/agentleak.sarif"}</Code>
+        <Code>{'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"\nagentleak scan ./my-agent --mode fast\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json\nagentleak scan ./my-agent --format sarif --output reports/agentleak.sarif'}</Code>
         <div className="docs-card-grid">
           <div><h3>Fast</h3><p>Local regex, dictionaries, entropy and canary checks. No key required.</p></div>
           <div><h3>Standard</h3><p>Adds Presidio and domain recognizers. Install <code>agentleak[presidio]</code>.</p></div>
@@ -1013,7 +1030,7 @@ function Overview() {
         <h2>Adversarial red team</h2>
         <p>
           Red-team campaigns combine 24 native plugins plus privacy/security compatibility aliases (“what to test”) with
-          9 delivery strategies (“how to deliver it”), across 46 attack classes
+          10 delivery strategies (“how to deliver it”), across 46 attack classes
           and 6 families. Run deterministic scripted tests for coverage and
           regression, or live tests against an authorized OpenAI-compatible endpoint.
         </p>
@@ -1290,7 +1307,7 @@ function Overview() {
             ["5", "Of those, clean controls with no injected leak, used to check for false positives."],
             ["36", "Scenarios in the separate, published benchmark dataset (not bundled)."],
             ["46", "Attack classes across 6 families (F1\u2013F6), including 14 agent-application classes mapped from Promptfoo."],
-            ["60+ × 9", "Native and Promptfoo-compatible vulnerability IDs combined with deterministic delivery strategies, including multi-turn Crescendo."],
+            ["Public catalog × 10", "Native and Promptfoo-compatible IDs combined with deterministic and response-aware delivery strategies."],
           ].map(([n, body]) => (
             <div key={body}>
               <code>{n}</code>
@@ -1905,6 +1922,7 @@ type CatalogPlugin = {
   requires: string[]
   implementation: "native" | "promptfoo-transposition"
   native_id: string | null
+  source_url?: string
 }
 
 const attackFamilies = [
@@ -1984,9 +2002,38 @@ function RedTeamPlugins() {
     <section className="docs-section" id="concept"><h2>Plugin model</h2><div className="docs-definition"><div><dt>Native</dt><dd>Purpose-built AgentLeak attack mapping and evidence semantics.</dd></div><div><dt>Promptfoo transposition</dt><dd>Accepts the upstream ID but maps it to the closest observable AgentLeak privacy boundary.</dd></div><div><dt>Requirement</dt><dd>Declares when a plugin needs tools, RAG, memory, roles, object IDs or network access.</dd></div></div></section>
     <section className="docs-section" id="compatibility"><h2>Promptfoo compatibility</h2><p>AgentLeak accepts exact relevant Promptfoo IDs and the object configuration shape. Compatibility is focused on privacy, authorization, RAG, tools, MCP, memory, exfiltration and coding-agent boundaries. Each transposition exposes its native mapping in <code>native_id</code>.</p><div className="docs-callout"><strong>Honest compatibility</strong><p>A transposition means the threat is exercised and scored through AgentLeak's trace model. It does not mean AgentLeak reproduces Promptfoo's grader prompt or content-safety rubric.</p></div></section>
     <section className="docs-section" id="configuration"><h2>Configuration syntax</h2><Code>{REDTEAM_REQUEST}</Code></section>
-    <section className="docs-section" id="catalog"><h2>Executable plugin catalog</h2><label className="docs-catalog-search"><span>Filter plugins</span><input value={filter} onChange={event => setFilter(event.target.value)} placeholder="pii, rag, coding-agent, ssrf…" /></label>{plugins.length === 0 ? <p>Loading the live catalog… You can also inspect <a href="/api/redteam/catalog"><code>/api/redteam/catalog</code></a>.</p> : categories.map(category => <div className="docs-plugin-category" key={category}><h3>{category}</h3><div className="docs-plugin-grid">{visible.filter(plugin => plugin.category === category).map(plugin => <div key={plugin.id}><div className="docs-plugin-title"><code>{plugin.id}</code><span data-kind={plugin.implementation}>{plugin.implementation === "native" ? "native" : "transposition"}</span></div><strong>{plugin.name}</strong><p>{plugin.description}</p><small>Severity: {plugin.severity} · Classes: {plugin.attack_classes.join(", ")}{plugin.native_id ? ` · maps to ${plugin.native_id}` : ""}</small>{plugin.requires.length > 0 && <small>Requires: {plugin.requires.join(", ")}</small>}</div>)}</div></div>)}</section>
+    <section className="docs-section" id="catalog"><h2>Executable plugin catalog</h2><p>Every card has a permanent documentation page and a machine-readable JSON endpoint. The displayed count comes from the running registry—not marketing copy.</p><label className="docs-catalog-search"><span>Filter {plugins.length || ""} plugins</span><input value={filter} onChange={event => setFilter(event.target.value)} placeholder="pii, rag, coding-agent, ssrf…" /></label>{plugins.length === 0 ? <p>Loading the live catalog… You can also inspect <a href="/api/redteam/catalog"><code>/api/redteam/catalog</code></a>.</p> : categories.map(category => <div className="docs-plugin-category" key={category}><h3>{category}</h3><div className="docs-plugin-grid">{visible.filter(plugin => plugin.category === category).map(plugin => <Link to={`/docs/red-team/plugins/${encodeURIComponent(plugin.id)}`} key={plugin.id}><div className="docs-plugin-title"><code>{plugin.id}</code><span data-kind={plugin.implementation}>{plugin.implementation === "native" ? "native" : "transposition"}</span></div><strong>{plugin.name}</strong><p>{plugin.description}</p><small>Severity: {plugin.severity} · Classes: {plugin.attack_classes.join(", ")}{plugin.native_id ? ` · maps to ${plugin.native_id}` : ""}</small>{plugin.requires.length > 0 && <small>Requires: {plugin.requires.join(", ")}</small>}</Link>)}</div></div>)}</section>
+    <section className="docs-section" id="sector-coverage"><h2>Sector privacy coverage</h2><p>Sector plugins are testable privacy and authorization transpositions, not legal certifications. They expose the concrete data boundary AgentLeak can observe while keeping obligations such as consent notices, lawful basis and retention in the governance process.</p><div className="docs-table">{[
+      ["Children & education", "coppa · ferpa", "Children’s identifiers and unauthorized education-record access."],
+      ["Healthcare & insurance", "insurance:phi-disclosure · insurance:data-disclosure", "PHI, claims and policyholder disclosure; HIPAA and GLBA evidence still requires configured controls."],
+      ["Finance & payments", "financial:data-leakage · financial:confidential-disclosure · ecommerce:pci-dss", "Financial records, confidential advice context and cardholder data."],
+      ["Telecommunications", "telecom:cpni-disclosure · telecom:location-disclosure · telecom:account-takeover", "CPNI, subscriber location and account authorization boundaries."],
+      ["Commerce", "ecommerce:compliance-bypass · ecommerce:order-fraud · ecommerce:price-manipulation", "Transactional authorization and regulated payment handling."],
+      ["Not yet claimed", "TCPA consent · real-estate fairness · organization-wide GLBA", "These require business-process evidence beyond an agent trace and are reported as coverage gaps, not passes."],
+    ].map(([sector,ids,scope]) => <div key={sector}><code>{sector}</code><span><b>{ids}</b><br />{scope}</span></div>)}</div></section>
     <section className="docs-section" id="presets"><h2>Presets</h2><div className="docs-table">{[["privacy_core","PII, prompt disclosure, session isolation, indirect injection and exfiltration."],["compliance_core","Regulated-data, authorization, session isolation and exfiltration coverage linked to compliance evidence."],["agent_core","Recommended baseline for agents with tools, RAG, memory, roles or MCP."],["tool_security","Authorization, injection, network, discovery, debug and MCP boundaries."],["complete","Every native plugin; add Promptfoo transposition IDs explicitly when migrating."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
     <section className="docs-section" id="selection"><h2>How to select plugins</h2><p>Start from capabilities, not catalog size. A chat-only agent does not need shell or MCP tests; an agent with memory does need session isolation even if it never exposes a memory tool. Add one plugin whenever a new trust boundary appears.</p></section>
+  </article>
+}
+
+function RedTeamPluginDetail({ pluginId }: { pluginId: string }) {
+  const [plugin, setPlugin] = useState<CatalogPlugin | null>(null)
+  const [missing, setMissing] = useState(false)
+  useEffect(() => {
+    setMissing(false)
+    fetch(`/api/redteam/plugins/${encodeURIComponent(pluginId)}`)
+      .then(response => { if (!response.ok) throw new Error(String(response.status)); return response.json() })
+      .then(setPlugin)
+      .catch(() => setMissing(true))
+  }, [pluginId])
+  if (missing) return <article className="docs-article"><header className="docs-page-head"><p className="docs-kicker">Red teaming · Plugin</p><h1>Unknown plugin</h1><p><code>{pluginId}</code> is not present in the executable registry.</p><Link to="/docs/red-team/plugins">Browse the public catalog</Link></header></article>
+  if (!plugin) return <article className="docs-article"><header className="docs-page-head"><p>Loading plugin definition…</p></header></article>
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Red teaming · {plugin.category}</p><h1>{plugin.name}</h1><p>{plugin.description}</p><div className="docs-flow"><span>{plugin.id}</span><span>{plugin.implementation === "native" ? "Native" : "Promptfoo transposition"}</span><span>{plugin.severity} severity</span></div></header>
+    <section className="docs-section" id="definition"><h2>Executable definition</h2><div className="docs-table">{[["Plugin ID",plugin.id],["Attack classes",plugin.attack_classes.join(", ")],["Requirements",plugin.requires.join(", ") || "None"],["Implementation",plugin.implementation],["Native mapping",plugin.native_id || "Direct native implementation"]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="execution"><h2>Run this plugin</h2><Code>{`curl -sS -X POST ${BASE}/api/projects/$PROJECT_ID/redteam \\\n  -H "Cookie: $AGENTLEAK_SESSION" -H 'content-type: application/json' \\\n  -d '{"plugins":["${plugin.id}"],"strategies":["basic"],"mode":"scripted","n":1}'`}</Code><p>Use a synthetic vault first. Requirements above describe the target capabilities needed for a meaningful live result.</p></section>
+    <section className="docs-section" id="verification"><h2>Public verification</h2><div className="docs-link-list"><a href={`/api/redteam/plugins/${encodeURIComponent(plugin.id)}`}><code>JSON definition</code><span>Machine-readable permalink</span></a><a href={plugin.source_url || "https://github.com/yagobski/agentleak-oss"}><code>Source registry</code><span>Public MIT-licensed implementation mapping</span></a><a href="https://github.com/yagobski/agentleak-oss/actions"><code>Public CI</code><span>Tests and build history</span></a></div></section>
+    <section className="docs-section" id="semantics"><h2>Compatibility semantics</h2><p>{plugin.implementation === "native" ? "This plugin has a purpose-built AgentLeak mapping to observable attack classes and channel evidence." : `This upstream-compatible ID maps to ${plugin.native_id}. AgentLeak exercises the closest observable privacy or authorization boundary; it does not reproduce Promptfoo’s grader prompt.`}</p><div className="docs-callout"><strong>Compliance boundary</strong><p>A successful test is evidence of an observed control failure. A passing test covers only this target, configuration, vault and attack path; it is not a legal certification.</p></div></section>
   </article>
 }
 
@@ -2057,18 +2104,49 @@ function PrivacyCompliance() {
 }
 
 function RedTeamStrategies() {
-  const strategies = [["basic","Direct baseline","Original payload, no transformation."],["jailbreak-template","Jailbreak template","Wraps the probe in an authoritative resilience-drill frame."],["authoritative-markup","Authoritative markup","Embeds the probe in trusted-looking policy markup."],["base64","Base64 encoding","Asks the target to decode a Base64 attack instruction."],["hex","Hex encoding","Uses hexadecimal UTF-8 encoding to cross input filters."],["rot13","ROT13 encoding","Tests a reversible letter substitution boundary."],["leetspeak","Leetspeak","Applies common numeric character substitutions."],["homoglyph","Unicode homoglyphs","Replaces selected Latin characters with confusable Unicode forms."],["crescendo","Multi-turn crescendo","Builds rapport and escalates toward the final attack across four turns."]]
+  const strategies = [["basic","Direct baseline","Original payload, no transformation."],["jailbreak-template","Jailbreak template","Wraps the probe in an authoritative resilience-drill frame."],["authoritative-markup","Authoritative markup","Embeds the probe in trusted-looking policy markup."],["base64","Base64 encoding","Asks the target to decode a Base64 attack instruction."],["hex","Hex encoding","Uses hexadecimal UTF-8 encoding to cross input filters."],["rot13","ROT13 encoding","Tests a reversible letter substitution boundary."],["leetspeak","Leetspeak","Applies common numeric character substitutions."],["homoglyph","Unicode homoglyphs","Replaces selected Latin characters with confusable Unicode forms."],["crescendo","Multi-turn crescendo","Builds rapport and escalates through four authored turns."],["adaptive-branch","Adaptive response branch","Chooses the next turn from refusal, clarification or partial-answer signals in the observed response."]]
   return <article className="docs-article"><header className="docs-page-head"><p className="docs-kicker">Red teaming · Strategies</p><h1>Attack delivery strategies</h1><p>Strategies alter how a plugin probe reaches the target. They do not change the vulnerability, expected leak or scoring rule, which makes direct and evasive results comparable.</p></header>
     <section className="docs-section" id="concept"><h2>Plugin versus strategy</h2><div className="docs-architecture-flow"><span>Plugin: what fails</span><b>×</b><span>Strategy: how delivered</span><b>→</b><span>Scenario with one success condition</span></div></section>
     <section className="docs-section" id="catalog"><h2>Strategy catalog</h2><div className="docs-plugin-grid">{strategies.map(([id,name,description]) => <div key={id}><code>{id}</code><strong>{name}</strong><p>{description}</p></div>)}</div></section>
     <section className="docs-section" id="profiles"><h2>Profiles</h2><p>Profiles are stable named strategy sets. Use <code>baseline</code> for fast diagnosis, <code>balanced</code> for routine regression coverage and the broad profile only when the larger matrix fits the campaign budget. Inspect exact membership in the public catalog.</p><Code>{"curl -sS " + BASE + "/api/redteam/catalog | jq '.strategy_profiles'"}</Code></section>
     <section className="docs-section" id="matrix"><h2>Plugin × strategy matrix</h2><p>AgentLeak forms the available class/strategy pairs, shuffles the pool and executes up to <code>n</code>. Coverage reports requested and exercised IDs so truncation is visible. Increase or split the budget when every pair must run.</p><Code>{'"plugins": ["pii:direct", "indirect-prompt-injection"],\n"strategies": ["basic", "base64", "crescendo"],\n"n": 6'}</Code></section>
-    <section className="docs-section" id="multi-turn"><h2>Multi-turn behavior</h2><p><code>crescendo</code> preserves conversation state and records each user and assistant turn. The final success test remains tied to the selected attack class's expected channel and canary-backed secret.</p></section>
+    <section className="docs-section" id="multi-turn"><h2>Multi-turn behavior</h2><p><code>crescendo</code> preserves state across a fixed authored sequence. <code>adaptive-branch</code> is genuinely response-aware: after each answer it selects a refusal, clarification or escalation branch, then records the chosen prompt in the trace.</p><div className="docs-callout"><strong>Deliberate scope</strong><p>The adaptive strategy is a deterministic local state machine. It has no attacker LLM, semantic tree search, cross-branch memory or automatic backtracking, so it is not presented as equivalent to Promptfoo Hydra, Tree or Meta. This makes CI runs private and reproducible while advanced search remains a documented roadmap gap.</p></div></section>
     <section className="docs-section" id="reproducibility"><h2>Reproducibility</h2><p>Strategy transforms are deterministic. For release comparisons, pin the same plugins, strategies, adversary level, vault scope and target model. Hosted live models may still vary; retain run evidence and compare distributions rather than one response.</p></section>
   </article>
 }
 
-function renderAudience(audience: Audience) {
+const SOURCE_INSTALL = 'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@v0.6.0"'
+const GITHUB_CI = [
+  "name: agent-privacy", "on: [pull_request]", "jobs:", "  agentleak:",
+  "    runs-on: ubuntu-latest", "    steps:", "      - uses: actions/checkout@v4",
+  "      - uses: actions/setup-python@v5", '        with: {python-version: "3.12"}',
+  `      - run: ${SOURCE_INSTALL}`, "      - run: mkdir -p reports && agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json",
+  "      - if: always()", "        uses: actions/upload-artifact@v4", "        with: {name: agentleak-evidence, path: reports/}",
+].join("\n")
+const GITLAB_CI = [
+  "agentleak:", "  image: python:3.12-slim", "  script:", `    - ${SOURCE_INSTALL}`,
+  "    - mkdir -p reports", "    - agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json",
+  "  artifacts:", "    when: always", "    paths: [reports/]", "    expire_in: 30 days",
+].join("\n")
+const JENKINS_CI = [
+  "pipeline {", "  agent { docker { image 'python:3.12-slim' } }", "  stages {", "    stage('Agent privacy gate') {", "      steps {",
+  `        sh '${SOURCE_INSTALL}'`, "        sh 'mkdir -p reports && agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json'",
+  "      }", "    }", "  }", "  post { always { archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true } }", "}",
+].join("\n")
+
+function CiCdGuide() {
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Guides · CI/CD</p><h1>Enforce privacy regressions in every pipeline</h1><p>Install from the public repository, generate machine-readable evidence and fail releases on deterministic thresholds. These workflows require no AgentLeak account and send no telemetry.</p><div className="docs-callout"><strong>Package availability</strong><p>The official PyPI project is not published yet. Pin a public Git tag or commit; do not assume <code>pip install agentleak</code> resolves to this project.</p></div></header>
+    <section className="docs-section" id="contract"><h2>Define the release contract</h2><Code>{SOURCE_INSTALL + "\nagentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json"}</Code><p>Pin the vault scope, detectors, assertions, plugins and strategies between releases. Keep the JSON report even when the job fails.</p></section>
+    <section className="docs-section" id="github"><h2>GitHub Actions</h2><Code>{GITHUB_CI}</Code><p>Compare against AgentLeak’s <a href="https://github.com/yagobski/agentleak-oss/actions">public CI history</a> and the copy-ready repository examples.</p></section>
+    <section className="docs-section" id="gitlab"><h2>GitLab CI</h2><Code>{GITLAB_CI}</Code></section>
+    <section className="docs-section" id="jenkins"><h2>Jenkins</h2><Code>{JENKINS_CI}</Code></section>
+    <section className="docs-section" id="artifacts"><h2>Evidence and secret handling</h2><div className="docs-table">{[["JSON","Canonical machine artifact with findings, policy, compliance evidence and digest."],["SARIF","Use static-scan SARIF for code annotations; retain runtime evidence as JSON."],["Provider keys","Not needed for scripted tests. Use CI secrets and synthetic data for live targets."],["Retention","Set an explicit artifact lifetime because source traces may contain private context."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="troubleshooting"><h2>Troubleshooting</h2><ul className="docs-rules"><li><strong>Wrong package</strong><span>Use the verified GitHub URL until an official PyPI release exists.</span></li><li><strong>Missing failed artifact</strong><span>Create the directory first and upload with <code>always()</code> or <code>when: always</code>.</span></li><li><strong>Unstable live score</strong><span>Run scripted controls first, pin the target model and compare multiple live runs.</span></li><li><strong>False compliance pass</strong><span>Inspect assurance and controls_not_assessed; missing governance evidence is not compliance.</span></li></ul></section>
+  </article>
+}
+
+function renderAudience(audience: Audience, pluginId = "") {
   if (audience === "developers") return <Developers />
   if (audience === "agents") return <Agents />
   if (audience === "api") return <ApiReference />
@@ -2078,11 +2156,13 @@ function renderAudience(audience: Audience) {
   if (audience === "redteamArchitecture") return <RedTeamArchitecture />
   if (audience === "redteamVulnerabilities") return <RedTeamVulnerabilities />
   if (audience === "redteamPlugins") return <RedTeamPlugins />
+  if (audience === "redteamPluginDetail") return <RedTeamPluginDetail pluginId={pluginId} />
   if (audience === "redteamStrategies") return <RedTeamStrategies />
+  if (audience === "ciCd") return <CiCdGuide />
   return <Overview />
 }
 
-export function Documentation({ audience = "overview" }: { audience?: Audience }) {
+export function Documentation({ audience = "overview", pluginId = "" }: { audience?: Audience; pluginId?: string }) {
   const metadata: Record<Audience, [string, string]> = {
     overview: ["AgentLeak documentation", "Learn how AgentLeak captures and audits AI agent execution traces across tools, memory, messages, logs, files and final output."],
     developers: ["AgentLeak developer guide", "Install the AgentLeak Python SDK, capture agent traces, configure privacy detection and enforce deterministic CI policy gates."],
@@ -2094,7 +2174,9 @@ export function Documentation({ audience = "overview" }: { audience?: Audience }
     redteamArchitecture: ["AgentLeak red-team architecture", "How AgentLeak generates probes, drives targets, captures traces, detects disclosures, scores risk and stores evidence."],
     redteamVulnerabilities: ["AgentLeak vulnerability types", "The F1–F6 privacy and agent-security taxonomy across prompts, tools, RAG, memory, multi-agent systems, reasoning and evasion."],
     redteamPlugins: ["AgentLeak red-team plugins", "Executable native and Promptfoo-compatible privacy plugins for PII, authorization, tools, RAG, MCP, memory and coding agents."],
+    redteamPluginDetail: ["AgentLeak red-team plugin", "Public, machine-verifiable definition for one executable AgentLeak privacy or agent-security plugin."],
     redteamStrategies: ["AgentLeak red-team strategies", "Direct, encoded, obfuscated, structured and multi-turn attack delivery strategies for reproducible agent testing."],
+    ciCd: ["AgentLeak CI/CD guide", "Copy-ready GitHub Actions, GitLab CI and Jenkins privacy policy gates with retained evidence and local execution."],
   }
   usePageMeta(metadata[audience][0], metadata[audience][1])
   return (
@@ -2102,7 +2184,7 @@ export function Documentation({ audience = "overview" }: { audience?: Audience }
       <DocHeader audience={audience} />
       <div className="docs-layout">
         <DocSidebar audience={audience} />
-        <main>{renderAudience(audience)}</main>
+        <main>{renderAudience(audience, pluginId)}</main>
         <PageToc audience={audience} />
       </div>
       <footer className="docs-footer">
@@ -2112,4 +2194,9 @@ export function Documentation({ audience = "overview" }: { audience?: Audience }
       </footer>
     </div>
   )
+}
+
+export function RedTeamPluginDocumentation() {
+  const { pluginId = "" } = useParams()
+  return <Documentation audience="redteamPluginDetail" pluginId={decodeURIComponent(pluginId)} />
 }
