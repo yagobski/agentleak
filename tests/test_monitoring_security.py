@@ -118,10 +118,20 @@ def test_admin_usage_tracks_runs_and_api_consumption(app):
     assert len(daily) == 14
     assert daily[-1]["runs"] >= 1
     assert daily[-1]["api_calls"] >= 3
+    assert daily[-1]["blocked_runs"] >= 1
+    assert "code_scans" in daily[-1]
+
+    endpoints = {item["endpoint"]: item for item in usage["endpoints"]}
+    assert endpoints["/api/agent/status"]["count"] >= 1
+    assert endpoints["/api/agent/status"]["projects"] == 1
 
     overview = admin.get("/api/admin/overview").json()
     assert overview["api_calls_total"] >= 3
     assert overview["api_calls_24h"] >= 3
+    assert overview["runs_24h"] == 1
+    assert overview["blocked_24h"] == 1
+    assert overview["active_projects_24h"] == 1
+    assert overview["avg_privacy_score"] is not None
 
 
 def test_admin_usage_forbidden_for_members(app):
@@ -134,8 +144,13 @@ def test_admin_usage_empty_platform(app):
     admin = _register(TestClient(app), "owner@x.com")
     usage = admin.get("/api/admin/usage").json()
     assert usage["projects"] == []
+    assert usage["endpoints"] == []
     assert len(usage["daily"]) == 14
-    assert all(d["runs"] == 0 and d["api_calls"] == 0 for d in usage["daily"])
+    assert all(
+        d["runs"] == 0 and d["api_calls"] == 0 and d["blocked_runs"] == 0
+        and d["code_scans"] == 0
+        for d in usage["daily"]
+    )
 
 
 # =========================================================================

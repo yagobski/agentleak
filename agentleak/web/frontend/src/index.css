@@ -410,6 +410,13 @@
 .agentleak-logo-platform { width: 132px; }
 .agentleak-logo-preview { width: 96px; }
 .agentleak-logo-workbench { width: 98px; margin: 0 0 12px; }
+.agentleak-mark { position: relative; display: inline-block; width: 34px; height: 42px; flex: 0 0 auto; overflow: hidden; line-height: 0; }
+.agentleak-mark img { position: absolute; inset: 0 auto 0 0; width: auto; max-width: none; height: 100%; pointer-events: none; user-select: none; }
+.agentleak-mark-on-light { visibility: hidden; }
+.agentleak-mark-on-dark { visibility: visible; }
+:root:not(.dark) .platform-shell .agentleak-mark-on-light { visibility: visible; }
+:root:not(.dark) .platform-shell .agentleak-mark-on-dark { visibility: hidden; }
+.agentleak-mark-loading { animation: agentleak-mark-pulse 1.35s ease-in-out infinite; }
 
 /* Documentation — conventional product docs layout. */
 .docs-shell { min-height: 100vh; background: var(--s-0b0b0a); color: var(--s-efefed); font-feature-settings: "ss01", "cv11"; }
@@ -1164,6 +1171,7 @@
 @keyframes agentleak-logo-arrive { from { opacity: 0; transform: scale(.94); } }
 @keyframes agentleak-logo-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 @keyframes agentleak-logo-sweep { 0%, 20% { left: -45%; opacity: 0; } 40%, 72% { opacity: .65; } 100% { left: 120%; opacity: 0; } }
+@keyframes agentleak-mark-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1); } }
 
 @media (max-width: 1050px) {
   .cursor-nav { grid-template-columns: 1fr auto; }.cursor-nav nav { display: none; }.cursor-nav-burger { display: inline-flex; }.cursor-nav-actions > a:not(.cursor-pill-dark) { display: none; }
