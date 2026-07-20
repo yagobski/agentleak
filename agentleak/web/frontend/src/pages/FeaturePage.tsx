@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from "react-router-dom"
 import { Arrow } from "@/features/ProductDemos"
 import { AgentRiskWorkflowCards } from "@/features/AgentRiskWorkflowCards"
+import { CodeScanAutomationSlide, CodeScanProductSlide } from "@/features/CodeScanSlides"
 import { ProductWorkflowCards } from "@/features/ProductWorkflowCards"
 import {
   FAQ_ITEMS,
@@ -342,6 +343,7 @@ export function FeaturePage() {
 
         {slug === "trace-analysis" && <ProductWorkflowCards />}
         {slug === "agentrisk" && <AgentRiskWorkflowCards />}
+        {slug === "code-scan" && <CodeScanAutomationSlide />}
 
         <section className="cursor-concept">
           <div className="cursor-concept-copy">
@@ -391,6 +393,8 @@ export function FeaturePage() {
             ))}
           </div>
         </section>
+
+        {slug === "code-scan" && <CodeScanProductSlide />}
 
         <section className="cursor-faq" id="faq">
           <header><p className="cursor-eyebrow">FAQ</p><h2>Questions, answered.</h2></header>
