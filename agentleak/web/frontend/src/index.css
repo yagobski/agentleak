@@ -1189,21 +1189,13 @@
 .workflow-cards > article + article { border-left: 1px solid #232320; }
 .workflow-call-visual, .workflow-integration-visual { position: relative; height: 465px; min-height: 465px; overflow: hidden; background: #08090a; }
 .workflow-supplied-svg, .workflow-supplied-svg > div, .workflow-supplied-svg svg { display: block; width: 100%; height: 100%; }
-.workflow-supplied-svg svg { object-fit: cover; }
-.workflow-agentleak-node { position: absolute; z-index: 2; top: 50%; left: 73.8%; display: grid; width: 14.4%; min-width: 72px; aspect-ratio: 1; place-items: center; transform: translate(-50%,-50%); border: 1px solid #393a3d; border-radius: 50%; background: linear-gradient(145deg,#343537,#0d0e0f 64%); box-shadow: 0 16px 42px rgba(0,0,0,.72); }
-.workflow-agentleak-node span { display: block; width: 60%; height: 64%; background: url('/assets/logo/agentleak-logo-white.svg') left center / 520% auto no-repeat; }
-.workflow-integration-visual { display: grid; place-items: center; }
-.workflow-integration-grid { position: relative; z-index: 1; display: grid; width: min(78%,440px); grid-template-columns: repeat(4,1fr); gap: 14px; transform: perspective(900px) rotateX(4deg); }
-.workflow-integration-grid span { display: grid; aspect-ratio: 1; place-items: center; border: 1px solid #1d1e20; border-radius: 14px; background: linear-gradient(145deg,#101112,#090a0b); color: #252629; box-shadow: inset 0 1px rgba(255,255,255,.015); }
-.workflow-integration-grid span[data-active="true"] { border-color: #353638; background: linear-gradient(145deg,#202123,#0c0d0e 70%); color: #b8b9bb; box-shadow: inset 0 1px rgba(255,255,255,.06),0 16px 34px rgba(0,0,0,.36); animation: workflow-icon-pulse 5.4s ease-in-out infinite; }
-.workflow-integration-grid span:nth-child(6) { animation-delay: -.8s; }.workflow-integration-grid span:nth-child(7) { animation-delay: -1.6s; }.workflow-integration-grid span:nth-child(8) { animation-delay: -2.4s; }
-.workflow-integration-grid svg { width: 30%; height: 30%; stroke-width: 1.6; }
-.workflow-grid-glow { position: absolute; z-index: 0; inset: 20% 12%; background: radial-gradient(circle,rgba(255,130,87,.08),transparent 66%); filter: blur(22px); }
+.workflow-integration-visual > img, .workflow-image-mask { position: absolute; top: 50%; left: 0; display: block; width: 100%; height: auto; aspect-ratio: 672 / 424; transform: translateY(-50%); }
+.workflow-integration-visual > img { object-fit: contain; }
+.workflow-image-mask { pointer-events: none; }
 .workflow-caption { display: flex; min-height: 195px; flex: 1; flex-direction: column; justify-content: flex-end; padding: 34px 38px 38px; }
 .workflow-caption h3 { max-width: 510px; font-size: 21px; font-weight: 540; line-height: 1.25; letter-spacing: -.018em; color: #f1f1ed; }
 .workflow-caption p { max-width: 520px; margin-top: 12px; font-size: 15px; line-height: 1.58; color: #8e8e91; }
-@keyframes workflow-icon-pulse { 0%,100% { color: #828387; transform: translateY(0); } 50% { color: #f0f0ed; transform: translateY(-3px); } }
-@media (prefers-reduced-motion: reduce) { .workflow-integration-grid span[data-active="true"] { animation: none; } }
+.cursor-page-sections + .workflow-section { margin-top: var(--sp-section); }
 
 /* --- dedicated pages (feature / research / faq) --- */
 .cursor-page { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: clamp(120px,14vh,160px) var(--gutter) 40px; }
@@ -1299,7 +1291,7 @@
   .principles-section > header { margin-bottom: 26px; }.principles-grid article, .principles-grid article:first-child, .principles-grid article:last-child { display: block; padding: 22px 0 30px; }.principle-visual { height: 270px; }.principles-grid h3 { margin-top: 0; }.principles-grid article > p { min-height: 0; }.principles-grid article > a { margin-top: 14px; }
   .cursor-demo { height: auto; min-height: 0; margin-top: 40px; border-radius: 8px; }.cursor-demo-bar { grid-template-columns: 1fr auto; }.cursor-demo-bar p { display: none; }.cursor-app-body { grid-template-columns: 1fr; min-height: 0; }.cursor-app-side { display: none; }.cursor-app-stats { grid-template-columns: repeat(2,1fr); }.cursor-app-runs article { grid-template-columns: minmax(0,1fr) auto; }.cursor-app-runs article > small, .cursor-app-runs article > span, .cursor-app-runs article > code { display: none; }.cursor-app-board-row { grid-template-columns: 24px minmax(0,1fr) 38px 58px; gap: 9px; padding: 0 11px; }.cursor-app-board-bar { display: none; }.cursor-app-playground { grid-template-columns: 1fr; }.cursor-app-playground > aside { display: none; }.cursor-app-playground pre { min-height: 330px; padding: 16px; font-size: 9px; }.cursor-app-scenarios > header, .cursor-app-scenarios article { grid-template-columns: minmax(0,1fr) 92px; }.cursor-app-scenarios > header span:nth-child(2), .cursor-app-scenarios > header span:nth-child(4), .cursor-app-scenarios article > span, .cursor-app-scenarios article > small { display: none; }.cursor-app-scenarios > footer { align-items: flex-start; flex-direction: column; justify-content: center; }.cursor-capabilities > div { grid-template-columns: 1fr; }
   .user-logo-section { padding: 48px 15px 28px; }.user-logo-section h2 { max-width: 280px; margin-inline: auto; line-height: 1.5; }.user-logo-track { flex-wrap: wrap; justify-content: center; gap: 28px 34px; }.user-logo-track span { width: 122px; flex-basis: 122px; }
-  .workflow-section > header { margin-bottom: 24px; }.workflow-cards > article { min-height: 0; }.workflow-call-visual, .workflow-integration-visual { height: 320px; min-height: 320px; }.workflow-caption { min-height: 180px; padding: 28px 22px 30px; }.workflow-caption h3 { font-size: 19px; }.workflow-caption p { font-size: 14px; }.workflow-integration-grid { width: 86%; gap: 8px; }.workflow-integration-grid span { border-radius: 10px; }.workflow-agentleak-node { min-width: 52px; }
+  .workflow-section > header { margin-bottom: 24px; }.workflow-cards > article { min-height: 0; }.workflow-call-visual, .workflow-integration-visual { height: 320px; min-height: 320px; }.workflow-caption { min-height: 180px; padding: 28px 22px 30px; }.workflow-caption h3 { font-size: 19px; }.workflow-caption p { font-size: 14px; }
   .cursor-trust { padding: 20px 15px 55px; }.cursor-logo-grid { grid-template-columns: repeat(2,1fr); }.cursor-logo-grid span { min-height: 92px; }
   .cursor-stay-grid > article { display: flex; min-height: 0; }.cursor-stay-copy { min-height: 170px; padding: 22px 20px 16px; }.cursor-stay-stage { width: auto; height: 350px; min-height: 350px; margin: auto 10px 10px; }.cursor-faq-item button { font-size: 14.5px; padding: 16px 18px; }.cursor-page { padding: 110px var(--gutter) 30px; }
   .cursor-research-stats { grid-template-columns: repeat(2,1fr); }
