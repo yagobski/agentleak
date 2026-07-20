@@ -715,19 +715,14 @@
 .cursor-app-scenarios article[data-clean="true"] > em { border-color: #3c7548; color: #64c77b; }
 .cursor-app-scenarios > footer { display: flex; min-height: 46px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 16px; font-size: 10.5px; color: var(--s-77766f); }
 .cursor-app-scenarios > footer b { font-weight: 500; color: var(--s-b9b8b2); }
-.user-logo-section { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 64px var(--gutter) 28px; overflow: hidden; text-align: center; }
-.user-logo-section h2 { margin-bottom: 30px; font-size: 13px; font-weight: 440; letter-spacing: .01em; color: var(--s-8e8e87); }
-.user-logo-marquee { position: relative; display: flex; width: 100%; overflow: hidden; mask-image: linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent); }
-.user-logo-track { display: flex; flex: 0 0 auto; align-items: center; min-width: 100%; justify-content: space-around; gap: 54px; padding-inline: 27px; animation: user-logo-scroll 34s linear infinite; }
-.user-logo-track span { display: grid; width: 128px; height: 44px; flex: 0 0 128px; place-items: center; color: var(--s-6f6e68); transition: color .25s ease; }
-.user-logo-track span:hover { color: var(--s-d8d7d1); }
-.user-logo-track svg { display: block; width: 100%; max-height: 30px; overflow: visible; }
-.user-logo-track path, .user-logo-track rect { fill: currentColor; }
-.user-logo-track text { fill: currentColor; font-family: var(--font-sans); font-size: 20px; font-weight: 650; letter-spacing: -.7px; }
-.user-logo-track text.user-logo-soft { font-size: 27px; font-weight: 520; letter-spacing: -1.7px; }
-.user-logo-track .user-logo-knot { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.user-logo-track .user-logo-cut { fill: none; stroke: var(--s-080909); stroke-width: 2.8; stroke-linecap: round; }
-:root[data-site-theme="light"] .user-logo-track .user-logo-cut { stroke: var(--s-f7f7f4); }
+.user-logo-section { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 64px var(--gutter) 38px; overflow: hidden; text-align: center; background: #08090a; }
+.user-logo-section h2 { margin-bottom: 30px; font-size: 13px; font-weight: 440; letter-spacing: .01em; color: #8e8e87; }
+.user-logo-marquee { position: relative; display: flex; width: 100%; overflow: hidden; }
+.user-logo-track { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 34px; }
+.user-logo-track[aria-hidden="true"] { display: none; }
+.user-logo-track span { display: grid; width: 112px; height: 44px; flex: 0 1 112px; place-items: center; }
+.user-logo-track svg { display: block; width: 100%; height: 32px; overflow: visible; }
+.user-logo-loading { height: 44px; }
 .cursor-trust { width: 100%; max-width: var(--wrap); margin: 0 auto; padding-inline: var(--gutter); padding-block: 30px var(--sp-section); text-align: center; }.cursor-trust h2 { font-size: 16px; font-weight: 430; color: var(--s-cbcac4); }.cursor-logo-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 10px; margin-top: 30px; }.cursor-logo-grid span { display: flex; min-height: 104px; flex-direction: column; align-items: center; justify-content: center; gap: 13px; border: 1px solid var(--s-21211d); border-radius: 8px; background: var(--s-101010); color: var(--s-cbcac4); transition: border-color .25s, color .25s, background .25s; }.cursor-logo-grid span:hover { border-color: var(--s-33332c); color: var(--s-f1f1ed); background: var(--s-131311); }.cursor-logo-svg { width: 26px; height: 26px; }.cursor-logo-grid b { font-size: 13px; font-weight: 520; letter-spacing: -.01em; }.cursor-trust > p { max-width: 700px; margin: 22px auto 0; font-size: 12px; color: var(--s-8e8e87); }
 .cursor-capabilities { width: 100%; max-width: var(--wrap); padding-inline: var(--gutter); margin: 0 auto var(--sp-slide); }
 .cursor-capabilities > header h2 { max-width: 24ch; margin-top: 14px; }
@@ -1156,6 +1151,7 @@
 .principle-stack-layer, .principle-stack-shell, .principle-detail, .principle-guides path { fill: none; stroke: #3e3e44; stroke-width: .5; stroke-linecap: round; }
 .principle-stack-shell { stroke: #d0d6e0; }
 .principle-surface { fill: #08090a; stroke: #d0d6e0; stroke-width: .5; filter: drop-shadow(0 10px 12px rgba(0,0,0,.7)); }
+.principle-agentleak-mark { fill: #d0d6e0; filter: drop-shadow(0 3px 8px rgba(255,255,255,.08)); }
 .principle-guides path { stroke-dasharray: 1 3; stroke-width: 1; animation: principle-dash 5s linear infinite; }
 .principle-stack-top { transform-origin: 132px 76px; animation: principle-float 5.5s cubic-bezier(.45,0,.2,1) infinite; }
 .principle-stack-layer { animation: principle-layer 4.8s ease-in-out infinite; }
@@ -1183,6 +1179,31 @@
 :root[data-site-theme="light"] .principle-stack-shell,
 :root[data-site-theme="light"] .principle-surface { stroke: #4b4b48; }
 :root[data-site-theme="light"] .principle-dot-grid circle { fill: #2f302d; }
+
+/* --- product workflow cards: exact supplied call SVG plus AgentLeak-native integrations --- */
+.workflow-section { width: 100%; max-width: var(--wrap); margin: 0 auto var(--sp-section); padding-inline: var(--gutter); }
+.workflow-section > header { max-width: 720px; margin-bottom: 36px; }
+.workflow-section > header h2 { max-width: 650px; margin-top: 12px; font-size: var(--t-h2); font-weight: 470; line-height: 1.12; letter-spacing: -.028em; }
+.workflow-cards { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); border: 1px solid var(--s-232320); border-radius: 12px; overflow: hidden; background: #08090a; }
+.workflow-cards > article { display: flex; min-width: 0; min-height: 660px; flex-direction: column; background: #08090a; }
+.workflow-cards > article + article { border-left: 1px solid #232320; }
+.workflow-call-visual, .workflow-integration-visual { position: relative; height: 465px; min-height: 465px; overflow: hidden; background: #08090a; }
+.workflow-supplied-svg, .workflow-supplied-svg > div, .workflow-supplied-svg svg { display: block; width: 100%; height: 100%; }
+.workflow-supplied-svg svg { object-fit: cover; }
+.workflow-agentleak-node { position: absolute; z-index: 2; top: 50%; left: 73.8%; display: grid; width: 14.4%; min-width: 72px; aspect-ratio: 1; place-items: center; transform: translate(-50%,-50%); border: 1px solid #393a3d; border-radius: 50%; background: linear-gradient(145deg,#343537,#0d0e0f 64%); box-shadow: 0 16px 42px rgba(0,0,0,.72); }
+.workflow-agentleak-node span { display: block; width: 60%; height: 64%; background: url('/assets/logo/agentleak-logo-white.svg') left center / 520% auto no-repeat; }
+.workflow-integration-visual { display: grid; place-items: center; }
+.workflow-integration-grid { position: relative; z-index: 1; display: grid; width: min(78%,440px); grid-template-columns: repeat(4,1fr); gap: 14px; transform: perspective(900px) rotateX(4deg); }
+.workflow-integration-grid span { display: grid; aspect-ratio: 1; place-items: center; border: 1px solid #1d1e20; border-radius: 14px; background: linear-gradient(145deg,#101112,#090a0b); color: #252629; box-shadow: inset 0 1px rgba(255,255,255,.015); }
+.workflow-integration-grid span[data-active="true"] { border-color: #353638; background: linear-gradient(145deg,#202123,#0c0d0e 70%); color: #b8b9bb; box-shadow: inset 0 1px rgba(255,255,255,.06),0 16px 34px rgba(0,0,0,.36); animation: workflow-icon-pulse 5.4s ease-in-out infinite; }
+.workflow-integration-grid span:nth-child(6) { animation-delay: -.8s; }.workflow-integration-grid span:nth-child(7) { animation-delay: -1.6s; }.workflow-integration-grid span:nth-child(8) { animation-delay: -2.4s; }
+.workflow-integration-grid svg { width: 30%; height: 30%; stroke-width: 1.6; }
+.workflow-grid-glow { position: absolute; z-index: 0; inset: 20% 12%; background: radial-gradient(circle,rgba(255,130,87,.08),transparent 66%); filter: blur(22px); }
+.workflow-caption { display: flex; min-height: 195px; flex: 1; flex-direction: column; justify-content: flex-end; padding: 34px 38px 38px; }
+.workflow-caption h3 { max-width: 510px; font-size: 21px; font-weight: 540; line-height: 1.25; letter-spacing: -.018em; color: #f1f1ed; }
+.workflow-caption p { max-width: 520px; margin-top: 12px; font-size: 15px; line-height: 1.58; color: #8e8e91; }
+@keyframes workflow-icon-pulse { 0%,100% { color: #828387; transform: translateY(0); } 50% { color: #f0f0ed; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .workflow-integration-grid span[data-active="true"] { animation: none; } }
 
 /* --- dedicated pages (feature / research / faq) --- */
 .cursor-page { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: clamp(120px,14vh,160px) var(--gutter) 40px; }
@@ -1249,11 +1270,10 @@
 @keyframes agentleak-logo-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 @keyframes agentleak-logo-sweep { 0%, 20% { left: -45%; opacity: 0; } 40%, 72% { opacity: .65; } 100% { left: 120%; opacity: 0; } }
 @keyframes agentleak-mark-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1); } }
-@keyframes user-logo-scroll { to { transform: translateX(-100%); } }
-
 @media (max-width: 1050px) {
   .cursor-nav { grid-template-columns: 1fr auto; }.cursor-nav nav { display: none; }.cursor-nav-burger { display: inline-flex; }.cursor-nav-actions > a:not(.cursor-pill-dark) { display: none; }
   .principles-grid { grid-template-columns: 1fr; }.principles-grid article, .principles-grid article:first-child, .principles-grid article:last-child { display: grid; grid-template-columns: minmax(250px,.85fr) minmax(0,1fr); column-gap: 32px; padding: 22px 0 28px; border-right: 0; border-bottom: 1px solid var(--s-232320); }.principles-grid article:last-child { border-bottom: 0; }.principles-grid article > span { grid-column: 1 / -1; }.principle-visual { grid-row: 2 / span 4; height: 280px; }.principles-grid h3 { align-self: end; margin-top: 42px; }.principles-grid article > p { min-height: 0; }
+  .workflow-cards { grid-template-columns: 1fr; }.workflow-cards > article { min-height: 580px; }.workflow-cards > article + article { border-top: 1px solid #232320; border-left: 0; }.workflow-call-visual, .workflow-integration-visual { height: 430px; min-height: 430px; }
   .cursor-app-rail { display: none; }.cursor-app-columns { grid-template-columns: 1fr; }
   .cursor-logo-grid { grid-template-columns: repeat(4,1fr); }.cursor-research { grid-template-columns: 1fr; gap: 30px; }.cursor-feature-reverse { grid-template-columns: minmax(300px,1fr) minmax(0,1.618fr); }.cursor-feature-reverse .cursor-feature-copy { order: 0; justify-self: start; }
   .cursor-feature { grid-template-columns: 1fr; gap: 0; padding: 0; }.cursor-feature-copy { max-width: 650px; padding: 45px 32px; }.cursor-report { min-height: 450px; margin: 0 16px 16px; width: auto; }
@@ -1278,7 +1298,8 @@
   .cursor-hero { padding: 116px var(--gutter) var(--sp-section); }
   .principles-section > header { margin-bottom: 26px; }.principles-grid article, .principles-grid article:first-child, .principles-grid article:last-child { display: block; padding: 22px 0 30px; }.principle-visual { height: 270px; }.principles-grid h3 { margin-top: 0; }.principles-grid article > p { min-height: 0; }.principles-grid article > a { margin-top: 14px; }
   .cursor-demo { height: auto; min-height: 0; margin-top: 40px; border-radius: 8px; }.cursor-demo-bar { grid-template-columns: 1fr auto; }.cursor-demo-bar p { display: none; }.cursor-app-body { grid-template-columns: 1fr; min-height: 0; }.cursor-app-side { display: none; }.cursor-app-stats { grid-template-columns: repeat(2,1fr); }.cursor-app-runs article { grid-template-columns: minmax(0,1fr) auto; }.cursor-app-runs article > small, .cursor-app-runs article > span, .cursor-app-runs article > code { display: none; }.cursor-app-board-row { grid-template-columns: 24px minmax(0,1fr) 38px 58px; gap: 9px; padding: 0 11px; }.cursor-app-board-bar { display: none; }.cursor-app-playground { grid-template-columns: 1fr; }.cursor-app-playground > aside { display: none; }.cursor-app-playground pre { min-height: 330px; padding: 16px; font-size: 9px; }.cursor-app-scenarios > header, .cursor-app-scenarios article { grid-template-columns: minmax(0,1fr) 92px; }.cursor-app-scenarios > header span:nth-child(2), .cursor-app-scenarios > header span:nth-child(4), .cursor-app-scenarios article > span, .cursor-app-scenarios article > small { display: none; }.cursor-app-scenarios > footer { align-items: flex-start; flex-direction: column; justify-content: center; }.cursor-capabilities > div { grid-template-columns: 1fr; }
-  .user-logo-section { padding: 48px 15px 18px; }.user-logo-section h2 { max-width: 280px; margin-inline: auto; line-height: 1.5; }.user-logo-track { gap: 34px; padding-inline: 17px; }.user-logo-track span { width: 112px; flex-basis: 112px; }
+  .user-logo-section { padding: 48px 15px 28px; }.user-logo-section h2 { max-width: 280px; margin-inline: auto; line-height: 1.5; }.user-logo-track { flex-wrap: wrap; justify-content: center; gap: 28px 34px; }.user-logo-track span { width: 122px; flex-basis: 122px; }
+  .workflow-section > header { margin-bottom: 24px; }.workflow-cards > article { min-height: 0; }.workflow-call-visual, .workflow-integration-visual { height: 320px; min-height: 320px; }.workflow-caption { min-height: 180px; padding: 28px 22px 30px; }.workflow-caption h3 { font-size: 19px; }.workflow-caption p { font-size: 14px; }.workflow-integration-grid { width: 86%; gap: 8px; }.workflow-integration-grid span { border-radius: 10px; }.workflow-agentleak-node { min-width: 52px; }
   .cursor-trust { padding: 20px 15px 55px; }.cursor-logo-grid { grid-template-columns: repeat(2,1fr); }.cursor-logo-grid span { min-height: 92px; }
   .cursor-stay-grid > article { display: flex; min-height: 0; }.cursor-stay-copy { min-height: 170px; padding: 22px 20px 16px; }.cursor-stay-stage { width: auto; height: 350px; min-height: 350px; margin: auto 10px 10px; }.cursor-faq-item button { font-size: 14.5px; padding: 16px 18px; }.cursor-page { padding: 110px var(--gutter) 30px; }
   .cursor-research-stats { grid-template-columns: repeat(2,1fr); }
@@ -1318,8 +1339,8 @@
   .auth-nav .cursor-theme-switch { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cursor-demo, .cursor-report-score i b, .cursor-app-chart-line, .cursor-stay-trace footer span::after, .agentleak-logo, .agentleak-logo::after, .agentleak-logo img, .agentleak-logo-terminal, .cursor-terminal-brand small, .cursor-terminal code > span, .user-logo-track { animation: none; }
+  .cursor-demo, .cursor-report-score i b, .cursor-app-chart-line, .cursor-stay-trace footer span::after, .agentleak-logo, .agentleak-logo::after, .agentleak-logo img, .agentleak-logo-terminal, .cursor-terminal-brand small, .cursor-terminal code > span { animation: none; }
   .cursor-stay-trace > div, .cursor-stay-risk-bar i, .cursor-stay-risk dl div, .cursor-stay-ci > div, .cursor-stay-ci footer { transition: none; }
   .cursor-terminal-brand small { opacity: 1; }
-  .user-logo-marquee { overflow: visible; mask-image: none; }.user-logo-track { min-width: 0; flex-wrap: wrap; justify-content: center; }.user-logo-track[aria-hidden="true"] { display: none; }
+  .user-logo-marquee { overflow: visible; }.user-logo-track { min-width: 0; flex-wrap: wrap; justify-content: center; }
 }
