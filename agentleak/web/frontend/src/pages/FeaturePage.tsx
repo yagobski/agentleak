@@ -1,5 +1,6 @@
 import { Link, Navigate, useParams } from "react-router-dom"
 import { Arrow } from "@/features/ProductDemos"
+import { AgentRiskWorkflowCards } from "@/features/AgentRiskWorkflowCards"
 import { ProductWorkflowCards } from "@/features/ProductWorkflowCards"
 import {
   FAQ_ITEMS,
@@ -340,6 +341,7 @@ export function FeaturePage() {
         </div>
 
         {slug === "trace-analysis" && <ProductWorkflowCards />}
+        {slug === "agentrisk" && <AgentRiskWorkflowCards />}
 
         <section className="cursor-concept">
           <div className="cursor-concept-copy">

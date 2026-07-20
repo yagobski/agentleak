@@ -43,6 +43,8 @@ const HERO_RUNS = [
   ["onboarding-bot", "agent:improve", "2h", "0.22", "Conditional", "1 leaked", true],
 ] as const
 
+const SHOW_USER_LOGOS = false
+
 // Interactive hero: a faithful miniature of the real Dashboard whose views the
 // visitor can switch, echoing cursor.com/cloud where the preview is navigable.
 const HERO_VIEWS = ["Dashboard", "Runs", "Playground", "Leaderboard", "Scenarios"] as const
@@ -355,7 +357,7 @@ export function Landing() {
           <HeroPlatform />
         </section>
 
-        <UserLogoStrip />
+        {SHOW_USER_LOGOS && <UserLogoStrip />}
 
         <section className="cursor-trust">
           <h2>Built on the agent frameworks and protocols you already use</h2>
