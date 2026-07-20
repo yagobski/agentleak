@@ -91,6 +91,90 @@ function MomentumVisual() {
   )
 }
 
+function CodeScanVisual() {
+  return (
+    <svg className="principle-code-scan" viewBox="0 0 304 281" role="img" aria-label="Source files passing through a layered privacy scan">
+      <g className="code-scan-files">
+        {[0, 1, 2, 3].map((index) => (
+          <g key={index} transform={`translate(${38 + index * 17} ${67 - index * 13})`}>
+            <g className="code-scan-file" style={{ "--file-index": index } as React.CSSProperties}>
+              <path className="principle-panel" d="M3 54 83 14a7 7 0 0 1 6.26 0L163 50.87a4 4 0 0 1 2.21 3.58v54.1a4 4 0 0 1-2.21 3.58l-80 40a7 7 0 0 1-6.26 0L3 115.26a4 4 0 0 1-2.21-3.58V57.58A4 4 0 0 1 3 54Z" />
+              <path className="principle-detail" d="m1.4 56.2 75.34 37.67a7 7 0 0 0 6.26 0l81.6-40.8M79.87 95.4v54.7" />
+              <path className="code-glyph" d="m47 66-10 5 10 5M70 55l-9 31M83 48l10 5-10 5" />
+            </g>
+          </g>
+        ))}
+      </g>
+      <g className="scan-plane">
+        <path d="M28 112.5 142.5 55a10 10 0 0 1 9 0L276 117.25 151.5 179.5a10 10 0 0 1-9 0Z" />
+        <path className="scan-line" d="m55 126 116-58" />
+        <path className="scan-line scan-line-delayed" d="m91 144 116-58" />
+      </g>
+      <g className="principle-guides"><path d="M28 113v52M276 117v52M147 181v53" /></g>
+      <g className="scan-findings">
+        <circle cx="94" cy="129" r="3" /><circle cx="172" cy="91" r="3" /><circle cx="215" cy="123" r="3" />
+      </g>
+    </svg>
+  )
+}
+
+function RedTeamVisual() {
+  const probes = [
+    [28, 66, 92, 112], [270, 54, 210, 103], [282, 192, 218, 166], [40, 221, 96, 172],
+  ] as const
+  return (
+    <svg className="principle-redteam" viewBox="0 0 304 281" role="img" aria-label="Adversarial probes testing a protected agent boundary">
+      <g className="redteam-rings">
+        <path className="principle-panel" d="m151.5 26 103 51.5v109L151.5 238 48.5 186.5v-109Z" />
+        <path d="m151.5 54 75 37.5v81l-75 37.5-75-37.5v-81Z" />
+        <path d="m151.5 82 47 23.5v53l-47 23.5-47-23.5v-53Z" />
+      </g>
+      <g className="redteam-core">
+        <path className="principle-surface" d="m151.5 102 27 13.5v32l-27 13.5-27-13.5v-32Z" />
+        <path className="principle-detail" d="m125 115.5 26.5 13.25 27-13.5M151.5 129v31" />
+        <DotGrid x={144.5} y={119} delay={0.2} />
+      </g>
+      <g className="redteam-probes">
+        {probes.map(([x1, y1, x2, y2], index) => (
+          <g key={x1} style={{ "--probe-index": index } as React.CSSProperties}>
+            <path d={`M${x1} ${y1} ${x2} ${y2}`} />
+            <circle cx={x1} cy={y1} r="5" />
+            <path className="probe-arrow" d={`m${x2 - 8} ${y2 - 7} 8 7-10 2`} />
+          </g>
+        ))}
+      </g>
+      <g className="redteam-blocks"><circle cx="92" cy="112" r="4" /><circle cx="210" cy="103" r="4" /><circle cx="218" cy="166" r="4" /><circle cx="96" cy="172" r="4" /></g>
+    </svg>
+  )
+}
+
+function RemediationVisual() {
+  return (
+    <svg className="principle-remediation" viewBox="0 0 304 281" role="img" aria-label="An agent moving through policy checks into a verified remediation loop">
+      <g className="remediation-rail">
+        <path d="M35 144h62M207 144h62" /><path className="rail-return" d="M249 168c0 48-194 48-194 0" />
+      </g>
+      <g className="remediation-node remediation-agent">
+        <path className="principle-panel" d="m35 112 30-15 30 15v48l-30 15-30-15Z" />
+        <path className="principle-detail" d="m35 112 30 15 30-15M65 127v48" />
+        <DotGrid x={58} y={111} delay={0} />
+      </g>
+      <g className="remediation-gate">
+        <path className="principle-surface" d="m105 91 47-23.5L199 91v106l-47 23.5-47-23.5Z" />
+        <path className="principle-detail" d="m105 91 47 23.5L199 91M152 114.5v106" />
+        <path className="gate-check" d="m132 156 13 13 28-35" />
+        <path className="gate-threshold" d="M119 185h66" />
+      </g>
+      <g className="remediation-node remediation-output">
+        <path className="principle-panel" d="m209 112 30-15 30 15v48l-30 15-30-15Z" />
+        <path className="principle-detail" d="m209 112 30 15 30-15M239 127v48" />
+        <path className="output-spark" d="M239 108v12M228 114l11 6 11-6" />
+      </g>
+      <g className="remediation-packets"><circle cx="101" cy="144" r="3" /><circle cx="203" cy="144" r="3" /><circle cx="152" cy="211" r="3" /></g>
+    </svg>
+  )
+}
+
 const PRINCIPLES = [
   {
     figure: "8 EXECUTION CHANNELS",
@@ -112,6 +196,27 @@ const PRINCIPLES = [
     body: "Replay the same trace, get the same score and block a release only when a defined privacy policy is crossed.",
     href: "/features/ci-gate",
     visual: <MomentumVisual />,
+  },
+  {
+    figure: "SOURCE-TO-TRACE SCAN",
+    title: "Find the leak before runtime",
+    body: "Inspect repositories for hardcoded secrets, sensitive logging paths and unsafe third-party calls before code reaches an agent run.",
+    href: "/features/code-scan",
+    visual: <CodeScanVisual />,
+  },
+  {
+    figure: "ADVERSARIAL COVERAGE",
+    title: "Attack every trust boundary",
+    body: "Exercise prompt injection, tool misuse and exfiltration paths against the same policy perimeter your production agents must respect.",
+    href: "/features/red-team",
+    visual: <RedTeamVisual />,
+  },
+  {
+    figure: "BOUNDED REMEDIATION",
+    title: "Let agents fix what they expose",
+    body: "Return one structured, policy-bounded fix, rerun the trace and verify the score delta before accepting the remediation.",
+    href: "/features/agent-api",
+    visual: <RemediationVisual />,
   },
 ] as const
 
