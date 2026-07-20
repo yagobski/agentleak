@@ -14,6 +14,7 @@ import {
 import { BrandLogo, ECOSYSTEM_LOGOS } from "@/features/BrandLogos"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 import { FeaturePrinciples } from "@/features/FeaturePrinciples"
+import { UserLogoStrip } from "@/features/UserLogoStrip"
 import {
   AgentTerminal,
   Arrow,
@@ -353,6 +354,8 @@ export function Landing() {
           </div>
           <HeroPlatform />
         </section>
+
+        <UserLogoStrip />
 
         <section className="cursor-trust">
           <h2>Built on the agent frameworks and protocols you already use</h2>
