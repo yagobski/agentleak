@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { Flower2 } from "lucide-react"
 import { AGENTLEAK_MARK } from "@/features/ProductWorkflowCards"
 
 const AUTOMATIONS = [
@@ -87,11 +88,17 @@ export function CodeScanProductSlide() {
       <div className="code-scan-product-quotes">
         <blockquote>
           <p>“A privacy issue gets fixed when the finding is tied to the exact file, line, trace and release gate.”</p>
-          <footer><b>Code-to-trace evidence</b><span>One remediation path from source to runtime</span></footer>
+          <footer>
+            <span className="code-scan-client-symbol" aria-hidden="true"><img src="/assets/integrations/cursor.svg" alt="" /></span>
+            <span><b>Code-to-trace evidence</b><small>One remediation path from source to runtime</small></span>
+          </footer>
         </blockquote>
         <blockquote>
           <p>“Teams should not have to choose between shipping quickly and proving that agents handle sensitive data safely.”</p>
-          <footer><b>Fast, auditable releases</b><span>AgentLeak product principle</span></footer>
+          <footer>
+            <span className="code-scan-client-symbol" aria-hidden="true"><Flower2 /></span>
+            <span><b>Fast, auditable releases</b><small>AgentLeak product principle</small></span>
+          </footer>
         </blockquote>
       </div>
     </section>

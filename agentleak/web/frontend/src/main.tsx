@@ -16,6 +16,7 @@ import { Dashboard } from "./pages/Dashboard"
 import { Documentation, RedTeamPluginDocumentation } from "./pages/Documentation"
 import { FeaturePage } from "./pages/FeaturePage"
 import { Landing } from "./pages/Landing"
+import { Integrations } from "./pages/Integrations"
 import { Login } from "./pages/Login"
 import { Research } from "./pages/Research"
 import { FeaturesHub, SeoPage } from "./pages/SeoPages"
@@ -92,6 +93,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/features" element={<FeaturesHub />} />
         <Route path="/features/:slug" element={<FeaturePage />} />
+        <Route path="/integrations" element={<Integrations />} />
         <Route path="/security" element={<SeoPage />} />
         <Route path="/use-cases/multi-agent-privacy" element={<SeoPage />} />
         <Route path="/about" element={<SeoPage />} />
@@ -124,6 +126,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="features/:slug" element={<FeaturePage />} />
+      <Route path="integrations" element={<Integrations />} />
       <Route path="features" element={<FeaturesHub />} />
       <Route path="security" element={<SeoPage />} />
       <Route path="use-cases/multi-agent-privacy" element={<SeoPage />} />

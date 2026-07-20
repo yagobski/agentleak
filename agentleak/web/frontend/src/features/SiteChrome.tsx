@@ -188,10 +188,11 @@ export function SiteNav() {
           <div className="cursor-nav-menu" role="menu">
             <Link to="/use-cases/multi-agent-privacy" role="menuitem"><b>Multi-agent privacy</b><small>Trace leaks across handoffs and memory</small></Link>
             <Link to="/security" role="menuitem"><b>Security architecture</b><small>Local execution, redaction and isolation</small></Link>
-            <Link to="/docs/integrations" role="menuitem"><b>Framework integrations</b><small>LangGraph, CrewAI, MCP and OpenTelemetry</small></Link>
+            <Link to="/integrations" role="menuitem"><b>Integrations</b><small>Frameworks, repositories, telemetry and CI</small></Link>
           </div>
         </div>
         <Link to="/research">Research</Link>
+        <Link to="/integrations">Integrations</Link>
         <Link to="/docs">Documentation</Link>
       </nav>
       <div className="cursor-nav-actions">
@@ -218,6 +219,7 @@ export function SiteNav() {
           <Link to="/use-cases/multi-agent-privacy">Multi-agent privacy</Link>
           <Link to="/security">Security architecture</Link>
           <span>Resources</span>
+          <Link to="/integrations">Integrations</Link>
           <Link to="/docs">Documentation</Link>
           <Link to="/research">Research</Link>
           <a href={REPO_URL}>GitHub</a>
@@ -237,7 +239,7 @@ export function SiteFooter() {
       <div className="cursor-footer-grid">
         <Brand />
         <div><h3>Product</h3>{FEATURE_PAGES.map((page) => <Link key={page.slug} to={`/features/${page.slug}`}>{page.title}</Link>)}</div>
-        <div><h3>Resources</h3><Link to="/docs">Documentation</Link><Link to="/docs/getting-started">Getting started</Link><Link to="/docs/integrations">Integrations</Link><Link to="/docs/scoring">Scoring</Link><Link to="/research">Research</Link></div>
+        <div><h3>Resources</h3><Link to="/integrations">Integrations</Link><Link to="/docs">Documentation</Link><Link to="/docs/getting-started">Getting started</Link><Link to="/docs/integrations">Integration guides</Link><Link to="/docs/scoring">Scoring</Link><Link to="/research">Research</Link></div>
         <div><h3>Company</h3><Link to="/about">About</Link><Link to="/security">Security</Link><Link to="/use-cases/multi-agent-privacy">Multi-agent privacy</Link><Link to="/#faq">Questions</Link></div>
         <div><h3>Open source</h3><a href={REPO_URL}>GitHub</a><a href="/openapi.json">OpenAPI</a><a href="/llms.txt">llms.txt</a><a href={PAPER_URL}>arXiv:2602.11510</a></div>
       </div>

@@ -56,6 +56,7 @@ _SITE_URL = "https://www.agentleak.org"
 _PUBLIC_PAGE_META: dict[str, tuple[str, str]] = {
     "": ("AgentLeak — privacy tests for agent systems", "Local, open-source privacy testing for agent and multi-agent systems across tools, memory, messages, logs, files and final output."),
     "features": ("AgentLeak features — complete AI agent privacy testing", "Explore trace analysis, AgentRisk scoring, red teaming, code scanning, CI policy gates and autonomous agent privacy APIs."),
+    "integrations": ("AgentLeak integrations — frameworks, repositories and telemetry", "Connect AgentLeak to LangChain, LangGraph, CrewAI, OpenTelemetry, MCP, GitHub Actions, GitLab CI, Docker and the rest of your agent stack."),
     "features/trace-analysis": ("AI agent trace analysis — AgentLeak", "Find privacy leaks across tool calls, memory, inter-agent messages, logs, generated files and final output with trace-linked evidence."),
     "features/agentrisk": ("AgentRisk privacy scoring — AgentLeak", "Measure AI agent privacy leakage with a severity-weighted risk index, an explicit audited vault and per-channel evidence."),
     "features/red-team": ("AI agent privacy red teaming — AgentLeak", "Run reproducible privacy and agent-security attacks across prompts, tools, RAG, MCP, memory and multi-agent systems."),
