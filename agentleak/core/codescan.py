@@ -422,7 +422,7 @@ class CodeScanResult:
                     "tool": {
                         "driver": {
                             "name": "AgentLeak",
-                            "informationUri": "https://agentleak.org/docs#code-scan",
+                            "informationUri": "https://www.agentleak.org/docs#code-scan",
                             "rules": list(rules.values()),
                         }
                     },

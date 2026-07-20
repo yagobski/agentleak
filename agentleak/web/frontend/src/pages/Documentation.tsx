@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
-import { usePageMeta } from "@/features/SiteChrome"
+import { SITE_URL, usePageMeta } from "@/features/SiteChrome"
 
 type Audience =
   | "overview"
+  | "gettingStarted"
+  | "integrations"
+  | "scoring"
   | "developers"
   | "agents"
   | "api"
@@ -27,7 +30,7 @@ type Endpoint = {
   response: string
 }
 
-const BASE = "https://agentleak.org"
+const BASE = "https://www.agentleak.org"
 const INSTALL = [
   'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"',
   "agentleak init",
@@ -306,6 +309,27 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#scenarios", label: "Scenario coverage & limits" },
     { href: "#compliance", label: "Compliance mappings" },
     { href: "#safety", label: "Safety boundary" },
+  ],
+  gettingStarted: [
+    { href: "#install", label: "Install" },
+    { href: "#first-scan", label: "Run a first scan" },
+    { href: "#own-trace", label: "Analyze your trace" },
+    { href: "#read-report", label: "Read the report" },
+    { href: "#next", label: "Next steps" },
+  ],
+  integrations: [
+    { href: "#choose", label: "Choose an integration" },
+    { href: "#generic", label: "Generic recorder" },
+    { href: "#frameworks", label: "Framework adapters" },
+    { href: "#otel", label: "OpenTelemetry" },
+    { href: "#coverage", label: "Coverage checks" },
+  ],
+  scoring: [
+    { href: "#formula", label: "Formula" },
+    { href: "#sources", label: "Sources vs disclosures" },
+    { href: "#vault", label: "Audited vault" },
+    { href: "#levels", label: "Severity levels" },
+    { href: "#policy", label: "Policy gates" },
   ],
   developers: [
     { href: "#start", label: "Install" },
@@ -740,11 +764,12 @@ function DocSearch() {
 
 function DocHeader({ audience }: { audience: Audience }) {
   const isRedTeam = audience.startsWith("redteam")
+  const isGuide = ["overview", "gettingStarted", "integrations", "scoring", "developers"].includes(audience)
   return (
     <header className="docs-header">
       <DocWordmark />
       <nav aria-label="Documentation">
-        <Link className={audience === "overview" || audience === "developers" || isRedTeam ? "active" : ""} to="/docs">Documentation</Link>
+        <Link className={isGuide || isRedTeam ? "active" : ""} to="/docs">Documentation</Link>
         <Link className={audience === "api" ? "active" : ""} to="/docs/api">API</Link>
         <Link className={audience === "agents" ? "active" : ""} to="/docs/agents">Agents</Link>
       </nav>
@@ -768,13 +793,13 @@ function DocSidebar({ audience }: { audience: Audience }) {
       <div className="docs-sidebar-group">
         <p>Getting started</p>
         {item("overview", "/docs", "Introduction")}
-        <a href="/docs#quickstart">5-minute quickstart</a>
+        {item("gettingStarted", "/docs/getting-started", "5-minute quickstart")}
         {item("developers", "/docs/developers", "Install & developer setup")}
       </div>
       <div className="docs-sidebar-group">
         <p>Core concepts</p>
         <a href="/docs#model">Mental model</a>
-        <a href="/docs#agentrisk">AgentRisk scoring</a>
+        {item("scoring", "/docs/scoring", "AgentRisk scoring")}
         <a href="/docs#channels">Execution channels</a>
         <a href="/docs#detection">Detection pipeline</a>
         <a href="/docs#report-contract">Reports & evidence</a>
@@ -793,6 +818,7 @@ function DocSidebar({ audience }: { audience: Audience }) {
       </div>
       <div className="docs-sidebar-group">
         <p>Guides</p>
+        {item("integrations", "/docs/integrations", "Framework integrations")}
         <a href="/docs#trace-analysis">Trace analysis</a>
         <a href="/docs#code-scan">Static code scanning</a>
         {item("ciCd", "/docs/ci-cd", "CI/CD policy gates")}
@@ -2134,6 +2160,60 @@ const JENKINS_CI = [
   "      }", "    }", "  }", "  post { always { archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true } }", "}",
 ].join("\n")
 
+const WATCH_EXAMPLE = [
+  "import agentleak",
+  "",
+  'with agentleak.watch("support-bot") as run:',
+  "    chain.invoke(inputs, config={\"callbacks\": [run.callback]})",
+  "    # Or record any boundary directly:",
+  '    run.tool_call({"customer_id": "canary-42"}, target="crm")',
+  '    run.final_output("Request completed")',
+  "",
+  "print(run.report.risk_index, run.report.verdict)",
+].join("\n")
+
+function GettingStartedGuide() {
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Guides · Start here</p><h1>Audit an AI agent in five minutes</h1><p>Run a deterministic privacy test locally, then replace the sample with a trace from your own agent. No account, hosted service or provider key is required.</p></header>
+    <section className="docs-section" id="install"><h2>1. Install and initialize</h2><Code>{SOURCE_INSTALL + "\nagentleak init"}</Code><p>The initializer creates a reviewable <code>agentleak.yaml</code>, sample scenarios, traces and report directory. Pin a Git tag or commit for reproducible CI.</p></section>
+    <section className="docs-section" id="first-scan"><h2>2. Run the built-in control</h2><Code>{"agentleak run --scenario healthcare_patient_summary"}</Code><p>The synthetic scenario exercises sensitive sources and disclosure channels without using production data. A JSON report explains every finding, channel and policy decision.</p></section>
+    <section className="docs-section" id="own-trace"><h2>3. Analyze your own trace</h2><Code>{TRACE}</Code><Code>{"agentleak run --trace trace.json --config agentleak.yaml --output reports/agentleak.json"}</Code><p>Capture events at boundaries: user input, tool calls and responses, memory, inter-agent messages, logs, generated files and final output.</p></section>
+    <section className="docs-section" id="read-report"><h2>4. Read the report</h2><div className="docs-table">{[["Sources","Where the agent legitimately observed sensitive data."],["Disclosures","Where that data crossed into a risky channel or target."],["Risk index","Severity-weighted fraction of the audited vault that leaked."],["Policy","Deterministic assertions and the exact reason a gate passed or failed."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="next"><h2>Next steps</h2><div className="docs-link-list"><Link to="/docs/integrations"><code>Capture a live agent</code><span>Framework adapters and the generic recorder</span></Link><Link to="/docs/scoring"><code>Define the risk contract</code><span>Vault scope, levels and policy gates</span></Link><Link to="/docs/ci-cd"><code>Block regressions in CI</code><span>GitHub, GitLab and Jenkins examples</span></Link></div></section>
+  </article>
+}
+
+function IntegrationsGuide() {
+  const frameworks = [
+    ["LangChain / LangGraph", "Callback capture for tools, model output and agent actions."],
+    ["CrewAI", "Step and task callbacks normalized into one trace."],
+    ["OpenAI Agents / Swarm", "Messages and handoffs mapped to inter-agent evidence."],
+    ["AutoGen / Semantic Kernel", "Conversation and group-agent history ingestion."],
+    ["LlamaIndex / Pydantic AI", "Response sources and typed message history adapters."],
+    ["Google ADK / smolagents", "Event and step ingestion without runtime coupling."],
+    ["Computer-use agents", "Shell, browser, code and generated-file boundaries."],
+  ]
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Guides · Integrations</p><h1>Capture every agent boundary</h1><p>AgentLeak consumes one framework-neutral trace. Use the unified recorder for live execution, an adapter for your runtime, or emit the JSON contract directly.</p></header>
+    <section className="docs-section" id="choose"><h2>Choose an integration</h2><div className="docs-table">{[["New Python integration","Start with agentleak.watch()."],["Supported framework","Pass the supplied callback or ingest the framework result."],["Polyglot service","Emit the Trace JSON contract or OpenTelemetry events."],["Existing execution log","Normalize it offline and run the CLI."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="generic"><h2>Generic recorder</h2><Code>{WATCH_EXAMPLE}</Code><p>The context manager analyzes on exit. Direct channel methods let you instrument proprietary runtimes without importing an orchestration framework.</p></section>
+    <section className="docs-section" id="frameworks"><h2>Framework adapters</h2><div className="docs-card-grid">{frameworks.map(([name, body]) => <div key={name}><h3>{name}</h3><p>{body}</p></div>)}</div><p><a href="https://github.com/yagobski/agentleak-oss/blob/main/docs/integrations.md">Open every copy-ready adapter example</a></p></section>
+    <section className="docs-section" id="otel"><h2>OpenTelemetry</h2><p>Translate spans into AgentLeak channels while preserving trace order, source, target and content. Keep raw production payloads out of telemetry when a synthetic or masked value proves the same policy.</p><Code>{"agentleak run --trace exported-trace.json --config agentleak.yaml\n# Validate first when building a custom exporter\nagentleak validate agentleak.yaml --trace exported-trace.json"}</Code></section>
+    <section className="docs-section" id="coverage"><h2>Coverage checks</h2><ul className="docs-rules"><li><strong>Inputs</strong><span>Record user-controlled content as the non-disclosure baseline.</span></li><li><strong>Sources</strong><span>Capture tool responses, private memory and retrieved context.</span></li><li><strong>Exits</strong><span>Capture tool calls, agent handoffs, logs, files and final output.</span></li><li><strong>Ordering</strong><span>Preserve stable run IDs and event sequence for reproducible leak paths.</span></li></ul></section>
+  </article>
+}
+
+function ScoringGuide() {
+  return <article className="docs-article">
+    <header className="docs-page-head"><p className="docs-kicker">Concepts · AgentRisk</p><h1>Score privacy risk without hiding the denominator</h1><p>AgentRisk grades distinct leaked secrets by severity and normalizes them against the sensitive data the agent was allowed to reach.</p></header>
+    <section className="docs-section" id="formula"><h2>Risk formula</h2><Code>{RISK_FORMULA}</Code><p>A repeated secret counts once globally. Per-channel scores still show where it escaped, while the 0–100 privacy score provides a release-friendly inverse of risk.</p></section>
+    <section className="docs-section" id="sources"><h2>Sources are not disclosures</h2><div className="docs-table">{[["Source","A boundary that legitimately supplies data: user input, tool response or private memory."],["Disclosure","A boundary that can expose it: tool call, shared memory, inter-agent message, log, file or final output."],["Leak path","The trace-linked source and disclosure events that support a finding."],["Distinct secret","One normalized value, regardless of how often it appears."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="vault"><h2>Use an audited vault in production</h2><Code>{VAULT_YAML}</Code><p>The observed fallback is useful during exploration. An explicit vault makes release-to-release scores comparable and proves what the denominator represents.</p></section>
+    <section className="docs-section" id="levels"><h2>Severity levels</h2><div className="docs-table">{[["L1 · weight 1","Professional identity and low-sensitivity business data."],["L2 · weight 2","Contact details, preferences and profiling data."],["L3 · weight 3","Financial, legal, employment and precise identity data."],["L4 · weight 4","Health, biometrics, government IDs, payment data and credentials."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+    <section className="docs-section" id="policy"><h2>Turn the score into a policy gate</h2><Code>{PRIVACY_POLICY_YAML}</Code><Code>{"agentleak run --trace traces/latest.json --fail-under 80"}</Code><p>A gate can combine the score with hard constraints such as no L4 disclosures, forbidden channels and an explicit-vault requirement.</p></section>
+  </article>
+}
+
 function CiCdGuide() {
   return <article className="docs-article">
     <header className="docs-page-head"><p className="docs-kicker">Guides · CI/CD</p><h1>Enforce privacy regressions in every pipeline</h1><p>Install from the public repository, generate machine-readable evidence and fail releases on deterministic thresholds. These workflows require no AgentLeak account and send no telemetry.</p><div className="docs-callout"><strong>Package availability</strong><p>The official PyPI project is not published yet. Pin a public Git tag or commit; do not assume <code>pip install agentleak</code> resolves to this project.</p></div></header>
@@ -2147,6 +2227,9 @@ function CiCdGuide() {
 }
 
 function renderAudience(audience: Audience, pluginId = "") {
+  if (audience === "gettingStarted") return <GettingStartedGuide />
+  if (audience === "integrations") return <IntegrationsGuide />
+  if (audience === "scoring") return <ScoringGuide />
   if (audience === "developers") return <Developers />
   if (audience === "agents") return <Agents />
   if (audience === "api") return <ApiReference />
@@ -2165,6 +2248,9 @@ function renderAudience(audience: Audience, pluginId = "") {
 export function Documentation({ audience = "overview", pluginId = "" }: { audience?: Audience; pluginId?: string }) {
   const metadata: Record<Audience, [string, string]> = {
     overview: ["AgentLeak documentation", "Learn how AgentLeak captures and audits AI agent execution traces across tools, memory, messages, logs, files and final output."],
+    gettingStarted: ["AgentLeak quickstart", "Install AgentLeak, run a deterministic AI agent privacy test and analyze your first framework-neutral execution trace in five minutes."],
+    integrations: ["AgentLeak integrations", "Capture privacy evidence from LangChain, LangGraph, CrewAI, OpenAI Agents, AutoGen, LlamaIndex, Google ADK, OpenTelemetry and custom runtimes."],
+    scoring: ["AgentRisk scoring guide", "Understand AgentLeak's severity-weighted risk index, audited vault denominator, privacy score and deterministic CI policy gates."],
     developers: ["AgentLeak developer guide", "Install the AgentLeak Python SDK, capture agent traces, configure privacy detection and enforce deterministic CI policy gates."],
     agents: ["AgentLeak instructions for autonomous agents", "Machine-oriented instructions for agents to register, self-test, inspect privacy findings, apply fixes and verify improvements."],
     api: ["AgentLeak API reference", "AgentLeak REST API endpoints, authentication methods, request schemas and responses for privacy testing and autonomous agent self-improvement."],
@@ -2178,7 +2264,17 @@ export function Documentation({ audience = "overview", pluginId = "" }: { audien
     redteamStrategies: ["AgentLeak red-team strategies", "Direct, encoded, obfuscated, structured and multi-turn attack delivery strategies for reproducible agent testing."],
     ciCd: ["AgentLeak CI/CD guide", "Copy-ready GitHub Actions, GitLab CI and Jenkins privacy policy gates with retained evidence and local execution."],
   }
-  usePageMeta(metadata[audience][0], metadata[audience][1])
+  usePageMeta(metadata[audience][0], metadata[audience][1], {
+    type: "article",
+    structuredData: {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      headline: metadata[audience][0],
+      description: metadata[audience][1],
+      author: { "@type": "Organization", name: "AgentLeak", url: SITE_URL },
+      isPartOf: { "@type": "WebSite", name: "AgentLeak", url: SITE_URL },
+    },
+  })
   return (
     <div className="docs-shell">
       <DocHeader audience={audience} />

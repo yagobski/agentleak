@@ -27,6 +27,26 @@ def test_spa_served(client: TestClient):
     assert "AgentLeak" in r.text
 
 
+def test_public_spa_route_has_server_rendered_metadata(client: TestClient):
+    r = client.get("/features/trace-analysis")
+    assert r.status_code == 200
+    assert "AI agent trace analysis — AgentLeak" in r.text
+    assert '<link rel="canonical" href="https://www.agentleak.org/features/trace-analysis"' in r.text
+    assert '<meta name="robots" content="index, follow, max-image-preview:large"' in r.text
+
+
+def test_unknown_spa_route_is_not_indexable(client: TestClient):
+    r = client.get("/private-or-missing")
+    assert r.status_code == 200
+    assert '<meta name="robots" content="noindex, nofollow"' in r.text
+
+
+def test_public_spa_head_request(client: TestClient):
+    r = client.head("/features")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+
+
 def test_meta_endpoint(client: TestClient):
     m = client.get("/api/meta").json()
     assert {"version", "channels", "detectors", "agent_types"} <= set(m)

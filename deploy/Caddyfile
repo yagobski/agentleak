@@ -6,7 +6,11 @@
 # Caddy obtains and renews the TLS certificate for agentleak.org automatically.
 # Point the agentleak.org DNS A/AAAA record at this server first.
 
-agentleak.org, www.agentleak.org {
+agentleak.org {
+	redir https://www.agentleak.org{uri} permanent
+}
+
+www.agentleak.org {
 	encode zstd gzip
 
 	# Forward the real client IP so the app's per-IP throttle is accurate.

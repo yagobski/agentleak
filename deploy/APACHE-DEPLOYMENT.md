@@ -20,8 +20,9 @@ Apache box alongside several unrelated existing sites — the naming gotcha in
   sudo a2enmod proxy proxy_http proxy_wstunnel headers rewrite ssl
   ```
 - `certbot` with the Apache plugin (`sudo apt install certbot python3-certbot-apache`).
-- DNS: an `A` record for your chosen subdomain (`agentleak.org` for this deployment)
-  pointing at the server's public IP. Verify before requesting TLS:
+- DNS: `A` records for `agentleak.org` and `www.agentleak.org` pointing at the
+  server's public IP. The canonical public host is `www`; the apex is redirect-only.
+  Verify both before requesting TLS:
   ```bash
   dig +short agentleak.org
   ```
@@ -67,14 +68,24 @@ accidentally become the server-wide default and intercept unrelated traffic.
 sudo tee /etc/apache2/sites-available/zzz-agentleak.conf >/dev/null << 'CONF'
 <VirtualHost *:80>
     ServerName agentleak.org
-    ServerAlias www.agentleak.org
+    ServerAdmin admin@fomox.com
+
+    Redirect permanent / https://www.agentleak.org/
+
+    ErrorLog ${APACHE_LOG_DIR}/agentleak-error.log
+    CustomLog ${APACHE_LOG_DIR}/agentleak-access.log combined
+</VirtualHost>
+
+<VirtualHost *:80>
+    ServerName www.agentleak.org
     ServerAdmin admin@fomox.com
 
     ProxyPreserveHost On
     ProxyRequests Off
     ProxyTimeout 300
 
-    # Serve ACME http-01 challenges from disk; proxy everything else.
+    # Serve ACME http-01 challenges from disk; proxy everything else until
+    # Certbot creates the canonical HTTPS vhost and HTTP redirect.
     DocumentRoot /var/www/html
     ProxyPass /.well-known/acme-challenge/ !
     ProxyPass / http://127.0.0.1:8787/
@@ -104,12 +115,16 @@ sudo certbot --apache -d agentleak.org -d www.agentleak.org --non-interactive --
   -m admin@fomox.com --redirect
 ```
 
-In the Certbot-generated `*:443` vhost, set the external scheme explicitly so
-OpenAPI and agent-discovery documents emit canonical HTTPS URLs:
+Keep two Certbot-generated `*:443` vhosts. The apex vhost contains only a
+path-preserving redirect; the `www` vhost proxies the application and sets the
+external scheme explicitly:
 
 ```apache
 RequestHeader set X-Forwarded-Proto "https"
 ```
+
+Use `Redirect permanent / https://www.agentleak.org/` in the apex TLS vhost.
+Apache appends the unmatched path and preserves the query string.
 
 This obtains the certificate, writes a new
 `sites-available/zzz-agentleak-le-ssl.conf`-style vhost (certbot names it after
@@ -129,15 +144,15 @@ systemctl is-active certbot.timer
 ## 5. Verify
 
 ```bash
-curl -s https://agentleak.org/api/health
-curl -s https://agentleak.org/api/meta | jq .free_tier
+curl -s https://www.agentleak.org/api/health
+curl -s https://www.agentleak.org/api/meta | jq .free_tier
 
-curl -sX POST https://agentleak.org/api/agent/onboard \
+curl -sX POST https://www.agentleak.org/api/agent/onboard \
   -H 'content-type: application/json' \
   -d '{"email":"you@example.com","agent_name":"SmokeTest"}'
 ```
 
-Sign in at `https://agentleak.org` with your own account **first** — the
+Sign in at `https://www.agentleak.org` with your own account **first** — the
 first account created on a fresh instance becomes the platform admin.
 
 ---

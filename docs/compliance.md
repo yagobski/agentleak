@@ -204,7 +204,7 @@ RAG disclosure, and exfiltration. It is a starting point—not a substitute for
 architecture-specific plugin selection.
 
 For the hosted documentation, see
-[`/docs/privacy-compliance`](https://agentleak.org/docs/privacy-compliance).
+[`/docs/privacy-compliance`](https://www.agentleak.org/docs/privacy-compliance).
 
 ## Add or adjust a framework
 

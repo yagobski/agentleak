@@ -4,6 +4,7 @@ import {
   FAQ_ITEMS,
   FEATURE_PAGES,
   FaqItem,
+  SITE_URL,
   SiteFooter,
   SiteNav,
   usePageMeta,
@@ -277,7 +278,7 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
       { title: "Improve and loop", body: "POST /api/agent/improve to get a delta versus the previous run and priority-sorted next steps, then repeat until clean." },
     ],
     snippetLabel: "Onboard an agent in one call",
-    snippet: "curl -sX POST https://agentleak.org/api/agent/onboard \\\n  -H 'content-type: application/json' \\\n  -d '{\"email\":\"agent@example.com\",\"agent_name\":\"SupportBot\"}'",
+    snippet: "curl -sX POST https://www.agentleak.org/api/agent/onboard \\\n  -H 'content-type: application/json' \\\n  -d '{\"email\":\"agent@example.com\",\"agent_name\":\"SupportBot\"}'",
   },
 }
 
@@ -298,6 +299,16 @@ export function FeaturePage() {
   usePageMeta(
     content?.metaTitle ?? "Feature · AgentLeak",
     content?.metaDescription ?? "",
+    content ? {
+      structuredData: {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: content.title,
+        description: content.metaDescription,
+        url: `${SITE_URL}/features/${slug}`,
+        isPartOf: { "@type": "WebSite", name: "AgentLeak", url: SITE_URL },
+      },
+    } : { noIndex: true },
   )
   if (!content) return <Navigate to="/" replace />
 

@@ -228,7 +228,7 @@ class Config(BaseModel):
 
 
 DEFAULT_CONFIG_YAML = """\
-# yaml-language-server: $schema=https://agentleak.org/api/schemas/config
+# yaml-language-server: $schema=https://www.agentleak.org/api/schemas/config
 project:
   name: my-agent-test
   description: Privacy leakage test for my AI agent

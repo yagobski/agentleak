@@ -5,7 +5,7 @@ import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 
 export const PAPER_URL = "https://arxiv.org/abs/2602.11510"
 export const REPO_URL = "https://github.com/yagobski/agentleak-oss"
-export const SITE_URL = "https://agentleak.org"
+export const SITE_URL = "https://www.agentleak.org"
 
 type PageMetaOptions = {
   noIndex?: boolean
@@ -174,7 +174,7 @@ export function SiteNav() {
       <Brand />
       <nav aria-label="Main navigation">
         <div className="cursor-nav-item">
-          <Link to="/features/trace-analysis">Product</Link>
+          <Link to="/features">Product</Link>
           <div className="cursor-nav-menu" role="menu">
             {FEATURE_PAGES.map((page) => (
               <Link key={page.slug} to={`/features/${page.slug}`} role="menuitem">
@@ -184,11 +184,11 @@ export function SiteNav() {
           </div>
         </div>
         <div className="cursor-nav-item">
-          <Link to="/docs">Resources</Link>
+          <Link to="/use-cases/multi-agent-privacy">Solutions</Link>
           <div className="cursor-nav-menu" role="menu">
-            <Link to="/docs" role="menuitem"><b>Documentation</b><small>Concepts, guides and API</small></Link>
-            <Link to="/research" role="menuitem"><b>Research</b><small>The papers behind the scores</small></Link>
-            <a href={REPO_URL} role="menuitem"><b>GitHub</b><small>MIT-licensed source</small></a>
+            <Link to="/use-cases/multi-agent-privacy" role="menuitem"><b>Multi-agent privacy</b><small>Trace leaks across handoffs and memory</small></Link>
+            <Link to="/security" role="menuitem"><b>Security architecture</b><small>Local execution, redaction and isolation</small></Link>
+            <Link to="/docs/integrations" role="menuitem"><b>Framework integrations</b><small>LangGraph, CrewAI, MCP and OpenTelemetry</small></Link>
           </div>
         </div>
         <Link to="/research">Research</Link>
@@ -214,6 +214,9 @@ export function SiteNav() {
           {FEATURE_PAGES.map((page) => (
             <Link key={page.slug} to={`/features/${page.slug}`}>{page.title}</Link>
           ))}
+          <span>Solutions</span>
+          <Link to="/use-cases/multi-agent-privacy">Multi-agent privacy</Link>
+          <Link to="/security">Security architecture</Link>
           <span>Resources</span>
           <Link to="/docs">Documentation</Link>
           <Link to="/research">Research</Link>
@@ -234,7 +237,8 @@ export function SiteFooter() {
       <div className="cursor-footer-grid">
         <Brand />
         <div><h3>Product</h3>{FEATURE_PAGES.map((page) => <Link key={page.slug} to={`/features/${page.slug}`}>{page.title}</Link>)}</div>
-        <div><h3>Resources</h3><Link to="/docs">Documentation</Link><Link to="/research">Research</Link><Link to="/#faq">Questions</Link><Link to="/docs/agents">For agents</Link></div>
+        <div><h3>Resources</h3><Link to="/docs">Documentation</Link><Link to="/docs/getting-started">Getting started</Link><Link to="/docs/integrations">Integrations</Link><Link to="/docs/scoring">Scoring</Link><Link to="/research">Research</Link></div>
+        <div><h3>Company</h3><Link to="/about">About</Link><Link to="/security">Security</Link><Link to="/use-cases/multi-agent-privacy">Multi-agent privacy</Link><Link to="/#faq">Questions</Link></div>
         <div><h3>Open source</h3><a href={REPO_URL}>GitHub</a><a href="/openapi.json">OpenAPI</a><a href="/llms.txt">llms.txt</a><a href={PAPER_URL}>arXiv:2602.11510</a></div>
       </div>
       <div className="cursor-footer-bar">

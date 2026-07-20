@@ -5,7 +5,8 @@ per-IP throttling, BYOK, secure cookies) behind a reverse proxy, coexisting
 with anything already running on the box (e.g. ournia.com).
 
 The app **never binds a public port itself** — it listens on `127.0.0.1:8787`
-and a reverse proxy terminates TLS for `agentleak.org`.
+and a reverse proxy terminates TLS for both hostnames. `https://www.agentleak.org`
+is canonical; the apex redirects to the same path on `www`.
 
 ## 0. Prerequisites
 
@@ -50,7 +51,8 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d agentleak.org -d www.agentleak.org  # obtains + wires the certificate
 ```
 
-`certbot` edits the vhost to add the TLS block and the 80→443 redirect. Done.
+`certbot` edits the vhost to add TLS. Keep the apex as a path-preserving 301 to
+`https://www.agentleak.org`; only the `www` TLS vhost should proxy the app.
 
 ## 2B. Path B — bundled Caddy (only if 80/443 are free)
 
@@ -64,17 +66,17 @@ else to do.
 ## 3. Verify
 
 ```bash
-curl -fsS https://agentleak.org/api/health     # {"status":"ok","version":"0.7.x"}
-curl -fsS https://agentleak.org/api/meta | jq .free_tier
+curl -fsS https://www.agentleak.org/api/health     # {"status":"ok","version":"0.7.x"}
+curl -fsS https://www.agentleak.org/api/meta | jq .free_tier
 
 # Full agent flow, end to end:
-curl -sX POST https://agentleak.org/api/agent/onboard \
+curl -sX POST https://www.agentleak.org/api/agent/onboard \
   -H 'content-type: application/json' \
   -d '{"email":"smoke@fomox.com","agent_name":"SmokeBot"}'
 ```
 
 The first account created becomes the **admin** — register your own account
-first at `https://agentleak.org`, then use the admin console at `/admin`.
+first at `https://www.agentleak.org`, then use the admin console at `/admin`.
 
 ## 4. Operations
 

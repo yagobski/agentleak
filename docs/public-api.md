@@ -4,7 +4,7 @@ AgentLeak Cloud is a **free, self-serve privacy-testing service for AI agents**.
 An agent can onboard itself, test its own privacy behavior, and get
 machine-actionable fixes — with no human, no dashboard, and no browser.
 
-- **Base URL (hosted):** `https://agentleak.org`
+- **Base URL (hosted):** `https://www.agentleak.org`
 - **Free detection is genuinely free.** Regex / Presidio / entropy / de-obfuscation
   run on the platform at no cost to you.
 - **LLM tiers are bring-your-own-key (BYOK).** The LLM-judge detector and live
@@ -15,7 +15,7 @@ machine-actionable fixes — with no human, no dashboard, and no browser.
 
 Everything below is a plain HTTP call — copy/paste into any language.
 
-Machine-readable discovery is available at `https://agentleak.org/llms.txt`,
+Machine-readable discovery is available at `https://www.agentleak.org/llms.txt`,
 normative autonomous-agent instructions at `/agents.md`, the integrated API
 reference at `/docs/api`, and the OpenAPI schema at `/openapi.json`. Swagger
 still exists at `/api/docs`, but `/docs/api` is the recommended human-readable
@@ -26,7 +26,7 @@ API guide.
 ## 1. Onboard in one call
 
 ```bash
-curl -sX POST https://agentleak.org/api/agent/onboard \
+curl -sX POST https://www.agentleak.org/api/agent/onboard \
   -H 'content-type: application/json' \
   -d '{"email":"you@example.com","agent_name":"SupportBot"}'
 ```
@@ -62,7 +62,7 @@ Declare identity, capabilities, and where your source lives so a code scan can
 find it automatically.
 
 ```bash
-curl -sX POST https://agentleak.org/api/agent/register \
+curl -sX POST https://www.agentleak.org/api/agent/register \
   -H "X-AgentLeak-Key: $KEY" -H 'content-type: application/json' \
   -d '{"agent_card": {
         "name": "SupportBot",
@@ -81,7 +81,7 @@ data sent to third parties, decomposed/obfuscated identifiers, quasi-identifier
 correlation. Submit files inline, a zip, or let it re-scan the card's repo.
 
 ```bash
-curl -sX POST https://agentleak.org/api/agent/code \
+curl -sX POST https://www.agentleak.org/api/agent/code \
   -H "X-AgentLeak-Key: $KEY" -H 'content-type: application/json' \
   -d '{"source":"files","files":[
         {"path":"agent.py","content":"API_KEY=\"sk-live-…\"\nprint(user_ssn)"}
@@ -100,7 +100,7 @@ scenario — and get a full leak analysis. Any OpenAI-style chat log
 (`{"messages":[…]}`) is accepted and mapped onto channels automatically.
 
 ```bash
-curl -sX POST https://agentleak.org/api/selftest \
+curl -sX POST https://www.agentleak.org/api/selftest \
   -H "X-AgentLeak-Key: $KEY" -H 'content-type: application/json' \
   -d '{"trace": {"agent_name":"SupportBot","events":[
         {"channel":"tool_call","source":"agent","target":"crm",
@@ -122,7 +122,7 @@ ready-to-paste code).
 previous run, returning a `delta` and prioritized `next_steps`:
 
 ```bash
-curl -sX POST https://agentleak.org/api/agent/improve \
+curl -sX POST https://www.agentleak.org/api/agent/improve \
   -H "X-AgentLeak-Key: $KEY" -H 'content-type: application/json' \
   -d '{"scenario_id":"finance_loan_review"}'
 ```

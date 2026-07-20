@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { BrandLogo, ECOSYSTEM_LOGOS } from "@/features/BrandLogos"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
+import { FeaturePrinciples } from "@/features/FeaturePrinciples"
 import {
   AgentTerminal,
   Arrow,
@@ -319,16 +320,11 @@ export function Landing() {
     {
       structuredData: {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        name: "AgentLeak",
-        applicationCategory: "DeveloperApplication",
-        operatingSystem: "Linux, macOS, Windows",
-        description: "Open-source privacy testing for AI agents across tool calls, memory, messages, logs, files and final output.",
-        url: SITE_URL,
-        downloadUrl: REPO_URL,
-        license: "https://opensource.org/license/mit",
-        isAccessibleForFree: true,
-        codeRepository: REPO_URL,
+        "@graph": [
+          { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: "AgentLeak", url: SITE_URL, sameAs: [REPO_URL] },
+          { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "AgentLeak", url: SITE_URL, publisher: { "@id": `${SITE_URL}/#organization` } },
+          { "@type": "SoftwareApplication", name: "AgentLeak", applicationCategory: "DeveloperApplication", operatingSystem: "Linux, macOS, Windows", description: "Open-source privacy testing for AI agents across tool calls, memory, messages, logs, files and final output.", url: SITE_URL, downloadUrl: REPO_URL, license: "https://opensource.org/license/mit", isAccessibleForFree: true, codeRepository: REPO_URL, publisher: { "@id": `${SITE_URL}/#organization` } },
+        ],
       },
     },
   )
@@ -367,6 +363,8 @@ export function Landing() {
           </div>
           <p>Compatibility, not customer endorsement. Framework adapters, OpenTelemetry ingestion and generic traces all normalize to one AgentLeak schema.</p>
         </section>
+
+        <FeaturePrinciples />
 
         <section className="cursor-capabilities">
           <header>

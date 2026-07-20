@@ -18,6 +18,7 @@ import { FeaturePage } from "./pages/FeaturePage"
 import { Landing } from "./pages/Landing"
 import { Login } from "./pages/Login"
 import { Research } from "./pages/Research"
+import { FeaturesHub, SeoPage } from "./pages/SeoPages"
 import { Playground } from "./pages/Playground"
 import { ProjectDetail } from "./pages/ProjectDetail"
 import { Projects } from "./pages/Projects"
@@ -89,10 +90,17 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/features" element={<FeaturesHub />} />
         <Route path="/features/:slug" element={<FeaturePage />} />
+        <Route path="/security" element={<SeoPage />} />
+        <Route path="/use-cases/multi-agent-privacy" element={<SeoPage />} />
+        <Route path="/about" element={<SeoPage />} />
         <Route path="/research" element={<Research />} />
         <Route path="/faq" element={<Navigate to="/#faq" replace />} />
         <Route path="/docs" element={<Documentation />} />
+        <Route path="/docs/getting-started" element={<Documentation audience="gettingStarted" />} />
+        <Route path="/docs/integrations" element={<Documentation audience="integrations" />} />
+        <Route path="/docs/scoring" element={<Documentation audience="scoring" />} />
         <Route path="/docs/developers" element={<Documentation audience="developers" />} />
         <Route path="/docs/agents" element={<Documentation audience="agents" />} />
         <Route path="/docs/api" element={<Documentation audience="api" />} />
@@ -116,9 +124,16 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="features/:slug" element={<FeaturePage />} />
+      <Route path="features" element={<FeaturesHub />} />
+      <Route path="security" element={<SeoPage />} />
+      <Route path="use-cases/multi-agent-privacy" element={<SeoPage />} />
+      <Route path="about" element={<SeoPage />} />
       <Route path="research" element={<Research />} />
       <Route path="faq" element={<Navigate to="/" replace />} />
       <Route path="docs" element={<Documentation />} />
+      <Route path="docs/getting-started" element={<Documentation audience="gettingStarted" />} />
+      <Route path="docs/integrations" element={<Documentation audience="integrations" />} />
+      <Route path="docs/scoring" element={<Documentation audience="scoring" />} />
       <Route path="docs/developers" element={<Documentation audience="developers" />} />
       <Route path="docs/agents" element={<Documentation audience="agents" />} />
       <Route path="docs/api" element={<Documentation audience="api" />} />

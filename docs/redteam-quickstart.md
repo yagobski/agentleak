@@ -7,7 +7,7 @@ campaign reproducible and lets teams compare the same matrix after a fix.
 ## 1. Inspect the catalog
 
 ```bash
-curl -sS https://agentleak.org/api/redteam/catalog | jq
+curl -sS https://www.agentleak.org/api/redteam/catalog | jq
 ```
 
 The catalog exposes 46 attack classes, 24 native plugins, 38 Promptfoo privacy/security

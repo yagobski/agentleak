@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import uuid
 from pathlib import Path
@@ -51,10 +52,79 @@ from ..scenarios.packs import expand_pack, list_packs
 from .docs_content import agent_instructions, llms_full, llms_index, official_platform_card
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
+_SITE_URL = "https://www.agentleak.org"
+_PUBLIC_PAGE_META: dict[str, tuple[str, str]] = {
+    "": ("AgentLeak — privacy tests for agent systems", "Local, open-source privacy testing for agent and multi-agent systems across tools, memory, messages, logs, files and final output."),
+    "features": ("AgentLeak features — complete AI agent privacy testing", "Explore trace analysis, AgentRisk scoring, red teaming, code scanning, CI policy gates and autonomous agent privacy APIs."),
+    "features/trace-analysis": ("AI agent trace analysis — AgentLeak", "Find privacy leaks across tool calls, memory, inter-agent messages, logs, generated files and final output with trace-linked evidence."),
+    "features/agentrisk": ("AgentRisk privacy scoring — AgentLeak", "Measure AI agent privacy leakage with a severity-weighted risk index, an explicit audited vault and per-channel evidence."),
+    "features/red-team": ("AI agent privacy red teaming — AgentLeak", "Run reproducible privacy and agent-security attacks across prompts, tools, RAG, MCP, memory and multi-agent systems."),
+    "features/code-scan": ("AI agent static code scan — AgentLeak", "Scan agent source code for unsafe logging, prompt construction, secret handling and privacy risks before execution."),
+    "features/ci-gate": ("AI agent privacy CI gate — AgentLeak", "Block privacy regressions with deterministic thresholds, JSON evidence and copy-ready GitHub, GitLab and Jenkins workflows."),
+    "features/agent-api": ("Autonomous agent privacy API — AgentLeak", "Let autonomous agents register, self-test, inspect privacy findings, apply remediation and verify improvements through a public API."),
+    "security": ("AgentLeak security architecture", "Review AgentLeak's local-first processing, redaction boundary, deterministic controls, secret handling and deployment security model."),
+    "use-cases/multi-agent-privacy": ("Multi-agent privacy testing — AgentLeak", "Audit sensitive data as it moves through agent handoffs, shared memory, tools, retrieval, logs, files and final responses."),
+    "about": ("About AgentLeak", "Learn why AgentLeak is building open, reproducible privacy testing for AI agents and multi-agent systems."),
+    "research": ("AgentLeak research", "Read the AgentRisk methodology and research behind severity-weighted, detector-agnostic privacy leakage measurement for AI agents."),
+    "docs": ("AgentLeak documentation", "Learn how AgentLeak captures, detects, scores and blocks privacy leakage across every AI agent execution channel."),
+    "docs/getting-started": ("AgentLeak quickstart", "Install AgentLeak, run a deterministic privacy test and analyze your first AI agent trace in five minutes."),
+    "docs/developers": ("AgentLeak developer guide", "Install the Python SDK, capture agent traces, configure privacy detection and enforce deterministic CI policy gates."),
+    "docs/integrations": ("AgentLeak integrations", "Capture agent privacy evidence from LangChain, LangGraph, CrewAI, OpenAI Agents, AutoGen, LlamaIndex, Google ADK and custom runtimes."),
+    "docs/scoring": ("AgentRisk scoring guide", "Understand AgentLeak's severity-weighted risk index, audited vault denominator, privacy score and deterministic policy gates."),
+    "docs/agents": ("AgentLeak instructions for autonomous agents", "Machine-oriented instructions for agents to register, self-test, remediate privacy findings and verify improvements."),
+    "docs/api": ("AgentLeak API reference", "Authentication, endpoints, request schemas and responses for AI agent privacy testing and autonomous improvement."),
+    "docs/privacy-compliance": ("AI agent privacy compliance — AgentLeak", "Build trace-linked evidence for GDPR, Law 25, HIPAA, PCI-DSS, NIST AI RMF, OWASP LLM and EU AI Act controls."),
+    "docs/red-team": ("AgentLeak red-team quickstart", "Run privacy and agent-security campaigns with executable plugins, delivery strategies and reproducible evidence."),
+    "docs/red-team/configuration": ("AgentLeak red-team configuration", "Configure plugins, strategies, targets, adversary levels, execution modes, budgets and report limits."),
+    "docs/red-team/architecture": ("AgentLeak red-team architecture", "See how AgentLeak generates probes, drives targets, captures traces, detects disclosures and stores evidence."),
+    "docs/red-team/vulnerabilities": ("AI agent vulnerability types — AgentLeak", "Explore the F1–F6 privacy taxonomy across prompts, tools, RAG, memory, multi-agent systems, reasoning and evasion."),
+    "docs/red-team/llm-vulnerability-types": ("LLM vulnerability types — AgentLeak", "Explore AgentLeak's F1–F6 taxonomy for privacy and security testing of agentic AI systems."),
+    "docs/red-team/plugins": ("AgentLeak red-team plugins", "Browse executable privacy plugins for PII, authorization, tools, RAG, MCP, memory and coding agents."),
+    "docs/red-team/strategies": ("AgentLeak attack strategies", "Use direct, encoded, obfuscated, structured and multi-turn delivery strategies for reproducible agent testing."),
+    "docs/ci-cd": ("AgentLeak CI/CD guide", "Add AI agent privacy gates to GitHub Actions, GitLab CI or Jenkins and retain machine-readable evidence."),
+}
 _GUI_IMPORT_ERROR = (
     "The web GUI needs FastAPI and uvicorn. Install them with:\n"
     "    pip install 'agentleak[gui]'"
 )
+
+
+def _spa_metadata(full_path: str) -> tuple[str, str, str, bool]:
+    """Return title, description, canonical URL and indexability for a SPA path."""
+    path = full_path.strip("/")
+    metadata = _PUBLIC_PAGE_META.get(path)
+    if metadata is None and path.startswith("docs/red-team/plugins/"):
+        plugin_name = path.rsplit("/", 1)[-1].replace("-", " ")
+        metadata = (
+            f"{plugin_name.title()} privacy test — AgentLeak",
+            f"Machine-verifiable AgentLeak definition and evidence contract for the {plugin_name} red-team plugin.",
+        )
+    if metadata is None:
+        home = _PUBLIC_PAGE_META[""]
+        return home[0], home[1], f"{_SITE_URL}/", False
+    canonical = f"{_SITE_URL}/{path}" if path else f"{_SITE_URL}/"
+    return metadata[0], metadata[1], canonical, True
+
+
+def _render_spa_html(template: str, full_path: str) -> str:
+    """Inject route-level metadata into the built SPA shell for crawlers and previews."""
+    title, description, canonical, indexable = _spa_metadata(full_path)
+    robots = "index, follow, max-image-preview:large" if indexable else "noindex, nofollow"
+    replacements = {
+        r"<title>.*?</title>": f"<title>{title}</title>",
+        r'<meta name="description" content="[^"]*"\s*/?>': f'<meta name="description" content="{description}" />',
+        r'<meta name="robots" content="[^"]*"\s*/?>': f'<meta name="robots" content="{robots}" />',
+        r'<link rel="canonical" href="[^"]*"\s*/?>': f'<link rel="canonical" href="{canonical}" />',
+        r'<meta property="og:title" content="[^"]*"\s*/?>': f'<meta property="og:title" content="{title}" />',
+        r'<meta property="og:description" content="[^"]*"\s*/?>': f'<meta property="og:description" content="{description}" />',
+        r'<meta property="og:url" content="[^"]*"\s*/?>': f'<meta property="og:url" content="{canonical}" />',
+        r'<meta name="twitter:title" content="[^"]*"\s*/?>': f'<meta name="twitter:title" content="{title}" />',
+        r'<meta name="twitter:description" content="[^"]*"\s*/?>': f'<meta name="twitter:description" content="{description}" />',
+    }
+    rendered = template
+    for pattern, replacement in replacements.items():
+        rendered = re.sub(pattern, replacement, rendered, count=1, flags=re.DOTALL)
+    return rendered
 
 
 def _load_dotenv() -> None:
@@ -622,6 +692,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         base = str(request.base_url).rstrip("/")
         forwarded = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().lower()
         hostname = request.url.hostname or ""
+        if limits.public_mode and hostname in {"agentleak.org", "www.agentleak.org"}:
+            return _SITE_URL
         use_https = forwarded == "https" or (
             limits.public_mode and hostname not in {"localhost", "127.0.0.1", "testserver"}
         )
@@ -1812,13 +1884,13 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "requires": list(plugin.requires),
             "implementation": plugin.implementation,
             "native_id": plugin.native_id,
-            "docs_url": f"https://agentleak.org/docs/red-team/plugins/{plugin.id}",
+            "docs_url": f"https://www.agentleak.org/docs/red-team/plugins/{plugin.id}",
             "source_url": (
                 "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/attacks.py"
                 if plugin.implementation == "native"
                 else "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/promptfoo_attacks.py"
             ),
-            "catalog_url": "https://agentleak.org/api/redteam/catalog",
+            "catalog_url": "https://www.agentleak.org/api/redteam/catalog",
         }
 
     @app.post("/api/projects/{pid}/redteam")
@@ -2363,8 +2435,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         assets = _STATIC_DIR / "assets"
         if assets.exists():
             app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
+        index_template = index_file.read_text(encoding="utf-8")
 
-        @app.get("/{full_path:path}", include_in_schema=False)
+        @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
         def spa(full_path: str):
             # API routes above take precedence; unknown /api paths 404.
             if full_path.startswith("api/"):
@@ -2372,7 +2445,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             candidate = _STATIC_DIR / full_path
             if full_path and candidate.is_file() and candidate.resolve().is_relative_to(_STATIC_DIR.resolve()):
                 return FileResponse(candidate)
-            return FileResponse(index_file)  # client-side routing
+            return HTMLResponse(_render_spa_html(index_template, full_path))  # client-side routing
     elif not _serve_ui:  # pragma: no cover
         # Dev mode — the Vite server at :5173 is the UI; this process is API only.
         # No root route registered → FastAPI returns 404 for non-API paths.

@@ -51,7 +51,7 @@ reveal file names, channels, tools and workflow structure, so protect it.
 ## Machine contracts
 
 ```bash
-curl -sS https://agentleak.org/api/schemas/analysis-report
+curl -sS https://www.agentleak.org/api/schemas/analysis-report
 agentleak schema analysis-report
 ```
 
