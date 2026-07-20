@@ -126,6 +126,11 @@ RequestHeader set X-Forwarded-Proto "https"
 Use `Redirect permanent / https://www.agentleak.org/` in the apex TLS vhost.
 Apache appends the unmatched path and preserves the query string.
 
+Once the certificate exists, the repository includes the complete canonical
+production pair in `apache-agentleak.org-live-http.conf` and
+`apache-agentleak.org-live-ssl.conf`. Copy them over the enabled HTTP and TLS
+vhosts, run `apache2ctl configtest`, then reload Apache.
+
 This obtains the certificate, writes a new
 `sites-available/zzz-agentleak-le-ssl.conf`-style vhost (certbot names it after
 your original file, so it inherits the `zzz-` prefix automatically), and adds
