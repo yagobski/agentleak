@@ -93,84 +93,87 @@ function MomentumVisual() {
 
 function CodeScanVisual() {
   return (
-    <svg className="principle-code-scan" viewBox="0 0 304 281" role="img" aria-label="Source files passing through a layered privacy scan">
-      <g className="code-scan-files">
-        {[0, 1, 2, 3].map((index) => (
-          <g key={index} transform={`translate(${38 + index * 17} ${67 - index * 13})`}>
-            <g className="code-scan-file" style={{ "--file-index": index } as React.CSSProperties}>
-              <path className="principle-panel" d="M3 54 83 14a7 7 0 0 1 6.26 0L163 50.87a4 4 0 0 1 2.21 3.58v54.1a4 4 0 0 1-2.21 3.58l-80 40a7 7 0 0 1-6.26 0L3 115.26a4 4 0 0 1-2.21-3.58V57.58A4 4 0 0 1 3 54Z" />
-              <path className="principle-detail" d="m1.4 56.2 75.34 37.67a7 7 0 0 0 6.26 0l81.6-40.8M79.87 95.4v54.7" />
-              <path className="code-glyph" d="m47 66-10 5 10 5M70 55l-9 31M83 48l10 5-10 5" />
-            </g>
-          </g>
-        ))}
+    <svg className="principle-code-scan" viewBox="0 0 304 281" role="img" aria-label="AgentLeak code scan linking a source line to a privacy finding">
+      <g className="source-window">
+        <rect x="18" y="35" width="214" height="174" rx="8" />
+        <path d="M18 62h214M72 62v147" />
+        <circle cx="32" cy="49" r="2" /><circle cx="40" cy="49" r="2" /><circle cx="48" cy="49" r="2" />
+        <text x="82" y="51">agent.py</text>
+        <g className="source-tree">
+          <text x="29" y="82">src</text><text x="36" y="101">agent.py</text><text x="36" y="120">tools.py</text><text x="29" y="139">tests</text>
+          <path d="M29 87v36M29 98h5M29 117h5" />
+        </g>
+        <g className="source-code">
+          <text x="82" y="82">38</text><path d="M104 79h62M170 79h31" />
+          <text x="82" y="101">39</text><path d="M104 98h28M137 98h50" />
+          <text x="82" y="120">40</text><path d="M104 117h76" />
+          <text x="82" y="139">41</text><path d="M104 136h42M151 136h58" />
+          <g className="leaking-line"><rect x="76" y="146" width="150" height="19" rx="3" /><text x="82" y="159">42</text><path d="M104 156h41M150 156h48" /><circle cx="216" cy="156" r="3" /></g>
+          <text x="82" y="181">43</text><path d="M104 178h57" />
+        </g>
+        <g className="repository-scanner"><rect x="0" y="63" width="32" height="145" /><path d="M16 63v145" /></g>
       </g>
-      <g className="scan-plane">
-        <path d="M28 112.5 142.5 55a10 10 0 0 1 9 0L276 117.25 151.5 179.5a10 10 0 0 1-9 0Z" />
-        <path className="scan-line" d="m55 126 116-58" />
-        <path className="scan-line scan-line-delayed" d="m91 144 116-58" />
-      </g>
-      <g className="principle-guides"><path d="M28 113v52M276 117v52M147 181v53" /></g>
-      <g className="scan-findings">
-        <circle cx="94" cy="129" r="3" /><circle cx="172" cy="91" r="3" /><circle cx="215" cy="123" r="3" />
+      <g className="source-finding">
+        <path className="finding-connector" d="M216 156c30 0 18 48 34 48" />
+        <rect x="174" y="190" width="112" height="58" rx="7" />
+        <text className="finding-level" x="187" y="207">L4 · SECRET</text>
+        <text x="187" y="224">logger.py:42</text>
+        <path className="finding-rule" d="M187 236h65" /><circle cx="272" cy="205" r="4" />
       </g>
     </svg>
   )
 }
 
 function RedTeamVisual() {
-  const probes = [
-    [28, 66, 92, 112], [270, 54, 210, 103], [282, 192, 218, 166], [40, 221, 96, 172],
-  ] as const
   return (
-    <svg className="principle-redteam" viewBox="0 0 304 281" role="img" aria-label="Adversarial probes testing a protected agent boundary">
-      <g className="redteam-rings">
-        <path className="principle-panel" d="m151.5 26 103 51.5v109L151.5 238 48.5 186.5v-109Z" />
-        <path d="m151.5 54 75 37.5v81l-75 37.5-75-37.5v-81Z" />
-        <path d="m151.5 82 47 23.5v53l-47 23.5-47-23.5v-53Z" />
+    <svg className="principle-redteam" viewBox="0 0 304 281" role="img" aria-label="AgentLeak red-team campaign matrix across attack classes and execution channels">
+      <g className="campaign-window">
+        <rect x="24" y="28" width="256" height="218" rx="8" />
+        <path d="M24 59h256M100 59v187" />
+        <text className="campaign-title" x="38" y="48">CAMPAIGN 07</text><text className="campaign-count" x="225" y="48">12 TESTS</text>
+        <g className="campaign-columns"><text x="119" y="76">IN</text><text x="158" y="76">TOOL</text><text x="205" y="76">MEM</text><text x="250" y="76">OUT</text></g>
+        <g className="campaign-rows">
+          <text x="38" y="103">PROMPT</text><text x="38" y="137">ENCODE</text><text x="38" y="171">TOOL</text><text x="38" y="205">HANDOFF</text>
+          {[91, 125, 159, 193].map((y) => <path key={y} d={`M100 ${y}h180`} />)}
+          {[115, 158, 202, 246].map((x) => <path key={x} d={`M${x} 82v126`} />)}
+        </g>
+        <g className="campaign-cells">
+          {[[122,98,"pass"],[165,98,"blocked"],[209,98,"pass"],[253,98,"blocked"],[122,132,"blocked"],[165,132,"pass"],[209,132,"blocked"],[253,132,"pass"],[122,166,"pass"],[165,166,"blocked"],[209,166,"blocked"],[253,166,"pass"],[122,200,"blocked"],[165,200,"pass"],[209,200,"pass"],[253,200,"blocked"]].map(([cx,cy,state], index) => (
+            <g className={`campaign-cell ${state}`} key={index} style={{ "--cell-index": index } as React.CSSProperties}><circle cx={cx as number} cy={cy as number} r="5" />{state === "blocked" && <path d={`m${(cx as number)-2.5} ${cy} 2 2 4-5`} />}</g>
+          ))}
+        </g>
       </g>
-      <g className="redteam-core">
-        <path className="principle-surface" d="m151.5 102 27 13.5v32l-27 13.5-27-13.5v-32Z" />
-        <path className="principle-detail" d="m125 115.5 26.5 13.25 27-13.5M151.5 129v31" />
-        <DotGrid x={144.5} y={119} delay={0.2} />
+      <g className="campaign-summary">
+        <text x="38" y="229">DEFENSE RATE</text><text className="campaign-score" x="245" y="229">75%</text>
+        <path d="M112 226h104" /><path className="campaign-progress" d="M112 226h78" />
       </g>
-      <g className="redteam-probes">
-        {probes.map(([x1, y1, x2, y2], index) => (
-          <g key={x1} style={{ "--probe-index": index } as React.CSSProperties}>
-            <path d={`M${x1} ${y1} ${x2} ${y2}`} />
-            <circle cx={x1} cy={y1} r="5" />
-            <path className="probe-arrow" d={`m${x2 - 8} ${y2 - 7} 8 7-10 2`} />
-          </g>
-        ))}
-      </g>
-      <g className="redteam-blocks"><circle cx="92" cy="112" r="4" /><circle cx="210" cy="103" r="4" /><circle cx="218" cy="166" r="4" /><circle cx="96" cy="172" r="4" /></g>
     </svg>
   )
 }
 
 function RemediationVisual() {
   return (
-    <svg className="principle-remediation" viewBox="0 0 304 281" role="img" aria-label="An agent moving through policy checks into a verified remediation loop">
-      <g className="remediation-rail">
-        <path d="M35 144h62M207 144h62" /><path className="rail-return" d="M249 168c0 48-194 48-194 0" />
+    <svg className="principle-remediation" viewBox="0 0 304 281" role="img" aria-label="AgentLeak remediation loop from finding to patch to verified lower risk">
+      <path className="remediation-loop" d="M246 218c35 0 34-178-4-178M62 224c-45 0-44-178 0-178" />
+      <g className="remediation-card finding-card">
+        <rect x="38" y="26" width="214" height="63" rx="7" />
+        <text className="card-kicker" x="52" y="44">01 · FINDING</text><text className="card-risk high" x="209" y="44">0.74</text>
+        <text x="52" y="63">tool_call · customer.email</text>
+        <path d="M52 75h75M134 75h46" /><circle cx="238" cy="65" r="4" />
       </g>
-      <g className="remediation-node remediation-agent">
-        <path className="principle-panel" d="m35 112 30-15 30 15v48l-30 15-30-15Z" />
-        <path className="principle-detail" d="m35 112 30 15 30-15M65 127v48" />
-        <DotGrid x={58} y={111} delay={0} />
+      <g className="remediation-arrow"><path d="M152 89v17" /><path d="m148 102 4 4 4-4" /></g>
+      <g className="remediation-card patch-card">
+        <rect x="38" y="106" width="214" height="74" rx="7" />
+        <text className="card-kicker" x="52" y="124">02 · PATCH</text><text className="card-status" x="207" y="124">APPLIED</text>
+        <text className="diff-remove" x="52" y="145">− send(raw_email)</text>
+        <text className="diff-add" x="52" y="165">+ send(redact(raw_email))</text>
       </g>
-      <g className="remediation-gate">
-        <path className="principle-surface" d="m105 91 47-23.5L199 91v106l-47 23.5-47-23.5Z" />
-        <path className="principle-detail" d="m105 91 47 23.5L199 91M152 114.5v106" />
-        <path className="gate-check" d="m132 156 13 13 28-35" />
-        <path className="gate-threshold" d="M119 185h66" />
+      <g className="remediation-arrow"><path d="M152 180v17" /><path d="m148 193 4 4 4-4" /></g>
+      <g className="remediation-card verify-card">
+        <rect x="38" y="197" width="214" height="58" rx="7" />
+        <text className="card-kicker" x="52" y="215">03 · RE-TEST</text><text className="card-risk low" x="209" y="215">0.08</text>
+        <circle cx="62" cy="235" r="7" /><path className="verify-check" d="m58.5 235 2.5 2.5 5-6" /><text x="77" y="239">POLICY PASSED</text>
       </g>
-      <g className="remediation-node remediation-output">
-        <path className="principle-panel" d="m209 112 30-15 30 15v48l-30 15-30-15Z" />
-        <path className="principle-detail" d="m209 112 30 15 30-15M239 127v48" />
-        <path className="output-spark" d="M239 108v12M228 114l11 6 11-6" />
-      </g>
-      <g className="remediation-packets"><circle cx="101" cy="144" r="3" /><circle cx="203" cy="144" r="3" /><circle cx="152" cy="211" r="3" /></g>
     </svg>
   )
 }

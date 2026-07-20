@@ -1239,46 +1239,55 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
 .momentum-panel path:first-child { fill: #08090a; stroke: #62666d; stroke-width: .5; filter: drop-shadow(0 5px 8px rgba(0,0,0,.72)); }
 .momentum-panel { transform-box: fill-box; transform-origin: center; animation: momentum-wave 5.8s cubic-bezier(.45,0,.2,1) infinite; animation-delay: calc(var(--panel-index) * -90ms); }
 .principle-panel { fill: #08090a; stroke: #62666d; stroke-width: .5; }
-.code-scan-file { transform-box: fill-box; transform-origin: center; animation: code-file-lift 6s ease-in-out infinite; animation-delay: calc(var(--file-index) * -420ms); }
-.code-glyph, .gate-check, .output-spark { fill: none; stroke: #a5a8af; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
-.scan-plane > path:first-child { fill: rgba(93,105,255,.055); stroke: #747883; stroke-width: .6; }
-.scan-line { fill: none; stroke: #707cff; stroke-width: 1.1; stroke-dasharray: 2 5; animation: scan-line-pass 3.8s linear infinite; }
-.scan-line-delayed { animation-delay: -1.9s; }
-.scan-findings circle { fill: #ff8257; animation: finding-pulse 2.4s ease-in-out infinite; }
-.scan-findings circle, .remediation-packets circle { transform-box: fill-box; transform-origin: center; }
-.scan-findings circle:nth-child(2) { animation-delay: -.8s; }.scan-findings circle:nth-child(3) { animation-delay: -1.6s; }
-.redteam-rings > path { fill: none; stroke: #4d5159; stroke-width: .6; }
-.redteam-rings > path:nth-child(2) { stroke-dasharray: 2 4; }.redteam-rings > path:nth-child(3) { stroke: #777c86; }
-.redteam-core { transform-box: fill-box; transform-origin: center; animation: redteam-core-pulse 4s ease-in-out infinite; }
-.redteam-probes path, .redteam-probes circle { fill: none; stroke: #656a74; stroke-width: .7; }
-.redteam-probes > g { stroke-dasharray: 4 5; animation: probe-travel 3.8s linear infinite; animation-delay: calc(var(--probe-index) * -600ms); }
-.redteam-probes .probe-arrow { stroke-dasharray: none; }
-.redteam-blocks circle { fill: #08090a; stroke: #ff8257; stroke-width: 1; }
-.remediation-rail path { fill: none; stroke: #555a63; stroke-width: .8; stroke-dasharray: 2 5; animation: remediation-flow 3.5s linear infinite; }
-.remediation-rail .rail-return { stroke: #343840; animation-direction: reverse; }
-.remediation-gate { transform-box: fill-box; transform-origin: center; animation: gate-breathe 5s ease-in-out infinite; }
-.gate-threshold { fill: none; stroke: #ff8257; stroke-width: .8; stroke-dasharray: 2 3; }
-.remediation-packets circle { fill: #7782ff; animation: packet-pulse 2.8s ease-in-out infinite; }
-.remediation-packets circle:nth-child(2) { animation-delay: -.9s; }.remediation-packets circle:nth-child(3) { animation-delay: -1.8s; }
+.principle-code-scan text, .principle-redteam text, .principle-remediation text { font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .02em; fill: #8f9299; }
+.source-window > rect, .campaign-window > rect, .remediation-card > rect, .source-finding > rect { fill: #08090a; stroke: #62666d; stroke-width: .6; }
+.source-window > path, .source-tree path, .source-code > path, .source-code > g > path,
+.campaign-window > path, .campaign-rows path, .campaign-summary > path,
+.remediation-card path, .remediation-arrow path { fill: none; stroke: #343840; stroke-width: .6; stroke-linecap: round; stroke-linejoin: round; }
+.source-window > circle { fill: #4f535a; }
+.source-tree text { fill: #666a72; }.source-tree text:nth-of-type(2) { fill: #d0d3d9; }
+.source-code > text { fill: #535760; }.source-code > path { stroke: #555a63; }
+.leaking-line rect { fill: rgba(255,130,87,.06); stroke: rgba(255,130,87,.5); stroke-width: .5; }
+.leaking-line text, .finding-level, .card-risk.high, .diff-remove { fill: #ff8257 !important; }
+.leaking-line circle, .source-finding > circle { fill: #ff8257; }
+.repository-scanner { animation: repository-scan 5.2s cubic-bezier(.45,0,.2,1) infinite; }
+.repository-scanner rect { fill: rgba(112,124,255,.055); }.repository-scanner path { fill: none; stroke: #707cff; stroke-width: .9; }
+.source-finding .finding-connector { fill: none; stroke: #ff8257; stroke-width: .65; stroke-dasharray: 2 3; }
+.source-finding .finding-rule { fill: none; stroke: #4a4e56; stroke-width: .7; }
+.source-finding > circle { animation: finding-beacon 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.campaign-title, .campaign-count, .card-kicker { fill: #d0d3d9 !important; letter-spacing: .08em !important; }
+.campaign-count { text-anchor: start; }
+.campaign-columns text, .campaign-rows text { font-size: 6px; fill: #62666e; }
+.campaign-cells circle { fill: #08090a; stroke: #5b6068; stroke-width: .7; }
+.campaign-cell.blocked circle { stroke: #ff8257; }.campaign-cell.blocked path { fill: none; stroke: #ff8257; stroke-width: .8; stroke-linecap: round; stroke-linejoin: round; }
+.campaign-cell.pass circle { fill: #373b42; stroke: #737881; }
+.campaign-cell { opacity: .45; animation: campaign-cell-read 5.6s ease-in-out infinite; animation-delay: calc(var(--cell-index) * -180ms); }
+.campaign-summary > text:first-child { fill: #777b83; }.campaign-score { fill: #d0d3d9 !important; text-anchor: end; }
+.campaign-summary > path { stroke: #343840; stroke-width: 2; }.campaign-summary .campaign-progress { stroke: #707cff; stroke-width: 2; }
+.remediation-loop { fill: none; stroke: #3c4048; stroke-width: .6; stroke-dasharray: 2 4; animation: remediation-loop 4s linear infinite; }
+.remediation-card > rect { stroke: #555a63; }
+.remediation-card text:not(.card-kicker, .card-risk, .card-status, .diff-remove, .diff-add) { fill: #969aa2; }
+.card-risk { font-size: 9px !important; text-anchor: end; }.card-risk.low, .diff-add, .card-status { fill: #8b94ff !important; }
+.card-status { text-anchor: end; font-size: 6px !important; letter-spacing: .06em !important; }
+.diff-remove, .diff-add { font-size: 7px !important; }
+.remediation-arrow path { stroke: #737881; stroke-width: .7; }
+.verify-card circle { fill: none; stroke: #8b94ff; stroke-width: .8; }.verify-check { stroke: #8b94ff !important; stroke-width: .9 !important; }
+.verify-card { animation: verified-card 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes principle-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 @keyframes principle-layer { 0%,100% { opacity: .45; transform: translateY(0); } 45%,60% { opacity: 1; transform: translateY(-2px); } }
 @keyframes principle-dash { to { stroke-dashoffset: -20; } }
 @keyframes agent-node-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes principle-dot { 0%,100% { opacity: .15; } 50% { opacity: .95; } }
 @keyframes momentum-wave { 0%,100% { opacity: .62; transform: translate(0,0); } 45%,60% { opacity: 1; transform: translate(4px,-3px); } }
-@keyframes code-file-lift { 0%,100% { opacity: .38; transform: translateY(0); } 45%,60% { opacity: 1; transform: translateY(-4px); } }
-@keyframes scan-line-pass { to { stroke-dashoffset: -28; } }
-@keyframes finding-pulse { 0%,100% { opacity: .25; transform: scale(.75); } 50% { opacity: 1; transform: scale(1.2); } }
-@keyframes redteam-core-pulse { 0%,100% { transform: scale(.96); opacity: .68; } 50% { transform: scale(1); opacity: 1; } }
-@keyframes probe-travel { to { stroke-dashoffset: -36; } }
-@keyframes remediation-flow { to { stroke-dashoffset: -28; } }
-@keyframes gate-breathe { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes packet-pulse { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes repository-scan { 0%,8% { transform: translateX(72px); opacity: 0; } 18%,78% { opacity: 1; } 90%,100% { transform: translateX(198px); opacity: 0; } }
+@keyframes finding-beacon { 0%,100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.2); } }
+@keyframes campaign-cell-read { 0%,35%,100% { opacity: .4; } 48%,62% { opacity: 1; } }
+@keyframes remediation-loop { to { stroke-dashoffset: -24; } }
+@keyframes verified-card { 0%,55%,100% { opacity: .65; transform: translateY(0); } 68%,86% { opacity: 1; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) {
   .principle-stack-top, .principle-stack-layer, .principle-guides path,
-  .agent-node, .principle-dot-grid circle, .momentum-panel, .code-scan-file,
-  .scan-line, .scan-findings circle, .redteam-core, .redteam-probes > g,
-  .remediation-rail path, .remediation-gate, .remediation-packets circle { animation: none !important; }
+  .agent-node, .principle-dot-grid circle, .momentum-panel, .repository-scanner,
+  .source-finding > circle, .campaign-cell, .remediation-loop, .verify-card { animation: none !important; }
 }
 
 :root[data-site-theme="light"] .principle-surface,
@@ -1293,15 +1302,27 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
 :root[data-site-theme="light"] .principle-agentleak-mark,
 :root[data-site-theme="light"] .agent-node path:first-child,
 :root[data-site-theme="light"] .momentum-panel path:first-child { filter: none; }
-:root[data-site-theme="light"] .code-glyph,
-:root[data-site-theme="light"] .gate-check,
-:root[data-site-theme="light"] .output-spark { stroke: #454743; }
-:root[data-site-theme="light"] .scan-plane > path:first-child { fill: rgba(71,82,220,.035); stroke: #787a75; }
-:root[data-site-theme="light"] .redteam-rings > path,
-:root[data-site-theme="light"] .redteam-probes path,
-:root[data-site-theme="light"] .redteam-probes circle,
-:root[data-site-theme="light"] .remediation-rail path { stroke: #777974; }
-:root[data-site-theme="light"] .redteam-blocks circle { fill: var(--cursor-paper); }
+:root[data-site-theme="light"] .source-window > rect,
+:root[data-site-theme="light"] .campaign-window > rect,
+:root[data-site-theme="light"] .remediation-card > rect,
+:root[data-site-theme="light"] .source-finding > rect,
+:root[data-site-theme="light"] .campaign-cells circle { fill: var(--cursor-paper); }
+:root[data-site-theme="light"] .source-window > path,
+:root[data-site-theme="light"] .source-tree path,
+:root[data-site-theme="light"] .source-code > path,
+:root[data-site-theme="light"] .source-code > g > path,
+:root[data-site-theme="light"] .campaign-window > path,
+:root[data-site-theme="light"] .campaign-rows path,
+:root[data-site-theme="light"] .campaign-summary > path,
+:root[data-site-theme="light"] .remediation-card path,
+:root[data-site-theme="light"] .remediation-arrow path { stroke: #b7b8b3; }
+:root[data-site-theme="light"] .source-tree text:nth-of-type(2),
+:root[data-site-theme="light"] .campaign-title,
+:root[data-site-theme="light"] .campaign-count,
+:root[data-site-theme="light"] .card-kicker,
+:root[data-site-theme="light"] .campaign-score { fill: #393a36 !important; }
+:root[data-site-theme="light"] .campaign-cell.pass circle { fill: #d9dad5; stroke: #8b8d88; }
+:root[data-site-theme="light"] .remediation-loop { stroke: #9c9e98; }
 
 /* --- product workflow cards: exact supplied call SVG plus AgentLeak-native integrations --- */
 .workflow-section { width: 100%; max-width: var(--wrap); margin: 0 auto var(--sp-section); padding-inline: var(--gutter); }
