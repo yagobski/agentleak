@@ -47,9 +47,9 @@ const DIAGRAMS: Record<string, DiagramItem[]> = {
     { label: "REPLAYABLE EVIDENCE", title: "Verify the repair with the same run", body: "Replay the scenario after redaction or access-control changes and compare the deterministic score before shipping.", kind: "risk-formula" },
   ],
   security: [
-    { label: "LOCAL EXECUTION", title: "Keep evidence inside the boundary", body: "Run detection and scoring in-process, with redacted findings and no required network call for the core workflow.", kind: "ci-policy" },
-    { label: "TRACE-LINKED PROOF", title: "Make every disclosure reviewable", body: "Keep the channel, event, severity and redacted value attached to each finding instead of flattening the report to a single score.", kind: "trace-ledger" },
-    { label: "PROJECT ISOLATION", title: "Scope authority before automation", body: "Separate project credentials and explicit actions so an agent can test without inheriting another project’s evidence.", kind: "api-scopes" },
+    { label: "LOCAL EXECUTION", title: "Keep evidence inside the boundary", body: "Run detection and scoring in-process, with policy, trace and report digests joined at the decision point.", kind: "ci-attestation" },
+    { label: "TRACE-LINKED PROOF", title: "Read regressions before release", body: "Compare exposure over time and see when a new run crosses the project’s defined privacy threshold.", kind: "risk-trend" },
+    { label: "PROJECT ISOLATION", title: "See every boundary crossing", body: "Follow a redacted value from its source to the disclosure event without opening another project’s evidence.", kind: "trace-path" },
   ],
   about: [
     { label: "EVIDENCE FIRST", title: "See the path output-only checks miss", body: "Trace tools, memory, handoffs, logs and files as one ordered execution record before drawing a conclusion.", kind: "trace-channels" },
