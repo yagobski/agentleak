@@ -41,6 +41,11 @@ const DIAGRAMS: Record<string, DiagramItem[]> = {
     { label: "SCOPED AUTHORITY", title: "Limit every autonomous action", body: "Issue project-bound credentials with explicit test, scan and improve scopes rather than broad account access.", kind: "api-scopes" },
     { label: "BOUNDED REMEDIATION", title: "One fix, one re-test, one delta", body: "Return one structured action, verify the same scenario and stop when policy passes or the iteration budget ends.", kind: "api-loop" },
   ],
+  "multi-agent-privacy": [
+    { label: "HANDOFF PROVENANCE", title: "Find the leak between agents", body: "Follow a sensitive value from its source through coordinator memory to the exact tool call where it leaves the boundary.", kind: "trace-path" },
+    { label: "SCOPED DELEGATION", title: "Give every worker a bounded role", body: "Keep project credentials and actions explicit so a specialist can complete its task without inheriting the whole account.", kind: "api-scopes" },
+    { label: "REPLAYABLE EVIDENCE", title: "Verify the repair with the same run", body: "Replay the scenario after redaction or access-control changes and compare the deterministic score before shipping.", kind: "risk-formula" },
+  ],
 }
 
 function DiagramFrame({ title, children }: { title: string; children: React.ReactNode }) {
@@ -184,11 +189,11 @@ function Diagram({ kind, title }: { kind: DiagramKind; title: string }) {
   </DiagramFrame>
 }
 
-export function FeatureDiagramGrid({ slug }: { slug: string }) {
+export function FeatureDiagramGrid({ slug, eyebrow = "Inside the capability", heading = "Three views of how it works." }: { slug: string; eyebrow?: string; heading?: string }) {
   const items = DIAGRAMS[slug]
   if (!items) return null
   return <section className="feature-diagrams" aria-labelledby={`${slug}-visuals-title`}>
-    <header><p className="cursor-eyebrow">Inside the capability</p><h2 id={`${slug}-visuals-title`}>Three views of how it works.</h2></header>
+    <header><p className="cursor-eyebrow">{eyebrow}</p><h2 id={`${slug}-visuals-title`}>{heading}</h2></header>
     <div className="feature-diagrams-grid">
       {items.map((item) => <article key={item.kind}>
         <span>{item.label}</span>

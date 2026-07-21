@@ -1,5 +1,6 @@
 import { Link, Navigate, useLocation } from "react-router-dom"
 import { Arrow } from "@/features/ProductDemos"
+import { FeatureDiagramGrid } from "@/features/FeatureDiagramGrid"
 import { FEATURE_PAGES, REPO_URL, SITE_URL, SiteFooter, SiteNav, usePageMeta } from "@/features/SiteChrome"
 
 type PageSection = { title: string; body: string; points?: string[] }
@@ -117,6 +118,7 @@ export function SeoPage() {
   if (!content) return <Navigate to="/" replace />
   return <div className="cursor-site"><SiteNav /><main>
     <section className="cursor-page seo-page-hero"><div className="cursor-page-hero"><Breadcrumbs current={content.eyebrow.replace(/^.*·\s*/, "")} /><p className="cursor-eyebrow">{content.eyebrow}</p><h1>{content.title}</h1><p>{content.lede}</p><div className="cursor-actions"><Link className="cursor-button cursor-button-dark" to="/register">Create a workspace <Arrow /></Link><Link className="cursor-button cursor-button-light" to="/docs/getting-started">Read the quickstart <Arrow /></Link></div></div></section>
+    {pathname === "/use-cases/multi-agent-privacy" && <FeatureDiagramGrid slug="multi-agent-privacy" eyebrow="The multi-agent control loop" heading="Make every handoff inspectable." />}
     <div className="cursor-page-sections seo-page-sections">{content.sections.map((section) => <article key={section.title}><h2>{section.title}</h2><p>{section.body}</p>{section.points && <ul>{section.points.map((point) => <li key={point}>{point}</li>)}</ul>}</article>)}</div>
     <RelatedCards items={content.related} />
   </main><SiteFooter /></div>
