@@ -635,8 +635,10 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
   --cursor-muted: var(--s-9e9d96);
   --cursor-line: var(--s-252520);
   /* One container + gutter for every section, so content edges always align. */
-  --wrap: 1250px;
-  --gutter: clamp(20px, 5vw, 40px);
+  /* Linear's pricing layout uses a generous 1344px content frame with
+     compact insets; keep every public page on the same measurable grid. */
+  --wrap: 1344px;
+  --gutter: clamp(20px, 3vw, 32px);
   /* Type scale matched to cursor.com's measured desktop values (hero is a
      restrained 26px; section headlines carry the weight at 36px). */
   --t-hero: clamp(1.5rem, 2vw, 1.65rem);
