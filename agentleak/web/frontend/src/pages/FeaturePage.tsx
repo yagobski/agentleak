@@ -3,6 +3,7 @@ import { Arrow } from "@/features/ProductDemos"
 import { AgentRiskWorkflowCards } from "@/features/AgentRiskWorkflowCards"
 import { CodeScanAutomationSlide, CodeScanProductSlide } from "@/features/CodeScanSlides"
 import { ProductWorkflowCards } from "@/features/ProductWorkflowCards"
+import { FeatureDiagramGrid } from "@/features/FeatureDiagramGrid"
 import {
   FAQ_ITEMS,
   FEATURE_PAGES,
@@ -340,6 +341,8 @@ export function FeaturePage() {
             </article>
           ))}
         </div>
+
+        <FeatureDiagramGrid slug={slug} />
 
         {slug === "trace-analysis" && <ProductWorkflowCards />}
         {slug === "agentrisk" && <AgentRiskWorkflowCards />}

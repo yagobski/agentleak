@@ -1324,6 +1324,111 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
 :root[data-site-theme="light"] .campaign-cell.pass circle { fill: #d9dad5; stroke: #8b8d88; }
 :root[data-site-theme="light"] .remediation-loop { stroke: #9c9e98; }
 
+/* --- feature-page diagram system: three product-specific views per capability --- */
+.feature-diagrams { width: 100%; max-width: var(--wrap); margin: 0 auto var(--sp-section); padding-inline: var(--gutter); }
+.feature-diagrams > header { max-width: 700px; margin-bottom: 34px; }
+.feature-diagrams > header h2 { margin-top: 12px; font-size: var(--t-h2); font-weight: 470; letter-spacing: -.028em; }
+.feature-diagrams-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border-top: 1px solid var(--cursor-line); border-bottom: 1px solid var(--cursor-line); }
+.feature-diagrams-grid article { min-width: 0; padding: 18px 28px 30px; border-right: 1px solid var(--cursor-line); }
+.feature-diagrams-grid article:last-child { border-right: 0; }
+.feature-diagrams-grid article > span { display: block; font: 500 10px/1 "JetBrains Mono",monospace; letter-spacing: .09em; color: var(--s-62625c); }
+.feature-diagram-visual { display: grid; place-items: center; height: 280px; margin: 8px 0 4px; overflow: hidden; }
+.feature-diagram-visual svg { width: min(100%,330px); height: 252px; overflow: visible; }
+.feature-diagrams-grid h3 { font-size: 18px; font-weight: 540; letter-spacing: -.012em; }
+.feature-diagrams-grid article > p { min-height: 68px; margin-top: 11px; color: var(--s-91918a); font-size: 14px; line-height: 1.55; }
+.feature-diagram-visual path, .feature-diagram-visual rect, .feature-diagram-visual circle { vector-effect: non-scaling-stroke; }
+.feature-diagram-visual text { font-family: "JetBrains Mono",monospace; font-size: 7px; letter-spacing: .015em; fill: #858991; }
+.fd-top text, .fd-card-title, .fd-caption, .fd-pr-header text { fill: #c9ccd2 !important; font-size: 7px; letter-spacing: .06em !important; }
+.fd-window > rect, .fd-formula-card > rect, .fd-path-nodes rect, .fd-flow-boxes rect,
+.fd-strategy-source rect, .fd-strategy-cards rect, .fd-check-list rect, .fd-endpoints rect,
+.fd-token > rect, .fd-scope-pills rect, .fd-loop-cards rect, .fd-finding-pill rect { fill: #08090a; stroke: #545860; stroke-width: .6; }
+.fd-window > path, .fd-axis path, .fd-chart-axis path, .fd-formula-card > path,
+.fd-lanes path, .fd-event-ticks path, .fd-footer path, .fd-code-lines path,
+.fd-matrix-lines path, .fd-report-bars path, .fd-pr-header path, .fd-token > path,
+.fd-attestation-footer > path:first-child { fill: none; stroke: #30343b; stroke-width: .6; }
+.fd-labels text, .fd-matrix-labels text { fill: #666a72; font-size: 6px; }
+.fd-accent-path { fill: none; stroke: #7782ff; stroke-width: 1.05; stroke-linecap: round; stroke-linejoin: round; }
+.fd-dashed { stroke-dasharray: 2 4; animation: fd-dash 4.2s linear infinite; }
+.fd-nodes circle { fill: #08090a; stroke: #7782ff; stroke-width: .9; }
+.fd-nodes circle:last-child, .fd-alert-node { fill: #ff8257 !important; stroke: #ff8257 !important; }
+.fd-path-nodes rect { stroke: #62666e; }.fd-path-nodes text:first-of-type { fill: #c9ccd2; letter-spacing: .05em; }
+.fd-event-ticks text { font-size: 6px; fill: #5f636b; }
+.fd-ledger circle { fill: #565b63; }.fd-ledger text { font-size: 6.5px; }
+.fd-alert { fill: #ff8257 !important; }.fd-pass { fill: #8b94ff !important; }.fd-score { fill: #9ca4ff !important; }
+.fd-weight-bars rect { fill: #12141a; stroke: #5f646d; stroke-width: .6; }
+.fd-weight-bars g:nth-child(4) rect { fill: rgba(255,130,87,.11); stroke: #ff8257; }
+.fd-weight-bars text { text-anchor: middle; }.fd-weight-bars text:last-child { fill: #a5a9b1; }
+.fd-formula-card > g > rect { fill: #0d0f13; stroke: #555a63; stroke-width: .6; }.fd-formula-card .fd-result rect { stroke: #7782ff; }
+.fd-formula-card .fd-result text:last-child { fill: #9ca4ff; font-size: 11px; }.fd-operator { fill: #666b74 !important; font-size: 11px !important; }
+.fd-meter { fill: none; stroke: #32363d !important; stroke-width: 2 !important; }.fd-meter-value { fill: none; stroke: #7782ff !important; stroke-width: 2 !important; }
+.fd-area { fill: rgba(112,124,255,.08); stroke: none; }.fd-threshold { fill: none; stroke: #ff8257; stroke-width: .7; stroke-dasharray: 2 3; }
+.fd-code-lines text { fill: #535760; font-size: 6px; }.fd-code-lines path { stroke: #51565f; }.fd-alert-stroke { stroke: #ff8257 !important; }
+.fd-finding-pill rect { fill: rgba(255,130,87,.06); stroke: #ff8257; }.fd-finding-pill text { fill: #ff8257; }
+.fd-flow-rail, .fd-flow-arrows path { fill: none; stroke: #4c515a; stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; }
+.fd-flow-boxes text:nth-of-type(2), .fd-flow-meta text { font-size: 6px; }.fd-flow-boxes g:nth-child(2) rect { stroke: #7782ff; }
+.fd-check { fill: none; stroke: #8b94ff; stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; }
+.fd-remove-bg { fill: rgba(255,130,87,.055); stroke: none; }.fd-add-bg { fill: rgba(112,124,255,.055); stroke: none; }.fd-diff > path:not(.fd-meter,.fd-meter-value) { fill: none; stroke: #41464e; stroke-width: .6; }
+.fd-matrix-dots circle { fill: #111319; stroke: #4f545d; stroke-width: .6; }.fd-matrix-dots .blocked circle { stroke: #ff8257; }.fd-matrix-dots .blocked path { fill: none; stroke: #ff8257; stroke-width: .8; stroke-linecap: round; stroke-linejoin: round; }
+.fd-matrix-dots .pass circle { fill: #252930; }.fd-matrix-dots > g { animation: fd-cell 5s ease-in-out infinite; animation-delay: calc(var(--cell-index,0) * -90ms); }
+.fd-strategy-cards .active rect, .fd-endpoints .active rect, .fd-loop-cards .active rect { stroke: #7782ff; }.fd-strategy-cards circle, .fd-endpoints circle { fill: #343942; stroke: #69707a; stroke-width: .5; }.fd-strategy-cards .active circle, .fd-endpoints .active circle { fill: #7782ff; stroke: #7782ff; }
+.fd-big-score text:nth-child(2) { fill: #d8dbe1; font-size: 20px; }.fd-report-bars path { stroke-width: 2; }.fd-accent-stroke { stroke: #7782ff !important; }
+.fd-policy-code text { font-size: 7px; }.fd-indent { fill: none; stroke: #4f545c; stroke-width: .7; }
+.fd-check-list rect { stroke: #454a52; }.fd-check-list circle { fill: none; stroke: #626872; stroke-width: .7; }.fd-check-list path { fill: none; stroke-width: .8; stroke-linecap: round; }.fd-check-list .pass path { stroke: #8b94ff; }.fd-check-list .fail rect, .fd-check-list .fail circle { stroke: #ff8257; }.fd-check-list .fail path { stroke: #ff8257; }.fd-check-list .wait { opacity: .45; }
+.fd-attestation-chain > g > path:first-child { fill: #08090a; stroke: #5b6069; stroke-width: .6; }.fd-attestation-chain > g > path:nth-child(2) { fill: none; stroke: #3f444c; stroke-width: .6; }.fd-attestation-chain .fd-chain-link { stroke: #7782ff !important; stroke-dasharray: 2 3; }
+.fd-attestation-footer circle { fill: none; stroke: #7782ff; stroke-width: .8; }
+.fd-api-root circle, .fd-loop-center circle { fill: #08090a; stroke: #5b6069; stroke-width: .7; }.fd-api-root text, .fd-loop-center text { fill: #c5c9cf; }.fd-api-root text:last-child { fill: #747982; }
+.fd-token circle { fill: none; stroke: #7782ff; stroke-width: .7; }.fd-scope-pills rect { fill: #101219; stroke: #4e535c; }
+.fd-loop-path, .fd-loop-arrow path { fill: none; stroke: #59606a; stroke-width: .75; stroke-dasharray: 2 4; animation: fd-dash 4.2s linear infinite; }.fd-loop-arrow path { stroke-dasharray: none; }
+@keyframes fd-dash { to { stroke-dashoffset: -24; } }
+@keyframes fd-cell { 0%,35%,100% { opacity: .45; } 48%,62% { opacity: 1; } }
+@media (prefers-reduced-motion:reduce) { .fd-dashed,.fd-matrix-dots > g,.fd-loop-path { animation:none !important; } }
+:root[data-site-theme="light"] .fd-window > rect,
+:root[data-site-theme="light"] .fd-formula-card > rect,
+:root[data-site-theme="light"] .fd-path-nodes rect,
+:root[data-site-theme="light"] .fd-flow-boxes rect,
+:root[data-site-theme="light"] .fd-strategy-source rect,
+:root[data-site-theme="light"] .fd-strategy-cards rect,
+:root[data-site-theme="light"] .fd-check-list rect,
+:root[data-site-theme="light"] .fd-endpoints rect,
+:root[data-site-theme="light"] .fd-token > rect,
+:root[data-site-theme="light"] .fd-scope-pills rect,
+:root[data-site-theme="light"] .fd-loop-cards rect,
+:root[data-site-theme="light"] .fd-finding-pill rect,
+:root[data-site-theme="light"] .fd-api-root circle,
+:root[data-site-theme="light"] .fd-loop-center circle,
+:root[data-site-theme="light"] .fd-attestation-chain > g > path:first-child,
+:root[data-site-theme="light"] .fd-nodes circle,
+:root[data-site-theme="light"] .fd-matrix-dots circle { fill: var(--cursor-paper); }
+:root[data-site-theme="light"] .fd-top text,
+:root[data-site-theme="light"] .fd-card-title,
+:root[data-site-theme="light"] .fd-caption,
+:root[data-site-theme="light"] .fd-pr-header text { fill: #3d3e3a !important; }
+:root[data-site-theme="light"] .fd-window > path,
+:root[data-site-theme="light"] .fd-axis path,
+:root[data-site-theme="light"] .fd-chart-axis path,
+:root[data-site-theme="light"] .fd-lanes path,
+:root[data-site-theme="light"] .fd-matrix-lines path { stroke: #d1d2cd; }
+:root[data-site-theme="light"] .fd-weight-bars rect { fill: #f2f2ef; }
+:root[data-site-theme="light"] .fd-formula-card > g > rect { fill: #f6f6f3; }
+:root[data-site-theme="light"] .fd-matrix-dots .pass circle { fill: #dcddd8; }
+@media (max-width:1050px) {
+  .feature-diagrams-grid { grid-template-columns: 1fr; }
+  .feature-diagrams-grid article { display: grid; grid-template-columns: minmax(280px,.9fr) minmax(0,1fr); column-gap: 34px; padding: 20px 0 28px; border-right: 0; border-bottom: 1px solid var(--cursor-line); }
+  .feature-diagrams-grid article:last-child { border-bottom: 0; }
+  .feature-diagrams-grid article > span { grid-column: 1 / -1; }
+  .feature-diagram-visual { grid-row: 2 / span 3; height: 270px; margin: 0; }
+  .feature-diagrams-grid h3 { align-self: end; margin-top: 52px; }
+  .feature-diagrams-grid article > p { min-height: 0; }
+}
+@media (max-width:760px) {
+  .feature-diagrams > header { margin-bottom: 22px; }
+  .feature-diagrams-grid article { display: block; padding: 20px 0 28px; }
+  .feature-diagram-visual { height: 250px; margin: 4px 0 0; }
+  .feature-diagram-visual svg { height: 235px; }
+  .feature-diagrams-grid h3 { margin-top: 0; }
+}
+
+
 /* --- product workflow cards: exact supplied call SVG plus AgentLeak-native integrations --- */
 .workflow-section { width: 100%; max-width: var(--wrap); margin: 0 auto var(--sp-section); padding-inline: var(--gutter); }
 .workflow-section > header { max-width: 720px; margin-bottom: 36px; }
