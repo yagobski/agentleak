@@ -1375,6 +1375,7 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
 .fd-policy-code text { font-size: 7px; }.fd-indent { fill: none; stroke: #4f545c; stroke-width: .7; }
 .fd-check-list rect { stroke: #454a52; }.fd-check-list circle { fill: none; stroke: #626872; stroke-width: .7; }.fd-check-list path { fill: none; stroke-width: .8; stroke-linecap: round; }.fd-check-list .pass path { stroke: #8b94ff; }.fd-check-list .fail rect, .fd-check-list .fail circle { stroke: #ff8257; }.fd-check-list .fail path { stroke: #ff8257; }.fd-check-list .wait { opacity: .45; }
 .fd-attestation-chain > g > path:first-child { fill: #08090a; stroke: #5b6069; stroke-width: .6; }.fd-attestation-chain > g > path:nth-child(2) { fill: none; stroke: #3f444c; stroke-width: .6; }.fd-attestation-chain .fd-chain-link { stroke: #7782ff !important; stroke-dasharray: 2 3; }
+.fd-cube-top-label { fill: #b9bdc5 !important; font-size: 5.4px !important; letter-spacing: .04em !important; }
 .fd-attestation-footer circle { fill: none; stroke: #7782ff; stroke-width: .8; }
 .fd-api-root circle, .fd-loop-center circle { fill: #08090a; stroke: #5b6069; stroke-width: .7; }.fd-api-root text, .fd-loop-center text { fill: #c5c9cf; }.fd-api-root text:last-child { fill: #747982; }
 .fd-token circle { fill: none; stroke: #7782ff; stroke-width: .7; }.fd-scope-pills rect { fill: #101219; stroke: #4e535c; }

@@ -1,3 +1,5 @@
+import { CodeScanVisual, RedTeamVisual, RemediationVisual } from "@/features/FeaturePrinciples"
+
 type DiagramKind =
   | "trace-channels" | "trace-path" | "trace-ledger"
   | "risk-weights" | "risk-formula" | "risk-trend"
@@ -20,12 +22,12 @@ const DIAGRAMS: Record<string, DiagramItem[]> = {
     { label: "RELEASE SIGNAL", title: "Read regressions before release", body: "Compare runs against the project boundary and see exactly when risk moves into unsafe territory.", kind: "risk-trend" },
   ],
   "code-scan": [
-    { label: "REPOSITORY COVERAGE", title: "Scan the source, not just the diff", body: "Walk supported files, skip generated paths and connect each detected value to an exact file and line.", kind: "code-repository" },
+    { label: "SOURCE-TO-TRACE SCAN", title: "Find the leak before runtime", body: "Inspect the repository, link each finding to its exact file and line, then carry that evidence into the runtime trace.", kind: "code-repository" },
     { label: "SOURCE TO SINK", title: "Map how code can disclose data", body: "Link the read point to logging, tool and third-party sinks so the fix happens at the correct boundary.", kind: "code-flow" },
     { label: "PATCH VERIFICATION", title: "Prove the remediation in the diff", body: "Compare the unsafe call with its redacted replacement and re-score the repository before merge.", kind: "code-diff" },
   ],
   "red-team": [
-    { label: "CAMPAIGN MATRIX", title: "Cover attacks and channels together", body: "Measure each attack class against the execution surfaces it can reach instead of counting prompts alone.", kind: "redteam-matrix" },
+    { label: "ADVERSARIAL COVERAGE", title: "Attack every trust boundary", body: "Measure prompt injection, tool misuse and exfiltration against every execution surface the production agent can reach.", kind: "redteam-matrix" },
     { label: "DELIVERY STRATEGIES", title: "Vary how the probe arrives", body: "Replay direct, encoded, jailbreak and multi-turn delivery without changing the vulnerability under test.", kind: "redteam-strategies" },
     { label: "DEFENSE REPORT", title: "Turn probes into engineering work", body: "Rank successful attacks by severity, channel and remediation, then compare defense rate across campaigns.", kind: "redteam-report" },
   ],
@@ -37,7 +39,7 @@ const DIAGRAMS: Record<string, DiagramItem[]> = {
   "agent-api": [
     { label: "MACHINE DISCOVERY", title: "Agents find the contract themselves", body: "Expose llms.txt, the agent card and OpenAPI as stable entry points with no dashboard interpretation required.", kind: "api-discovery" },
     { label: "SCOPED AUTHORITY", title: "Limit every autonomous action", body: "Issue project-bound credentials with explicit test, scan and improve scopes rather than broad account access.", kind: "api-scopes" },
-    { label: "BOUNDED LOOP", title: "One fix, one re-test, one delta", body: "Return a structured action, verify the same scenario and stop when policy passes or the iteration budget ends.", kind: "api-loop" },
+    { label: "BOUNDED REMEDIATION", title: "One fix, one re-test, one delta", body: "Return one structured action, verify the same scenario and stop when policy passes or the iteration budget ends.", kind: "api-loop" },
   ],
 }
 
@@ -62,7 +64,8 @@ function Diagram({ kind, title }: { kind: DiagramKind; title: string }) {
       <g transform="translate(122 96)"><rect width="62" height="38" rx="6" /><text x="10" y="16">AGENT B</text><text x="10" y="29">memory</text></g>
       <g transform="translate(200 137)"><rect width="62" height="38" rx="6" /><text x="10" y="16">SINK · L3</text><text x="10" y="29">tool_call</text></g>
     </g>
-    <path className="fd-accent-path fd-dashed" d="M106 74c27 0 0 41 16 41h62c27 0 0 41 16 41" />
+    <path className="fd-accent-path fd-dashed" d="M106 74c27 0 0 41 16 41" />
+    <path className="fd-accent-path fd-dashed" d="M184 115c27 0 0 41 16 41" />
     <g className="fd-event-ticks"><path d="M74 184v8M153 184v8M231 184v8" /><text x="62" y="205">10:42.01</text><text x="141" y="205">10:42.18</text><text x="219" y="205">10:42.31</text></g>
   </DiagramFrame>
 
@@ -155,12 +158,12 @@ function Diagram({ kind, title }: { kind: DiagramKind; title: string }) {
   </DiagramFrame>
 
   if (kind === "ci-attestation") return <DiagramFrame title={title}>
-    <g className="fd-attestation-chain">{[[31,"POLICY","9d31…aa"],[119,"TRACE","b807…f2"],[207,"REPORT","e204…19"]].map(([x,a,b],i)=><g key={a} transform={`translate(${x} 76)`}><path d="m0 16 33-16 33 16v54L33 86 0 70Z"/><path d="m0 16 33 17 33-17M33 33v53"/><text x="12" y="48">{a}</text><text x="12" y="62">{b}</text>{i<2&&<path className="fd-chain-link" d="M66 43h22"/>}</g>)}</g>
+    <g className="fd-attestation-chain">{[[31,"POLICY"],[119,"TRACE"],[207,"REPORT"]].map(([x,a],i)=><g key={a} transform={`translate(${x} 76)`}><path d="m0 16 33-16 33 16v54L33 86 0 70Z"/><path d="m0 16 33 17 33-17M33 33v53"/><text className="fd-cube-top-label" transform="matrix(.76 .38 -.76 .38 24 8)">{a}</text>{i<2&&<path className="fd-chain-link" d="M66 43h22"/>}</g>)}</g>
     <g className="fd-attestation-footer"><path d="M31 184h242"/><circle cx="44" cy="199" r="6"/><path className="fd-check" d="m41 199 2 2 4-5"/><text x="58" y="202">decision signed · 2026-07-20 18:42 UTC</text></g>
   </DiagramFrame>
 
   if (kind === "api-discovery") return <DiagramFrame title={title}>
-    <g className="fd-api-root"><circle cx="63" cy="116" r="31"/><text x="42" y="113">AGENT</text><text x="45" y="127">client</text></g>
+    <g className="fd-api-root"><circle cx="63" cy="116" r="31"/><text x="63" y="113" textAnchor="middle">AGENT</text><text x="63" y="127" textAnchor="middle">client</text></g>
     <path className="fd-flow-rail" d="M94 116h35M129 116c20 0 15-61 35-61M129 116h35M129 116c20 0 15 61 35 61"/>
     <g className="fd-endpoints">{[[164,32,"/llms.txt","instructions"],[164,93,"/.well-known","agent card"],[164,154,"/openapi.json","contract"]].map(([x,y,a,b],i)=><g key={a} transform={`translate(${x} ${y})`} className={i===0?"active":""}><rect width="117" height="47" rx="6"/><text className="fd-card-title" x="12" y="18">{a}</text><text x="12" y="34">{b}</text><circle cx="101" cy="24" r="4"/></g>)}</g>
   </DiagramFrame>
@@ -176,7 +179,7 @@ function Diagram({ kind, title }: { kind: DiagramKind; title: string }) {
   return <DiagramFrame title={title}>
     <path className="fd-loop-path" d="M66 73c28-39 75-48 116-28 42 21 62 66 47 108-14 41-57 66-100 57-44-9-73-48-69-90"/>
     <g className="fd-loop-cards"><g transform="translate(26 62)"><rect width="78" height="55" rx="7"/><text className="fd-card-title" x="12" y="19">SELF-TEST</text><text x="12" y="37">risk 0.74</text></g><g transform="translate(113 25)"><rect width="78" height="55" rx="7"/><text className="fd-card-title" x="12" y="19">IMPROVE</text><text x="12" y="37">1 action</text></g><g className="active" transform="translate(200 98)"><rect width="78" height="55" rx="7"/><text className="fd-card-title" x="12" y="19">VERIFY</text><text x="12" y="37">risk 0.08</text></g></g>
-    <g className="fd-loop-center"><circle cx="145" cy="133" r="31"/><text x="126" y="130">DELTA</text><text className="fd-score" x="126" y="146">−0.66</text></g>
+    <g className="fd-loop-center"><circle cx="145" cy="133" r="31"/><text x="145" y="130" textAnchor="middle">DELTA</text><text className="fd-score" x="145" y="146" textAnchor="middle">−0.66</text></g>
     <g className="fd-loop-arrow"><path d="m226 174-3-9 9 2"/><path d="m66 73 9-1-3 8"/></g>
   </DiagramFrame>
 }
@@ -189,7 +192,9 @@ export function FeatureDiagramGrid({ slug }: { slug: string }) {
     <div className="feature-diagrams-grid">
       {items.map((item) => <article key={item.kind}>
         <span>{item.label}</span>
-        <div className="feature-diagram-visual"><Diagram kind={item.kind} title={item.title} /></div>
+        <div className="feature-diagram-visual">
+          {item.kind === "code-repository" ? <CodeScanVisual /> : item.kind === "redteam-matrix" ? <RedTeamVisual /> : item.kind === "api-loop" ? <RemediationVisual /> : <Diagram kind={item.kind} title={item.title} />}
+        </div>
         <h3>{item.title}</h3><p>{item.body}</p>
       </article>)}
     </div>

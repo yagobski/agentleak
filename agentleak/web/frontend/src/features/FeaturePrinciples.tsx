@@ -91,7 +91,7 @@ function MomentumVisual() {
   )
 }
 
-function CodeScanVisual() {
+export function CodeScanVisual() {
   return (
     <svg className="principle-code-scan" viewBox="0 0 304 281" role="img" aria-label="AgentLeak code scan linking a source line to a privacy finding">
       <g className="source-window">
@@ -124,7 +124,7 @@ function CodeScanVisual() {
   )
 }
 
-function RedTeamVisual() {
+export function RedTeamVisual() {
   return (
     <svg className="principle-redteam" viewBox="0 0 304 281" role="img" aria-label="AgentLeak red-team campaign matrix across attack classes and execution channels">
       <g className="campaign-window">
@@ -151,7 +151,7 @@ function RedTeamVisual() {
   )
 }
 
-function RemediationVisual() {
+export function RemediationVisual() {
   return (
     <svg className="principle-remediation" viewBox="0 0 304 281" role="img" aria-label="AgentLeak remediation loop from finding to patch to verified lower risk">
       <path className="remediation-loop" d="M246 218c35 0 34-178-4-178M62 224c-45 0-44-178 0-178" />
@@ -199,27 +199,6 @@ const PRINCIPLES = [
     body: "Replay the same trace, get the same score and block a release only when a defined privacy policy is crossed.",
     href: "/features/ci-gate",
     visual: <MomentumVisual />,
-  },
-  {
-    figure: "SOURCE-TO-TRACE SCAN",
-    title: "Find the leak before runtime",
-    body: "Inspect repositories for hardcoded secrets, sensitive logging paths and unsafe third-party calls before code reaches an agent run.",
-    href: "/features/code-scan",
-    visual: <CodeScanVisual />,
-  },
-  {
-    figure: "ADVERSARIAL COVERAGE",
-    title: "Attack every trust boundary",
-    body: "Exercise prompt injection, tool misuse and exfiltration paths against the same policy perimeter your production agents must respect.",
-    href: "/features/red-team",
-    visual: <RedTeamVisual />,
-  },
-  {
-    figure: "BOUNDED REMEDIATION",
-    title: "Let agents fix what they expose",
-    body: "Return one structured, policy-bounded fix, rerun the trace and verify the score delta before accepting the remediation.",
-    href: "/features/agent-api",
-    visual: <RemediationVisual />,
   },
 ] as const
 
