@@ -46,6 +46,16 @@ const DIAGRAMS: Record<string, DiagramItem[]> = {
     { label: "SCOPED DELEGATION", title: "Give every worker a bounded role", body: "Keep project credentials and actions explicit so a specialist can complete its task without inheriting the whole account.", kind: "api-scopes" },
     { label: "REPLAYABLE EVIDENCE", title: "Verify the repair with the same run", body: "Replay the scenario after redaction or access-control changes and compare the deterministic score before shipping.", kind: "risk-formula" },
   ],
+  security: [
+    { label: "LOCAL EXECUTION", title: "Keep evidence inside the boundary", body: "Run detection and scoring in-process, with redacted findings and no required network call for the core workflow.", kind: "ci-policy" },
+    { label: "TRACE-LINKED PROOF", title: "Make every disclosure reviewable", body: "Keep the channel, event, severity and redacted value attached to each finding instead of flattening the report to a single score.", kind: "trace-ledger" },
+    { label: "PROJECT ISOLATION", title: "Scope authority before automation", body: "Separate project credentials and explicit actions so an agent can test without inheriting another project’s evidence.", kind: "api-scopes" },
+  ],
+  about: [
+    { label: "EVIDENCE FIRST", title: "See the path output-only checks miss", body: "Trace tools, memory, handoffs, logs and files as one ordered execution record before drawing a conclusion.", kind: "trace-channels" },
+    { label: "EXPLICIT SCORING", title: "Explain how risk moves", body: "Published severity weights and stable inputs make a score understandable, comparable and reproducible.", kind: "risk-weights" },
+    { label: "OPEN BOUNDARY", title: "Attach proof to every decision", body: "Keep policy, trace and report digests together so teams can inspect what the system can—and cannot—prove.", kind: "ci-attestation" },
+  ],
 }
 
 function DiagramFrame({ title, children }: { title: string; children: React.ReactNode }) {

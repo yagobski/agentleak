@@ -110,6 +110,7 @@ export function FeaturesHub() {
 export function SeoPage() {
   const { pathname } = useLocation()
   const content = SEO_PAGES[pathname]
+  const visualSlug = pathname === "/use-cases/multi-agent-privacy" ? "multi-agent-privacy" : pathname.slice(1)
   usePageMeta(
     content?.metaTitle ?? "AgentLeak",
     content?.metaDescription ?? "",
@@ -118,7 +119,11 @@ export function SeoPage() {
   if (!content) return <Navigate to="/" replace />
   return <div className="cursor-site"><SiteNav /><main>
     <section className="cursor-page seo-page-hero"><div className="cursor-page-hero"><Breadcrumbs current={content.eyebrow.replace(/^.*·\s*/, "")} /><p className="cursor-eyebrow">{content.eyebrow}</p><h1>{content.title}</h1><p>{content.lede}</p><div className="cursor-actions"><Link className="cursor-button cursor-button-dark" to="/register">Create a workspace <Arrow /></Link><Link className="cursor-button cursor-button-light" to="/docs/getting-started">Read the quickstart <Arrow /></Link></div></div></section>
-    {pathname === "/use-cases/multi-agent-privacy" && <FeatureDiagramGrid slug="multi-agent-privacy" eyebrow="The multi-agent control loop" heading="Make every handoff inspectable." />}
+    <FeatureDiagramGrid
+      slug={visualSlug}
+      eyebrow={pathname === "/use-cases/multi-agent-privacy" ? "The multi-agent control loop" : pathname === "/security" ? "The security control loop" : "Why AgentLeak is inspectable"}
+      heading={pathname === "/use-cases/multi-agent-privacy" ? "Make every handoff inspectable." : pathname === "/security" ? "Build privacy controls around evidence." : "Turn the research boundary into practice."}
+    />
     <div className="cursor-page-sections seo-page-sections">{content.sections.map((section) => <article key={section.title}><h2>{section.title}</h2><p>{section.body}</p>{section.points && <ul>{section.points.map((point) => <li key={point}>{point}</li>)}</ul>}</article>)}</div>
     <RelatedCards items={content.related} />
   </main><SiteFooter /></div>
