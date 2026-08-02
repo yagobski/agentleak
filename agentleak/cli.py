@@ -165,6 +165,130 @@ def schema(
 
 
 # ----------------------------------------------------------------------
+# skill (register AgentLeak with coding agents)
+# ----------------------------------------------------------------------
+_SKILL_STATUS_COLORS = {
+    "current": typer.colors.GREEN,
+    "installed": typer.colors.GREEN,
+    "updated": typer.colors.GREEN,
+    "unchanged": typer.colors.BRIGHT_BLACK,
+    "stale": typer.colors.YELLOW,
+    "conflict": typer.colors.RED,
+    "missing": typer.colors.YELLOW,
+    "removed": typer.colors.GREEN,
+    "absent": typer.colors.BRIGHT_BLACK,
+}
+_SKILL_STATUS_LABELS = {
+    "current": "up to date",
+    "installed": "installed",
+    "updated": "updated",
+    "unchanged": "already up to date",
+    "stale": "outdated — rerun with --install --force",
+    "conflict": "differs from ours — use --force to overwrite",
+    "missing": "not installed",
+    "removed": "removed",
+    "absent": "agent not detected",
+}
+
+
+@app.command()
+def skill(
+    install: bool = typer.Option(False, "--install", help="Write SKILL.md into agent skills directories."),
+    uninstall: bool = typer.Option(False, "--uninstall", help="Remove a previously installed skill."),
+    show: bool = typer.Option(False, "--print", help="Print the SKILL.md text to stdout."),
+    target: list[str] = typer.Option(
+        None, "--target", "-t", help="Limit to specific agents (repeatable). Default: all detected."
+    ),
+    path: str | None = typer.Option(
+        None, "--path", help="Install into an explicit skills directory instead of auto-detecting."
+    ),
+    force: bool = typer.Option(False, "--force", help="Overwrite a skill file that differs from ours."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would happen, write nothing."),
+) -> None:
+    """Register AgentLeak as a skill so coding agents discover it on their own.
+
+    With no flags, reports where the skill is installed.
+    """
+    from . import skill as skill_mod
+
+    if show:
+        typer.echo(skill_mod.skill_text())
+        return
+
+    if install and uninstall:
+        typer.secho("✗ --install and --uninstall are mutually exclusive.", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
+
+    # --- resolve which locations we operate on --------------------------------
+    if path is not None:
+        locations = [(Path(path).expanduser(), path)]
+    else:
+        if target:
+            try:
+                targets = [skill_mod.target_by_id(t) for t in target]
+            except KeyError as exc:
+                typer.secho(f"✗ {exc.args[0]}", fg=typer.colors.RED)
+                raise typer.Exit(code=2) from exc
+        else:
+            targets = skill_mod.detect_targets()
+        locations = [(t.skills_path(), t.label) for t in targets]
+
+    # --- status (no flags) ----------------------------------------------------
+    if not install and not uninstall:
+        rows = skill_mod.status()
+        typer.echo("")
+        typer.secho("👁️  AgentLeak skill", bold=True)
+        typer.echo("")
+        for tgt, state in rows:
+            typer.secho(
+                f"  {tgt.label:<14} {_SKILL_STATUS_LABELS[state]}",
+                fg=_SKILL_STATUS_COLORS[state],
+            )
+        typer.echo("")
+        if any(state in {"missing", "stale"} for _, state in rows):
+            typer.echo("  Install with:  agentleak skill --install")
+        elif not any(state != "absent" for _, state in rows):
+            typer.echo("  No supported agent detected. Use --path <skills-dir> to install anyway.")
+        return
+
+    if not locations:
+        typer.secho(
+            "✗ No supported agent detected (Claude Code, OpenClaw, Cursor, Windsurf, Codex CLI).",
+            fg=typer.colors.RED,
+        )
+        typer.echo("  Install into an explicit directory with:  agentleak skill --install --path <dir>")
+        raise typer.Exit(code=1)
+
+    # --- act ------------------------------------------------------------------
+    outcomes = []
+    for destination, label in locations:
+        if uninstall:
+            outcomes.append(skill_mod.uninstall(destination, label=label, dry_run=dry_run))
+        else:
+            outcomes.append(
+                skill_mod.install(destination, force=force, label=label, dry_run=dry_run)
+            )
+
+    prefix = "[dry-run] " if dry_run else ""
+    typer.echo("")
+    for outcome in outcomes:
+        mark = "✓" if outcome.ok else "✗"
+        typer.secho(
+            f"  {mark} {outcome.label or outcome.path.parent.name}: "
+            f"{prefix}{_SKILL_STATUS_LABELS[outcome.status]}",
+            fg=_SKILL_STATUS_COLORS[outcome.status],
+        )
+        if outcome.changed or outcome.status == "unchanged":
+            typer.secho(f"      {outcome.path}", fg=typer.colors.BRIGHT_BLACK)
+    typer.echo("")
+
+    if any(not o.ok for o in outcomes):
+        raise typer.Exit(code=1)
+    if install and not dry_run:
+        typer.echo("  Start a new agent session for the skill to be picked up.")
+
+
+# ----------------------------------------------------------------------
 # scan (static code privacy scan)
 # ----------------------------------------------------------------------
 @app.command()

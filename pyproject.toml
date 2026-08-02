@@ -79,6 +79,7 @@ exclude = ["**/node_modules", "agentleak/web/frontend/**"]
 packages = ["agentleak"]
 # Built static assets aren't tracked by .gitignore's logic, so force-include them.
 artifacts = [
+  "agentleak/skill/SKILL.md",
   "agentleak/reporters/templates/*.j2",
   "agentleak/examples/*.json",
   "agentleak/scenarios/packs/*.json",

@@ -10,12 +10,39 @@ version's complete help output.
 | `validate CONFIG` | Validate configuration; `--trace` also validates a trace. |
 | `scenarios` | List built-in scenarios and sensitive-data domains. |
 | `schema [NAME]` | Print the schema catalog or one named JSON Schema. |
+| `skill` | Register AgentLeak as a skill so coding agents discover it themselves. |
 | `run` | Analyze a trace or scenario and write reports. |
 | `report` | Re-render a saved JSON report. |
 | `scan` | Scan source code locally, from ZIP or GitHub. |
 | `history` | Show stored project progression. |
 | `compare` | Compare two stored runs. |
 | `serve` | Start the local web interface. |
+
+## Skill
+
+AgentLeak ships a `SKILL.md`. Installing it into an agent's skills directory means the agent
+knows to reach for `agentleak scan` on its own — no prompting, no memorized commands.
+
+```bash
+agentleak skill                       # where is it installed?
+agentleak skill --install             # write it into every detected agent
+agentleak skill --install -t claude-code -t cursor
+agentleak skill --install --path ~/.config/myagent/skills
+agentleak skill --install --dry-run   # show the plan, write nothing
+agentleak skill --install --force     # overwrite a file that differs from ours
+agentleak skill --uninstall
+agentleak skill --print               # dump the skill text to stdout
+```
+
+Detected agents: Claude Code (`~/.claude`), OpenClaw (`~/.openclaw`), Cursor (`~/.cursor`),
+Windsurf (`~/.windsurf`), Codex CLI (`~/.codex`). An agent counts as detected when its home
+directory exists; the skill lands in `<agent>/skills/agentleak/SKILL.md`.
+
+The installer never overwrites a skill file whose content differs from the packaged one — if
+you edited it, you get a `conflict` and exit code 1 until you pass `--force`. Exit codes: 0
+success, 1 conflict or no agent detected, 2 invalid usage.
+
+Start a new agent session after installing; skills are read at session start.
 
 ## Run
 

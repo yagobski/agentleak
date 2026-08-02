@@ -6,6 +6,20 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Agent-native distribution
+
+- **`agentleak skill`** (`agentleak/skill/`) — registers AgentLeak as an agent skill so
+  coding agents (Claude Code, OpenClaw, Cursor, Windsurf, Codex CLI) discover the tool on
+  their own instead of having to be told how to use it. Auto-detects installed agents,
+  writes `<agent>/skills/agentleak/SKILL.md`, and refuses to clobber an edited skill file
+  without `--force`. Supports `--target`, `--path`, `--dry-run`, `--uninstall`, `--print`.
+- **`SKILL.md`** at the repository root — the canonical skill text, shipped as package data
+  and installable via `npx skills add`. A test asserts the root copy and the packaged copy
+  cannot drift apart.
+- **`docs/install.md`** — a paste-into-your-agent installer: the agent reads it, installs
+  AgentLeak, verifies with a demo scan, registers the skill and reports back.
+- Covered by `tests/test_skill.py` (23 tests).
+
 ### Detection quality (0.9.0)
 
 Findings from an end-to-end dogfood of a real LangGraph coordinator-worker
