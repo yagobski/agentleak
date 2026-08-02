@@ -158,21 +158,58 @@ realistic, leaky one (see *Conversion* below).
 
 ## Scenario packs
 
-A **pack** is a curated, importable bundle. Two ship with AgentLeak:
+A **pack** is a curated, importable bundle. Three ship with AgentLeak:
 
 | Pack | Source | Contents |
 | --- | --- | --- |
-| **AgentLeak Bench** | AgentLeak (arXiv:2602.11510) | 36 scenarios — healthcare / finance / legal / corporate × adversary levels A0/A1/A2 |
-| **PII Probes (ai4privacy)** | ai4privacy/pii-masking-200k (HuggingFace) | short PII-laden records that leak onto memory and logs |
+| **AgentLeak Bench** (`agentleak_bench`) | AgentLeak (arXiv:2602.11510) | 36 scenarios — healthcare / finance / legal / corporate × adversary levels A0/A1/A2 |
+| **PII Probes** (`ai4privacy_probes`) | ai4privacy/pii-masking-200k (HuggingFace) | short PII-laden records that leak onto memory and logs |
+| **PrivacyLens** (`privacylens_ci`) | [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) — NeurIPS 2024 D&B, CC-BY-4.0 | 120 contextual-integrity scenarios: the agent pulls private context in through its tools, then acts toward a recipient the norm says must not receive it |
 
-Import from the GUI (**Import pack**) or `POST /api/scenario-packs/{id}/import`.
-Imports are **idempotent** — re-importing only adds scenarios you don't have yet.
+List them from the CLI, import them from the GUI (**Import pack**) or
+`POST /api/scenario-packs/{id}/import`. Imports are **idempotent** —
+re-importing only adds scenarios you don't have yet.
+
+```bash
+agentleak scenarios --packs
+```
+
+```bash
+agentleak run --pack privacylens_ci --scenario main1
+```
+
 To add your own pack, drop a JSON file in `agentleak/scenarios/packs/` shaped like:
 
 ```json
 { "id": "my_pack", "name": "My Pack", "source": "…",
   "format": "agentleak_spec", "scenarios": [ /* specs, records, or traces */ ] }
 ```
+
+Packs derived from a third-party dataset also carry `source_url`, `license` and
+`attribution`; those fields are displayed everywhere the pack appears (CLI,
+`GET /api/scenario-packs`, the Scenarios page) because the licence requires it.
+
+### PrivacyLens: leaks a pattern cannot see
+
+The other packs leak *values* — an SSN, an API key, a card number — which a regex
+tier finds on its own. PrivacyLens leaks **facts**: "Bob missed work for a court
+date", "the client is renegotiating their loan". Nothing in that string looks
+like PII, and measured on this pack the regex tier alone scores **most scenarios
+a clean 100/100**.
+
+So each scenario ships the dataset's own `sensitive_info_items` as **semantic
+canaries** — exact ground truth, confidence 1.0. The scenario scores
+deterministically, with no LLM tier and no API key:
+
+| `main1` | Verdict | Privacy score |
+| --- | --- | --- |
+| Trace alone | Pass | 100/100 |
+| Trace + its canaries | **Fail** | 0/100 |
+
+That ground truth is carried through import and persisted with the scenario
+(`has_canaries` on the scenario record), so a pack scenario scores the same in
+the GUI as it does in the CLI. Dropping it anywhere turns a Fail into a silent
+Pass — `tests/test_privacylens.py` guards every hop.
 
 ## Conversion (spec / PII → trace)
 

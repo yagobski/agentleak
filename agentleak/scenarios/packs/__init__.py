@@ -51,6 +51,11 @@ def list_packs() -> list[dict[str, Any]]:
                 "name": raw.get("name", fname[:-5]),
                 "description": raw.get("description", ""),
                 "source": raw.get("source", ""),
+                "source_url": raw.get("source_url", ""),
+                # Surfaced, not merely stored: packs derived from third-party
+                # datasets carry licence terms we are obliged to display.
+                "license": raw.get("license", ""),
+                "attribution": raw.get("attribution", ""),
                 "format": raw.get("format", "agentleak_spec"),
                 "count": len(raw.get("scenarios", [])),
             }

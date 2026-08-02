@@ -40,6 +40,9 @@ export interface ScenarioPack {
   name: string
   description: string
   source: string
+  source_url?: string
+  license?: string
+  attribution?: string
   format: string
   count: number
   imported_count: number

@@ -37,6 +37,7 @@ from ..agent import (
 )
 from ..core.agentcard import AgentCard, UnsafeURLError, fetch_agent_card, parse_agent_card
 from ..core.agentrisk import dominates
+from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
 from ..core.config import Config
 from ..core.report import AnalysisResult
@@ -353,24 +354,33 @@ def _redteam_run_context(scenario: Any, vertical: str) -> RunContext:
     )
 
 
-def _trace_from_payload(payload: dict[str, Any], store: Store | None = None) -> Trace:
+def _trace_from_payload(
+    payload: dict[str, Any], store: Store | None = None
+) -> tuple[Trace, CanarySet | None]:
+    """Resolve a payload to a trace plus whatever ground truth came with it.
+
+    Scenarios imported from a research pack carry the exact facts that must not
+    travel. Dropping them here would score a semantic leak as a clean run.
+    """
     sid = payload.get("scenario_id")
     if sid:
         try:
-            return load_example_trace(sid)  # built-in
+            return load_example_trace(sid), None  # built-in
         except (KeyError, ValueError):
             pass
         if store is not None:
             stored = store.get_scenario(sid)
             if stored and stored.get("trace"):
-                return Trace.from_dict(stored["trace"])
+                raw = stored.get("canaries")
+                canaries = CanarySet.from_dict(raw) if raw else None
+                return Trace.from_dict(stored["trace"]), canaries
         raise ValueError(f"Unknown scenario '{sid}'.")
     trace = payload.get("trace")
     if not trace:
         raise ValueError("Provide a 'trace' object or a 'scenario_id'.")
     if isinstance(trace, str):
         trace = json.loads(trace)
-    return Trace.from_dict(trace)
+    return Trace.from_dict(trace), None
 
 
 def _analyze(
@@ -380,8 +390,8 @@ def _analyze(
     if project_name:
         data["project"] = {"name": project_name}
     cfg = Config.from_dict(data) if data else None
-    trace = _trace_from_payload(payload, store)
-    return AgentLeakRunner(cfg).analyze(trace)
+    trace, canaries = _trace_from_payload(payload, store)
+    return AgentLeakRunner(cfg).analyze(trace, canary_set=canaries)
 
 
 def _builtin_scenario_summary(scenario: Any) -> dict[str, Any]:
@@ -1200,6 +1210,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             difficulty=payload.get("difficulty") or meta.get("difficulty", ""),
             source="custom",
             spec=meta.get("spec"),
+            canaries=meta.get("canaries"),
             owner_id=user["id"],
         )
 
@@ -1261,7 +1272,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 sensitive_data=meta["sensitive_data"], tags=meta["tags"],
                 difficulty=meta.get("difficulty", ""),
                 source="imported", pack_id=pack_id, origin_id=origin,
-                spec=meta.get("spec"), owner_id=user["id"],
+                spec=meta.get("spec"), canaries=meta.get("canaries"),
+                owner_id=user["id"],
             )
             imported += 1
         return {"imported": imported, "skipped": skipped, "pack_id": pack_id}

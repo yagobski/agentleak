@@ -13,6 +13,7 @@ from pathlib import Path
 import typer
 
 from . import __version__
+from .core.canary import CanarySet
 from .core.config import DEFAULT_CONFIG_YAML, Config
 from .core.report import AnalysisResult
 from .core.runner import AgentLeakRunner
@@ -143,6 +144,8 @@ def scenarios(
             typer.secho(entry["id"], fg=typer.colors.CYAN, bold=True)
             typer.echo(f"  {entry['description'] or entry['name']}")
             typer.echo(f"  {entry['count']} scenario(s) · source: {entry['source'] or 'bundled'}")
+            if entry.get("license"):
+                typer.echo(f"  licence: {entry['license']}")
             typer.echo(f"  run one: agentleak run --pack {entry['id']} --scenario <id>")
         return
 
@@ -556,8 +559,8 @@ def run(
     runner = AgentLeakRunner(cfg)
 
     worst_blocked = False
-    for _label, t in traces:
-        result = runner.analyze(t)
+    for _label, t, canaries in traces:
+        result = runner.analyze(t, canary_set=canaries)
         if fail_under is not None:
             result.fail_below = fail_under
         written = write_reports(result, out_dir, formats, basename=result.run_id)
@@ -611,11 +614,26 @@ def report(
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+def _canaries_of(meta: dict[str, object]) -> CanarySet | None:
+    """A pack entry's ground-truth canaries, when it ships any."""
+    raw = meta.get("canaries")
+    if not isinstance(raw, dict):
+        return None
+    canaries = CanarySet.from_dict(raw)
+    return None if canaries.is_empty() else canaries
+
+
 def _resolve_traces(
     trace: str | None, scenario: str | None, cfg: Config | None, *, pack: str | None = None
-) -> list[tuple[str, Trace]]:
+) -> list[tuple[str, Trace, CanarySet | None]]:
+    """Resolve what to analyze into ``(label, trace, canary_set)`` triples.
+
+    Some packs ship ground truth alongside the trace (PrivacyLens states the
+    exact facts that must not travel). That ground truth rides along as a
+    canary set, because without it those scenarios score a false "Pass".
+    """
     if trace:
-        return [(trace, Trace.from_json_file(trace))]
+        return [(trace, Trace.from_json_file(trace), None)]
     if pack:
         # A bundled research pack: the whole suite, or one scenario from it.
         # This is what makes the published benchmark one command away.
@@ -626,21 +644,27 @@ def _resolve_traces(
         except (KeyError, FileNotFoundError, ValueError) as exc:
             raise typer.BadParameter(f"unknown pack: {pack}") from exc
         if not scenario or scenario == "all":
-            return [(meta.get("origin_id") or meta.get("name", "?"), tr) for meta, tr in entries]
+            return [
+                (meta.get("origin_id") or meta.get("name", "?"), tr, _canaries_of(meta))
+                for meta, tr in entries
+            ]
         for meta, tr in entries:
             if scenario in (meta.get("origin_id"), meta.get("name")):
-                return [(scenario, tr)]
+                return [(scenario, tr, _canaries_of(meta))]
         raise typer.BadParameter(f"scenario '{scenario}' not found in pack '{pack}'")
     if scenario:
         if scenario == "all":
-            return [(s.id, load_example_trace(s.id)) for s in list_scenarios() if s.example_trace]
-        return [(scenario, load_example_trace(scenario))]
+            return [
+                (s.id, load_example_trace(s.id), None)
+                for s in list_scenarios() if s.example_trace
+            ]
+        return [(scenario, load_example_trace(scenario), None)]
     if cfg and cfg.scenarios:
-        out: list[tuple[str, Trace]] = []
+        out: list[tuple[str, Trace, CanarySet | None]] = []
         for ref in cfg.scenarios:
             if ref.enabled:
                 try:
-                    out.append((ref.id, load_example_trace(ref.id)))
+                    out.append((ref.id, load_example_trace(ref.id), None))
                 except (KeyError, ValueError):
                     typer.secho(f"! skipping unknown scenario '{ref.id}'", fg=typer.colors.YELLOW)
         return out

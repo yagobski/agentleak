@@ -40,6 +40,34 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 - **Defenses have a door**: `agentleak redact` exposes the sanitizer that shipped with
   documentation but no entry point (file or stdin, six redaction styles).
 
+### Scenario coverage: contextual integrity
+
+- **New `privacylens_ci` pack — 120 contextual-integrity scenarios** derived from
+  [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens)
+  (NeurIPS 2024 Datasets & Benchmarks, CC-BY-4.0). An agent pulls private context in
+  through its tools, then acts toward a recipient the norm says must not receive it.
+  Curated for balance rather than volume: all three provenance sources
+  (crowdsourcing / regulation / literature), four outbound channels, 99 distinct
+  recipients, 115 distinct data types. This is the first pack whose leaks are *facts*
+  ("Bob missed work for a court date") rather than *patterns* — the gap between
+  "no PII detected" and "a privacy norm was broken".
+- **New `privacylens` upload format.** `agentleak/scenarios/convert.py` replays a
+  ReAct trajectory faithfully — one `tool_call`/`tool_response` pair per step,
+  attributed to the toolkit that served it — then models the outbound act the
+  scenario exists to describe.
+- **Ground truth travels with the scenario.** Measured on this pack, the regex tier
+  alone scores most scenarios a clean 100/100, so shipping the traces bare would have
+  manufactured false Passes. Each scenario carries the dataset's own
+  `sensitive_info_items` as **semantic canaries** (exact match, confidence 1.0), which
+  makes it score deterministically with no LLM tier and no API key: `main1` goes from
+  Pass 100/100 to Fail 0/100. Canaries are now persisted with imported scenarios
+  (`scenarios.canaries`, additive migration) and used when the platform analyzes them,
+  so a pack scenario scores the same in the GUI as in the CLI.
+- **Pack licences are displayed, not just stored.** `source_url`, `license` and
+  `attribution` are surfaced by `agentleak scenarios --packs`,
+  `GET /api/scenario-packs` and the Scenarios page — CC-BY-4.0 requires attribution
+  wherever the data appears.
+
 ### Honest reporting
 
 - **Every result states which detection tiers produced it.** Reports carry

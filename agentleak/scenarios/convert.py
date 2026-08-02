@@ -8,6 +8,10 @@ datasets describe their cases differently and carry no trace of their own:
   *run* the scenario to produce a trace.
 * **ai4privacy** (HuggingFace ``ai4privacy/pii-masking-200k`` shape): a sentence
   of text with PII span annotations.
+* **PrivacyLens** (HuggingFace ``SALT-NLP/PrivacyLens``, NeurIPS 2024 D&B,
+  CC-BY-4.0): a contextual-integrity seed (data type, subject, sender,
+  recipient, transmission principle) plus a ReAct agent trajectory and the
+  ground-truth ``sensitive_info_items`` that must not reach the recipient.
 
 To make these usable as ready-to-run tests, we **synthesize** a realistic,
 leaky trace: the agent receives the sensitive record on a baseline channel
@@ -24,6 +28,7 @@ trace, so re-imports are stable.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ..core.trace import Trace
@@ -53,7 +58,7 @@ def detect_format(data: Any) -> str:
     """Sniff the shape of an uploaded object.
 
     Returns one of ``"trace"``, ``"agentleak_spec"``, ``"ai4privacy"``,
-    ``"oss_scenario"``, ``"openai_chat"`` or ``"unknown"``.
+    ``"privacylens"``, ``"oss_scenario"``, ``"openai_chat"`` or ``"unknown"``.
     """
     if not isinstance(data, dict):
         return "unknown"
@@ -63,6 +68,9 @@ def detect_format(data: Any) -> str:
         return "agentleak_spec"
     if "source_text" in data and "pii_annotations" in data:
         return "ai4privacy"
+    trajectory = data.get("trajectory")
+    if isinstance(trajectory, dict) and "executable_trajectory" in trajectory:
+        return "privacylens"
     if "trace" in data and isinstance(data["trace"], dict):
         return "oss_scenario"
     messages = data.get("messages")
@@ -270,6 +278,105 @@ def ai4privacy_to_trace(record: dict[str, Any]) -> Trace:
     return trace
 
 
+_REACT_STEP = re.compile(
+    r"^Action:\s*(?P<action>.+?)\s*$\n"
+    r"^Action Input:\s*(?P<input>.*?)\s*$"
+    r"(?:\n^Observation:\s*(?P<observation>.*?)\s*$)?"
+    r"(?=\n^Action:|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+
+
+def _toolkit_for(action: str, toolkits: list[str]) -> str:
+    """Map ``NotionManagerSearchContent`` back to its ``NotionManager`` toolkit."""
+    for toolkit in sorted(toolkits, key=len, reverse=True):
+        if action.startswith(toolkit):
+            return toolkit
+    return action or "tool"
+
+
+def privacylens_canaries(record: dict[str, Any]) -> list[str]:
+    """The ground-truth facts that must not reach the recipient.
+
+    PrivacyLens ships these as ``sensitive_info_items``: whole propositions
+    ("X is accused of embezzling funds"), not PII patterns. Regex and NER tiers
+    only catch about one in twelve of them, so they are wired as *semantic
+    canaries* instead — exact-match ground truth that makes the scenario score
+    deterministically, with no LLM tier required.
+    """
+    trajectory = record.get("trajectory", {}) or {}
+    return [str(i).strip() for i in trajectory.get("sensitive_info_items", []) if str(i).strip()]
+
+
+def privacylens_to_trace(record: dict[str, Any]) -> Trace:
+    """Build a trace from a PrivacyLens contextual-integrity scenario.
+
+    The dataset records the agent's real trajectory *up to* the moment it acts:
+    tool calls that pull private context in, and the outbound action it is about
+    to take. We replay that faithfully (one ``tool_call``/``tool_response`` pair
+    per ReAct step) and then model the risk the scenario exists to describe —
+    the retrieved facts travelling on to the recipient the seed says must not
+    receive them. That last event is the flow under test, not dataset content.
+    """
+    seed = record.get("seed", {}) or {}
+    trajectory = record.get("trajectory", {}) or {}
+    name = str(record.get("name") or "privacylens")
+    toolkits = [str(t) for t in trajectory.get("toolkits", [])]
+    recipient = str(seed.get("data_recipient") or "external recipient")
+
+    trace = Trace(
+        run_id=f"trace_{name}",
+        agent_name=f"{_slug(seed.get('data_sender') or 'assistant')}_agent",
+        scenario_id=name,
+    )
+    trace.add_event(
+        "user_input",
+        str(trajectory.get("user_instruction", "")).strip(),
+        source=str(trajectory.get("user_name") or "user"),
+        target="assistant",
+    )
+
+    for step in _REACT_STEP.finditer(str(trajectory.get("executable_trajectory", ""))):
+        action = (step.group("action") or "").strip()
+        toolkit = _toolkit_for(action, toolkits)
+        trace.add_event(
+            "tool_call",
+            (step.group("input") or "").strip(),
+            source="assistant", target=toolkit,
+            metadata={"tool_name": action},
+        )
+        observation = (step.group("observation") or "").strip()
+        if observation:
+            # Private context enters the agent here: this is the channel an
+            # output-only audit never sees.
+            trace.add_event(
+                "tool_response", observation,
+                source=toolkit, target="assistant",
+                metadata={"tool_name": action},
+            )
+
+    final_action = str(trajectory.get("final_action") or "send").strip()
+    facts = privacylens_canaries(record)
+    if facts:
+        trace.add_event(
+            "tool_call",
+            " ".join(facts),
+            source="assistant",
+            target=_toolkit_for(final_action, toolkits),
+            metadata={"tool_name": final_action, "recipient": recipient},
+        )
+    trace.add_event(
+        "final_output",
+        f"Done — sent via {final_action}.",
+        source="assistant", target="user",
+    )
+    return trace
+
+
+def _slug(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value).lower()).strip("_") or "agent"
+
+
 def openai_chat_to_trace(data: dict[str, Any]) -> Trace:
     """Map an OpenAI-style chat log (``{"messages": [...]}``) onto channels.
 
@@ -369,6 +476,25 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
             "sensitive_data": types,
             "tags": ["ai4privacy", "pii"],
             "difficulty": "",
+        }, trace
+    if fmt == "privacylens":
+        trace = privacylens_to_trace(data)
+        seed = data.get("seed", {}) or {}
+        facts = privacylens_canaries(data)
+        return {
+            "name": data.get("name") or "PrivacyLens scenario",
+            "domain": str(seed.get("source") or "contextual-integrity"),
+            "description": (
+                f"{seed.get('data_type', 'Private information')} about "
+                f"{seed.get('data_subject', 'a person')} must not reach "
+                f"{seed.get('data_recipient', 'this recipient')}."
+            ),
+            "sensitive_data": [str(seed.get("data_type", "private information"))],
+            "tags": ["privacylens", "contextual-integrity", f"source:{seed.get('source', 'unknown')}"],
+            "difficulty": "",
+            # Ground truth: exact facts that must not travel. Wired as semantic
+            # canaries so the scenario scores without an LLM tier.
+            "canaries": {"semantic": facts},
         }, trace
     if fmt == "openai_chat":
         trace = openai_chat_to_trace(data)

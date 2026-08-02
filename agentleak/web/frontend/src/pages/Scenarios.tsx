@@ -327,6 +327,24 @@ function PackCard({ pack, onImport }: { pack: ScenarioPack; onImport: () => void
         )}
       </div>
       <p className="mt-2 flex-1 text-sm text-muted-foreground">{pack.description}</p>
+      {pack.license && (
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/80">
+          {pack.source_url ? (
+            <a
+              href={pack.source_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Source dataset
+            </a>
+          ) : (
+            "Source dataset"
+          )}{" "}
+          · {pack.license}
+          {pack.attribution ? ` — ${pack.attribution}` : ""}
+        </p>
+      )}
       <Button
         variant={done ? "outline" : "default"}
         size="sm"

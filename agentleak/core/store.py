@@ -220,6 +220,10 @@ class Store:
         sce_cols = {r["name"] for r in c.execute("PRAGMA table_info(scenarios)")}
         if "owner_id" not in sce_cols:
             c.execute("ALTER TABLE scenarios ADD COLUMN owner_id TEXT DEFAULT ''")
+        # Ground-truth canaries carried by imported packs (added in 0.10):
+        # without them a semantic-leak scenario would score a false Pass.
+        if "canaries" not in sce_cols:
+            c.execute("ALTER TABLE scenarios ADD COLUMN canaries TEXT DEFAULT ''")
         # Run history columns (added in 0.8).
         run_cols = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
         if "privacy_score" not in run_cols:
@@ -1126,19 +1130,21 @@ class Store:
         pack_id: str = "",
         origin_id: str = "",
         spec: dict[str, Any] | None = None,
+        canaries: dict[str, Any] | None = None,
         owner_id: str = "",
     ) -> dict[str, Any]:
         sid = _new_id("sce")
         with self._conn() as c:
             c.execute(
                 "INSERT INTO scenarios (id, name, domain, description, sensitive_data, tags,"
-                " difficulty, source, pack_id, origin_id, trace, spec, owner_id, created_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " difficulty, source, pack_id, origin_id, trace, spec, canaries, owner_id,"
+                " created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     sid, name.strip() or "Untitled scenario", domain, description,
                     json.dumps(sensitive_data or []), json.dumps(tags or []),
                     difficulty, source, pack_id, origin_id, json.dumps(trace),
-                    json.dumps(spec) if spec else "", owner_id, _now(),
+                    json.dumps(spec) if spec else "",
+                    json.dumps(canaries) if canaries else "", owner_id, _now(),
                 ),
             )
         return self.get_scenario(sid)  # type: ignore[return-value]
@@ -1262,6 +1268,7 @@ class Store:
     def _scenario_row(row: sqlite3.Row, *, with_trace: bool) -> dict[str, Any]:
         keys = row.keys()
         spec_raw = row["spec"] if "spec" in keys else ""
+        canaries_raw = row["canaries"] if "canaries" in keys else ""
         data = {
             "id": row["id"],
             "name": row["name"],
@@ -1277,8 +1284,10 @@ class Store:
             "created_at": row["created_at"],
             "builtin": False,
             "has_spec": bool(spec_raw),
+            "has_canaries": bool(canaries_raw),
         }
         if with_trace:
             data["trace"] = json.loads(row["trace"])
             data["spec"] = json.loads(spec_raw) if spec_raw else None
+            data["canaries"] = json.loads(canaries_raw) if canaries_raw else None
         return data
