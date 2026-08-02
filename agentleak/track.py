@@ -3,8 +3,10 @@
 `watch()` unifies every framework path (LangChain, LangGraph, CrewAI, OpenAI
 Swarm / Agents SDK, Google ADK, or plain Python) behind a single object. You
 open one ``with`` block, attach whatever your framework gives you, and on exit
-the trace is analyzed automatically — and submitted to a running platform if a
-project name was given.
+the trace is analyzed automatically, entirely on this machine.
+
+Nothing is sent anywhere unless you ask for it: pass ``base_url=`` (or set
+``AGENTLEAK_PLATFORM_URL``) to also submit the run to a platform.
 
 Plain Python (no framework)::
 
@@ -42,6 +44,7 @@ Google ADK — hand back the event list::
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +53,9 @@ from .core.report import AnalysisResult
 from .core.runner import AgentLeakRunner
 from .core.trace import Channel, Content, Trace
 from .sdk import _local  # shared active-capture state (record()/@monitor work inside watch())
+
+#: Where the platform lives when one is configured but no URL was given.
+DEFAULT_PLATFORM_URL = "http://127.0.0.1:8000"
 
 
 def _resolve_config(config: Config | str | None) -> Config | None:
@@ -81,8 +87,9 @@ class Run:
     - :meth:`ingest_messages` — OpenAI Swarm / Agents SDK message lists.
     - :meth:`ingest_adk`      — Google ADK event lists.
 
-    On ``with`` exit the trace is analyzed into :attr:`report` and, if the run was
-    created with a ``project`` and a reachable platform, submitted automatically.
+    On ``with`` exit the trace is analyzed into :attr:`report`. Analysis is
+    always local; the run is submitted to a platform only when one was
+    explicitly configured (``base_url``/``AGENTLEAK_PLATFORM_URL``/``submit``).
     """
 
     def __init__(
@@ -92,17 +99,27 @@ class Run:
         agent_name: str = "agent",
         config: Config | None = None,
         project: str | None = None,
-        base_url: str = "http://127.0.0.1:8000",
+        base_url: str | None = None,
         submit: bool | None = None,
         print_summary: bool = True,
     ) -> None:
         self.trace = Trace(run_id=run_id, agent_name=agent_name)
         self.config = config
         self.project = project
-        self.base_url = base_url
+        env_url = os.environ.get("AGENTLEAK_PLATFORM_URL", "").strip()
+        self.base_url = base_url or env_url or DEFAULT_PLATFORM_URL
         self.print_summary = print_summary
-        # submit=None → auto: submit when a project name was given.
-        self._submit = (project is not None) if submit is None else submit
+        # AgentLeak is local-first: a run is analyzed on this machine and the
+        # platform is opt-in. A project name alone is not consent to talk to a
+        # server, so submission happens only when a platform was explicitly
+        # configured (submit=True, an explicit base_url, or
+        # AGENTLEAK_PLATFORM_URL). Otherwise nothing leaves the process and no
+        # connection error is printed at people who never asked for one.
+        self._platform_configured = bool(base_url or env_url)
+        if submit is None:
+            self._submit = self.project is not None and self._platform_configured
+        else:
+            self._submit = submit
         self.report: AnalysisResult | None = None
         self.submitted: dict[str, Any] | None = None
         # Set when platform submission was attempted but failed (e.g. the
@@ -269,7 +286,10 @@ class Run:
         if self.submitted:
             lines.append(f"  → submitted to platform (run {self.submitted.get('id', '?')})")
         elif self.submit_error:
-            lines.append(f"  ⚠ platform submission failed (local analysis above is unaffected): {self.submit_error}")
+            lines.append(
+                "  ⚠ platform submission failed (local analysis above is "
+                f"unaffected): {self.submit_error}"
+            )
         return "\n".join(lines)
 
     def __repr__(self) -> str:
@@ -283,22 +303,25 @@ def watch(
     agent_name: str = "agent",
     config: Config | str | None = None,
     submit: bool | None = None,
-    base_url: str = "http://127.0.0.1:8000",
+    base_url: str | None = None,
     print_summary: bool = True,
 ) -> Run:
     """Open a privacy-leak capture session for any agent.
 
     Args:
-        project: Platform project name. If given (and a platform is reachable),
-            the run is submitted automatically on exit. Omit for purely local
-            analysis.
+        project: Platform project name, used when submitting. Naming a
+            project does not by itself send anything: analysis is always
+            local unless a platform is configured (see ``base_url``).
         run_id: Identifier for this run.
         agent_name: Name recorded on the trace.
         config: A :class:`~agentleak.Config`, a path to ``agentleak.yaml``, or
             ``None`` to auto-discover one in the current directory.
         submit: Force-enable/disable platform submission. ``None`` = auto
-            (submit when ``project`` is given).
-        base_url: Platform URL for submission.
+            (submit only when ``project`` is given *and* a platform is
+            configured).
+        base_url: Platform URL. Passing it (or setting
+            ``AGENTLEAK_PLATFORM_URL``) is what opts this run into
+            submission; omit it to stay fully local.
         print_summary: Print a one-glance leak summary when the block exits.
 
     Returns:

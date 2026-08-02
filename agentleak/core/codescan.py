@@ -691,6 +691,7 @@ class CodeScanner:
         *,
         source_type: str = "files",
         source_ref: str = "",
+        skip_filter: bool = True,
     ) -> CodeScanResult:
         result = CodeScanResult(
             source_type=source_type,
@@ -699,7 +700,7 @@ class CodeScanner:
             tiers=self.pipeline.finding_tiers + ["deobfuscation", "entropy", "correlation"],
         )
         for path, content in list(files.items())[:MAX_FILES]:
-            if not _is_scannable(path) or not isinstance(content, str):
+            if (skip_filter and not _is_scannable(path)) or not isinstance(content, str):
                 result.files_skipped += 1
                 continue
             if len(content.encode("utf-8", errors="replace")) > MAX_FILE_BYTES:
@@ -721,15 +722,58 @@ def scan_files(
     source_ref: str = "",
     config: Config | None = None,
     extra_identifiers: Sequence[str] = (),
+    skip_filter: bool = True,
 ) -> CodeScanResult:
-    """Scan an in-memory ``{path: content}`` mapping. The core entry point."""
+    """Scan an in-memory ``{path: content}`` mapping. The core entry point.
+
+    ``skip_filter=False`` scans every entry regardless of extension, for when
+    the caller named the files explicitly rather than walking a tree.
+    """
     scanner = CodeScanner(config, extra_identifiers=extra_identifiers)
-    return scanner.scan_files(files, source_type=source_type, source_ref=source_ref)
+    return scanner.scan_files(
+        files, source_type=source_type, source_ref=source_ref, skip_filter=skip_filter
+    )
 
 
 def scan_text(path: str, text: str, *, config: Config | None = None) -> list[CodeFinding]:
     """All code findings for one file's content."""
     return CodeScanner(config).scan_text(path, text)
+
+
+def scan_file(path: str | Path, *, config: Config | None = None) -> CodeScanResult:
+    """Scan a single source file.
+
+    The first instinct is usually "check this one suspicious file", so a lone
+    path is a first-class input rather than an error. Extension filters are
+    deliberately not applied: an explicitly named file is always scanned.
+    """
+    path = Path(path)
+    if not path.is_file():
+        raise ValueError(f"Not a file: {path}")
+    if path.stat().st_size > MAX_FILE_BYTES:
+        raise ValueError(f"File too large (> {MAX_FILE_BYTES // 1024} KB): {path}")
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return scan_files(
+        {path.name: text},
+        source_type="file",
+        source_ref=str(path),
+        config=config,
+        skip_filter=False,
+    )
+
+
+def scan_path(path: str | Path, *, config: Config | None = None) -> CodeScanResult:
+    """Scan whatever the user pointed at: a directory tree, a file or a zip."""
+    target = Path(path)
+    if target.is_dir():
+        return scan_dir(target, config=config)
+    if target.is_file():
+        if target.suffix.lower() == ".zip":
+            return scan_zip_bytes(
+                target.read_bytes(), source_ref=str(target), config=config
+            )
+        return scan_file(target, config=config)
+    raise ValueError(f"No such file or directory: {target}")
 
 
 def scan_dir(root: str | Path, *, config: Config | None = None) -> CodeScanResult:

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import typer
@@ -125,12 +126,44 @@ def validate(
 # scenarios
 # ----------------------------------------------------------------------
 @app.command()
-def scenarios() -> None:
-    """List the built-in scenarios."""
+def scenarios(
+    packs: bool = typer.Option(False, "--packs", help="List bundled scenario packs (research benchmarks) instead."),
+    pack: str | None = typer.Option(None, "--pack", help="List the scenarios inside one pack, e.g. agentleak_bench."),
+) -> None:
+    """List the scenarios you can run: built-ins, or a bundled research pack.
+
+    Built-ins are the quick leak/clean pairs per domain. The packs ship the
+    published benchmark suites; run any of their scenarios directly with
+    ``agentleak run --pack <pack_id> --scenario <id>``.
+    """
+    from .scenarios.packs import expand_pack, list_packs
+
+    if packs:
+        for entry in list_packs():
+            typer.secho(entry["id"], fg=typer.colors.CYAN, bold=True)
+            typer.echo(f"  {entry['description'] or entry['name']}")
+            typer.echo(f"  {entry['count']} scenario(s) · source: {entry['source'] or 'bundled'}")
+            typer.echo(f"  run one: agentleak run --pack {entry['id']} --scenario <id>")
+        return
+
+    if pack:
+        try:
+            entries = expand_pack(pack)
+        except (KeyError, FileNotFoundError, ValueError) as exc:
+            typer.secho(f"✗ unknown pack: {pack}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
+        for meta, _trace in entries:
+            typer.secho(meta.get("origin_id") or meta.get("name", "?"), fg=typer.colors.CYAN, bold=True)
+            if meta.get("description"):
+                typer.echo(f"  {meta['description']}")
+        typer.echo(f"\n{len(entries)} scenario(s) in {pack}.")
+        return
+
     for s in list_scenarios():
         typer.secho(s.id, fg=typer.colors.CYAN, bold=True)
         typer.echo(f"  {s.description}")
         typer.echo(f"  domain: {s.domain} · sensitive: {', '.join(s.sensitive_data)}")
+    typer.echo("\nAlso available: agentleak scenarios --packs  (research benchmark suites)")
 
 
 # ----------------------------------------------------------------------
@@ -293,7 +326,7 @@ def skill(
 # ----------------------------------------------------------------------
 @app.command()
 def scan(
-    path: str = typer.Argument(".", help="Directory (or zip file) to scan."),
+    path: str = typer.Argument(".", help="File, directory or zip archive to scan."),
     repo: str | None = typer.Option(None, "--repo", "-r", help="Scan a GitHub repo (owner/name) instead of a path."),
     branch: str = typer.Option("main", "--branch", help="Branch to scan with --repo."),
     config: str | None = typer.Option(None, "--config", "-c", help="agentleak.yaml (detector toggles, custom rules, detection mode)."),
@@ -302,13 +335,13 @@ def scan(
     fmt: str = typer.Option("json", "--format", "-f", help="Output format: json | sarif."),
     fail_under: int | None = typer.Option(None, "--fail-under", help="Exit non-zero when the code score is below this value."),
 ) -> None:
-    """Static privacy scan of agent source code (local dir, zip, or GitHub repo).
+    """Static privacy scan of agent source code (file, dir, zip, or GitHub repo).
 
     Runs the same 3-tier hybrid pipeline as trace analysis (regex detectors,
     Presidio, LLM-judge) plus code-specific layers: entropy analysis,
     de-obfuscation of decomposed PII, and quasi-identifier correlation.
     """
-    from .core.codescan import scan_dir, scan_github_repo, scan_zip_bytes
+    from .core.codescan import scan_github_repo, scan_path
 
     fmt = fmt.lower().strip()
     if fmt not in {"json", "sarif"}:
@@ -342,10 +375,10 @@ def scan(
         if repo:
             typer.echo(f"Fetching {repo}@{branch} …")
             result = scan_github_repo(repo, branch=branch, config=cfg)
-        elif path.endswith(".zip"):
-            result = scan_zip_bytes(Path(path).read_bytes(), source_ref=path, config=cfg)
         else:
-            result = scan_dir(path, config=cfg)
+            # scan_path dispatches on what the argument actually is: a single
+            # file, a directory tree or a zip archive.
+            result = scan_path(path, config=cfg)
     except (ValueError, OSError) as exc:
         typer.secho(f"✗ {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
@@ -374,6 +407,42 @@ def scan(
     if fail_under is not None and result.score < fail_under:
         typer.secho(f"✗ score {result.score} < fail-under {fail_under}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
+
+
+# ----------------------------------------------------------------------
+# redact (runtime defense: sanitize before the data ever moves)
+# ----------------------------------------------------------------------
+@app.command()
+def redact(
+    path: str | None = typer.Argument(None, help="File to sanitize. Omit to read stdin."),
+    style: str = typer.Option("placeholder", "--style", help="placeholder | mask | hash | remove."),
+    output: str | None = typer.Option(None, "--output", "-o", help="Write to a file instead of stdout."),
+) -> None:
+    """Redact sensitive values from text, so a leak never happens in the first place.
+
+    Detection tells you what leaked; this is the other half: the same rules
+    applied as a defense. Pipe logs, prompts or tool payloads through it, or
+    use ``agentleak.defenses.Sanitizer`` in-process for the same result.
+    """
+    from .defenses import RedactionStyle, sanitize_text
+
+    valid = {s.value for s in RedactionStyle}
+    if style not in valid:
+        typer.secho(f"✗ style must be one of: {', '.join(sorted(valid))}", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
+
+    try:
+        text = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
+    except OSError as exc:
+        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    cleaned = sanitize_text(text, style=style)
+    if output:
+        Path(output).write_text(cleaned, encoding="utf-8")
+        typer.secho(f"✓ redacted → {output}", fg=typer.colors.GREEN)
+    else:
+        typer.echo(cleaned)
 
 
 # ----------------------------------------------------------------------
@@ -406,6 +475,7 @@ def serve(
 def run(
     config: str | None = typer.Option(None, "--config", "-c", help="Config file (honors detector/scoring settings)."),
     scenario: str | None = typer.Option(None, "--scenario", "-s", help="Run a built-in scenario (or 'all')."),
+    pack: str | None = typer.Option(None, "--pack", help="Take --scenario from a bundled pack (e.g. agentleak_bench), or run 'all' of it."),
     trace: str | None = typer.Option(None, "--trace", "-t", help="Analyze a trace JSON file."),
     output: str | None = typer.Option(None, "--output", "-o", help="Report output directory."),
     fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats."),
@@ -421,7 +491,7 @@ def run(
             typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
 
-    traces = _resolve_traces(trace, scenario, cfg)
+    traces = _resolve_traces(trace, scenario, cfg, pack=pack)
     if not traces:
         typer.secho(
             "Nothing to run. Provide --trace, --scenario, or scenarios in --config.",
@@ -490,10 +560,25 @@ def report(
 # helpers
 # ----------------------------------------------------------------------
 def _resolve_traces(
-    trace: str | None, scenario: str | None, cfg: Config | None
+    trace: str | None, scenario: str | None, cfg: Config | None, *, pack: str | None = None
 ) -> list[tuple[str, Trace]]:
     if trace:
         return [(trace, Trace.from_json_file(trace))]
+    if pack:
+        # A bundled research pack: the whole suite, or one scenario from it.
+        # This is what makes the published benchmark one command away.
+        from .scenarios.packs import expand_pack
+
+        try:
+            entries = expand_pack(pack)
+        except (KeyError, FileNotFoundError, ValueError) as exc:
+            raise typer.BadParameter(f"unknown pack: {pack}") from exc
+        if not scenario or scenario == "all":
+            return [(meta.get("origin_id") or meta.get("name", "?"), tr) for meta, tr in entries]
+        for meta, tr in entries:
+            if scenario in (meta.get("origin_id"), meta.get("name")):
+                return [(scenario, tr)]
+        raise typer.BadParameter(f"scenario '{scenario}' not found in pack '{pack}'")
     if scenario:
         if scenario == "all":
             return [(s.id, load_example_trace(s.id)) for s in list_scenarios() if s.example_trace]

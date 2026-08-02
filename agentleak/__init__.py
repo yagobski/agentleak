@@ -22,7 +22,15 @@ __version__ = "0.9.0"
 from .client import AgentLeakClient, AgentSelfClient, connect
 from .core.agentcard import AgentCard, fetch_agent_card, parse_agent_card
 from .core.agentrisk import AgentRiskReport, compute_agentrisk, dominates, level_for
-from .core.codescan import CodeScanner, CodeScanResult, scan_dir, scan_files, scan_github_repo
+from .core.codescan import (
+    CodeScanner,
+    CodeScanResult,
+    scan_dir,
+    scan_file,
+    scan_files,
+    scan_github_repo,
+    scan_path,
+)
 from .core.config import Config
 from .core.detector import Finding, RawMatch, Severity, redact
 from .core.report import AnalysisResult
@@ -81,5 +89,7 @@ __all__ = [
     "CodeScanner",
     "scan_files",
     "scan_dir",
+    "scan_file",
+    "scan_path",
     "scan_github_repo",
 ]

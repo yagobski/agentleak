@@ -332,7 +332,9 @@ def test_scan_github_invalid_repo_name_clear_error():
 def test_scan_nonexistent_directory_clear_error(tmp_path):
     result = runner.invoke(app, ["scan", str(tmp_path / "nope")])
     assert result.exit_code == 1
-    assert "Not a directory" in result.stdout
+    # scan now accepts a file, a directory or a zip, so the error names what
+    # is actually wrong: the path does not exist at all.
+    assert "No such file or directory" in result.stdout
 
 
 def test_scan_fail_under_exits_1(tmp_path):
