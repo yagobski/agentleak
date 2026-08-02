@@ -30,10 +30,10 @@ no data ever leaves your machine.
 ## Install
 
 ```bash
-pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"  # public source install
-pip install "agentleak[gui] @ git+https://github.com/yagobski/agentleak-oss.git"       # + local web UI
-pip install "agentleak[presidio] @ git+https://github.com/yagobski/agentleak-oss.git"  # + Presidio
-pip install "agentleak[full] @ git+https://github.com/yagobski/agentleak-oss.git"      # gui + presidio
+pip install agentleak                 # core
+pip install "agentleak[gui]"       # + local web UI
+pip install "agentleak[presidio]"  # + Presidio
+pip install "agentleak[full]"      # gui + presidio
 ```
 
 From source:

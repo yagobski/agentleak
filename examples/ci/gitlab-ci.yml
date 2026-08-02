@@ -1,7 +1,7 @@
 agentleak:
   image: python:3.12-slim
   script:
-    - pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@main"
+    - pip install agentleak==0.9.1  # pin the version so the gate is reproducible
     - mkdir -p reports
     - agentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json
   artifacts:

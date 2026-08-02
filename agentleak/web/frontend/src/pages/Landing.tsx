@@ -223,7 +223,7 @@ function HeroPlatform() {
                     <small>{coverage}</small>
                   </article>
                 ))}
-                <footer><span>10 built in · 5 leak probes · 5 clean controls</span><b>36-scenario research pack available</b></footer>
+                <footer><span>10 built in · 5 leak probes · 5 clean controls</span><b>+ 273 in 3 research packs</b></footer>
               </div>
             </>
           )}
@@ -402,16 +402,73 @@ export function Landing() {
           </header>
           <div className="cursor-proof-metrics-grid">
             <div><strong>8</strong><span>normalized channels every trace is scored across</span></div>
-            <div><strong>10</strong><span>built-in scenarios, 5 of them clean controls with no injected leak</span></div>
-            <div><strong>36</strong><span>scenarios in the published benchmark (a superset, not what ships by default)</span></div>
+            <div><strong>283</strong><span>scenarios bundled in the package, across three distinct ways an agent leaks</span></div>
+            <div><strong>3</strong><span>research datasets behind them, each with its ground truth attached</span></div>
             <div><strong>46</strong><span>attack classes across a public live plugin registry and 10 delivery strategies</span></div>
             <div><strong>7</strong><span>compliance frameworks mapped per finding, none of them a certification</span></div>
           </div>
           <p className="cursor-proof-metrics-note">
-            The 10 bundled scenarios (healthcare, finance, HR, education and customer support, each with a
-            leaky and a clean version) ship with the open-source tool so you can see the model work in minutes.
-            The 36-scenario benchmark is the larger, separate research dataset behind the paper — see{" "}
-            <Link to="/research">the research page</Link> for how the two relate.
+            Everything counted here ships in the package — nothing is a separate download. The
+            scenarios come from the AgentLeak benchmark plus two peer-reviewed datasets, and each one
+            carries the exact values that must not travel, so it scores the same way every run with no
+            model in the loop. See <Link to="/research">the research page</Link> for the sources and
+            their licences.
+          </p>
+        </section>
+
+        <section className="cursor-modes" id="coverage" aria-label="The three ways an agent leaks">
+          <header>
+            <p className="cursor-eyebrow">Coverage, not volume</p>
+            <h2>An agent leaks in three ways. Most tools only see the first.</h2>
+            <p className="cursor-modes-lede">
+              A privacy score is only worth what it catches. These are the three failure shapes we
+              found in the literature, each backed by its own dataset and each shipped with the
+              exact values that must not travel — so the verdict is evidence, not an opinion.
+            </p>
+          </header>
+          <div className="cursor-modes-grid">
+            {[
+              {
+                tag: "By pattern",
+                title: "A value a detector can recognise",
+                body: "A card number, an SSN, an API key. The classic case, and the only one most privacy tooling covers. Nine detector families, before any model is involved.",
+                evidence: "4237-4252-7456-2574",
+                packs: "Built-in · AgentLeak Bench · PII Probes",
+                count: "63",
+              },
+              {
+                tag: "By norm",
+                title: "A fact that should not have travelled",
+                body: "\u201cBob missed work for a court date\u201d, sent to his manager. Nothing in that sentence looks like PII. Measured on our own pack, a pattern tier alone scores most of these a clean 100/100.",
+                evidence: "\u201cBob missed work for a court date\u201d",
+                packs: "PrivacyLens · NeurIPS 2024",
+                count: "120",
+              },
+              {
+                tag: "By hijack",
+                title: "The agent's own tools, turned around",
+                body: "Nothing is misconfigured. The agent reads data it was right to read, one response carries a planted instruction, and it keeps using its legitimate tools on the attacker\u2019s behalf.",
+                evidence: "send_email \u2192 attacker · body: 463820",
+                packs: "AgentDojo · NeurIPS 2024",
+                count: "100",
+              },
+            ].map((mode) => (
+              <article key={mode.tag}>
+                <header>
+                  <span>{mode.tag}</span>
+                  <strong>{mode.count}</strong>
+                </header>
+                <h3>{mode.title}</h3>
+                <p>{mode.body}</p>
+                <code>{mode.evidence}</code>
+                <footer>{mode.packs}</footer>
+              </article>
+            ))}
+          </div>
+          <p className="cursor-modes-note">
+            All 283 ship inside the package. Run one with{" "}
+            <code>agentleak run --pack privacylens_ci --scenario main1</code>, or import a whole pack
+            into the workspace in a click. <Link to="/research">Sources and licences</Link>.
           </p>
         </section>
 
@@ -482,7 +539,7 @@ export function Landing() {
               <div><strong>4</strong><small>domains</small></div>
               <div><strong>A0-A2</strong><small>adversary levels</small></div>
             </div>
-            <p>Healthcare · Finance · Legal · Corporate. AgentRisk is the severity-weighted score defined in the paper.</p>
+            <p>Healthcare · Finance · Legal · Corporate. AgentRisk is the severity-weighted score defined in the paper. Two further peer-reviewed datasets extend the coverage.</p>
           </Link>
         </section>
 

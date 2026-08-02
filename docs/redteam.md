@@ -102,7 +102,7 @@ tests.
 Install AgentLeak locally and use synthetic or canary data whenever possible:
 
 ```bash
-pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"
+pip install agentleak
 # Optional local UI and API server:
 pip install 'agentleak[gui]'
 ```

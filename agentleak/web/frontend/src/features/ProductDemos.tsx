@@ -167,7 +167,7 @@ export function OpenSourceDemo() {
     <div className="cursor-oss" aria-label="Install and run AgentLeak locally, open source under MIT">
       <div className="cursor-oss-bar"><div><span /><span /><span /></div><b>MIT · self-host</b></div>
       <code className="cursor-oss-code">
-        <span><i>$</i> pip install git+https://github.com/yagobski/agentleak-oss.git</span>
+        <span><i>$</i> pip install agentleak</span>
         <span><i>$</i> agentleak run --trace run.json</span>
         <span><em>AgentRisk 0.38 · 2 exposures · policy failed</em></span>
         <span><i>$</i> docker compose up -d <b># hosted, free for agents</b></span>

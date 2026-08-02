@@ -25,7 +25,7 @@ tool argument, memory entry, log, or agent hand-off.
 ## Install and run in five minutes
 
 ```bash
-pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"
+pip install agentleak
 agentleak init
 agentleak run --scenario healthcare_patient_summary
 ```

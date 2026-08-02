@@ -6,7 +6,7 @@ final answer, but across **tool calls, memory, inter-agent messages, and logs**.
 ## 1. Install
 
 ```bash
-pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"
+pip install agentleak
 pip install 'agentleak[gui]'              # + local web UI (FastAPI + React)
 pip install 'agentleak[presidio]'         # + Tier-2b detector (Presidio + 12 domain recognizers)
 pip install 'agentleak[full]'             # gui + presidio

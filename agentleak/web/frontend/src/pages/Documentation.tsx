@@ -32,12 +32,12 @@ type Endpoint = {
 
 const BASE = "https://www.agentleak.org"
 const INSTALL = [
-  'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"',
+  'pip install agentleak',
   "agentleak init",
   "agentleak run --scenario healthcare_patient_summary",
   "",
   "# With the local web interface",
-  'pip install "agentleak[gui] @ git+https://github.com/yagobski/agentleak-oss.git"',
+  'pip install "agentleak[gui]"',
   "agentleak serve",
 ].join("\n")
 const TRACE = [
@@ -244,8 +244,26 @@ const HOSTED_QUICKSTART = [
   "   trace, then run it.",
   "4. Read the AgentRisk report: findings, channels, severity and the fix.",
 ].join("\n")
+const DETECTION_BLOCK = [
+  '"detection": {',
+  '  "mode": "fast",',
+  '  "tiers": ["regex"],',
+  '  "degraded": false',
+  "}",
+].join("\n")
+const REDACT_CLI = [
+  "agentleak redact report.txt                       # placeholders by default",
+  "agentleak redact report.txt --style masked        # ****6789",
+  "cat trace.json | agentleak redact --style hash    # stdin works too",
+].join("\n")
+const PACK_CLI = [
+  "agentleak scenarios --packs                       # list the packs, counts and licences",
+  "agentleak run --pack privacylens_ci --scenario main1",
+  "agentleak run --pack agentdojo_exfil              # run the whole pack",
+  "agentleak run --pack agentleak_bench --fail-under 80",
+].join("\n")
 const LOCAL_QUICKSTART = [
-  'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"',
+  'pip install agentleak',
   "agentleak init",
   "agentleak run --scenario healthcare_patient_summary",
   "open reports/*.html   # or --format json for machine-readable output",
@@ -294,6 +312,8 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#feature-guides", label: "Feature guides" },
     { href: "#trace-analysis", label: "Trace analysis" },
     { href: "#detection", label: "Detection pipeline" },
+    { href: "#tiers", label: "Which tiers ran" },
+    { href: "#redact", label: "Redaction and defenses" },
     { href: "#agentrisk-guide", label: "AgentRisk scoring" },
     { href: "#code-scan", label: "Static code scan" },
     { href: "#red-team-guide", label: "Red team" },
@@ -432,8 +452,11 @@ const pageNav: Record<Audience, NavItem[]> = {
     { href: "#reproducibility", label: "Reproducibility" },
   ],
   ciCd: [
+    { href: "#action", label: "The official Action" },
+    { href: "#modes", label: "Three gate modes" },
+    { href: "#outputs", label: "Annotations and outputs" },
     { href: "#contract", label: "Release contract" },
-    { href: "#github", label: "GitHub Actions" },
+    { href: "#github", label: "Any CI: raw CLI" },
     { href: "#gitlab", label: "GitLab CI" },
     { href: "#jenkins", label: "Jenkins" },
     { href: "#artifacts", label: "Artifacts" },
@@ -680,7 +703,7 @@ const searchEntries = [
   ["AgentRisk guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md", "Formula, vault scope, thresholds and release comparisons"],
   ["Explicit vault vs. observed reachable set", "/docs#agentrisk", "Why an audited vault scope changes what the Risk Index means"],
   ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
-  ["Scenario coverage and clean controls", "/docs#scenarios", "10 built-in scenarios, 5 clean controls, the 36-scenario benchmark, limitations"],
+  ["Scenario coverage and clean controls", "/docs#scenarios", "283 bundled scenarios, 3 leak modes, 4 packs, ground-truth canaries, limitations"],
   ["Compliance mappings", "/docs#compliance", "14 frameworks and sector profiles per finding \u2014 not a certification"],
   ["Privacy compliance evidence", "/docs/privacy-compliance", "Assurance levels, finding-to-control matrix, governance assertions and integrity manifest"],
   ["Safety boundary", "/docs#safety", "What a passing run does and does not prove"],
@@ -1002,6 +1025,62 @@ function Overview() {
         </p>
       </section>
 
+      <section className="docs-section" id="tiers">
+        <h2>Which tiers actually ran</h2>
+        <p>
+          A privacy score is a claim, and a claim is only as strong as what produced it. Because the
+          deeper tiers are opt-in — Presidio needs an extra install, the LLM judge needs your own key
+          — a run can legitimately come back clean simply because nothing deeper than regex was
+          looking. Silence there would read as strength it has not earned.
+        </p>
+        <p>
+          So every report states its own provenance. The JSON carries a <code>detection</code>{" "}
+          object, and the CLI and the Action summary print the same thing in words.
+        </p>
+        <Code>{DETECTION_BLOCK}</Code>
+        <div className="docs-table">
+          {[
+            ["mode", "fast, standard or hybrid — what you asked for."],
+            ["tiers", "What actually produced findings: regex, presidio, llm_judge."],
+            ["degraded", "True when a requested tier could not run (missing key, missing extra, provider error). A degraded Pass is not a Pass."],
+          ].map(([n, body]) => (
+            <div key={body}><code>{n}</code><span>{body}</span></div>
+          ))}
+        </div>
+        <p>
+          Read it before you trust a green check: a <b>Pass</b> from the regex tier alone means no
+          pattern matched, not that nothing leaked. The scenario packs exist precisely because that
+          gap is wide — see <a href="/docs#scenarios">scenario coverage</a>.
+        </p>
+      </section>
+
+      <section className="docs-section" id="redact">
+        <h2>Redaction and runtime defenses</h2>
+        <p>
+          Detection tells you what escaped. The defenses module stops it escaping in the first place,
+          and it is reachable from the command line so you can try it on real text before wiring it
+          into an agent.
+        </p>
+        <Code>{REDACT_CLI}</Code>
+        <div className="docs-table">
+          {[
+            ["placeholder", "Replace with a typed marker: [EMAIL], [SSN]. Keeps the shape readable."],
+            ["masked", "Keep the last few characters: ****6789. Useful when a human still has to recognise the record."],
+            ["asterisk", "Full-width asterisks, no length hint."],
+            ["category", "Replace with the data type alone."],
+            ["hash", "Deterministic digest, so the same value stays correlatable across records without being readable."],
+            ["remove", "Drop the value entirely."],
+          ].map(([n, body]) => (
+            <div key={body}><code>{n}</code><span>{body}</span></div>
+          ))}
+        </div>
+        <p>
+          The same sanitizer runs in-process via <code>agentleak.defenses</code>, alongside an
+          internal-channel guard that enforces clearance between agents — so a value that one agent
+          may see does not silently travel to another that may not.
+        </p>
+      </section>
+
       <section className="docs-section" id="agentrisk-guide">
         <h2>AgentRisk scoring</h2>
         <p>
@@ -1038,7 +1117,11 @@ function Overview() {
           external sends, entropy findings, de-obfuscated identifiers and
           quasi-identifier correlation.
         </p>
-        <Code>{'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"\nagentleak scan ./my-agent --mode fast\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json\nagentleak scan ./my-agent --format sarif --output reports/agentleak.sarif'}</Code>
+        <Code>{'agentleak scan ./my-agent --mode fast\nagentleak scan agent.py                          # one file, when that is all you suspect\nagentleak scan ./bundle.zip                      # or an archive\nagentleak scan ./my-agent --mode standard --fail-under 90\nagentleak scan --repo acme/support-bot --branch main --output reports/code.json\nagentleak scan ./my-agent --format sarif --output reports/agentleak.sarif'}</Code>
+        <p>
+          <code>scan</code> takes a directory, a single file or a zip. A file you name explicitly is
+          always scanned, extension filters included — if you point at it, you meant it.
+        </p>
         <div className="docs-card-grid">
           <div><h3>Fast</h3><p>Local regex, dictionaries, entropy and canary checks. No key required.</p></div>
           <div><h3>Standard</h3><p>Adds Presidio and domain recognizers. Install <code>agentleak[presidio]</code>.</p></div>
@@ -1319,19 +1402,51 @@ function Overview() {
       <section className="docs-section" id="scenarios">
         <h2>Scenario coverage, clean controls and limitations</h2>
         <p>
-          AgentLeak ships 10 built-in scenarios across healthcare, finance, HR, education and customer
-          support. 5 are deliberately leaky fixtures; the other 5 are matched <b>clean controls</b> for
-          the same domain, used to confirm the pipeline does not flag well-behaved runs. A separate,
-          larger <b>36-scenario benchmark</b> (healthcare, finance, legal and corporate domains, at
-          three adversary levels) is published for research and reproducibility; it is not bundled with
-          the open-source package by default. See <Link to="/research">research</Link> for the full
-          benchmark methodology.
+          283 scenarios ship inside the package — nothing is a separate download. 10 are
+          hand-authored examples across healthcare, finance, HR, education and customer support (5
+          deliberately leaky, 5 matched <b>clean controls</b> used to confirm the pipeline does not
+          flag well-behaved runs). The other 273 arrive as three importable <b>packs</b>, and between
+          them they cover the three distinct ways an agent leaks.
+        </p>
+        <Code>{PACK_CLI}</Code>
+        <div className="docs-table">
+          {[
+            ["By pattern · 63", "A value a detector can recognise — a card number, an SSN, an API key. The 10 built-ins, the 36-scenario AgentLeak benchmark (4 domains, adversary levels A0–A2) and 17 ai4privacy PII probes."],
+            ["By norm · 120", "A fact that should not have travelled. PrivacyLens (NeurIPS 2024, CC-BY-4.0): the agent pulls private context in through its tools, then acts toward a recipient the norm forbids."],
+            ["By hijack · 100", "The agent's own tools, turned around. AgentDojo (NeurIPS 2024, MIT): a planted instruction arrives on a tool response and the agent exfiltrates through its legitimate tools while the final answer stays clean."],
+          ].map(([n, body]) => (
+            <div key={body}>
+              <code>{n}</code>
+              <span>{body}</span>
+            </div>
+          ))}
+        </div>
+        <h3>Ground truth is what makes the score mean something</h3>
+        <p>
+          The last two packs leak things no pattern can see. Shipping their traces bare would have
+          produced confident, wrong <b>Pass</b> verdicts, so every scenario in them carries the
+          dataset's own ground truth as <b>canaries</b> — exact values, matched at confidence 1.0.
+          That is what lets them score deterministically with no LLM tier and no API key.
         </p>
         <div className="docs-table">
           {[
-            ["10", "Built-in scenarios bundled with the open-source package and the hosted Playground."],
-            ["5", "Of those, clean controls with no injected leak, used to check for false positives."],
-            ["36", "Scenarios in the separate, published benchmark dataset (not bundled)."],
+            ["PrivacyLens", "Without its ground truth, most of the pack scores a clean 100/100. With it, main1 goes from Pass 100/100 to Fail 0/100."],
+            ["AgentDojo", "Without it, 20 of 100 score a clean Pass and 64 would not block a CI gate. With it, none pass."],
+          ].map(([n, body]) => (
+            <div key={body}>
+              <code>{n}</code>
+              <span>{body}</span>
+            </div>
+          ))}
+        </div>
+        <p>
+          Canaries are persisted when a pack is imported, so a scenario scores the same in the web
+          workspace as it does in the terminal. Each pack also carries its source, licence and
+          attribution, shown wherever the pack appears — see{" "}
+          <Link to="/research#attribution">the dataset credits</Link>.
+        </p>
+        <div className="docs-table">
+          {[
             ["46", "Attack classes across 6 families (F1\u2013F6), including 14 agent-application classes mapped from Promptfoo."],
             ["Public catalog × 10", "Native and Promptfoo-compatible IDs combined with deterministic and response-aware delivery strategies."],
           ].map(([n, body]) => (
@@ -1415,6 +1530,7 @@ function Developers() {
           Use <code>agentleak[gui]</code> when you want the local browser interface. Use the core
           package for CI, SDK integration or offline trace analysis.
         </p>
+        <PrereleaseNote />
       </section>
 
       <section className="docs-section" id="workflow">
@@ -2141,7 +2257,55 @@ function RedTeamStrategies() {
   </article>
 }
 
-const SOURCE_INSTALL = 'pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git@main"'
+function PrereleaseNote() {
+  return (
+    <div className="docs-callout">
+      <strong>Pre-release</strong>
+      <p>
+        AgentLeak publishes to PyPI when the 1.0 launch ships. Until then the package resolves
+        from the source repository, which is private during the pre-release — ask for access if
+        you want to run it today. Everything else on this page is accurate against the current
+        build; the install line is the only thing that changes at launch.
+      </p>
+    </div>
+  )
+}
+
+const ACTION_YML = [
+  "name: privacy-gate",
+  "on: [pull_request]",
+  "jobs:",
+  "  agentleak:",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - uses: actions/checkout@v4",
+  "      - uses: agentleak/agentleak-oss@v1",
+  "        with:",
+  "          trace: traces/latest.json",
+  "          fail-under: 80",
+].join("\n")
+const ACTION_MODES = [
+  "# 1. a captured trace",
+  "- uses: agentleak/agentleak-oss@v1",
+  "  with: { trace: traces/latest.json, fail-under: 80 }",
+  "",
+  "# 2. a scenario from a bundled pack",
+  "- uses: agentleak/agentleak-oss@v1",
+  "  with: { pack: privacylens_ci, scenario: main1 }",
+  "",
+  "# 3. a static scan of the agent's own source",
+  "- uses: agentleak/agentleak-oss@v1",
+  "  with: { scan: ./src, fail-under: 90 }",
+].join("\n")
+const ACTION_OUTPUTS = [
+  "- uses: agentleak/agentleak-oss@v1",
+  "  id: privacy",
+  "  with: { trace: traces/latest.json }",
+  "",
+  "- run: echo \"score=${{ steps.privacy.outputs.score }} verdict=${{ steps.privacy.outputs.verdict }}\"",
+  "  if: always()",
+].join("\n")
+const SOURCE_INSTALL = 'pip install agentleak'
 const GITHUB_CI = [
   "name: agent-privacy", "on: [pull_request]", "jobs:", "  agentleak:",
   "    runs-on: ubuntu-latest", "    steps:", "      - uses: actions/checkout@v4",
@@ -2216,13 +2380,19 @@ function ScoringGuide() {
 
 function CiCdGuide() {
   return <article className="docs-article">
-    <header className="docs-page-head"><p className="docs-kicker">Guides · CI/CD</p><h1>Enforce privacy regressions in every pipeline</h1><p>Install from the public repository, generate machine-readable evidence and fail releases on deterministic thresholds. These workflows require no AgentLeak account and send no telemetry.</p><div className="docs-callout"><strong>Package availability</strong><p>The official PyPI project is not published yet. Pin a public Git tag or commit; do not assume <code>pip install agentleak</code> resolves to this project.</p></div></header>
-    <section className="docs-section" id="contract"><h2>Define the release contract</h2><Code>{SOURCE_INSTALL + "\nagentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json"}</Code><p>The examples use the current public branch. For a controlled release, replace <code>@main</code> with the reviewed commit SHA, then pin the vault scope, detectors, assertions, plugins and strategies. Keep the JSON report even when the job fails.</p></section>
-    <section className="docs-section" id="github"><h2>GitHub Actions</h2><Code>{GITHUB_CI}</Code><p>Compare against AgentLeak’s <a href="https://github.com/yagobski/agentleak-oss/actions">public CI history</a> and the copy-ready repository examples.</p></section>
+    <header className="docs-page-head"><p className="docs-kicker">Guides · CI/CD</p><h1>Make privacy a required status check</h1><p>A deterministic score means a regression in CI is a real signal: the same trace always produces the same number, so when it moves, the agent changed. Use the official Action on GitHub, or the CLI’s exit code anywhere else. No AgentLeak account, no telemetry.</p><PrereleaseNote /></header>
+
+    <section className="docs-section" id="action"><h2>The official GitHub Action</h2><p>One step. It installs the pinned version, runs the analysis, annotates the pull request, writes a job summary a reviewer can read without opening logs, and exits non-zero when the run crosses your policy.</p><Code>{ACTION_YML}</Code><p>Mark the job as a required status check in branch protection and a leaking change cannot merge.</p></section>
+
+    <section className="docs-section" id="modes"><h2>Three things it can gate on</h2><p>Point the Action at a captured trace, at a scenario from a bundled pack, or at your source tree. The first two score a run; the third catches the leak before the agent even executes.</p><Code>{ACTION_MODES}</Code><div className="docs-table">{[["trace","A run you captured with the SDK or an OTel exporter. The full 8-channel analysis."],["pack + scenario","A bundled research scenario. Omit scenario to run the whole pack as a suite."],["scan","Static analysis of the agent’s own code: hardcoded secrets, PII in logs, sensitive values sent to third parties."],["fail-under","The privacy score below which the job fails. Defaults to 80."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
+
+    <section className="docs-section" id="outputs"><h2>What lands on the pull request</h2><p>Findings become workflow annotations graded by severity — L4 and L3 are errors, L2 a warning, L1 a notice. A code scan anchors them to <code>file:line</code> like a linter; a trace analysis names the channel the data escaped through. Step outputs let later jobs branch on the result.</p><Code>{ACTION_OUTPUTS}</Code><div className="docs-table">{[["score","Privacy score, 0 to 100."],["risk-index","AgentRisk, 0.0000 to 1.0000."],["verdict","Pass, Conditional pass, High risk or Fail."],["findings","Number of findings in the report."],["report","Path to the JSON report, ready to upload as an artifact."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div><div className="docs-callout"><strong>Read the tier badge before trusting a Pass</strong><p>Every report states which detection tiers actually ran. A Pass produced by the regex tier alone is a weaker claim than one from the full pipeline, and the job summary says so rather than letting silence imply strength.</p></div></section>
+    <section className="docs-section" id="contract"><h2>Define the release contract</h2><Code>{SOURCE_INSTALL + "\nagentleak run --trace traces/latest.json --config agentleak.yaml --fail-under 80 --output reports/agentleak.json"}</Code><p>Pin the version so the gate is reproducible, then pin the vault scope, detectors, assertions, plugins and strategies in <code>agentleak.yaml</code>. Keep the JSON report even when the job fails — it is the evidence.</p></section>
+    <section className="docs-section" id="github"><h2>Any CI: the raw CLI</h2><p>The Action is a convenience wrapper. The gate itself is the exit code, so the same contract works in any runner — here spelled out for GitHub without the Action.</p><Code>{GITHUB_CI}</Code></section>
     <section className="docs-section" id="gitlab"><h2>GitLab CI</h2><Code>{GITLAB_CI}</Code></section>
     <section className="docs-section" id="jenkins"><h2>Jenkins</h2><Code>{JENKINS_CI}</Code></section>
     <section className="docs-section" id="artifacts"><h2>Evidence and secret handling</h2><div className="docs-table">{[["JSON","Canonical machine artifact with findings, policy, compliance evidence and digest."],["SARIF","Use static-scan SARIF for code annotations; retain runtime evidence as JSON."],["Provider keys","Not needed for scripted tests. Use CI secrets and synthetic data for live targets."],["Retention","Set an explicit artifact lifetime because source traces may contain private context."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
-    <section className="docs-section" id="troubleshooting"><h2>Troubleshooting</h2><ul className="docs-rules"><li><strong>Wrong package</strong><span>Use the verified GitHub URL until an official PyPI release exists.</span></li><li><strong>Missing failed artifact</strong><span>Create the directory first and upload with <code>always()</code> or <code>when: always</code>.</span></li><li><strong>Unstable live score</strong><span>Run scripted controls first, pin the target model and compare multiple live runs.</span></li><li><strong>False compliance pass</strong><span>Inspect assurance and controls_not_assessed; missing governance evidence is not compliance.</span></li></ul></section>
+    <section className="docs-section" id="troubleshooting"><h2>Troubleshooting</h2><ul className="docs-rules"><li><strong>Unpinned version</strong><span>Pin both the Action tag and the package version, or a gate can change under you between runs.</span></li><li><strong>Missing failed artifact</strong><span>Create the directory first and upload with <code>always()</code> or <code>when: always</code>.</span></li><li><strong>Unstable live score</strong><span>Run scripted controls first, pin the target model and compare multiple live runs.</span></li><li><strong>False compliance pass</strong><span>Inspect assurance and controls_not_assessed; missing governance evidence is not compliance.</span></li></ul></section>
   </article>
 }
 

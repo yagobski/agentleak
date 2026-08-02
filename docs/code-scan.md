@@ -7,7 +7,7 @@ redacted findings with file, line, rule, level, tier, and confidence.
 ## Install and run
 
 ```bash
-pip install "agentleak @ git+https://github.com/yagobski/agentleak-oss.git"
+pip install agentleak
 agentleak scan ./my-agent
 ```
 

@@ -64,6 +64,26 @@ const PUBLICATIONS: Publication[] = [
     cta: "See the scenario catalog",
   },
   {
+    id: "PrivacyLens",
+    kind: "External dataset",
+    year: "2024",
+    title: "PrivacyLens: contextual integrity, where the leak is a fact and not a pattern",
+    summary:
+      "Shao et al., NeurIPS 2024 Datasets & Benchmarks. An agent pulls private context in through its tools, then acts toward a recipient the norm says must not receive it. 120 of these scenarios ship with AgentLeak, each carrying the dataset's own sensitive_info_items as exact ground truth — because measured on that pack, a pattern-matching tier alone scores most of them a clean 100 out of 100.",
+    href: "https://huggingface.co/datasets/SALT-NLP/PrivacyLens",
+    cta: "See the dataset (CC-BY-4.0)",
+  },
+  {
+    id: "AgentDojo",
+    kind: "External dataset",
+    year: "2024",
+    title: "AgentDojo: prompt injection that turns an agent's own tools into the leak path",
+    summary:
+      "Debenedetti et al., NeurIPS 2024 Datasets & Benchmarks. A legitimate user task, a planted instruction in data the agent was right to read, and an exfiltration that follows through the agent's own legitimate tools while the user-facing answer stays clean. 100 of these ship with AgentLeak, replayed against the upstream environment and carrying the exact stolen values.",
+    href: "https://github.com/ethz-spylab/agentdojo",
+    cta: "See the dataset (MIT)",
+  },
+  {
     id: "Compliance",
     kind: "Compliance mapping",
     year: "2026",
@@ -78,9 +98,32 @@ const PUBLICATIONS: Publication[] = [
 const RESEARCH_STATS: readonly [string, string][] = [
   ["8", "channels per trace"],
   ["4", "severity levels, L1 to L4"],
-  ["36", "benchmark scenarios"],
-  ["4", "domains covered"],
+  ["283", "scenarios bundled"],
+  ["3", "research datasets behind them"],
   ["3", "adversary levels, A0 to A2"],
+] as const
+
+// Licence terms travel with the data. CC-BY-4.0 in particular obliges us to
+// credit the authors wherever their work appears, including here.
+const ATTRIBUTIONS: readonly { pack: string; source: string; licence: string; href: string }[] = [
+  {
+    pack: "privacylens_ci · 120 scenarios",
+    source: "PrivacyLens — Shao et al., NeurIPS 2024 Datasets & Benchmarks",
+    licence: "CC-BY-4.0",
+    href: "https://huggingface.co/datasets/SALT-NLP/PrivacyLens",
+  },
+  {
+    pack: "agentdojo_exfil · 100 scenarios",
+    source: "AgentDojo — Debenedetti et al., NeurIPS 2024 Datasets & Benchmarks",
+    licence: "MIT",
+    href: "https://github.com/ethz-spylab/agentdojo",
+  },
+  {
+    pack: "ai4privacy_probes · 17 scenarios",
+    source: "ai4privacy/pii-masking-200k",
+    licence: "Open dataset",
+    href: "https://huggingface.co/datasets/ai4privacy/pii-masking-200k",
+  },
 ] as const
 
 const CITATION = "@misc{agentleak2026,\n  title  = {AgentLeak: measuring privacy leakage across agent execution traces},\n  author = {AgentLeak},\n  year   = {2026},\n  eprint = {2602.11510},\n  url    = {https://arxiv.org/abs/2602.11510}\n}"
@@ -156,6 +199,31 @@ export function Research() {
           <div className="cursor-feature-visual"><PlatformWorkbench /></div>
         </div>
 
+        <section className="docs-section cursor-page-howto" id="attribution">
+          <header>
+            <p className="cursor-eyebrow">Credit where it is due</p>
+            <h2>The datasets behind the bundled scenarios.</h2>
+          </header>
+          <p style={{ maxWidth: "640px", color: "var(--s-9d9c96)", fontSize: "14px", lineHeight: 1.6 }}>
+            Three of the four scenario packs are derived from public research datasets. We ship
+            them reshaped into AgentLeak traces, but the scenarios, the private facts and the
+            attack goals are their authors&rsquo; work. Each pack carries its source, licence and
+            attribution in the package itself, and the build scripts that produced them are in the
+            repository so the derivation can be checked line by line.
+          </p>
+          <div className="cursor-attrib-list">
+            {ATTRIBUTIONS.map((item) => (
+              <a key={item.pack} className="cursor-attrib" href={item.href}>
+                <div>
+                  <code>{item.pack}</code>
+                  <span>{item.source}</span>
+                </div>
+                <em>{item.licence}</em>
+              </a>
+            ))}
+          </div>
+        </section>
+
         <section className="docs-section cursor-page-howto">
           <header><p className="cursor-eyebrow">Cite this work</p><h2>Referencing AgentLeak or AgentRisk in your own research?</h2></header>
           <p style={{ maxWidth: "640px", color: "var(--s-9d9c96)", fontSize: "14px", lineHeight: 1.6 }}>
@@ -171,7 +239,7 @@ export function Research() {
           <div className="cursor-final-inner">
             <p className="cursor-eyebrow">From paper to practice</p>
             <h2>Run the benchmark model against your own agent.</h2>
-            <p>The same domains, severity levels and AgentRisk scoring method from the paper are available in the open-source tool, which ships 10 example scenarios (5 with an injected leak, 5 clean controls) so you can see the model work before pointing it at your own agent. The full 36-scenario benchmark is a separate research dataset.</p>
+            <p>The same domains, severity levels and AgentRisk scoring method from the paper are available in the open-source tool. It ships 283 scenarios in total: 10 hand-authored examples (5 with an injected leak, 5 clean controls) plus the full 36-scenario benchmark and two peer-reviewed datasets, all bundled in the package rather than downloaded separately.</p>
             <div className="cursor-actions">
               <Link className="cursor-button cursor-button-dark" to="/register">Create a workspace <Arrow /></Link>
               <Link className="cursor-button cursor-button-light" to="/docs/agents">Agents: discover and onboard <Arrow /></Link>

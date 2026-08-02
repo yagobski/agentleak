@@ -93,8 +93,8 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
       },
       {
         title: "Grounded in the benchmark",
-        body: "AgentRisk uses the same channels and severity model as the published AgentLeak benchmark, so results are comparable across agents and versions.",
-        points: ["36 scenarios across 4 domains", "Adversary levels A0-A2", "Comparable across agents", "Trend the score over time"],
+        body: "AgentRisk uses the same channels and severity model as the published AgentLeak benchmark, extended with two peer-reviewed datasets, so results are comparable across agents and versions.",
+        points: ["283 bundled scenarios across 3 leak modes", "Adversary levels A0-A2", "Comparable across agents", "Trend the score over time"],
       },
       {
         title: "Built for regressions",
