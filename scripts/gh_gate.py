@@ -122,6 +122,16 @@ def _summarize_trace(report: dict[str, Any], threshold: int, blocked: bool) -> s
     else:
         lines += ["No sensitive value crossed the boundary in this run.", ""]
 
+    # Say how strong this verdict is: a Pass from regex alone should not be
+    # read as a Pass from the full pipeline.
+    detection = report.get("detection", {})
+    if detection:
+        tiers = ", ".join(detection.get("tiers", [])) or "regex"
+        note = f"Detection: `{detection.get('mode', '?')}` mode, tiers: {tiers}"
+        if detection.get("degraded"):
+            note += " — **degraded**: a requested tier could not run."
+        lines += [note, ""]
+
     compliance = report.get("compliance", {})
     failed = compliance.get("failed_frameworks") or []
     if failed:

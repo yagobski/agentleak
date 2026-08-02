@@ -615,6 +615,22 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
         f"{s['leaked_secrets']} of {s['vault_secrets']} secrets leaked  "
         f"(L4 {lp['L4']}, L3 {lp['L3']}, L2 {lp['L2']}, L1 {lp['L1']})"
     )
+    # State the strength of this result: a Pass from regex alone is a weaker
+    # claim than a Pass from the full hybrid pipeline, and the reader should
+    # not have to guess which one they got.
+    det = data.get("detection", {})
+    if det:
+        tiers = ", ".join(det.get("tiers", []))
+        typer.secho(
+            f"Detection: {det.get('mode', '?')} mode · tiers: {tiers}",
+            fg=typer.colors.BRIGHT_BLACK,
+        )
+        if det.get("mode") == "fast":
+            typer.secho(
+                "  (regex only — add Presidio with --mode standard, or the "
+                "LLM-judge with --mode hybrid, for deeper coverage)",
+                fg=typer.colors.BRIGHT_BLACK,
+            )
     cs = data.get("compliance", {}).get("summary")
     if cs:
         color = typer.colors.GREEN if cs["non_compliant"] == 0 else typer.colors.BRIGHT_YELLOW

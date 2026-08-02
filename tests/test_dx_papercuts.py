@@ -205,3 +205,27 @@ def test_redact_reads_stdin() -> None:
 
     assert result.exit_code == 0, result.output
     assert "123-45-6789" not in result.output
+
+
+# -- a report states its own strength (no quiet "Pass") --------------------
+def test_report_declares_which_tiers_ran() -> None:
+    from agentleak.core.runner import AgentLeakRunner
+    from agentleak.scenarios import load_example_trace
+
+    report = AgentLeakRunner().analyze(load_example_trace("healthcare_patient_summary")).to_dict()
+
+    detection = report["detection"]
+    assert detection["mode"] == "fast"
+    assert detection["tiers"] == ["regex"], "a fast run must not imply deeper tiers ran"
+    assert detection["degraded"] is False
+
+
+def test_cli_shows_the_detection_tiers(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["run", "--scenario", "healthcare_patient_summary",
+         "--output", str(tmp_path), "--format", "json"],
+    )
+
+    assert "Detection: fast mode · tiers: regex" in result.output
+    assert "regex only" in result.output, "the weaker claim must be labelled as such"

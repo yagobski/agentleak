@@ -180,6 +180,12 @@ class AnalysisResult:
     # tiers that were requested but could not run (missing dependency or API
     # key). A degraded run must never be mistaken for a clean one.
     warnings: list[str] = field(default_factory=list)
+    # Which detection tiers actually produced this result, and in which mode.
+    # A "Pass" from regex alone is a weaker claim than a "Pass" from the full
+    # hybrid pipeline, so the report states its own strength instead of
+    # letting the reader assume the strongest reading.
+    detection_mode: str = "fast"
+    tiers: list[str] = field(default_factory=lambda: ["regex"])
 
     # -- convenience accessors (used by the SDK and reporters) -----------
     @property
@@ -297,6 +303,11 @@ class AnalysisResult:
             "scope_def": self.score.agentrisk.scope_def,
             "blocked": self.blocked,
             "degraded": self.degraded,
+            "detection": {
+                "mode": self.detection_mode,
+                "tiers": list(self.tiers),
+                "degraded": self.degraded,
+            },
             "warnings": list(self.warnings),
             "privacy_policy": self.policy_evaluation.to_dict(),
             "summary": {
