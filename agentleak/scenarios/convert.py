@@ -12,6 +12,10 @@ datasets describe their cases differently and carry no trace of their own:
   CC-BY-4.0): a contextual-integrity seed (data type, subject, sender,
   recipient, transmission principle) plus a ReAct agent trajectory and the
   ground-truth ``sensitive_info_items`` that must not reach the recipient.
+* **AgentDojo** (``ethz-spylab/agentdojo``, NeurIPS 2024 D&B, MIT): a legitimate
+  user task replayed against a live tool environment in which a prompt injection
+  has been planted, plus the exfiltration call a compromised agent makes and the
+  exact values it steals.
 
 To make these usable as ready-to-run tests, we **synthesize** a realistic,
 leaky trace: the agent receives the sensitive record on a baseline channel
@@ -58,7 +62,8 @@ def detect_format(data: Any) -> str:
     """Sniff the shape of an uploaded object.
 
     Returns one of ``"trace"``, ``"agentleak_spec"``, ``"ai4privacy"``,
-    ``"privacylens"``, ``"oss_scenario"``, ``"openai_chat"`` or ``"unknown"``.
+    ``"privacylens"``, ``"agentdojo"``, ``"oss_scenario"``, ``"openai_chat"``
+    or ``"unknown"``.
     """
     if not isinstance(data, dict):
         return "unknown"
@@ -71,6 +76,8 @@ def detect_format(data: Any) -> str:
     trajectory = data.get("trajectory")
     if isinstance(trajectory, dict) and "executable_trajectory" in trajectory:
         return "privacylens"
+    if "attack_goal" in data and isinstance(data.get("exfiltration"), list):
+        return "agentdojo"
     if "trace" in data and isinstance(data["trace"], dict):
         return "oss_scenario"
     messages = data.get("messages")
@@ -377,6 +384,107 @@ def _slug(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(value).lower()).strip("_") or "agent"
 
 
+def _render_args(args: dict[str, Any]) -> str:
+    """Flatten tool arguments to the text that actually crosses the channel."""
+    parts = []
+    for key, value in args.items():
+        if isinstance(value, (list, tuple)):
+            value = ", ".join(str(v) for v in value)
+        parts.append(f"{key}: {value}")
+    return "\n".join(parts)
+
+
+def agentdojo_canaries(record: dict[str, Any]) -> dict[str, list[str]]:
+    """Split the stolen values across the canary tiers they belong to.
+
+    AgentDojo exfiltrations carry two kinds of payload: structured values a
+    detector could in principle recognise (a passport number, a 2FA code) and
+    natural-language content it cannot (a private message, an email body). The
+    tiers exist to say which is which, so a report shows honestly how much of
+    the evidence rests on exact ground truth rather than on pattern matching.
+    """
+    realistic: list[str] = []
+    semantic: list[str] = []
+    for value in record.get("leaked_values", []):
+        text = str(value).strip()
+        if not text:
+            continue
+        (semantic if " " in text else realistic).append(text)
+    return {"realistic": realistic, "semantic": semantic}
+
+
+def agentdojo_to_trace(record: dict[str, Any]) -> Trace:
+    """Build a trace from an AgentDojo prompt-injection exfiltration.
+
+    The shape of the attack is the point. An honest agent runs the user's task
+    and reads data it was meant to read; one of those tool responses carries a
+    planted instruction. From there the agent keeps using its own legitimate
+    tools, but now on the attacker's behalf: it looks up a secret and sends it
+    out. The user-facing answer never mentions any of it, which is exactly the
+    case an output-only audit passes.
+    """
+    suite = str(record.get("suite") or "agent")
+    trace = Trace(
+        run_id=f"trace_{_slug(record.get('id') or suite)}",
+        agent_name=f"{_slug(suite)}_assistant",
+        scenario_id=str(record.get("id") or suite),
+    )
+    trace.add_event(
+        "user_input",
+        str(record.get("user_prompt", "")).strip(),
+        source="user",
+        target="assistant",
+    )
+
+    for step in record.get("steps", []):
+        tool = str(step.get("tool") or "tool")
+        trace.add_event(
+            "tool_call",
+            _render_args(step.get("args") or {}),
+            source="assistant", target=tool,
+            metadata={"tool_name": tool},
+        )
+        observation = str(step.get("observation") or "").strip()
+        if not observation:
+            continue
+        injected = bool(step.get("injected"))
+        trace.add_event(
+            "tool_response", observation,
+            source=tool, target="assistant",
+            # The attack enters here: untrusted content returned by a tool the
+            # agent was right to call.
+            metadata={"tool_name": tool, "prompt_injection": injected},
+        )
+
+    for step in record.get("exfiltration", []):
+        tool = str(step.get("tool") or "tool")
+        leaked = [str(v) for v in (step.get("leaked") or [])]
+        trace.add_event(
+            "tool_call",
+            _render_args(step.get("args") or {}),
+            source="assistant", target=tool,
+            metadata={
+                "tool_name": tool,
+                "attacker_controlled": True,
+                "exfiltration": bool(leaked),
+            },
+        )
+        observation = str(step.get("observation") or "").strip()
+        if observation and not leaked:
+            trace.add_event(
+                "tool_response", observation,
+                source=tool, target="assistant",
+                metadata={"tool_name": tool, "attacker_controlled": True},
+            )
+
+    trace.add_event(
+        "final_output",
+        "Done — I've completed the task you asked for.",
+        source="assistant", target="user",
+    )
+    return trace
+
+
 def openai_chat_to_trace(data: dict[str, Any]) -> Trace:
     """Map an OpenAI-style chat log (``{"messages": [...]}``) onto channels.
 
@@ -496,6 +604,30 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
             # canaries so the scenario scores without an LLM tier.
             "canaries": {"semantic": facts},
         }, trace
+    if fmt == "agentdojo":
+        trace = agentdojo_to_trace(data)
+        suite = str(data.get("suite") or "agent")
+        goal = str(data.get("attack_goal", "")).strip()
+        canaries = agentdojo_canaries(data)
+        stolen = canaries["realistic"] + canaries["semantic"]
+        return {
+            "name": str(data.get("id") or "AgentDojo scenario"),
+            "domain": suite,
+            "description": (
+                f"A prompt injection planted in the {suite} data the agent reads "
+                f"redirects its own tools: {goal}"
+            ),
+            "sensitive_data": [v[:60] for v in stolen[:5]],
+            "tags": [
+                "agentdojo", "prompt-injection", "exfiltration",
+                f"suite:{suite}",
+                f"injection:{data.get('injection_task', 'unknown')}",
+            ],
+            "difficulty": "",
+            # Ground truth: the exact values the compromised agent sends out,
+            # each verified to be data it actually read from the environment.
+            "canaries": canaries,
+        }, trace
     if fmt == "openai_chat":
         trace = openai_chat_to_trace(data)
         return {
@@ -508,6 +640,6 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
         }, trace
     raise ValueError(
         "Unrecognized format. Provide an AgentLeak trace, an AgentLeak scenario "
-        "spec, an ai4privacy record, an OpenAI-style chat log ({\"messages\": [...]}) "
-        "or an OSS scenario object."
+        "spec, an ai4privacy record, a PrivacyLens or AgentDojo scenario, an "
+        "OpenAI-style chat log ({\"messages\": [...]}) or an OSS scenario object."
     )

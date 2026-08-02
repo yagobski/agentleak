@@ -40,6 +40,37 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 - **Defenses have a door**: `agentleak redact` exposes the sanitizer that shipped with
   documentation but no entry point (file or stdin, six redaction styles).
 
+### Scenario coverage: prompt-injection exfiltration
+
+- **New `agentdojo_exfil` pack — 100 prompt-injection exfiltrations** derived from
+  [AgentDojo](https://github.com/ethz-spylab/agentdojo) (NeurIPS 2024 Datasets &
+  Benchmarks, MIT). Nothing about the agent is misconfigured: it runs the user's task,
+  reads data it was right to read, and one of those tool responses carries a planted
+  instruction. From there it keeps using its legitimate tools on the attacker's behalf
+  — look up the 2FA code, mail it out, delete the evidence — while the answer shown to
+  the user stays clean. Balanced across all four suites (banking / slack / travel /
+  workspace), 10 injection goals, 41 user tasks.
+- **New `agentdojo` upload format.** Trajectories are replayed against the real
+  upstream environment rather than paraphrased, so the observations are what the agent
+  actually saw. Events carry `prompt_injection` on the response that delivered the
+  attack and `attacker_controlled` / `exfiltration` on the calls that followed, so a
+  report can name where the trust boundary broke.
+- **Canaries split across tiers.** These payloads are concrete values, so structured
+  secrets (passport, 2FA code, card number) land in the `realistic` tier and prose (a
+  private message, an email body) in `semantic` — a report shows honestly how much of
+  the evidence rests on exact ground truth rather than pattern matching. Without that
+  ground truth 20 of the 100 score a clean Pass and 64 would not block a CI gate; with
+  it, none pass.
+- **Pack extractors are in the repo** (`scripts/packs/`, with a README) rather than
+  being lost build steps. Both derived packs rebuild byte-identically from their
+  upstream sources, and the scripts document what was taken, what was reshaped, and
+  which upstream cases were dropped — including AgentDojo's `banking/injection_task_1`,
+  whose ground truth resolves "the IBAN of the pizza dinner companion" to the literal
+  string `"me"`. Two rules are enforced by the extractors and re-checked by the tests
+  against the shipped files: a canary must be data the agent actually read, and a
+  canary that is not a secret is never invented — a false Fail is the same defect as a
+  false Pass, pointing the other way.
+
 ### Scenario coverage: contextual integrity
 
 - **New `privacylens_ci` pack — 120 contextual-integrity scenarios** derived from
