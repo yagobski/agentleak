@@ -310,6 +310,29 @@ class Store:
             c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         return True
 
+    def reset_password(self, email: str, new_password: str) -> bool:
+        """Operator-side password reset, by email, with no current password.
+
+        AgentLeak is local-first and ships no mail infrastructure, so there is
+        no emailed reset link. Recovery instead belongs to whoever owns the
+        database: a self-hoster on their own machine, or the operator of a
+        hosted instance over SSH (see ``agentleak admin reset-password``).
+        Every session is revoked, so a stolen token dies with the reset.
+
+        Returns False when no account has that email.
+        """
+        normalized = str(email or "").strip().lower()
+        with self._conn() as c:
+            row = c.execute("SELECT id FROM users WHERE email=?", (normalized,)).fetchone()
+            if not row:
+                return False
+            c.execute(
+                "UPDATE users SET password_hash=? WHERE id=?",
+                (hash_password(new_password), row["id"]),
+            )
+            c.execute("DELETE FROM sessions WHERE user_id=?", (row["id"],))
+        return True
+
     def delete_own_account(self, uid: str, password: str) -> bool:
         """Self-service account deletion, gated by a password re-check."""
         with self._conn() as c:

@@ -6,6 +6,56 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Distribution and CI (closes the P0 gaps from the 2026-08 product audit)
+
+- **Publishing to PyPI is real and self-verifying.** `.github/workflows/release.yml`
+  builds once, runs `twine check --strict`, refuses a tag whose version disagrees with
+  `pyproject.toml`, then installs the built wheel into a clean venv and exercises the
+  actual first-run path (`version`, `scenarios --packs`, a scenario run that writes a
+  report, the packaged `SKILL.md`, a single-file `scan` that finds a secret) *before*
+  publishing. The publish step is no longer `continue-on-error`: a silent failure is
+  exactly how `pip install agentleak` ends up broken while every doc claims otherwise.
+  A manual dry-run mode runs build+verify without publishing. See `docs/releasing.md`.
+- **Official GitHub Action** (`action.yml` + `scripts/gh_gate.py`). The "privacy is a
+  required status check" story now has an artifact behind it: three modes (captured
+  trace, scenario from a benchmark pack, static code scan), annotations graded by
+  severity (L4/L3 → error, L2 → warning, L1 → notice) landing on `file:line` for scans
+  and naming the leaking channel for traces, a readable job summary, typed step outputs
+  (`score`, `risk-index`, `verdict`, `findings`, `report`), and an exit code that blocks
+  the merge. Dogfooded by a new CI job that asserts the gate blocks a leaking run and
+  passes a clean one. Starting point: `examples/workflows/privacy-gate.yml`.
+
+### Developer experience (first-session walls)
+
+- **`agentleak scan` accepts a single file** (and a zip), not just a directory. New
+  `scan_file()` / `scan_path()`; an explicitly named file is scanned whatever its
+  extension, because the user pointed at it on purpose.
+- **`watch()` is local-first for real.** Naming a project no longer implies consent to
+  talk to a server: submission happens only when a platform is configured (`base_url`,
+  `AGENTLEAK_PLATFORM_URL`, or `submit=True`). A purely local run no longer prints a
+  connection error at someone who never asked for one.
+- **The published benchmark is one command away**: `agentleak scenarios --packs`,
+  `--pack <id>` to list, and `run --pack agentleak_bench --scenario <id>` to execute.
+  The 36 benchmark scenarios previously required a UI-only import.
+- **Defenses have a door**: `agentleak redact` exposes the sanitizer that shipped with
+  documentation but no entry point (file or stdin, six redaction styles).
+
+### Honest reporting
+
+- **Every result states which detection tiers produced it.** Reports carry
+  `detection = {mode, tiers, degraded}`, surfaced in the JSON, in the CLI, and in the
+  Action's job summary. A "Pass" from regex alone no longer reads like a "Pass" from
+  the full hybrid pipeline — for a scoring product that distinction is the product.
+
+### Operations
+
+- **`agentleak admin reset-password` / `admin list-users`** — operator-side account
+  recovery from the machine that owns the database (no mail infrastructure, no emailed
+  reset link). All sessions for the account are revoked by the reset.
+- `deploy/README.md` documents account recovery and the **known ceilings of the
+  single-node deployment** (in-memory quotas and rate limits are correct for one
+  replica only; scale vertically until they are shared state).
+
 ### Agent-native distribution
 
 - **`agentleak skill`** (`agentleak/skill/`) — registers AgentLeak as an agent skill so

@@ -67,52 +67,69 @@ Engine coverage:
 
 ## 3. Phantom features and broken funnels (the honest list)
 
+> **Status update (same day):** items 1-4, 6, 7 and three shadow zones were
+> fixed in the P0/P1 pass that followed this audit; each fix is marked inline
+> and covered by tests. Item 5 is parked by decision. Item 8 turned out not to
+> be a real defect and is corrected below.
+
 Ordered by damage.
 
-1. **`pip install agentleak` does not work — the package is not on PyPI.**
-   Every funnel ends here: SKILL.md, docs/install.md, llms.txt, the site,
+1. **[FIXED] `pip install agentleak` did not work: the package was not on PyPI.**
+   Every funnel ended here: SKILL.md, docs/install.md, llms.txt, the site,
    the CLI docs. An agent or developer that follows our own instructions
    fails at step 1. *This is the single highest-impact fix available.*
-2. **The CI gate is sold as a "required status check" but there is no
-   published GitHub Action.** It works via exit code in any CI, but the
-   marketing promise implies `uses: agentleak/...@v1`. Gap between story
+2. **[FIXED] The CI gate was sold as a "required status check" with no
+   published GitHub Action.** It worked via exit code in any CI, but the
+   marketing promise implied `uses: agentleak/...@v1`. Gap between story
    and artifact.
-3. **`agentleak scan <file>` fails on a single file** ("Not a directory").
-   The first instinct of every developer — scan this one suspicious file —
-   hits a wall. Directory-only is an arbitrary limitation.
-4. **`watch()` shouts a 401 at first-time users.** With no platform
-   configured it still attempts submission and prints
-   `platform submission failed: 401`. Local-first product, noisy
-   cloud-second behavior. Default should be silent local unless a platform
-   is explicitly configured.
+3. **[FIXED] `agentleak scan <file>` failed on a single file** ("Not a directory").
+   The first instinct of every developer, scanning one suspicious file, hit a
+   wall. Directory-only was an arbitrary limitation.
+4. **[FIXED] `watch()` shouted a 401 at first-time users.** With no platform
+   configured it still attempted submission and printed
+   `platform submission failed: 401`: a local-first product with
+   cloud-second behavior.
 5. **A2A agent-card fetch endpoint has no UI and no consumers.**
    `/api/projects/{pid}/agent-card/fetch` exists server-side only. A2A has
    no meaningful adoption yet; this is speculative surface to park, not
    maintain.
-6. **The "36 scenarios" of the benchmark are one hidden import away.**
-   Built-ins are 10; the bench pack must be imported through a UI affordance
-   most users will not find. The number we advertise should be one command.
-7. **Defenses module is shipped but unreachable.** `agentleak.defenses`
-   (sanitizer + internal-channel guard) exists with docs, but zero CLI
-   exposure and no mention in the CLI help. Shipped code without a door.
-8. **Contributor papercut:** the dev venv's editable install breaks the
-   `agentleak` entry point outside the repo directory. Wheel installs are
-   fine (verified) so users are unaffected, but contributors will trip.
+6. **[FIXED] The 36 benchmark scenarios were one hidden import away.**
+   Built-ins are 10; the bench pack had to be imported through a UI affordance
+   most users would never find. The number we advertise should be one command.
+7. **[FIXED] The defenses module shipped but was unreachable.**
+   `agentleak.defenses` (sanitizer + internal-channel guard) existed with docs,
+   but zero CLI exposure. Shipped code without a door.
+8. **[NOT REPRODUCIBLE] Contributor papercut with the editable install.**
+   The `agentleak` entry point failed outside the repo directory in the
+   auditor's environment. Re-tested afterwards with a fresh `pip install -e .`
+   in a clean venv: it works from anywhere. The original symptom was a stale
+   local venv, not a repo defect. No change needed.
+
+**How the fixed items were resolved:** release pipeline that verifies the
+wheel before publishing (`docs/releasing.md`); official GitHub Action
+(`action.yml` + `scripts/gh_gate.py`) with severity-graded PR annotations;
+`scan_file()`/`scan_path()` for single files; opt-in platform submission in
+`watch()`; `scenarios --packs` and `run --pack` for the benchmark; and
+`agentleak redact` as the door into the defenses module.
+
 
 ## 4. Shadow zones (real risks, currently unlit)
 
-- **No account recovery.** No forgot/reset-password endpoint. A locked-out
-  human account is an admin ticket forever. (Agents are fine: keys.)
+- **[FIXED] Account recovery.** `agentleak admin reset-password` /
+  `admin list-users` give the operator recovery from the machine that owns
+  the database, revoking every session. No mail infrastructure invented.
 - **Single-process state.** Quotas and rate limits are in-memory; SQLite is
   the store. Correct at current scale, breaks silently at multi-replica.
-  Needs a documented ceiling, not necessarily code today.
+  Now **documented** in `deploy/README.md` section 7, with the explicit rule:
+  do not add a second replica until limits are shared state.
 - **Detection quality is unpublished.** We claim severities and a score, but
   no public precision/recall against a labeled set. For a *scoring* product,
   credibility is the product. The ai4privacy probes pack is already in the
   repo — measure and publish.
-- **LLM-judge silently absent = quieter reports.** BYOK means no key → judge
-  tier skipped. Documented, but a "Pass" without the judge can read as
-  stronger than it is. Reports should visibly badge which tiers actually ran.
+- **[FIXED] LLM-judge silently absent made quieter reports.** BYOK means no
+  key, so the judge tier is skipped and a "Pass" without it could read as
+  stronger than it was. Reports now carry `detection = {mode, tiers, degraded}` in the JSON, the CLI
+  and the Action summary, so a regex-only Pass is visibly a weaker claim.
 - **Version skew risk.** The live server routinely lags the repo; nothing
   alerts on it. (At audit time: server behind by 5 commits.)
 

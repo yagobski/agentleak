@@ -446,6 +446,58 @@ def redact(
 
 
 # ----------------------------------------------------------------------
+# admin (operator-side account recovery for a self-hosted platform)
+# ----------------------------------------------------------------------
+admin_app = typer.Typer(help="Operator commands for a self-hosted platform.", no_args_is_help=True)
+app.add_typer(admin_app, name="admin")
+
+
+@admin_app.command("reset-password")
+def admin_reset_password(
+    email: str = typer.Argument(..., help="Email of the account to reset."),
+    password: str | None = typer.Option(
+        None, "--password", help="New password. Omit to be prompted (not echoed)."
+    ),
+) -> None:
+    """Reset a platform account's password from the machine that owns the data.
+
+    There is no emailed reset link: AgentLeak ships no mail infrastructure and
+    keeps everything local. Recovery belongs to whoever holds the database, so
+    run this on the host (or over SSH for a hosted instance). Every session for
+    the account is revoked.
+    """
+    from .core.store import Store
+
+    if not password:
+        password = typer.prompt("New password", hide_input=True, confirmation_prompt=True)
+    if len(password) < 8:
+        typer.secho("✗ password must be at least 8 characters", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
+
+    if Store().reset_password(email, password):
+        typer.secho(f"✓ password reset for {email} (all sessions revoked)", fg=typer.colors.GREEN)
+    else:
+        typer.secho(f"✗ no account with email: {email}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+
+@admin_app.command("list-users")
+def admin_list_users() -> None:
+    """List platform accounts (email, role, creation date)."""
+    from .core.store import Store
+
+    users = Store().list_users()
+    if not users:
+        typer.echo("No accounts yet.")
+        return
+    for user in users:
+        role = "admin" if user.get("is_admin") else "user"
+        state = " · disabled" if user.get("disabled") else ""
+        typer.echo(f"{user['email']:<40} {role}{state}")
+    typer.echo(f"\n{len(users)} account(s).")
+
+
+# ----------------------------------------------------------------------
 # serve (web GUI)
 # ----------------------------------------------------------------------
 @app.command()

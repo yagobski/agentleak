@@ -229,3 +229,71 @@ def test_cli_shows_the_detection_tiers(tmp_path: Path) -> None:
 
     assert "Detection: fast mode · tiers: regex" in result.output
     assert "regex only" in result.output, "the weaker claim must be labelled as such"
+
+
+# -- operator-side account recovery (no more locked-out-forever) ------------
+def test_reset_password_replaces_the_password_and_revokes_sessions(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_HOME", str(tmp_path))
+    from agentleak.core.store import Store
+
+    store = Store()
+    user = store.create_user("locked@out.io", "original-pass-123")
+    token = store.create_session(user["id"])
+    assert store.session_user(token) is not None
+
+    assert store.reset_password("locked@out.io", "brand-new-pass-456") is True
+
+    assert store.verify_user("locked@out.io", "original-pass-123") is None
+    assert store.verify_user("locked@out.io", "brand-new-pass-456") is not None
+    assert store.session_user(token) is None, "a stolen token must die with the reset"
+
+
+def test_reset_password_is_case_insensitive_on_email(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_HOME", str(tmp_path))
+    from agentleak.core.store import Store
+
+    store = Store()
+    store.create_user("Mixed@Case.io", "original-pass-123")
+    assert store.reset_password("  MIXED@case.io  ", "new-pass-456") is True
+
+
+def test_reset_password_reports_an_unknown_account(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_HOME", str(tmp_path))
+    from agentleak.core.store import Store
+
+    assert Store().reset_password("ghost@nowhere.io", "whatever-123") is False
+
+
+def test_cli_admin_reset_password(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_HOME", str(tmp_path))
+    from agentleak.core.store import Store
+
+    Store().create_user("locked@out.io", "original-pass-123")
+
+    result = runner.invoke(
+        app, ["admin", "reset-password", "locked@out.io", "--password", "brand-new-pass-456"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "password reset" in result.output
+    assert Store().verify_user("locked@out.io", "brand-new-pass-456") is not None
+
+
+def test_cli_admin_reset_password_rejects_a_short_password(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_HOME", str(tmp_path))
+    from agentleak.core.store import Store
+
+    Store().create_user("locked@out.io", "original-pass-123")
+    result = runner.invoke(app, ["admin", "reset-password", "locked@out.io", "--password", "short"])
+
+    assert result.exit_code == 2
+    assert "at least 8 characters" in result.output
+
+
+def test_cli_admin_reset_password_unknown_account(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_HOME", str(tmp_path))
+    result = runner.invoke(
+        app, ["admin", "reset-password", "ghost@nowhere.io", "--password", "whatever-123"]
+    )
+    assert result.exit_code == 1
+    assert "no account with email" in result.output

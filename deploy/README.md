@@ -105,6 +105,35 @@ Edit `.env` and `docker compose up -d` to apply:
 | `AGENTLEAK_FORCE_BYOK` | never use a platform LLM key | 1 |
 | `AGENTLEAK_EXTRAS` | `gui` (lean) or `full` (Presidio) | gui |
 
+## 6. Account recovery
+
+There is no emailed password-reset link: AgentLeak ships no mail
+infrastructure and keeps state local. Recovery belongs to whoever owns the
+database, which on a hosted instance is you, over SSH:
+
+```bash
+docker compose exec app agentleak admin list-users
+docker compose exec app agentleak admin reset-password someone@example.com
+```
+
+Every session for that account is revoked by the reset, so a stolen cookie
+stops working at the same moment.
+
+## 7. Known ceilings of this single-node deployment
+
+This deployment is deliberately one container plus SQLite. That is the right
+shape at current scale and it has a documented edge:
+
+| Concern | Where it lives | Ceiling |
+|---|---|---|
+| Quotas + per-IP throttles | in-process memory | **Correct for one replica only.** Two replicas would each enforce half the limit. Scale up (bigger box) rather than out, or move limits to Redis first. |
+| Runs, users, sessions | SQLite in a Docker volume | Comfortable into the low millions of rows; back it up (§4) before it matters. |
+| Concurrency | one uvicorn process | CPU-bound analysis serializes. Raise workers only after moving rate limits out of memory. |
+| Sessions | server-side rows | Survive restarts; wiped by `docker compose down -v`. |
+
+The practical rule: **do not add a second replica** until quotas and rate
+limits are shared state. Everything else scales vertically for now.
+
 ## Notes on coexistence with ournia.com
 
 - The app only publishes `127.0.0.1:8787`; it cannot collide with ournia's
