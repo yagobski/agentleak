@@ -40,6 +40,44 @@ jobs:
           agentleak run --scenario healthcare_patient_summary --output /tmp/reports --format json || true
           test -f /tmp/reports/run_healthcare_001.json
 
+  # Dogfood our own Action: if the privacy gate ever stops working, our CI is
+  # the first to know. `continue-on-error` because the demo scenario leaks on
+  # purpose — we assert the gate *caught* it rather than that the repo passes.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Privacy gate must catch a leaking scenario
+        id: leak
+        continue-on-error: true
+        env:
+          AL_SCENARIO: healthcare_patient_summary
+          AL_FAIL_UNDER: "80"
+        run: python scripts/gh_gate.py
+
+      - name: Privacy gate must pass a clean scenario
+        env:
+          AL_SCENARIO: healthcare_clean_referral
+          AL_FAIL_UNDER: "80"
+        run: python scripts/gh_gate.py
+
+      - name: Assert the gate blocked the leaking run
+        run: |
+          if [ "${{ steps.leak.outcome }}" != "failure" ]; then
+            echo "::error::The privacy gate did NOT block a leaking run."
+            exit 1
+          fi
+          echo "Gate correctly blocked the leaking run."
+
   frontend:
     runs-on: ubuntu-latest
     steps:

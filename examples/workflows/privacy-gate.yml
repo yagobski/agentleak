@@ -1,0 +1,50 @@
+# Copy this into .github/workflows/ to make agent privacy a required check.
+#
+# Mark "privacy / gate" as a required status check in your branch protection
+# rules, and a run that crosses your policy blocks the merge like a failing
+# test. Findings land as annotations on the PR, with a readable job summary.
+
+name: privacy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Score a trace your agent captured (the usual setup).
+      - name: Privacy gate on the latest captured run
+        uses: agentleak/agentleak-oss@v1
+        with:
+          trace: traces/latest.json
+          fail-under: "80"
+          config: agentleak.yaml      # optional: your policy, versioned with the agent
+
+      # 2. Or run the published benchmark against a scenario suite.
+      - name: Benchmark regression
+        uses: agentleak/agentleak-oss@v1
+        with:
+          pack: agentleak_bench
+          scenario: agentleak_cor_00800
+          fail-under: "70"
+
+      # 3. Or scan the agent's source before it ever runs.
+      - name: Static privacy scan
+        uses: agentleak/agentleak-oss@v1
+        with:
+          scan: src/
+          fail-under: "90"
+
+  # Branch on the result in a later job (outputs are typed and stable).
+  report:
+    needs: gate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "The privacy gate finished; see the job summary for details."

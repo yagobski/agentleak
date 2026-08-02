@@ -1,0 +1,103 @@
+name: "AgentLeak privacy gate"
+description: "Fail a build when an agent leaks personal data or secrets through its internal channels. Annotates the PR with the exact finding."
+author: "AgentLeak"
+
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  trace:
+    description: "Trace JSON file to analyze (a run captured from your agent)."
+    required: false
+    default: ""
+  scenario:
+    description: "Built-in scenario to run instead of a trace (or 'all')."
+    required: false
+    default: ""
+  pack:
+    description: "Take --scenario from a bundled pack, e.g. agentleak_bench."
+    required: false
+    default: ""
+  scan:
+    description: "Path to statically scan (file, directory or zip) instead of analyzing a trace."
+    required: false
+    default: ""
+  fail-under:
+    description: "Fail when the privacy score is below this value (0-100)."
+    required: false
+    default: "80"
+  config:
+    description: "Path to agentleak.yaml (detectors, policy, thresholds)."
+    required: false
+    default: ""
+  version:
+    description: "AgentLeak version specifier to install, e.g. '0.9.0' or 'latest'."
+    required: false
+    default: "latest"
+  python-version:
+    description: "Python version used to run the gate."
+    required: false
+    default: "3.11"
+  annotate:
+    description: "Emit GitHub annotations on the failing lines / channels."
+    required: false
+    default: "true"
+  comment-summary:
+    description: "Write the report to the workflow job summary."
+    required: false
+    default: "true"
+  working-directory:
+    description: "Directory to run in."
+    required: false
+    default: "."
+
+outputs:
+  score:
+    description: "Privacy score out of 100 (or the code score for a scan)."
+    value: ${{ steps.gate.outputs.score }}
+  risk-index:
+    description: "AgentRisk index from 0 to 1 (empty for a code scan)."
+    value: ${{ steps.gate.outputs.risk-index }}
+  verdict:
+    description: "Pass | Conditional pass | High risk | Fail."
+    value: ${{ steps.gate.outputs.verdict }}
+  findings:
+    description: "Number of findings reported."
+    value: ${{ steps.gate.outputs.findings }}
+  report:
+    description: "Path to the JSON report produced by the gate."
+    value: ${{ steps.gate.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install AgentLeak
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          pip install --quiet --upgrade agentleak
+        else
+          pip install --quiet "agentleak==${{ inputs.version }}"
+        fi
+        agentleak version
+
+    - name: Run the privacy gate
+      id: gate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        AL_TRACE: ${{ inputs.trace }}
+        AL_SCENARIO: ${{ inputs.scenario }}
+        AL_PACK: ${{ inputs.pack }}
+        AL_SCAN: ${{ inputs.scan }}
+        AL_FAIL_UNDER: ${{ inputs.fail-under }}
+        AL_CONFIG: ${{ inputs.config }}
+        AL_ANNOTATE: ${{ inputs.annotate }}
+        AL_SUMMARY: ${{ inputs.comment-summary }}
+      run: python "$GITHUB_ACTION_PATH/scripts/gh_gate.py"
