@@ -254,6 +254,7 @@ See [docs/integrations.md](docs/integrations.md).
 
 - [Quickstart](docs/quickstart.md)
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — coverage map, honest gaps, market position, roadmap
+- [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does
 - [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report
 - [Concepts](docs/concepts.md)
 - [Detection pipeline](docs/detection.md) — Tier 1+2 regex, Tier 2b Presidio, Tier 3 LLM-judge

@@ -3,13 +3,19 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Build and verify the artifacts without publishing."
+        type: boolean
+        default: true
 
 jobs:
-  release:
+  # Build once, verify hard, then publish that exact artifact. A broken
+  # `pip install agentleak` is the worst failure this project can ship, so the
+  # wheel is installed and exercised in a clean environment before release.
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # create the GitHub Release
-      id-token: write   # PyPI Trusted Publishing (OIDC, no token needed)
     steps:
       - uses: actions/checkout@v4
 
@@ -20,18 +26,70 @@ jobs:
 
       - name: Build sdist + wheel
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build
 
-      - name: Attach artifacts to GitHub Release
+      - name: Metadata must be valid for PyPI
+        run: python -m twine check --strict dist/*
+
+      - name: Tag must match the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG=$(python -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG does not match pyproject version $PKG"
+            exit 1
+          fi
+          echo "Releasing version $PKG"
+
+      - name: The wheel must work from a clean install
+        run: |
+          python -m venv /tmp/verify
+          /tmp/verify/bin/pip install --quiet dist/*.whl
+          # The exact first-run path a new user or agent follows.
+          /tmp/verify/bin/agentleak version
+          /tmp/verify/bin/agentleak scenarios --packs | grep -q agentleak_bench
+          /tmp/verify/bin/agentleak run --scenario healthcare_clean_referral \
+            --output /tmp/verify-reports --format json
+          test -s /tmp/verify-reports/*.json
+          # Packaged data must travel with the wheel, not just exist in git.
+          /tmp/verify/bin/python -c "from agentleak.skill import skill_text; assert 'AgentLeak' in skill_text()"
+          echo 'API_KEY = "sk-live-abcdef0123456789"' > /tmp/leaky.py
+          /tmp/verify/bin/agentleak scan /tmp/leaky.py | grep -q hardcoded_secret
+
+      - name: Upload the verified artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Skip publishing on a manual dry run.
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !inputs.dry-run }}
+    environment:
+      name: pypi
+      url: https://pypi.org/p/agentleak
+    permissions:
+      contents: write   # create the GitHub Release
+      id-token: write   # PyPI Trusted Publishing (OIDC, no token needed)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Attach artifacts to the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
 
-      # One-time setup to enable this: add a Trusted Publisher for this repo on
-      # PyPI (https://docs.pypi.org/trusted-publishers/ — no API token needed).
-      # Until then the step is best-effort and won't fail the release.
+      # Requires a one-time Trusted Publisher entry on PyPI for this repo and
+      # workflow (https://docs.pypi.org/trusted-publishers/). No API token.
+      # This step is intentionally NOT continue-on-error: a silent publish
+      # failure is exactly how `pip install agentleak` ends up not working.
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        continue-on-error: true
