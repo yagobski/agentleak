@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && npm run prerender",
-    "preview": "vite preview",
-    "prerender": "vite build --ssr src/entry-prerender.tsx --outDir .prerender && node scripts/prerender.mjs"
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.1.0",

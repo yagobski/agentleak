@@ -1,8 +1,9 @@
 """Source-level contracts for UI behavior that is otherwise browser-only.
 
 The frontend build type-checks React but has no DOM test runtime. These focused
-contracts keep the landing preview and mobile sidebar regressions visible in CI;
-the full interaction is still exercised by the browser smoke test before deploy.
+contracts keep product-UI regressions visible in CI; the full interaction is
+still exercised by the browser smoke test before deploy. Marketing-page
+contracts live in the site repository alongside the pages they describe.
 """
 
 from __future__ import annotations
@@ -14,32 +15,6 @@ ROOT = Path(__file__).parents[1] / "agentleak" / "web" / "frontend" / "src"
 
 def _source(relative: str) -> str:
     return (ROOT / relative).read_text(encoding="utf-8")
-
-
-def test_hero_preview_exposes_five_working_views() -> None:
-    landing = _source("pages/Landing.tsx")
-    expected = ("Dashboard", "Runs", "Playground", "Leaderboard", "Scenarios")
-
-    assert (
-        'const HERO_VIEWS = ["Dashboard", "Runs", "Playground", '
-        '"Leaderboard", "Scenarios"] as const'
-    ) in landing
-    for view in expected:
-        assert f'view === "{view}"' in landing
-    for view in ("Playground", "Leaderboard", "Scenarios"):
-        assert f'onClick={{() => setView("{view}")}}' in landing
-
-
-def test_hero_preview_has_layouts_for_non_dashboard_views() -> None:
-    css = _source("index.css")
-
-    for selector in (
-        ".cursor-app-runs-full",
-        ".cursor-app-board-row",
-        ".cursor-app-playground",
-        ".cursor-app-scenarios",
-    ):
-        assert selector in css
 
 
 def test_platform_mobile_sidebar_closes_after_navigation() -> None:
