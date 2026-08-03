@@ -93,3 +93,20 @@ jobs:
       # failure is exactly how `pip install agentleak` ends up not working.
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      # The site repository owns the deployment: it installs this package, so a
+      # new release only reaches production when it redeploys. Dispatching here
+      # keeps the two repositories in step without either one importing the
+      # other.
+      - name: Tell the site to redeploy
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::SITE_DISPATCH_TOKEN not set — deploy the site manually."
+            exit 0
+          fi
+          gh api repos/yagobski/agentleak-site/dispatches \
+            -f event_type=package-released \
+            -F client_payload[version]="${GITHUB_REF_NAME#v}"

@@ -1,6 +1,10 @@
-# AgentLeak OSS
+# AgentLeak
 
-**Open-source privacy-leakage testing framework for AI agents.**
+**Open-source privacy-leakage testing for AI agents.** MIT.
+
+[![PyPI](https://img.shields.io/pypi/v/agentleak)](https://pypi.org/project/agentleak/)
+[![Python](https://img.shields.io/pypi/pyversions/agentleak)](https://pypi.org/project/agentleak/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Your agent's *final answer* can look perfectly clean while sensitive data leaks
 through its **tool calls, shared memory, inter-agent messages, and logs** —
@@ -27,6 +31,25 @@ no data ever leaves your machine.
 
 ---
 
+## What is in this repository
+
+Everything you run yourself, under MIT: the SDK, the CLI, the detection and
+scoring engine, the 283 bundled scenarios, the framework integrations, the
+runtime defenses, the GitHub Action and the local web UI.
+
+The marketing site at [agentleak.org](https://www.agentleak.org) is not here —
+it is copy and design, it helps nobody use the tool, and it is maintained
+separately. The documentation it renders is generated from `docs/`, which *is*
+here, so nothing you need is behind that line.
+
+| | Where |
+|---|---|
+| SDK, CLI, engine, scenarios, Action, local UI | this repository, MIT |
+| Hosted workspace | [agentleak.org/app](https://www.agentleak.org/app/) |
+| Published benchmark | [agentleak.org/benchmark](https://www.agentleak.org/benchmark) |
+
+---
+
 ## Install
 
 ```bash
@@ -48,7 +71,7 @@ pip install -e ".[dev]"
 
 ```bash
 pip install 'agentleak[gui]'
-agentleak serve              # opens http://127.0.0.1:8000
+agentleak serve              # opens http://127.0.0.1:8000/app/
 ```
 
 A full local platform — React + Tailwind + **shadcn/ui** (black theme), fully
@@ -252,7 +275,12 @@ See [docs/integrations.md](docs/integrations.md).
 
 ## Docs
 
+Start with the [quickstart](docs/quickstart.md); the same pages are rendered at
+[agentleak.org/docs](https://www.agentleak.org/docs) if you prefer reading them
+there.
+
 - [Quickstart](docs/quickstart.md)
+- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 283 bundled scenarios
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — coverage map, honest gaps, market position, roadmap
 - [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does
 - [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report
@@ -282,8 +310,14 @@ See [docs/integrations.md](docs/integrations.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Everything in this repository is MIT: use it,
+fork it, ship it inside your own product.
 
-> AgentLeak OSS is the developer-facing tool. It is the practical counterpart to
-> the AgentLeak research benchmark
+Two of the bundled scenario packs are derived from public research datasets and
+carry their own terms, displayed wherever the pack appears:
+[PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) (CC-BY-4.0)
+and [AgentDojo](https://github.com/ethz-spylab/agentdojo) (MIT).
+
+> AgentLeak is the developer-facing tool. It is the practical counterpart to the
+> AgentLeak research benchmark
 > ([arXiv:2602.11510](https://arxiv.org/abs/2602.11510)).
