@@ -1,0 +1,29 @@
+name: Support a framework
+description: You want AgentLeak to capture traces from something it does not cover yet.
+labels: ["integration", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These make good first contributions. An adapter is one function that
+        turns the framework's own event objects into an AgentLeak trace — see
+        `agentleak/integrations/` for a dozen worked examples, and
+        `docs/integrations.md` for the contract.
+  - type: input
+    id: framework
+    attributes:
+      label: Which framework
+      placeholder: "AutoGen, Mastra, OpenAI Agents SDK…"
+    validations: { required: true }
+  - type: textarea
+    id: shape
+    attributes:
+      label: What its run output looks like
+      description: A sample of the objects an adapter would read — messages, steps, spans.
+      render: python
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Would you like to write it?
+      options:
+        - label: Yes, and I would like a pointer on where to start

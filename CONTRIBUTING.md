@@ -1,7 +1,33 @@
-# Contributing to AgentLeak OSS
+# Contributing to AgentLeak
 
-Thanks for helping make agents safer. AgentLeak OSS is intentionally small and
+Thanks for helping make agents safer. AgentLeak is intentionally small and
 dependency-light — keep contributions in that spirit.
+
+## Where to start
+
+Pick whichever of these sounds like your afternoon.
+
+| If you want to… | Start here | Effort |
+|---|---|---|
+| **Support a framework we do not cover** | `agentleak/integrations/` — an adapter is one function that turns a framework's own events into a trace. A dozen worked examples sit next to yours. | An afternoon |
+| **Add a detector** | `agentleak/core/detector.py` — a pattern, a name, a severity, a test that proves it fires and one that proves it does not over-fire. | An afternoon |
+| **Report a wrong score** | [Open an issue](https://github.com/yagobski/agentleak/issues/new/choose) with the trace. This is the single most valuable thing you can send us: the score *is* the product. | Ten minutes |
+| **Improve the corpus** | `scripts/packs/` — the extractors that build the scenario packs, and the rules that keep their ground truth honest. | A day |
+| **Improve the docs** | `docs/` in this repository is the source; the site renders it. Anything that confused you is a bug in the docs. | Any size |
+
+Two things are worth knowing before you touch scoring or detection:
+
+- **Determinism is a feature, not an implementation detail.** The same trace must
+  always produce the same score, or a regression in someone's CI stops meaning
+  anything. No model may sit in the default path.
+- **A false pass and a false finding are equally serious.** One tells someone
+  they are safe when they are not; the other teaches them to ignore us. Tests
+  for new detection should cover both directions.
+
+## Ground rules
+
+Everything runs locally by default and sends nothing anywhere. Any change that
+adds a network call has to be opt-in and say so in the docs.
 
 > **Working on this with an AI agent?** Read [AGENTS.md](AGENTS.md) first — it's
 > the architecture map, the invariants, and the "how to extend" guide.

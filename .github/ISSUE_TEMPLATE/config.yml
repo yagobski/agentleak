@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or idea
+    url: https://github.com/yagobski/agentleak/discussions
+    about: Anything open-ended — how to model a trace, whether an approach makes sense.
+  - name: Security vulnerability
+    url: https://github.com/yagobski/agentleak/security/advisories/new
+    about: Report privately. Please do not open a public issue.
+  - name: Documentation
+    url: https://www.agentleak.org/docs
+    about: Guides, API reference and the measured benchmark.

@@ -1,0 +1,44 @@
+name: A finding is wrong
+description: AgentLeak missed a leak, or reported one that is not there.
+labels: ["detection"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful issue you can file: the score is the product, so
+        a wrong one matters more than a crash.
+
+        If the missed leak is in *someone else's* real data, report it privately
+        instead — [security advisory](https://github.com/yagobski/agentleak/security/advisories/new).
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Which way is it wrong?
+      options:
+        - Missed — data crossed a channel and the run passed
+        - False — a clean run was scored as a leak
+    validations: { required: true }
+  - type: textarea
+    id: trace
+    attributes:
+      label: The trace
+      description: Paste it, or attach the file. Synthetic values only, please.
+      render: json
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+      placeholder: "The SIN in the tool_call should have been an L4 finding on that channel."
+    validations: { required: true }
+  - type: input
+    id: command
+    attributes:
+      label: The command you ran
+      placeholder: "agentleak run --trace trace.json --mode fast"
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`agentleak version`"
+    validations: { required: true }

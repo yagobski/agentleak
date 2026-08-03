@@ -1,0 +1,25 @@
+name: Something is broken
+description: A crash, a wrong output, or a command that does not do what it says.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the full error if there was one.
+    validations: { required: true }
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. pip install agentleak
+        2. agentleak run --scenario healthcare_patient_summary
+        3. ...
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version and Python
+      placeholder: "agentleak 0.10.0, Python 3.12, macOS 15"
+    validations: { required: true }
