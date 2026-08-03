@@ -37,11 +37,6 @@ Everything you run yourself, under MIT: the SDK, the CLI, the detection and
 scoring engine, the 283 bundled scenarios, the framework integrations, the
 runtime defenses, the GitHub Action and the local web UI.
 
-The marketing site at [agentleak.org](https://www.agentleak.org) is not here —
-it is copy and design, it helps nobody use the tool, and it is maintained
-separately. The documentation it renders is generated from `docs/`, which *is*
-here, so nothing you need is behind that line.
-
 | | Where |
 |---|---|
 | SDK, CLI, engine, scenarios, Action, local UI | this repository, MIT |
