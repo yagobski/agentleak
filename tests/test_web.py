@@ -27,12 +27,37 @@ def test_spa_served(client: TestClient):
     assert "AgentLeak" in r.text
 
 
-def test_public_spa_route_has_server_rendered_metadata(client: TestClient):
+def test_public_route_is_prerendered_for_crawlers(client: TestClient):
+    """A public page must arrive as HTML, not as an empty shell.
+
+    The build renders these routes with the page components themselves, so this
+    asserts the outcome (real markup, route-specific metadata) rather than one
+    hard-coded string — the title now belongs to the page, not to a table in
+    this repo that can drift from it.
+    """
     r = client.get("/features/trace-analysis")
     assert r.status_code == 200
-    assert "AI agent trace analysis — AgentLeak" in r.text
     assert '<link rel="canonical" href="https://www.agentleak.org/features/trace-analysis"' in r.text
     assert '<meta name="robots" content="index, follow, max-image-preview:large"' in r.text
+    # Large-image cards need an image to point at.
+    assert '<meta name="twitter:card" content="summary_large_image"' in r.text
+    assert '<meta property="og:image"' in r.text
+    # The page itself, not just <div id="root"></div>.
+    assert "<h1" in r.text
+    assert len(r.text) > 8000, "looks like the empty SPA shell, not a prerendered page"
+
+
+def test_prerendered_page_carries_structured_data(client: TestClient):
+    r = client.get("/research")
+    assert r.status_code == 200
+    assert 'application/ld+json' in r.text
+
+
+def test_route_without_a_prerender_still_serves_the_shell(client: TestClient):
+    """A new route must degrade to client-side rendering, never to a 404."""
+    r = client.get("/features/does-not-exist-yet")
+    assert r.status_code == 200
+    assert 'id="root"' in r.text
 
 
 def test_unknown_spa_route_is_not_indexable(client: TestClient):

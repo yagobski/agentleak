@@ -2440,6 +2440,18 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         return {"a": a, "b": b, "dominance": verdict, "comparable": True, "reason": ""}
 
     # -- SPA -----------------------------------------------------------
+    def _prerendered_page(full_path: str) -> Path | None:
+        """The prerendered HTML for a route, when the build produced one."""
+        root = _STATIC_DIR / "_prerendered"
+        page = (root / full_path.strip("/") / "index.html") if full_path.strip("/") else (root / "index.html")
+        try:
+            resolved = page.resolve()
+        except OSError:  # pragma: no cover - unreadable path
+            return None
+        if not resolved.is_relative_to(root.resolve()) or not resolved.is_file():
+            return None
+        return resolved
+
     # Static bundle is only served in production / `agentleak serve` mode.
     # In dev, AGENTLEAK_NO_UI=1 disables this so the Vite dev server is the
     # sole UI (it already proxies /api/* to this FastAPI process).
@@ -2458,6 +2470,12 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             candidate = _STATIC_DIR / full_path
             if full_path and candidate.is_file() and candidate.resolve().is_relative_to(_STATIC_DIR.resolve()):
                 return FileResponse(candidate)
+            # Prefer the build-time prerender when this route has one: a crawler
+            # that runs no JavaScript gets the page instead of an empty shell.
+            # Routes without one fall through to the SPA exactly as before.
+            prerendered = _prerendered_page(full_path)
+            if prerendered is not None:
+                return FileResponse(prerendered, media_type="text/html")
             return HTMLResponse(_render_spa_html(index_template, full_path))  # client-side routing
     elif not _serve_ui:  # pragma: no cover
         # Dev mode — the Vite server at :5173 is the UI; this process is API only.

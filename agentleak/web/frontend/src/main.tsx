@@ -15,27 +15,35 @@ import { Admin } from "./pages/Admin"
 import { Dashboard } from "./pages/Dashboard"
 import { Documentation, RedTeamPluginDocumentation } from "./pages/Documentation"
 import { FeaturePage } from "./pages/FeaturePage"
-import { Landing } from "./pages/Landing"
 import { Integrations } from "./pages/Integrations"
-import { Login } from "./pages/Login"
 import { Research } from "./pages/Research"
-import { FeaturesHub, SeoPage } from "./pages/SeoPages"
 import { Playground } from "./pages/Playground"
 import { ProjectDetail } from "./pages/ProjectDetail"
 import { Projects } from "./pages/Projects"
 import { RunView } from "./pages/RunView"
 import { Scenarios } from "./pages/Scenarios"
 import { Settings } from "./pages/Settings"
+import { FeaturesHub, SeoPage } from "./pages/SeoPages"
+import { Benchmark } from "./pages/Benchmark"
+import { Compare } from "./pages/Compare"
+import { Compliance } from "./pages/Compliance"
+import { PublicRoutes } from "./PublicRoutes"
 
 // Apply the saved theme before first paint. Dark is the default so the
 // product matches the marketing site; one-time migration flips accounts the
 // old "warm light" migration had pinned to light.
-if (!localStorage.getItem("agentleak-dark-ui-v1")) {
-  localStorage.setItem("agentleak-theme", "dark")
-  localStorage.setItem("agentleak-dark-ui-v1", "1")
+// Guarded because this module is also imported by the build-time prerender.
+// Testing `window` rather than `localStorage`: Node defines a global
+// localStorage that throws on use, so a typeof check on it passes and then
+// blows up at the first getItem.
+if (typeof window !== "undefined") {
+  if (!localStorage.getItem("agentleak-dark-ui-v1")) {
+    localStorage.setItem("agentleak-theme", "dark")
+    localStorage.setItem("agentleak-dark-ui-v1", "1")
+  }
+  const savedTheme = localStorage.getItem("agentleak-theme")
+  document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : true)
 }
-const savedTheme = localStorage.getItem("agentleak-theme")
-document.documentElement.classList.toggle("dark", savedTheme ? savedTheme === "dark" : true)
 
 function ScrollToRoute() {
   const { hash, pathname } = useLocation()
@@ -88,39 +96,7 @@ function AppRoutes() {
   }
 
   if (!user) {
-    return (
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/features" element={<FeaturesHub />} />
-        <Route path="/features/:slug" element={<FeaturePage />} />
-        <Route path="/integrations" element={<Integrations />} />
-        <Route path="/security" element={<SeoPage />} />
-        <Route path="/use-cases/multi-agent-privacy" element={<SeoPage />} />
-        <Route path="/about" element={<SeoPage />} />
-        <Route path="/research" element={<Research />} />
-        <Route path="/faq" element={<Navigate to="/#faq" replace />} />
-        <Route path="/docs" element={<Documentation />} />
-        <Route path="/docs/getting-started" element={<Documentation audience="gettingStarted" />} />
-        <Route path="/docs/integrations" element={<Documentation audience="integrations" />} />
-        <Route path="/docs/scoring" element={<Documentation audience="scoring" />} />
-        <Route path="/docs/developers" element={<Documentation audience="developers" />} />
-        <Route path="/docs/agents" element={<Documentation audience="agents" />} />
-        <Route path="/docs/api" element={<Documentation audience="api" />} />
-        <Route path="/docs/privacy-compliance" element={<Documentation audience="privacyCompliance" />} />
-        <Route path="/docs/red-team" element={<Documentation audience="redteam" />} />
-        <Route path="/docs/red-team/configuration" element={<Documentation audience="redteamConfiguration" />} />
-        <Route path="/docs/red-team/architecture" element={<Documentation audience="redteamArchitecture" />} />
-        <Route path="/docs/red-team/vulnerabilities" element={<Documentation audience="redteamVulnerabilities" />} />
-        <Route path="/docs/red-team/llm-vulnerability-types" element={<Documentation audience="redteamVulnerabilities" />} />
-        <Route path="/docs/red-team/plugins" element={<Documentation audience="redteamPlugins" />} />
-        <Route path="/docs/red-team/plugins/:pluginId" element={<RedTeamPluginDocumentation />} />
-        <Route path="/docs/red-team/strategies" element={<Documentation audience="redteamStrategies" />} />
-        <Route path="/docs/ci-cd" element={<Documentation audience="ciCd" />} />
-        <Route path="/login" element={<Login initialMode="login" />} />
-        <Route path="/register" element={<Login initialMode="register" />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    )
+    return <PublicRoutes />
   }
 
   return (
@@ -132,6 +108,9 @@ function AppRoutes() {
       <Route path="use-cases/multi-agent-privacy" element={<SeoPage />} />
       <Route path="about" element={<SeoPage />} />
       <Route path="research" element={<Research />} />
+      <Route path="benchmark" element={<Benchmark />} />
+      <Route path="compare" element={<Compare />} />
+      <Route path="compliance/eu-ai-act" element={<Compliance />} />
       <Route path="faq" element={<Navigate to="/" replace />} />
       <Route path="docs" element={<Documentation />} />
       <Route path="docs/getting-started" element={<Documentation audience="gettingStarted" />} />

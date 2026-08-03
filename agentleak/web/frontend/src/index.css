@@ -813,6 +813,32 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
 /* --- honest proof-metrics band: real, source-verified numbers, styled like the research-stats grid --- */
 .cursor-proof-metrics { width: 100%; max-width: var(--wrap); padding-inline: var(--gutter); margin: 0 auto var(--sp-slide); }
 .cursor-proof-metrics > header h2 { max-width: 32ch; margin-top: 14px; font-size: var(--t-h2); font-weight: 430; line-height: 1.14; letter-spacing: -.02em; }
+/* --- Comparison table: five columns, ours highlighted ------------------- */
+.docs-table-compare { display: flex; flex-direction: column; gap: 1px; margin-top: 24px; overflow-x: auto; }
+.docs-compare-head, .docs-compare-row { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 1px; min-width: 720px; }
+.docs-compare-head > span { padding: 12px 14px; background: var(--s-11110f); font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--s-9d9c96); }
+.docs-compare-head > span:last-child { color: #ff8257; }
+.docs-compare-row > span { padding: 13px 14px; background: var(--s-0e0e0c); font-size: 13px; line-height: 1.45; color: var(--s-9d9c96); }
+.docs-compare-row > span:first-child { color: var(--s-c9c8c1); }
+.docs-compare-row > span[data-self="true"] { background: var(--s-11110f); color: #f5f4f0; }
+
+/* --- The leak, shown rather than described ----------------------------- */
+.cursor-leak { margin-top: 34px; border: 1px solid var(--s-232320); border-radius: 10px; background: var(--s-0e0e0c); overflow: hidden; }
+.cursor-leak > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--s-232320); background: var(--s-11110f); }
+.cursor-leak > header span { font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--s-9d9c96); }
+.cursor-leak > header b { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; color: #ff8257; }
+.cursor-leak-row { display: grid; grid-template-columns: 170px 1fr 64px; gap: 12px; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--s-1a1a18, var(--s-232320)); font-family: "JetBrains Mono", monospace; font-size: 12.5px; }
+.cursor-leak-row:last-child { border-bottom: 0; }
+.cursor-leak-row > i { font-style: normal; color: var(--s-6d6c66, var(--s-9d9c96)); }
+.cursor-leak-row > code { color: #f5f4f0; overflow-wrap: anywhere; }
+.cursor-leak-row > em { justify-self: end; font-style: normal; font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--s-232320); }
+.cursor-leak-row[data-clean="true"] > code { color: var(--s-9d9c96); }
+.cursor-leak-row[data-clean="true"] > em { color: #4ea36b; }
+.cursor-leak-row[data-leak="true"] { background: rgba(255,130,87,.045); }
+.cursor-leak-row[data-leak="true"] > em { color: #ff8257; border-color: rgba(255,130,87,.35); }
+.cursor-leak > footer { padding: 13px 16px; border-top: 1px solid var(--s-232320); background: var(--s-11110f); font-size: 12.5px; line-height: 1.5; color: var(--s-9d9c96); }
+@media (max-width: 720px) { .cursor-leak-row { grid-template-columns: 1fr; gap: 4px; } .cursor-leak-row > em { justify-self: start; } }
+
 /* --- Dataset attribution: a licence obligation, not a footnote ---------- */
 .cursor-attrib-list { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; max-width: 760px; }
 .cursor-attrib { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border: 1px solid var(--s-232320); border-radius: 7px; background: var(--s-0e0e0c); text-decoration: none; color: inherit; transition: border-color .25s ease, background .25s ease; }

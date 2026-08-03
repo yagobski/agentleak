@@ -16,11 +16,16 @@ def llms_index(base_url: str) -> str:
 
 > Open-source privacy testing for single-agent and multi-agent systems. AgentLeak analyzes complete execution traces across tool calls, shared memory, inter-agent messages, logs, generated files, and final output.
 
+An agent can return a clean answer while private data leaves through a channel nobody reads. Measured across the 283 scenarios bundled with the tool, every leak behaves that way: it travels on an internal channel and never reaches the final output. Scoring is deterministic — exact ground-truth matching, no judge model — so the same trace always yields the same number.
+
 AgentLeak can be used by developers through its CLI and Python SDK, or directly by autonomous agents through a project-scoped HTTP API. Prefer synthetic or canary data for tests. The hosted service is available at {base}.
 
 ## Start here
 
 - [{base}/docs]({base}/docs): Documentation hub and product model
+- [{base}/benchmark]({base}/benchmark): Measured internal-channel leakage and detection-tier coverage across the 283 bundled scenarios, with the command to reproduce it
+- [{base}/compare]({base}/compare): How AgentLeak differs from promptfoo, Garak and PyRIT — they test the model, this tests the system
+- [{base}/compliance/eu-ai-act]({base}/compliance/eu-ai-act): EU AI Act Annex III evidence, mapped to Arts. 9, 11, 12, 15 and 26
 - [{base}/docs/developers]({base}/docs/developers): CLI, SDK, integrations, trace schema, and CI guide
 - [configuration reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md): complete agentleak.yaml reference
 - [CLI reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md): commands, options, exit codes and artifacts

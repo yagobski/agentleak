@@ -14,7 +14,21 @@ type PageMetaOptions = {
 }
 
 /** Canonical, social and crawler metadata for each public route. */
+// Filled during a server render so the build-time prerender can read the exact
+// metadata a page declares for itself. One source of truth: whatever a page
+// passes here ends up both in the static HTML and in the client-side updates.
+export const ssrMeta: { title: string; description: string; options: PageMetaOptions } = {
+  title: "",
+  description: "",
+  options: {},
+}
+
 export function usePageMeta(title: string, description: string, options: PageMetaOptions = {}) {
+  if (typeof document === "undefined") {
+    ssrMeta.title = title
+    ssrMeta.description = description
+    ssrMeta.options = options
+  }
   const structuredData = options.structuredData ? JSON.stringify(options.structuredData) : ""
   useEffect(() => {
     document.title = title
@@ -36,7 +50,9 @@ export function usePageMeta(title: string, description: string, options: PageMet
     setMeta("property", "og:url", canonicalUrl)
     setMeta("property", "og:site_name", "AgentLeak")
     setMeta("property", "og:locale", "en_US")
-    setMeta("name", "twitter:card", "summary")
+    setMeta("name", "twitter:card", "summary_large_image")
+    setMeta("property", "og:image", `${SITE_URL}/og.png`)
+    setMeta("name", "twitter:image", `${SITE_URL}/og.png`)
     setMeta("name", "twitter:title", title)
     setMeta("name", "twitter:description", description)
 
@@ -63,6 +79,7 @@ export function usePageMeta(title: string, description: string, options: PageMet
 type SiteTheme = "system" | "light" | "dark"
 
 function applySiteTheme(theme: SiteTheme) {
+  if (typeof window === "undefined") return
   const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches
   const light = theme === "light" || (theme === "system" && prefersLight)
   document.documentElement.toggleAttribute("data-site-theme", light)
@@ -72,7 +89,10 @@ function applySiteTheme(theme: SiteTheme) {
 /** Cursor-style three-state theme switch, persisted per browser. */
 export function ThemeSwitch() {
   const [theme, setTheme] = useState<SiteTheme>(
-    () => (localStorage.getItem("agentleak-site-theme") as SiteTheme) || "dark",
+    () =>
+      typeof window === "undefined"
+        ? "dark"
+        : (localStorage.getItem("agentleak-site-theme") as SiteTheme) || "dark",
   )
   useEffect(() => {
     localStorage.setItem("agentleak-site-theme", theme)
@@ -192,6 +212,8 @@ export function SiteNav() {
           </div>
         </div>
         <Link to="/research">Research</Link>
+        <Link to="/benchmark">Benchmark</Link>
+        <Link to="/compare">Compare</Link>
         <Link to="/integrations">Integrations</Link>
         <Link to="/docs">Documentation</Link>
       </nav>
@@ -222,6 +244,8 @@ export function SiteNav() {
           <Link to="/integrations">Integrations</Link>
           <Link to="/docs">Documentation</Link>
           <Link to="/research">Research</Link>
+          <Link to="/benchmark">Benchmark</Link>
+          <Link to="/compare">Compare</Link>
           <a href={REPO_URL}>GitHub</a>
           <div className="cursor-nav-mobile-actions">
             <Link className="cursor-button cursor-button-light" to="/login">Sign in</Link>
@@ -239,7 +263,7 @@ export function SiteFooter() {
       <div className="cursor-footer-grid">
         <Brand />
         <div><h3>Product</h3>{FEATURE_PAGES.map((page) => <Link key={page.slug} to={`/features/${page.slug}`}>{page.title}</Link>)}</div>
-        <div><h3>Resources</h3><Link to="/integrations">Integrations</Link><Link to="/docs">Documentation</Link><Link to="/docs/getting-started">Getting started</Link><Link to="/docs/integrations">Integration guides</Link><Link to="/docs/scoring">Scoring</Link><Link to="/research">Research</Link></div>
+        <div><h3>Resources</h3><Link to="/integrations">Integrations</Link><Link to="/docs">Documentation</Link><Link to="/docs/getting-started">Getting started</Link><Link to="/docs/integrations">Integration guides</Link><Link to="/docs/scoring">Scoring</Link><Link to="/research">Research</Link><Link to="/benchmark">Benchmark</Link><Link to="/compare">AgentLeak vs alternatives</Link><Link to="/compliance/eu-ai-act">EU AI Act</Link></div>
         <div><h3>Company</h3><Link to="/about">About</Link><Link to="/security">Security</Link><Link to="/use-cases/multi-agent-privacy">Multi-agent privacy</Link><Link to="/#faq">Questions</Link></div>
         <div><h3>Open source</h3><a href={REPO_URL}>GitHub</a><a href="/openapi.json">OpenAPI</a><a href="/llms.txt">llms.txt</a><a href={PAPER_URL}>arXiv:2602.11510</a></div>
       </div>
