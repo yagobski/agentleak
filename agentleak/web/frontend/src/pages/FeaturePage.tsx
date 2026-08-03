@@ -289,12 +289,12 @@ const FEATURE_CONTENT: Record<string, FeatureContent> = {
 export const FEATURE_SLUGS = Object.keys(FEATURE_CONTENT)
 
 const FEATURE_GUIDES: Record<string, string> = {
-  "trace-analysis": "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md",
-  agentrisk: "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md",
-  "code-scan": "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md",
-  "red-team": "https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam.md",
-  "ci-gate": "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md",
-  "agent-api": "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md",
+  "trace-analysis": "https://github.com/yagobski/agentleak/blob/main/docs/trace-analysis.md",
+  agentrisk: "https://github.com/yagobski/agentleak/blob/main/docs/agentrisk.md",
+  "code-scan": "https://github.com/yagobski/agentleak/blob/main/docs/code-scan.md",
+  "red-team": "https://github.com/yagobski/agentleak/blob/main/docs/redteam.md",
+  "ci-gate": "https://github.com/yagobski/agentleak/blob/main/docs/ci-gate.md",
+  "agent-api": "https://github.com/yagobski/agentleak/blob/main/docs/agent-api.md",
 }
 
 export function FeaturePage() {

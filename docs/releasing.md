@@ -7,9 +7,8 @@ funnel fails at step 1. This page is how it keeps working.
 
 ## One-time setup (before the first release)
 
-1. **Make the repository public.** The Action (`uses: agentleak/...`) and
-   `git+https` installs both need it, and the MIT/open-source claim on the
-   site depends on it.
+1. ~~Make the repository public.~~ Done: the repository is public at
+   `github.com/yagobski/agentleak`.
 2. **Register a PyPI Trusted Publisher** so releases need no API token
    ([docs](https://docs.pypi.org/trusted-publishers/)). On PyPI, under the
    `agentleak` project (or as a *pending* publisher before the first upload):
@@ -17,7 +16,7 @@ funnel fails at step 1. This page is how it keeps working.
    | Field | Value |
    |---|---|
    | Owner | `yagobski` |
-   | Repository | `agentleak-oss` |
+   | Repository | `agentleak` |
    | Workflow | `release.yml` |
    | Environment | `pypi` |
 

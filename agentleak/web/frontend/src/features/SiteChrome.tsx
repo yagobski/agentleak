@@ -4,7 +4,7 @@ import { Menu, Monitor, Moon, Sun, X } from "lucide-react"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 
 export const PAPER_URL = "https://arxiv.org/abs/2602.11510"
-export const REPO_URL = "https://github.com/yagobski/agentleak-oss"
+export const REPO_URL = "https://github.com/yagobski/agentleak"
 export const SITE_URL = "https://www.agentleak.org"
 
 type PageMetaOptions = {

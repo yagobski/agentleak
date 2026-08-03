@@ -36,8 +36,8 @@ Apache box alongside several unrelated existing sites — the naming gotcha in
 ## 1. Get the code and configure
 
 ```bash
-git clone https://github.com/yagobski/agentleak-oss.git
-cd agentleak-oss
+git clone https://github.com/yagobski/agentleak.git
+cd agentleak
 cp .env.production.example .env
 # Review .env — defaults are production-safe. Do NOT set a platform
 # OPENROUTER_API_KEY (BYOK is what keeps the free tier free).
@@ -165,7 +165,7 @@ first account created on a fresh instance becomes the platform admin.
 ## Updating to new code
 
 ```bash
-cd agentleak-oss
+cd agentleak
 git pull
 docker compose up -d --build
 sleep 6

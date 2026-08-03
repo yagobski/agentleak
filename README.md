@@ -39,8 +39,8 @@ pip install "agentleak[full]"      # gui + presidio
 From source:
 
 ```bash
-git clone https://github.com/yagobski/agentleak-oss.git
-cd agentleak-oss
+git clone https://github.com/yagobski/agentleak.git
+cd agentleak
 pip install -e ".[dev]"
 ```
 

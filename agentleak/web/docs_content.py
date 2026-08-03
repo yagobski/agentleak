@@ -27,16 +27,16 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 - [{base}/compare]({base}/compare): How AgentLeak differs from promptfoo, Garak and PyRIT — they test the model, this tests the system
 - [{base}/compliance/eu-ai-act]({base}/compliance/eu-ai-act): EU AI Act Annex III evidence, mapped to Arts. 9, 11, 12, 15 and 26
 - [{base}/docs/developers]({base}/docs/developers): CLI, SDK, integrations, trace schema, and CI guide
-- [configuration reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md): complete agentleak.yaml reference
-- [CLI reference](https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md): commands, options, exit codes and artifacts
-- [red-team quickstart](https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam-quickstart.md): campaign matrix, modes, metrics and safety
+- [configuration reference](https://github.com/yagobski/agentleak/blob/main/docs/configuration.md): complete agentleak.yaml reference
+- [CLI reference](https://github.com/yagobski/agentleak/blob/main/docs/cli.md): commands, options, exit codes and artifacts
+- [red-team quickstart](https://github.com/yagobski/agentleak/blob/main/docs/redteam-quickstart.md): campaign matrix, modes, metrics and safety
 - [{base}/docs/red-team]({base}/docs/red-team): Hosted red-team getting started guide
 - [{base}/docs/red-team/architecture]({base}/docs/red-team/architecture): Generation, target, trace, evaluation and evidence architecture
 - [{base}/docs/red-team/llm-vulnerability-types]({base}/docs/red-team/llm-vulnerability-types): F1-F6 LLM and agent vulnerability taxonomy
 - [{base}/docs/red-team/plugins]({base}/docs/red-team/plugins): Live native and Promptfoo-compatible plugin catalog
 - [{base}/docs/red-team/strategies]({base}/docs/red-team/strategies): Delivery strategies, profiles and attack matrices
 - [{base}/docs/privacy-compliance]({base}/docs/privacy-compliance): Privacy assurance levels, finding-to-control evidence matrix, governance assertions and CI workflow
-- [reporting guide](https://github.com/yagobski/agentleak-oss/blob/main/docs/reporting.md): report contract, formats and redaction
+- [reporting guide](https://github.com/yagobski/agentleak/blob/main/docs/reporting.md): report contract, formats and redaction
 - [{base}/docs/agents]({base}/docs/agents): Autonomous onboarding, safety rules, self-test loop, and failure handling
 - [{base}/docs/api]({base}/docs/api): Integrated API reference with auth, endpoint flows, examples, and schema notes
 - [{base}/agents.md]({base}/agents.md): Normative instructions for autonomous agents
@@ -52,7 +52,7 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 
 ## Optional
 
-- [https://github.com/yagobski/agentleak-oss](https://github.com/yagobski/agentleak-oss): Source code and self-hosting
+- [https://github.com/yagobski/agentleak](https://github.com/yagobski/agentleak): Source code and self-hosting
 """
 
 
@@ -243,14 +243,14 @@ Framework adapters cover LangChain/LangGraph, CrewAI, AutoGen, OpenAI Agents/Swa
 - Human documentation: {base}/docs
 - Privacy compliance evidence: {base}/docs/privacy-compliance
 - Developer path: {base}/docs/developers
-- Configuration reference: https://github.com/yagobski/agentleak-oss/blob/main/docs/configuration.md
-- CLI reference: https://github.com/yagobski/agentleak-oss/blob/main/docs/cli.md
-- Red-team quickstart: https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam-quickstart.md
-- Reporting guide: https://github.com/yagobski/agentleak-oss/blob/main/docs/reporting.md
+- Configuration reference: https://github.com/yagobski/agentleak/blob/main/docs/configuration.md
+- CLI reference: https://github.com/yagobski/agentleak/blob/main/docs/cli.md
+- Red-team quickstart: https://github.com/yagobski/agentleak/blob/main/docs/redteam-quickstart.md
+- Reporting guide: https://github.com/yagobski/agentleak/blob/main/docs/reporting.md
 - Agent path: {base}/docs/agents
 - API reference: {base}/docs/api
 - Normative agent instructions: {base}/agents.md
-- Source and self-hosting: https://github.com/yagobski/agentleak-oss
+- Source and self-hosting: https://github.com/yagobski/agentleak
 """
 
 
@@ -277,7 +277,7 @@ def official_platform_card(base_url: str, version: str) -> dict[str, Any]:
         ],
         "provider": {
             "organization": "AgentLeak OSS",
-            "url": "https://github.com/yagobski/agentleak-oss",
+            "url": "https://github.com/yagobski/agentleak",
         },
         "version": version,
         "documentationUrl": f"{base}/docs/agents",

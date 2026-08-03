@@ -365,7 +365,7 @@ def platform_card(version: str = "") -> AgentCard:
         },
         framework="agentleak",
         version=version,
-        provider="agentleak-oss",
+        provider="agentleak",
         privacy={
             "local_only": True,
             "network_calls": "opt-in only (GitHub source fetch, LLM-judge tier)",

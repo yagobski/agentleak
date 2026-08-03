@@ -20,7 +20,7 @@ jobs:
 
       # 1. Score a trace your agent captured (the usual setup).
       - name: Privacy gate on the latest captured run
-        uses: agentleak/agentleak-oss@v1
+        uses: yagobski/agentleak@v1
         with:
           trace: traces/latest.json
           fail-under: "80"
@@ -28,7 +28,7 @@ jobs:
 
       # 2. Or run the published benchmark against a scenario suite.
       - name: Benchmark regression
-        uses: agentleak/agentleak-oss@v1
+        uses: yagobski/agentleak@v1
         with:
           pack: agentleak_bench
           scenario: agentleak_cor_00800
@@ -36,7 +36,7 @@ jobs:
 
       # 3. Or scan the agent's source before it ever runs.
       - name: Static privacy scan
-        uses: agentleak/agentleak-oss@v1
+        uses: yagobski/agentleak@v1
         with:
           scan: src/
           fail-under: "90"

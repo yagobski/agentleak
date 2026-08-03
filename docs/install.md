@@ -138,5 +138,5 @@ Then ask whether they want you to wire it into their agent now.
 | `agentleak serve` won't start | The `gui` extra isn't installed: `pip install "agentleak[gui]"` |
 | Everything reports clean | Your trace probably has no internal-channel events. Check `docs/integrations.md` for the right callback |
 
-Docs: <https://github.com/yagobski/agentleak-oss/tree/main/docs> ·
-Issues: <https://github.com/yagobski/agentleak-oss/issues>
+Docs: <https://github.com/yagobski/agentleak/tree/main/docs> ·
+Issues: <https://github.com/yagobski/agentleak/issues>

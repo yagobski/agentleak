@@ -6,7 +6,7 @@ report with before/after comparison.
 
 Usage::
 
-    cd agentleak-oss
+    cd agentleak
     python -m examples.healthcare_compliance_demo.audit
 
 Or run the pre-built test::

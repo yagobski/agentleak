@@ -1840,7 +1840,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "native_plugin_count": len(native_plugins),
             "promptfoo_transposition_count": len(transposed_plugins),
             "catalog_is_executable": True,
-            "catalog_source_url": "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/attacks.py",
+            "catalog_source_url": "https://github.com/yagobski/agentleak/blob/main/agentleak/core/attacks.py",
             "promptfoo_source_url": "https://github.com/promptfoo/promptfoo/tree/main/src/redteam/plugins",
             "license": "MIT",
             "plugins": [
@@ -1899,9 +1899,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "native_id": plugin.native_id,
             "docs_url": f"https://www.agentleak.org/docs/red-team/plugins/{plugin.id}",
             "source_url": (
-                "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/attacks.py"
+                "https://github.com/yagobski/agentleak/blob/main/agentleak/core/attacks.py"
                 if plugin.implementation == "native"
-                else "https://github.com/yagobski/agentleak-oss/blob/main/agentleak/core/promptfoo_attacks.py"
+                else "https://github.com/yagobski/agentleak/blob/main/agentleak/core/promptfoo_attacks.py"
             ),
             "catalog_url": "https://www.agentleak.org/api/redteam/catalog",
         }

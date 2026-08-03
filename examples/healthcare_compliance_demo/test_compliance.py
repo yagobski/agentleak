@@ -6,7 +6,7 @@ These are pytest-runnable proofs that:
 
 Run::
 
-    cd agentleak-oss
+    cd agentleak
     python -m pytest examples/healthcare_compliance_demo/test_compliance.py -v
 """
 

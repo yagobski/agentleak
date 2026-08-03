@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentleak"
-version = "0.9.0"
+version = "0.10.0"
 description = "Privacy-leakage testing for AI agents: audit the whole execution trace, score it deterministically, gate it in CI."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -67,9 +67,9 @@ dev = [
 [project.urls]
 Homepage = "https://www.agentleak.org"
 Documentation = "https://www.agentleak.org/docs"
-Repository = "https://github.com/yagobski/agentleak-oss"
-Issues = "https://github.com/yagobski/agentleak-oss/issues"
-Changelog = "https://github.com/yagobski/agentleak-oss/blob/main/CHANGELOG.md"
+Repository = "https://github.com/yagobski/agentleak"
+Issues = "https://github.com/yagobski/agentleak/issues"
+Changelog = "https://github.com/yagobski/agentleak/blob/main/CHANGELOG.md"
 "Research paper" = "https://arxiv.org/abs/2602.11510"
 
 [project.scripts]

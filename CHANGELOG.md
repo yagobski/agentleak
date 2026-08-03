@@ -6,6 +6,8 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-02
+
 ### Distribution and CI (closes the P0 gaps from the 2026-08 product audit)
 
 - **Publishing to PyPI is real and self-verifying.** `.github/workflows/release.yml`
@@ -357,9 +359,10 @@ First public release.
 - Local platform: SQLite persistence (projects + runs), SDK client, compare/stats.
 - Web GUI (React + shadcn/ui), CLI (`init/run/report/validate/scenarios/serve`).
 
-[0.6.0]: https://github.com/yagobski/agentleak-oss/releases/tag/v0.6.0
-[0.5.0]: https://github.com/yagobski/agentleak-oss/releases/tag/v0.5.0
-[0.4.1]: https://github.com/yagobski/agentleak-oss/releases/tag/v0.4.1
-[0.4.0]: https://github.com/yagobski/agentleak-oss/releases/tag/v0.4.0
-[0.3.0]: https://github.com/yagobski/agentleak-oss/releases/tag/v0.3.0
-[0.2.0]: https://github.com/yagobski/agentleak-oss/releases/tag/v0.2.0
+[0.10.0]: https://github.com/yagobski/agentleak/releases/tag/v0.10.0
+[0.6.0]: https://github.com/yagobski/agentleak/releases/tag/v0.6.0
+[0.5.0]: https://github.com/yagobski/agentleak/releases/tag/v0.5.0
+[0.4.1]: https://github.com/yagobski/agentleak/releases/tag/v0.4.1
+[0.4.0]: https://github.com/yagobski/agentleak/releases/tag/v0.4.0
+[0.3.0]: https://github.com/yagobski/agentleak/releases/tag/v0.3.0
+[0.2.0]: https://github.com/yagobski/agentleak/releases/tag/v0.2.0

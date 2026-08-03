@@ -26,8 +26,8 @@ is canonical; the apex redirects to the same path on `www`.
 ## 1. Get the code and configure
 
 ```bash
-git clone https://github.com/yagobski/agentleak-oss.git
-cd agentleak-oss
+git clone https://github.com/yagobski/agentleak.git
+cd agentleak
 cp .env.production.example .env
 # Review .env — the defaults are production-safe. Do NOT set any platform
 # OPENROUTER_API_KEY (BYOK keeps the free tier free).
@@ -89,7 +89,7 @@ docker compose down                 # stop (data survives in the named volume)
 **Backups.** All state is the SQLite DB in the `agentleak-data` volume:
 
 ```bash
-docker run --rm -v agentleak-oss_agentleak-data:/data -v "$PWD":/backup alpine \
+docker run --rm -v agentleak_agentleak-data:/data -v "$PWD":/backup alpine \
   tar czf /backup/agentleak-backup-$(date +%F).tgz -C /data .
 ```
 

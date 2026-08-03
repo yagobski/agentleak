@@ -64,7 +64,7 @@ function AgentLeakLogo({ className = "", label = "AgentLeak" }) {
   );
 }
 const PAPER_URL = "https://arxiv.org/abs/2602.11510";
-const REPO_URL = "https://github.com/yagobski/agentleak-oss";
+const REPO_URL = "https://github.com/yagobski/agentleak";
 const SITE_URL = "https://www.agentleak.org";
 const ssrMeta = {
   title: "",
@@ -975,10 +975,10 @@ const searchEntries = [
   ["Start here", "/docs#start-here", "Choose the local, hosted, developer or autonomous-agent path"],
   ["5-minute quickstart", "/docs#quickstart", "Local pip install vs. the hosted platform"],
   ["Configuration reference", "/docs#configuration", "Complete agentleak.yaml with detectors, vault, scoring, policy and reports"],
-  ["Trace analysis guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md", "Capture, normalize, detect and report every execution channel"],
+  ["Trace analysis guide", "https://github.com/yagobski/agentleak/blob/main/docs/trace-analysis.md", "Capture, normalize, detect and report every execution channel"],
   ["How to use AgentLeak", "/docs#how-to-use", "Capture, analyze, remediate and gate"],
   ["AgentRisk scoring", "/docs#agentrisk", "Risk Index, privacy score and the explicit-vault caveat"],
-  ["AgentRisk guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md", "Formula, vault scope, thresholds and release comparisons"],
+  ["AgentRisk guide", "https://github.com/yagobski/agentleak/blob/main/docs/agentrisk.md", "Formula, vault scope, thresholds and release comparisons"],
   ["Explicit vault vs. observed reachable set", "/docs#agentrisk", "Why an audited vault scope changes what the Risk Index means"],
   ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
   ["Scenario coverage and clean controls", "/docs#scenarios", "283 bundled scenarios, 3 leak modes, 4 packs, ground-truth canaries, limitations"],
@@ -998,7 +998,7 @@ const searchEntries = [
   ["Cloud API overview", "/docs/developers#api", "The hosted dashboard, project and agent endpoints"],
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
-  ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
+  ["Static code scan guide", "https://github.com/yagobski/agentleak/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
   ["Adversarial red-team", "/features/red-team", "Public plugin registry × 10 strategies, defense rate, vulnerability and remediation reports"],
   ["Red-team quickstart", "/docs#red-team-guide", "Catalog, scripted/live modes, attack matrix, metrics and iteration loop"],
   ["Red-team getting started", "/docs/red-team", "Run a first scripted or live campaign and interpret the evidence"],
@@ -1007,10 +1007,10 @@ const searchEntries = [
   ["LLM and agent vulnerability types", "/docs/red-team/llm-vulnerability-types", "Six attack families, channels, severity and coverage planning"],
   ["Red-team plugins", "/docs/red-team/plugins", "Native AgentLeak plugins and Promptfoo-compatible privacy transpositions"],
   ["Red-team strategies", "/docs/red-team/strategies", "Delivery transformations, profiles, matrices and multi-turn attacks"],
-  ["CI policy gate guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
+  ["CI policy gate guide", "https://github.com/yagobski/agentleak/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
   ["Privacy assertions", "/docs#privacy-policy", "Deterministic limits by risk, finding count, level, channel and data type"],
   ["JSON Schema contracts", "/docs#schema-contracts", "Versioned schemas for config, traces, findings, reports, red-team and code scans"],
-  ["Agent API guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md", "Autonomous discovery, onboarding, self-test and improvement"],
+  ["Agent API guide", "https://github.com/yagobski/agentleak/blob/main/docs/agent-api.md", "Autonomous discovery, onboarding, self-test and improvement"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
   ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
   ["Agent operating rules", "/docs/agents#rules", "MUST / SHOULD / MUST NOT for autonomous clients"],
@@ -1394,7 +1394,7 @@ function Overview() {
         /* @__PURE__ */ jsx(Link, { to: "/features/red-team", children: "red-team feature page" }),
         " and the",
         " ",
-        /* @__PURE__ */ jsx("a", { href: "https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam.md", target: "_blank", rel: "noreferrer", children: "campaign reference" }),
+        /* @__PURE__ */ jsx("a", { href: "https://github.com/yagobski/agentleak/blob/main/docs/redteam.md", target: "_blank", rel: "noreferrer", children: "campaign reference" }),
         "."
       ] })
     ] }),
@@ -1779,7 +1779,7 @@ function Developers() {
         "OpenTelemetry",
         "MCP"
       ].map((item) => /* @__PURE__ */ jsx("span", { children: item }, item)) }),
-      /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx("a", { href: "https://github.com/yagobski/agentleak-oss/blob/main/docs/integrations.md", children: "View adapter examples" }) })
+      /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx("a", { href: "https://github.com/yagobski/agentleak/blob/main/docs/integrations.md", children: "View adapter examples" }) })
     ] }),
     /* @__PURE__ */ jsxs("section", { className: "docs-section", id: "byok", children: [
       /* @__PURE__ */ jsx("h2", { children: "BYOK: LLM-judge and OpenRouter" }),
@@ -2623,11 +2623,11 @@ function RedTeamPluginDetail({ pluginId }) {
           /* @__PURE__ */ jsx("code", { children: "JSON definition" }),
           /* @__PURE__ */ jsx("span", { children: "Machine-readable permalink" })
         ] }),
-        /* @__PURE__ */ jsxs("a", { href: plugin.source_url || "https://github.com/yagobski/agentleak-oss", children: [
+        /* @__PURE__ */ jsxs("a", { href: plugin.source_url || "https://github.com/yagobski/agentleak", children: [
           /* @__PURE__ */ jsx("code", { children: "Source registry" }),
           /* @__PURE__ */ jsx("span", { children: "Public MIT-licensed implementation mapping" })
         ] }),
-        /* @__PURE__ */ jsxs("a", { href: "https://github.com/yagobski/agentleak-oss/actions", children: [
+        /* @__PURE__ */ jsxs("a", { href: "https://github.com/yagobski/agentleak/actions", children: [
           /* @__PURE__ */ jsx("code", { children: "Public CI" }),
           /* @__PURE__ */ jsx("span", { children: "Tests and build history" })
         ] })
@@ -2864,8 +2864,16 @@ function RedTeamStrategies() {
 }
 function PrereleaseNote() {
   return /* @__PURE__ */ jsxs("div", { className: "docs-callout", children: [
-    /* @__PURE__ */ jsx("strong", { children: "Pre-release" }),
-    /* @__PURE__ */ jsx("p", { children: "AgentLeak publishes to PyPI when the 1.0 launch ships. Until then the package resolves from the source repository, which is private during the pre-release — ask for access if you want to run it today. Everything else on this page is accurate against the current build; the install line is the only thing that changes at launch." })
+    /* @__PURE__ */ jsx("strong", { children: "While the first PyPI release lands" }),
+    /* @__PURE__ */ jsxs("p", { children: [
+      "The source is public at",
+      " ",
+      /* @__PURE__ */ jsx("a", { href: REPO_URL, children: "github.com/yagobski/agentleak" }),
+      ", and the first tagged release is on its way to PyPI. Until it appears there, install from source:",
+      " ",
+      /* @__PURE__ */ jsx("code", { children: 'pip install "agentleak @ git+https://github.com/yagobski/agentleak.git"' }),
+      ". Everything else on this page is accurate against the current build."
+    ] })
   ] });
 }
 const ACTION_YML = [
@@ -2876,26 +2884,26 @@ const ACTION_YML = [
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - uses: actions/checkout@v4",
-  "      - uses: agentleak/agentleak-oss@v1",
+  "      - uses: yagobski/agentleak@v1",
   "        with:",
   "          trace: traces/latest.json",
   "          fail-under: 80"
 ].join("\n");
 const ACTION_MODES = [
   "# 1. a captured trace",
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  with: { trace: traces/latest.json, fail-under: 80 }",
   "",
   "# 2. a scenario from a bundled pack",
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  with: { pack: privacylens_ci, scenario: main1 }",
   "",
   "# 3. a static scan of the agent's own source",
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  with: { scan: ./src, fail-under: 90 }"
 ].join("\n");
 const ACTION_OUTPUTS = [
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  id: privacy",
   "  with: { trace: traces/latest.json }",
   "",
@@ -3043,7 +3051,7 @@ function IntegrationsGuide() {
         /* @__PURE__ */ jsx("h3", { children: name }),
         /* @__PURE__ */ jsx("p", { children: body })
       ] }, name)) }),
-      /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx("a", { href: "https://github.com/yagobski/agentleak-oss/blob/main/docs/integrations.md", children: "Open every copy-ready adapter example" }) })
+      /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx("a", { href: "https://github.com/yagobski/agentleak/blob/main/docs/integrations.md", children: "Open every copy-ready adapter example" }) })
     ] }),
     /* @__PURE__ */ jsxs("section", { className: "docs-section", id: "otel", children: [
       /* @__PURE__ */ jsx("h2", { children: "OpenTelemetry" }),
@@ -4682,12 +4690,12 @@ const FEATURE_CONTENT = {
   }
 };
 const FEATURE_GUIDES = {
-  "trace-analysis": "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md",
-  agentrisk: "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md",
-  "code-scan": "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md",
-  "red-team": "https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam.md",
-  "ci-gate": "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md",
-  "agent-api": "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md"
+  "trace-analysis": "https://github.com/yagobski/agentleak/blob/main/docs/trace-analysis.md",
+  agentrisk: "https://github.com/yagobski/agentleak/blob/main/docs/agentrisk.md",
+  "code-scan": "https://github.com/yagobski/agentleak/blob/main/docs/code-scan.md",
+  "red-team": "https://github.com/yagobski/agentleak/blob/main/docs/redteam.md",
+  "ci-gate": "https://github.com/yagobski/agentleak/blob/main/docs/ci-gate.md",
+  "agent-api": "https://github.com/yagobski/agentleak/blob/main/docs/agent-api.md"
 };
 function FeaturePage() {
   const { slug = "" } = useParams();

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { AgentLeakLogo } from "@/features/AgentLeakLogo"
-import { SITE_URL, usePageMeta } from "@/features/SiteChrome"
+import { REPO_URL, SITE_URL, usePageMeta } from "@/features/SiteChrome"
 
 type Audience =
   | "overview"
@@ -697,10 +697,10 @@ const searchEntries = [
   ["Start here", "/docs#start-here", "Choose the local, hosted, developer or autonomous-agent path"],
   ["5-minute quickstart", "/docs#quickstart", "Local pip install vs. the hosted platform"],
   ["Configuration reference", "/docs#configuration", "Complete agentleak.yaml with detectors, vault, scoring, policy and reports"],
-  ["Trace analysis guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/trace-analysis.md", "Capture, normalize, detect and report every execution channel"],
+  ["Trace analysis guide", "https://github.com/yagobski/agentleak/blob/main/docs/trace-analysis.md", "Capture, normalize, detect and report every execution channel"],
   ["How to use AgentLeak", "/docs#how-to-use", "Capture, analyze, remediate and gate"],
   ["AgentRisk scoring", "/docs#agentrisk", "Risk Index, privacy score and the explicit-vault caveat"],
-  ["AgentRisk guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agentrisk.md", "Formula, vault scope, thresholds and release comparisons"],
+  ["AgentRisk guide", "https://github.com/yagobski/agentleak/blob/main/docs/agentrisk.md", "Formula, vault scope, thresholds and release comparisons"],
   ["Explicit vault vs. observed reachable set", "/docs#agentrisk", "Why an audited vault scope changes what the Risk Index means"],
   ["Channels", "/docs#channels", "The 8 normalized channels every trace is scored across"],
   ["Scenario coverage and clean controls", "/docs#scenarios", "283 bundled scenarios, 3 leak modes, 4 packs, ground-truth canaries, limitations"],
@@ -720,7 +720,7 @@ const searchEntries = [
   ["Cloud API overview", "/docs/developers#api", "The hosted dashboard, project and agent endpoints"],
   ["Troubleshooting", "/docs/developers#troubleshooting", "Common install, detection and CI-gate issues"],
   ["Static code scan", "/features/code-scan", "agentleak scan --repo, POST /api/agent/code"],
-  ["Static code scan guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
+  ["Static code scan guide", "https://github.com/yagobski/agentleak/blob/main/docs/code-scan.md", "CLI, detection modes, reports, CI and troubleshooting"],
   ["Adversarial red-team", "/features/red-team", "Public plugin registry × 10 strategies, defense rate, vulnerability and remediation reports"],
   ["Red-team quickstart", "/docs#red-team-guide", "Catalog, scripted/live modes, attack matrix, metrics and iteration loop"],
   ["Red-team getting started", "/docs/red-team", "Run a first scripted or live campaign and interpret the evidence"],
@@ -729,10 +729,10 @@ const searchEntries = [
   ["LLM and agent vulnerability types", "/docs/red-team/llm-vulnerability-types", "Six attack families, channels, severity and coverage planning"],
   ["Red-team plugins", "/docs/red-team/plugins", "Native AgentLeak plugins and Promptfoo-compatible privacy transpositions"],
   ["Red-team strategies", "/docs/red-team/strategies", "Delivery transformations, profiles, matrices and multi-turn attacks"],
-  ["CI policy gate guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
+  ["CI policy gate guide", "https://github.com/yagobski/agentleak/blob/main/docs/ci-gate.md", "Fail builds on runtime, code and red-team regressions"],
   ["Privacy assertions", "/docs#privacy-policy", "Deterministic limits by risk, finding count, level, channel and data type"],
   ["JSON Schema contracts", "/docs#schema-contracts", "Versioned schemas for config, traces, findings, reports, red-team and code scans"],
-  ["Agent API guide", "https://github.com/yagobski/agentleak-oss/blob/main/docs/agent-api.md", "Autonomous discovery, onboarding, self-test and improvement"],
+  ["Agent API guide", "https://github.com/yagobski/agentleak/blob/main/docs/agent-api.md", "Autonomous discovery, onboarding, self-test and improvement"],
   ["Agent instructions", "/docs/agents", "Normative autonomous agent workflow"],
   ["Agent end-to-end quickstart", "/docs/agents#quickstart", "Discover, onboard, register, self-test, improve, verify"],
   ["Agent operating rules", "/docs/agents#rules", "MUST / SHOULD / MUST NOT for autonomous clients"],
@@ -1168,7 +1168,7 @@ function Overview() {
           the saved run IDs, remediate the weakest channel, and rerun the same
           matrix. The endpoint caps a campaign at 20 scenarios. See the{" "}
           <Link to="/features/red-team">red-team feature page</Link> and the{" "}
-          <a href="https://github.com/yagobski/agentleak-oss/blob/main/docs/redteam.md" target="_blank" rel="noreferrer">campaign reference</a>.
+          <a href="https://github.com/yagobski/agentleak/blob/main/docs/redteam.md" target="_blank" rel="noreferrer">campaign reference</a>.
         </p>
       </section>
 
@@ -1656,7 +1656,7 @@ function Developers() {
           ))}
         </div>
         <p>
-          <a href="https://github.com/yagobski/agentleak-oss/blob/main/docs/integrations.md">
+          <a href="https://github.com/yagobski/agentleak/blob/main/docs/integrations.md">
             View adapter examples
           </a>
         </p>
@@ -2174,7 +2174,7 @@ function RedTeamPluginDetail({ pluginId }: { pluginId: string }) {
     <header className="docs-page-head"><p className="docs-kicker">Red teaming · {plugin.category}</p><h1>{plugin.name}</h1><p>{plugin.description}</p><div className="docs-flow"><span>{plugin.id}</span><span>{plugin.implementation === "native" ? "Native" : "Promptfoo transposition"}</span><span>{plugin.severity} severity</span></div></header>
     <section className="docs-section" id="definition"><h2>Executable definition</h2><div className="docs-table">{[["Plugin ID",plugin.id],["Attack classes",plugin.attack_classes.join(", ")],["Requirements",plugin.requires.join(", ") || "None"],["Implementation",plugin.implementation],["Native mapping",plugin.native_id || "Direct native implementation"]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
     <section className="docs-section" id="execution"><h2>Run this plugin</h2><Code>{`curl -sS -X POST ${BASE}/api/projects/$PROJECT_ID/redteam \\\n  -H "Cookie: $AGENTLEAK_SESSION" -H 'content-type: application/json' \\\n  -d '{"plugins":["${plugin.id}"],"strategies":["basic"],"mode":"scripted","n":1}'`}</Code><p>Use a synthetic vault first. Requirements above describe the target capabilities needed for a meaningful live result.</p></section>
-    <section className="docs-section" id="verification"><h2>Public verification</h2><div className="docs-link-list"><a href={`/api/redteam/plugins/${encodeURIComponent(plugin.id)}`}><code>JSON definition</code><span>Machine-readable permalink</span></a><a href={plugin.source_url || "https://github.com/yagobski/agentleak-oss"}><code>Source registry</code><span>Public MIT-licensed implementation mapping</span></a><a href="https://github.com/yagobski/agentleak-oss/actions"><code>Public CI</code><span>Tests and build history</span></a></div></section>
+    <section className="docs-section" id="verification"><h2>Public verification</h2><div className="docs-link-list"><a href={`/api/redteam/plugins/${encodeURIComponent(plugin.id)}`}><code>JSON definition</code><span>Machine-readable permalink</span></a><a href={plugin.source_url || "https://github.com/yagobski/agentleak"}><code>Source registry</code><span>Public MIT-licensed implementation mapping</span></a><a href="https://github.com/yagobski/agentleak/actions"><code>Public CI</code><span>Tests and build history</span></a></div></section>
     <section className="docs-section" id="semantics"><h2>Compatibility semantics</h2><p>{plugin.implementation === "native" ? "This plugin has a purpose-built AgentLeak mapping to observable attack classes and channel evidence." : `This upstream-compatible ID maps to ${plugin.native_id}. AgentLeak exercises the closest observable privacy or authorization boundary; it does not reproduce Promptfoo’s grader prompt.`}</p><div className="docs-callout"><strong>Compliance boundary</strong><p>A successful test is evidence of an observed control failure. A passing test covers only this target, configuration, vault and attack path; it is not a legal certification.</p></div></section>
   </article>
 }
@@ -2260,12 +2260,13 @@ function RedTeamStrategies() {
 function PrereleaseNote() {
   return (
     <div className="docs-callout">
-      <strong>Pre-release</strong>
+      <strong>While the first PyPI release lands</strong>
       <p>
-        AgentLeak publishes to PyPI when the 1.0 launch ships. Until then the package resolves
-        from the source repository, which is private during the pre-release — ask for access if
-        you want to run it today. Everything else on this page is accurate against the current
-        build; the install line is the only thing that changes at launch.
+        The source is public at{" "}
+        <a href={REPO_URL}>github.com/yagobski/agentleak</a>, and the first tagged release is on
+        its way to PyPI. Until it appears there, install from source:{" "}
+        <code>pip install "agentleak @ git+https://github.com/yagobski/agentleak.git"</code>.
+        Everything else on this page is accurate against the current build.
       </p>
     </div>
   )
@@ -2279,26 +2280,26 @@ const ACTION_YML = [
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - uses: actions/checkout@v4",
-  "      - uses: agentleak/agentleak-oss@v1",
+  "      - uses: yagobski/agentleak@v1",
   "        with:",
   "          trace: traces/latest.json",
   "          fail-under: 80",
 ].join("\n")
 const ACTION_MODES = [
   "# 1. a captured trace",
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  with: { trace: traces/latest.json, fail-under: 80 }",
   "",
   "# 2. a scenario from a bundled pack",
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  with: { pack: privacylens_ci, scenario: main1 }",
   "",
   "# 3. a static scan of the agent's own source",
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  with: { scan: ./src, fail-under: 90 }",
 ].join("\n")
 const ACTION_OUTPUTS = [
-  "- uses: agentleak/agentleak-oss@v1",
+  "- uses: yagobski/agentleak@v1",
   "  id: privacy",
   "  with: { trace: traces/latest.json }",
   "",
@@ -2361,7 +2362,7 @@ function IntegrationsGuide() {
     <header className="docs-page-head"><p className="docs-kicker">Guides · Integrations</p><h1>Capture every agent boundary</h1><p>AgentLeak consumes one framework-neutral trace. Use the unified recorder for live execution, an adapter for your runtime, or emit the JSON contract directly.</p></header>
     <section className="docs-section" id="choose"><h2>Choose an integration</h2><div className="docs-table">{[["New Python integration","Start with agentleak.watch()."],["Supported framework","Pass the supplied callback or ingest the framework result."],["Polyglot service","Emit the Trace JSON contract or OpenTelemetry events."],["Existing execution log","Normalize it offline and run the CLI."]].map(([a,b]) => <div key={a}><code>{a}</code><span>{b}</span></div>)}</div></section>
     <section className="docs-section" id="generic"><h2>Generic recorder</h2><Code>{WATCH_EXAMPLE}</Code><p>The context manager analyzes on exit. Direct channel methods let you instrument proprietary runtimes without importing an orchestration framework.</p></section>
-    <section className="docs-section" id="frameworks"><h2>Framework adapters</h2><div className="docs-card-grid">{frameworks.map(([name, body]) => <div key={name}><h3>{name}</h3><p>{body}</p></div>)}</div><p><a href="https://github.com/yagobski/agentleak-oss/blob/main/docs/integrations.md">Open every copy-ready adapter example</a></p></section>
+    <section className="docs-section" id="frameworks"><h2>Framework adapters</h2><div className="docs-card-grid">{frameworks.map(([name, body]) => <div key={name}><h3>{name}</h3><p>{body}</p></div>)}</div><p><a href="https://github.com/yagobski/agentleak/blob/main/docs/integrations.md">Open every copy-ready adapter example</a></p></section>
     <section className="docs-section" id="otel"><h2>OpenTelemetry</h2><p>Translate spans into AgentLeak channels while preserving trace order, source, target and content. Keep raw production payloads out of telemetry when a synthetic or masked value proves the same policy.</p><Code>{"agentleak run --trace exported-trace.json --config agentleak.yaml\n# Validate first when building a custom exporter\nagentleak validate agentleak.yaml --trace exported-trace.json"}</Code></section>
     <section className="docs-section" id="coverage"><h2>Coverage checks</h2><ul className="docs-rules"><li><strong>Inputs</strong><span>Record user-controlled content as the non-disclosure baseline.</span></li><li><strong>Sources</strong><span>Capture tool responses, private memory and retrieved context.</span></li><li><strong>Exits</strong><span>Capture tool calls, agent handoffs, logs, files and final output.</span></li><li><strong>Ordering</strong><span>Preserve stable run IDs and event sequence for reproducible leak paths.</span></li></ul></section>
   </article>
