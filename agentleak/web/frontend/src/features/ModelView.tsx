@@ -193,7 +193,8 @@ export function ModelView({ model }: { model: ProjectModel }) {
   if (!model.agents.length) {
     return (
       <Card className="p-10 text-center text-sm text-muted-foreground">
-        No agents configured yet. Add agents in the <b className="text-foreground">Agents</b> tab to model the system.
+        No test topology configured. Add roles in <b className="text-foreground">Test agents</b> to visualize a
+        controlled multi-agent scenario. Production execution paths appear in captured run evidence.
       </Card>
     )
   }

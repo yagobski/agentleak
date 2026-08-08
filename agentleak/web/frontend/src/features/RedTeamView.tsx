@@ -479,19 +479,24 @@ export function RedTeamView({ projectId }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {catalog?.plugin_presets.map((preset) => <button key={preset.id} type="button" title={preset.description} onClick={() => choosePluginPreset(preset.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors ${pluginPreset === preset.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{preset.name}</button>)}
               </div>
-              <div className="grid gap-3 lg:grid-cols-2">
-                {pluginGroups.map(([category, plugins]) => (
-                  <div key={category} className="rounded-md border bg-background p-3">
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {plugins.map((plugin) => {
-                        const active = selectedPlugins.includes(plugin.id)
-                        return <button key={plugin.id} type="button" onClick={() => togglePlugin(plugin.id)} title={`${plugin.name}: ${plugin.description}`} className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors ${active ? "border-primary/45 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>{active ? "✓ " : ""}{plugin.id}</button>
-                      })}
+              <details className="group rounded-md border bg-background">
+                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+                  Customize individual plugins <span className="ml-1 text-[10px] opacity-60">({catalog?.plugins.length ?? 0} available)</span>
+                </summary>
+                <div className="grid gap-3 border-t p-3 lg:grid-cols-2">
+                  {pluginGroups.map(([category, plugins]) => (
+                    <div key={category} className="rounded-md border bg-background p-3">
+                      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {plugins.map((plugin) => {
+                          const active = selectedPlugins.includes(plugin.id)
+                          return <button key={plugin.id} type="button" onClick={() => togglePlugin(plugin.id)} title={`${plugin.name}: ${plugin.description}`} className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors ${active ? "border-primary/45 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>{active ? "✓ " : ""}{plugin.id}</button>
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </details>
             </div>
 
             <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
@@ -502,17 +507,22 @@ export function RedTeamView({ projectId }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {catalog?.strategy_profiles.map((profile) => <button key={profile.id} type="button" title={profile.description} onClick={() => chooseStrategyProfile(profile.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors ${strategyProfile === profile.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{profile.name}</button>)}
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {catalog?.strategies.map((strategy) => {
-                  const active = selectedStrategies.includes(strategy.id)
-                  return (
-                    <button key={strategy.id} type="button" onClick={() => toggleStrategy(strategy.id)} className={`rounded-md border p-3 text-left transition-colors ${active ? "border-primary/45 bg-primary/[0.06]" : "hover:bg-muted/40"}`}>
-                      <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{active ? "✓ " : ""}{strategy.name}</span><span className="font-mono text-[9px] text-muted-foreground">{strategy.estimated_turns}t</span></div>
-                      <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{strategy.description}</p>
-                    </button>
-                  )
-                })}
-              </div>
+              <details className="rounded-md border bg-background">
+                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+                  Customize delivery strategies <span className="ml-1 text-[10px] opacity-60">({catalog?.strategies.length ?? 0} available)</span>
+                </summary>
+                <div className="grid gap-2 border-t p-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {catalog?.strategies.map((strategy) => {
+                    const active = selectedStrategies.includes(strategy.id)
+                    return (
+                      <button key={strategy.id} type="button" onClick={() => toggleStrategy(strategy.id)} className={`rounded-md border p-3 text-left transition-colors ${active ? "border-primary/45 bg-primary/[0.06]" : "hover:bg-muted/40"}`}>
+                        <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{active ? "✓ " : ""}{strategy.name}</span><span className="font-mono text-[9px] text-muted-foreground">{strategy.estimated_turns}t</span></div>
+                        <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{strategy.description}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </details>
             </div>
 
             <div>

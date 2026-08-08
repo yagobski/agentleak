@@ -32,6 +32,13 @@ import { ProgressionView } from "@/features/ProgressionView"
 import { RedTeamView } from "@/features/RedTeamView"
 import { RunRow } from "@/features/RunRow"
 
+function scenarioLabel(scenario: Scenario) {
+  const raw = scenario.name && scenario.name !== scenario.id
+    ? scenario.name
+    : scenario.id.replace(new RegExp(`^${scenario.domain}_`), "").replace(/_/g, " ")
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}
+
 export function ProjectDetail() {
   const { id = "" } = useParams()
   const nav = useNavigate()
@@ -68,20 +75,20 @@ export function ProjectDetail() {
       </div>
 
       <Tabs defaultValue="audit">
-        <TabsList>
-          <TabsTrigger value="audit">Audit</TabsTrigger>
+        <TabsList className="h-auto max-w-full justify-start overflow-x-auto">
+          <TabsTrigger value="audit">Test</TabsTrigger>
           <TabsTrigger value="card" className="flex items-center gap-1.5">
             <Bot className="h-3.5 w-3.5 text-primary" />
-            Card &amp; Code
+            Identity &amp; code
           </TabsTrigger>
-          <TabsTrigger value="agents">Agents ({project.config.agents?.length ?? 0})</TabsTrigger>
-          <TabsTrigger value="model">Model</TabsTrigger>
-          <TabsTrigger value="runs">Runs ({runs.length})</TabsTrigger>
+          <TabsTrigger value="agents">Test agents ({project.config.agents?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="model">System map</TabsTrigger>
+          <TabsTrigger value="runs">Evidence ({runs.length})</TabsTrigger>
           <TabsTrigger value="redteam" className="flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5 text-red-500" />
-            Red Team
+            Adversarial
           </TabsTrigger>
-          <TabsTrigger value="connect">Connect</TabsTrigger>
+          <TabsTrigger value="connect">Integrate</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -193,7 +200,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
               mode === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {m === "agent" ? "Run agent" : "Analyze trace"}
+            {m === "agent" ? "Scenario harness" : "Analyze a trace"}
           </button>
         ))}
       </div>
@@ -201,8 +208,9 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
       {mode === "agent" ? (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            AgentLeak runs this project's agent against the scenario's task and private data, captures the
-            trace it produces, then scores it with the project's detectors and vault scope.
+            Run a controlled scenario inside AgentLeak. A configured model is called through the test harness; without
+            one, AgentLeak builds a deterministic scripted trace to validate your detectors. This does not call your
+            deployed application.
           </p>
           <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <div className="space-y-1.5">
@@ -214,7 +222,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
                 <SelectContent>
                   {scenarios.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name ?? s.id}
+                      {scenarioLabel(s)}
                       {s.has_spec ? "  ·  spec" : ""}
                     </SelectItem>
                   ))}
@@ -230,7 +238,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
               />
             </div>
             <Button onClick={runAgent} disabled={busy || !scenarioId}>
-              {busy ? <Loader2 className="animate-spin" /> : <Bot />} Run agent
+              {busy ? <Loader2 className="animate-spin" /> : <Bot />} {pipeline ? "Run test pipeline" : live ? "Test configured model" : "Run scripted baseline"}
             </Button>
           </div>
 
@@ -239,36 +247,35 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
               <>
                 <Bot className="size-3.5 text-primary" />
                 <span>
-                  Multi-agent pipeline — {project.config.agents?.length} agents hand off in sequence. Data propagation
-                  and per-agent leaks are captured. Configure agents in the <b className="text-foreground">Agents</b> tab.
+                  Test topology — {project.config.agents?.length} configured roles hand off in sequence inside AgentLeak.
+                  Configure them in <b className="text-foreground">Test agents</b>; connect production traces in <b className="text-foreground">Integrate</b>.
                 </span>
               </>
             ) : live ? (
               <>
                 <Sparkles className="size-3.5 text-primary" />
                 <span>
-                  Live agent — <code className="font-mono">{agent?.model}</code>. The model decides what to do; real
-                  disclosures are captured.
+                  Model harness — <code className="font-mono">{agent?.model}</code>. AgentLeak sends the selected
+                  scenario to this endpoint and captures its behavior; it does not discover your production app.
                 </span>
               </>
             ) : (
               <span className="text-muted-foreground">
-                Scripted (offline) agent. Add an LLM endpoint in <b className="text-foreground">Settings</b> to run a
-                real model.
+                Offline detector baseline — no model or application is executed. Add a scenario model endpoint in <b className="text-foreground">Settings</b> to test a model.
               </span>
             )}
           </div>
           {selected && !selected.has_spec && (
             <p className="text-[11px] text-muted-foreground">
-              This scenario has no stored spec — the agent's task and data are derived from its trace.
+              This sample has no executable spec, so AgentLeak derives the scripted baseline from its packaged trace.
             </p>
           )}
         </div>
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Already have a trace from your own agent? Paste it to score it directly (or load a scenario's trace as a
-            starting point).
+            Paste evidence captured from your own application, SDK or telemetry pipeline. AgentLeak only analyzes the
+            JSON you provide; it does not execute your agent. You can also load a packaged trace as a starting point.
           </p>
           <div className="grid gap-4 md:grid-cols-[240px_1fr]">
             <div className="space-y-1.5">
@@ -280,7 +287,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
                 <SelectContent>
                   {scenarios.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name ?? s.id}
+                      {scenarioLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -292,7 +299,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
                 placeholder="e.g. baseline, after-fix"
               />
               <Button className="mt-2 w-full" onClick={runTrace} disabled={busy}>
-                {busy ? <Loader2 className="animate-spin" /> : <Play />} Analyze trace
+                {busy ? <Loader2 className="animate-spin" /> : <Play />} Analyze this trace
               </Button>
             </div>
             <div className="space-y-1.5">
@@ -387,10 +394,10 @@ function AgentsTab({ project, onChange }: { project: Project; onChange: () => vo
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-medium">Agents in this system</h3>
+            <h3 className="text-sm font-medium">Agents in the test topology</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              A project can hold several agents to model a multi-agent pipeline. Each agent has its own framework and
-              optional live endpoint; data is handed off down the chain.
+              Define the roles AgentLeak should orchestrate during controlled scenario tests. This does not discover or
+              mirror your deployed system; use <b className="text-foreground">Integrate</b> to submit real traces.
             </p>
           </div>
           <Button size="sm" onClick={startNew}>
@@ -399,7 +406,7 @@ function AgentsTab({ project, onChange }: { project: Project; onChange: () => vo
         </div>
 
         {agents.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No agents yet. Add your first agent to model the system.</p>
+          <p className="mt-4 text-sm text-muted-foreground">No test agents yet. Add roles only if you want AgentLeak to simulate a multi-agent handoff.</p>
         ) : (
           <div className="mt-4 space-y-2">
             {agents.map((a, i) => {
@@ -582,8 +589,8 @@ function AgentsTab({ project, onChange }: { project: Project; onChange: () => vo
             )}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            With a model + base URL the agent runs live during execution; otherwise it runs as a scripted (offline) agent
-            in the pipeline.
+            A model + base URL lets AgentLeak execute this role in its scenario harness. Without one, the role produces
+            a deterministic scripted trace. Neither option connects to a deployed application automatically.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setEditing(null)}>
@@ -620,7 +627,7 @@ function RunsTab({ projectId, runs, onChange }: { projectId: string; runs: RunSu
   if (!runs.length) {
     return (
       <Card className="p-10 text-center text-sm text-muted-foreground">
-        No runs yet. Use the Audit tab or connect your agent via the SDK.
+        No evidence yet. Analyze a captured trace, run a controlled scenario, or integrate the SDK.
       </Card>
     )
   }
@@ -693,6 +700,10 @@ function ConnectTab({ project }: { project: Project }) {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-md border border-primary/20 bg-primary/[0.03] px-4 py-3 text-sm text-muted-foreground">
+        Instrument your real application here. The SDK records execution events and submits traces to this project;
+        AgentLeak never needs to host or launch your agent.
+      </div>
       {info.agents.length > 0 && (
         <p className="text-sm text-muted-foreground">
           Connect each agent of your system with its framework's SDK. Runs submitted by any agent appear under this
@@ -703,7 +714,7 @@ function ConnectTab({ project }: { project: Project }) {
         <Card key={b.key}>
           <div className="flex items-center justify-between border-b border-border px-5 py-3">
             <div className="text-sm">
-              Connect <b>{b.title}</b> via the SDK
+              Capture <b>{b.title}</b> traces via the SDK
             </div>
             <Button variant="outline" size="sm" onClick={() => copy(b.key, b.snippet)}>
               {copied === b.key ? <Check /> : <Copy />} Copy
@@ -771,7 +782,7 @@ function SelfTestKeyPanel({ project }: { project: Project }) {
 
   const pySnippet = `import os, requests
 
-# The agent tests *itself* against the platform and reads back fixes.
+# Submit a trace captured by the application and read back fixes.
 resp = requests.post(
     "http://127.0.0.1:8000/api/selftest",
     json={
@@ -817,7 +828,7 @@ print(me.status()["progression"])    # score delta across all runs`
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-2 text-sm">
           <KeyRound className="size-4 text-primary" />
-          <b>Let this agent test itself</b>
+          <b>Let your agent submit its own traces</b>
         </div>
         <Button variant="outline" size="sm" onClick={generate} disabled={busy}>
           {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}
@@ -826,9 +837,9 @@ print(me.status()["progression"])    # score delta across all runs`
       </div>
       <div className="space-y-4 p-5">
         <p className="text-sm text-muted-foreground">
-          Issue a project API key so the agent can POST its own trace to{" "}
+          Issue a project API key so your application can POST a trace it already captured to{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-primary">/api/selftest</code>, get scored, and pull
-          back structured code fixes it can apply autonomously. Runs are saved here automatically.
+          back structured code fixes it may apply. AgentLeak analyzes the submitted evidence; it does not launch the agent.
         </p>
 
         {loading ? (
@@ -847,7 +858,7 @@ print(me.status()["progression"])    # score delta across all runs`
           </div>
         ) : (
           <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-            No API key yet. Generate one to enable agent self-testing.
+            No API key yet. Generate one to enable authenticated trace submission.
           </div>
         )}
 
@@ -856,7 +867,7 @@ print(me.status()["progression"])    # score delta across all runs`
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                  Python — self-test &amp; auto-fix
+                  Python — submit, score &amp; auto-fix
                 </span>
                 <Button variant="ghost" size="sm" onClick={() => copy("py", pySnippet)}>
                   {copied === "py" ? <Check /> : <Copy />} Copy
@@ -1063,9 +1074,9 @@ function SettingsTab({ project, onSaved, onDeleted }: { project: Project; onSave
       <Card className="space-y-4 p-5 lg:col-span-2">
         <div className="flex items-center gap-2">
           <Bot className="size-4 text-primary" />
-          <Label className="text-xs">Live agent endpoint</Label>
+          <Label className="text-xs">Scenario model endpoint</Label>
           <span className="text-[11px] text-muted-foreground">
-            OpenAI-compatible (OpenAI, OpenRouter, Ollama, vLLM…). Leave empty to use the scripted offline agent.
+            OpenAI-compatible (OpenAI, OpenRouter, Ollama, vLLM…). Used only by the AgentLeak scenario harness.
           </span>
         </div>
         <div className="flex flex-wrap gap-1.5">

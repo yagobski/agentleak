@@ -58,7 +58,7 @@ function NewProjectDialog({ onCreated }: { onCreated: (p: Project) => void }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New project</DialogTitle>
-          <DialogDescription>A project is an agent under test. Connect it via the SDK after creating.</DialogDescription>
+          <DialogDescription>A project groups one agent or system, its privacy policy, traces and test evidence.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -81,8 +81,8 @@ function NewProjectDialog({ onCreated }: { onCreated: (p: Project) => void }) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Description (optional)</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[60px]" />
+            <Label>Purpose and privacy boundary <span className="text-muted-foreground">(recommended)</span></Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[72px]" placeholder="What does this agent do, and which data must it never expose?" />
           </div>
         </div>
         <div className="flex justify-end gap-2">
@@ -112,7 +112,7 @@ export function Projects() {
     <div className="animate-fade-up">
       <PageHeader
         title="Projects"
-        description="Each project is an agent you audit over time."
+        description="A workspace for one agent or multi-agent system: policy, integrations, tests and evidence over time."
         actions={<NewProjectDialog onCreated={(p) => nav(`/projects/${p.id}`)} />}
       />
 

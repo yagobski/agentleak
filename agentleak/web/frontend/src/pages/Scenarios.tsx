@@ -122,7 +122,7 @@ export function Scenarios() {
     <div className="animate-fade-up">
       <PageHeader
         title="Scenarios"
-        description="A library of privacy test cases. Run them, upload your own, or import curated packs."
+        description="Packaged traces and executable test specs. Open one in the test lab, upload evidence, or import a curated pack."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setBuilderOpen(true)}>
@@ -238,6 +238,13 @@ function DomainChip({ active, onClick, children }: { active: boolean; onClick: (
   )
 }
 
+function scenarioTitle(scenario: Scenario) {
+  const raw = scenario.name && scenario.name !== scenario.id
+    ? scenario.name
+    : scenario.id.replace(new RegExp(`^${scenario.domain}_`), "").replace(/_/g, " ")
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}
+
 function ScenarioCard({
   scenario: s,
   onView,
@@ -253,7 +260,7 @@ function ScenarioCard({
     <Card className="flex flex-col p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{s.name ?? s.id}</div>
+          <div className="truncate text-sm font-medium">{scenarioTitle(s)}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
               {s.domain}
@@ -285,7 +292,7 @@ function ScenarioCard({
 
       <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3">
         <Button variant="outline" size="sm" className="flex-1" onClick={onRun}>
-          <Play /> Run
+          <Play /> Open in test lab
         </Button>
         <Button variant="ghost" size="sm" onClick={onView}>
           <Eye /> View
