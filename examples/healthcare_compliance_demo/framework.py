@@ -14,11 +14,11 @@ privacy patterns rather than framework boilerplate.
 
 from __future__ import annotations
 
-import json
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from agentleak.core.trace import Trace
 from agentleak.defenses.internal_channel import (
@@ -28,7 +28,6 @@ from agentleak.defenses.internal_channel import (
     InternalChannelGuard,
 )
 from agentleak.defenses.sanitizer import RedactionStyle, Sanitizer
-
 
 # ---------------------------------------------------------------------------
 # Agent & Tool definitions

@@ -6,6 +6,8 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-08
+
 ### A score others can check, and one that keeps being checked
 
 - **Public trust page and README badge** (`/a/<slug>`, `/a/<slug>/badge.svg`).
@@ -414,6 +416,7 @@ First public release.
 - Local platform: SQLite persistence (projects + runs), SDK client, compare/stats.
 - Web GUI (React + shadcn/ui), CLI (`init/run/report/validate/scenarios/serve`).
 
+[0.11.0]: https://github.com/yagobski/agentleak/releases/tag/v0.11.0
 [0.10.0]: https://github.com/yagobski/agentleak/releases/tag/v0.10.0
 [0.6.0]: https://github.com/yagobski/agentleak/releases/tag/v0.6.0
 [0.5.0]: https://github.com/yagobski/agentleak/releases/tag/v0.5.0

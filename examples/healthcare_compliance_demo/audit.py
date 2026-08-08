@@ -17,7 +17,6 @@ Or run the pre-built test::
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -117,9 +116,9 @@ def _print_summary_card(label: str, result: Any, compliance: Any) -> None:
     print(f"  Verdict       : {result.verdict}")
     print(f"  Blocked       : {'yes' if result.blocked else 'no'}")
     print(f"  Compliance    : {'FAIL ✗' if gate_failed else 'PASS ✓'}")
-    print(f"\n  ┌─────────────────────────────┐")
+    print("\n  ┌─────────────────────────────┐")
     print(f"  │  OVERALL: {overall:<20}│")
-    print(f"  └─────────────────────────────┘")
+    print("  └─────────────────────────────┘")
 
 
 # ---------------------------------------------------------------------------
