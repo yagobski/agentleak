@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentleak"
-version = "0.11.1"
+version = "0.11.2"
 description = "Privacy-leakage testing for AI agents: audit the whole execution trace, score it deterministically, gate it in CI."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -11,6 +11,7 @@ import time
 from typing import Any
 
 from agentleak.web.trust import (
+    COLOURS,
     STALE_AFTER_DAYS,
     badge_state,
     badge_svg,
@@ -188,7 +189,9 @@ def test_a_hostile_project_name_cannot_inject_markup() -> None:
 def test_a_project_with_no_runs_still_renders_a_page() -> None:
     from agentleak.web.trust import trust_page_html
     html = trust_page_html(public_summary({"name": "a", "public_slug": "a"}, []), site_url="")
-    assert "Not checked" in html
+    # Casing is the stylesheet's business; what matters is that an unmeasured
+    # agent says so rather than rendering as a blank or a pass.
+    assert "not checked" in html.lower()
 
 
 def test_one_run_draws_no_trend_line() -> None:
@@ -214,3 +217,76 @@ def test_the_page_uses_no_definition_tag_outside_a_list() -> None:
     html = page(runs=[run(score=90), run(score=70, days_ago=1)])
     assert html.count("<dt") == html.count("</dt>")
     assert "<dl>" in html and html.index("<dl>") < html.index("<dt")
+
+
+# ------------------------------------------- the page belongs to the site
+def test_the_page_uses_the_sites_typefaces() -> None:
+    """Off-brand type is the loudest way a page announces it was bolted on."""
+    html = page()
+    assert "Hanken Grotesk Variable" in html
+    assert "JetBrains Mono" in html
+
+
+def test_the_fonts_are_served_by_the_package_that_ships_them() -> None:
+    """They travel in the wheel, so the page must not reach out for them."""
+    from agentleak.web.trust import _font_faces
+    faces = _font_faces()
+    assert "@font-face" in faces, "the bundled fonts were not found"
+    assert faces.count("url(") == faces.count('url("/assets/'), "a font is fetched off-origin"
+
+
+def test_a_missing_font_leaves_the_page_renderable(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """A self-hosted install without the built UI still needs a working page."""
+    import pathlib
+
+    from agentleak.web import trust
+    monkeypatch.setattr(trust, "_FONT_DIR", pathlib.Path("/nonexistent"))
+    assert trust._font_faces() == ""
+    assert "<h1>" in page()
+
+
+def test_the_badge_and_the_page_cannot_disagree_about_a_run() -> None:
+    """One decision, two palettes. Two decisions would eventually diverge."""
+    for kw, tone in (
+        ({"score": 99}, "pass"),
+        ({"score": 70}, "warn"),
+        ({"score": 99, "verdict": "Fail"}, "fail"),
+        ({"days_ago": STALE_AFTER_DAYS + 1}, "stale"),
+    ):
+        state = badge_state(run(**kw))  # type: ignore[arg-type]
+        assert state["tone"] == tone
+        assert state["colour"] == COLOURS[tone], "badge colour drifted from its own verdict"
+
+
+def test_the_page_carries_both_of_the_sites_palettes() -> None:
+    html = page()
+    assert "prefers-color-scheme:light" in html, "a light-mode reader gets the dark palette"
+    assert "#ff8257" in html, "the site accent is missing"
+
+
+def test_a_real_improvement_is_visible_on_the_trend() -> None:
+    """A fixed axis is only honest if it is tall enough to resolve a real change.
+
+    Squeezed into a sparkline, a thirty-point climb draws as a flat line and the
+    graph understates the data it sits next to.
+    """
+    from agentleak.web.trust import _trend_svg
+    climb = [{"at": 0, "score": s} for s in (92, 88, 83, 70, 74, 61)]
+    svg = _trend_svg(climb)
+    ys = [float(p.split(",")[1]) for p in svg.split('points="')[1].split('"')[0].split(" ")]
+    assert max(ys) - min(ys) > 30, "a 31-point climb rendered nearly flat"
+
+
+def test_a_flat_run_of_scores_stays_flat() -> None:
+    """The other half of the same promise: no invented drama."""
+    from agentleak.web.trust import _trend_svg
+    svg = _trend_svg([{"at": 0, "score": 90} for _ in range(6)])
+    ys = [float(p.split(",")[1]) for p in svg.split('points="')[1].split('"')[0].split(" ")]
+    assert max(ys) - min(ys) == 0
+
+
+def test_the_trend_axis_is_labelled_so_the_scale_is_not_guessed() -> None:
+    from agentleak.web.trust import _trend_svg
+    svg = _trend_svg([{"at": 0, "score": 90}, {"at": 0, "score": 70}])
+    for label in (">100<", ">50<", ">0<"):
+        assert label in svg, f"axis label {label} missing"

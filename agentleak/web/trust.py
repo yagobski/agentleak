@@ -23,6 +23,7 @@ published as a side effect of recording a run.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 # Past this, "verified" is no longer an honest word for it.
@@ -49,7 +50,7 @@ def badge_state(run: dict[str, Any] | None) -> dict[str, Any]:
     """
     if not run:
         return {"label": "privacy", "message": "not checked", "colour": COLOURS["stale"],
-                "stale": True, "reason": "no run recorded yet"}
+                "tone": "stale", "stale": True, "reason": "no run recorded yet"}
 
     age = _age_days(float(run.get("created_at") or 0))
     report = run.get("report") or {}
@@ -65,24 +66,30 @@ def badge_state(run: dict[str, Any] | None) -> dict[str, Any]:
             "label": "privacy",
             "message": f"stale ({int(age)}d)",
             "colour": COLOURS["stale"],
+            "tone": "stale",
             "stale": True,
             "reason": f"last checked {int(age)} days ago",
             "score": score,
         }
 
     if verdict in ("Fail", "High risk") or score < 60:
-        colour = COLOURS["fail"]
+        tone = "fail"
     elif degraded or verdict == "Conditional pass" or score < 85:
         # A degraded run can never show green. Silence about a tier that did not
         # run is exactly how a weak claim passes for a strong one.
-        colour = COLOURS["warn"]
+        tone = "warn"
     else:
-        colour = COLOURS["pass"]
+        tone = "pass"
 
+    # `tone` is the meaning; `colour` is one rendering of it. The badge wants
+    # the shields palette so it sits naturally beside other README badges, the
+    # page wants the site's. Deriving both from one decision is what stops them
+    # ever disagreeing about whether a run passed.
     return {
         "label": "privacy",
         "message": f"{score}/100",
-        "colour": colour,
+        "colour": COLOURS[tone],
+        "tone": tone,
         "stale": False,
         "degraded": degraded,
         "verdict": verdict,
@@ -190,40 +197,98 @@ def public_summary(project: dict[str, Any], runs: list[dict[str, Any]]) -> dict[
 # verdict instead of an empty shell.
 # ---------------------------------------------------------------------------
 
+
+_FONT_DIR = Path(__file__).resolve().parent / "static" / "assets"
+
+# The site's own two faces, already shipped with the package for its product UI.
+# Resolved by glob because the filenames carry a build hash: a missing file just
+# means the page falls back to the system grotesque rather than 404-ing for a
+# font, which is the right failure for a page whose job is to load.
+_FONT_FILES = (
+    ("Hanken Grotesk Variable", "hanken-grotesk-latin-wght-normal-*.woff2", "100 900"),
+    ("JetBrains Mono", "jetbrains-mono-latin-400-normal-*.woff2", "400"),
+    ("JetBrains Mono", "jetbrains-mono-latin-500-normal-*.woff2", "500"),
+)
+
+
+def _font_faces() -> str:
+    rules = []
+    for family, pattern, weight in _FONT_FILES:
+        try:
+            match = next(iter(sorted(_FONT_DIR.glob(pattern))), None)
+        except OSError:  # pragma: no cover - unreadable static dir
+            match = None
+        if match:
+            rules.append(
+                f'@font-face{{font-family:"{family}";font-style:normal;'
+                f"font-weight:{weight};font-display:swap;"
+                f'src:url("/assets/{match.name}") format("woff2")}}'
+            )
+    return "".join(rules)
+
+
+# The site's tokens, transcribed rather than imported: this page is served by
+# the package, and a self-hosted install has no marketing stylesheet to borrow
+# from. Dark is the default because that is the site's default; a light OS gets
+# the site's own light palette rather than an inverted guess at one.
 _PAGE_CSS = """
+:root{
+ --paper:#080909;--raised:#0c0c0b;--ink:#f1f1ed;--muted:#9e9d96;--dim:#babab4;
+ --line:#252520;--soft:#1a1a18;--code:#101010;--accent:#ff8257;
+ --ok:hsl(160 62% 50%);--warn:hsl(45 93% 58%);--bad:hsl(0 80% 65%);--none:#77766f;
+ --wrap:720px;--gutter:clamp(20px,3vw,32px);
+ color-scheme:dark}
+@media(prefers-color-scheme:light){:root{
+ --paper:#fff;--raised:#fafafa;--ink:#191913;--muted:#77766e;--dim:#56564f;
+ --line:#dfdfda;--soft:#e6e6e4;--code:#f1f1ef;
+ --ok:hsl(160 50% 38%);--warn:hsl(42 90% 42%);--bad:hsl(0 72% 50%);--none:#77766f;
+ color-scheme:light}}
 *{box-sizing:border-box}
-body{margin:0;background:#0d1117;color:#e6edf3;
- font:16px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+body{margin:0;background:var(--paper);color:var(--ink);
+ font-family:"Hanken Grotesk Variable","Helvetica Neue",Helvetica,Arial,sans-serif;
+ font-size:15px;line-height:1.5;font-feature-settings:"ss01","cv11";
  -webkit-font-smoothing:antialiased}
-.wrap{max-width:680px;margin:0 auto;padding:64px 24px 96px}
-a{color:#58a6ff}
-.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8b949e;margin:0 0 10px}
-h1{font-size:30px;line-height:1.2;margin:0 0 6px;font-weight:640;letter-spacing:-.01em}
-.slug{color:#8b949e;font-size:14px;margin:0 0 40px;
- font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.score{display:flex;align-items:baseline;gap:16px;margin:0 0 6px}
-.score b{font-size:64px;line-height:1;font-weight:680;letter-spacing:-.03em;
- font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.score span{font-size:18px;color:#8b949e}
-.verdict{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;
- font-weight:560;border:1px solid}
-.note{margin:24px 0 0;padding:14px 16px;border-radius:8px;font-size:14px;
- border:1px solid #30363d;background:#161b22;color:#c9d1d9}
-.note b{color:#e6edf3}
-hr{border:0;border-top:1px solid #21262d;margin:40px 0}
-dl{display:grid;grid-template-columns:1fr 1fr;gap:24px 32px;margin:0}
-dt{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b949e;margin:0 0 4px}
+a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+a:hover{border-color:var(--muted)}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:72px var(--gutter) 96px}
+.eyebrow{margin:0 0 14px;color:var(--accent);
+ font:500 10px/1 "JetBrains Mono",monospace;letter-spacing:.09em;text-transform:uppercase}
+h1{margin:0 0 6px;font-size:34px;line-height:1.1;font-weight:500;letter-spacing:-.03em}
+.slug{margin:0 0 44px;color:var(--muted);font:400 12px/1 "JetBrains Mono",monospace}
+.score{display:flex;align-items:baseline;gap:14px;margin:0 0 14px}
+.score b{font:400 62px/1 "JetBrains Mono",monospace;letter-spacing:-.06em}
+.score i{color:var(--muted);font:400 15px/1 "JetBrains Mono",monospace;font-style:normal}
+.verdict{display:inline-flex;min-height:25px;align-items:center;padding:0 11px;
+ border:1px solid var(--line);border-radius:999px;
+ font:500 9.5px/1 "JetBrains Mono",monospace;letter-spacing:.06em;text-transform:uppercase}
+.note{margin:26px 0 0;padding:16px 18px;border:1px solid var(--soft);border-radius:8px;
+ background:var(--raised);font-size:14px;line-height:1.65;color:var(--dim)}
+.note b{color:var(--ink);font-weight:550}
+hr{border:0;border-top:1px solid var(--line);margin:44px 0}
+dl{display:grid;grid-template-columns:1fr 1fr;gap:26px 32px;margin:0}
+dt{margin:0 0 6px;color:var(--muted);
+ font:500 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
 dd{margin:0;font-size:15px}
-dd code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
- background:#161b22;border:1px solid #21262d;border-radius:5px;padding:1px 6px}
-.trend{margin:8px 0 0}
-.trend-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b949e;margin:0}
-.foot{color:#8b949e;font-size:14px}
-.foot h2{font-size:14px;color:#e6edf3;margin:0 0 8px;font-weight:600}
-pre{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:12px 14px;
- overflow-x:auto;font-size:12.5px;color:#c9d1d9;margin:12px 0 0}
-@media(max-width:560px){dl{grid-template-columns:1fr}h1{font-size:25px}.score b{font-size:52px}}
+dd code,.tier{display:inline-block;margin:0 4px 4px 0;padding:4px 9px;
+ border:1px solid var(--soft);border-radius:999px;background:var(--raised);
+ font:400 11px/1 "JetBrains Mono",monospace;color:var(--dim)}
+.trend-label{margin:0 0 10px;color:var(--muted);
+ font:500 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+.foot{color:var(--muted);font-size:14px;line-height:1.7}
+.foot h2{margin:0 0 8px;color:var(--ink);font-size:14px;font-weight:550;letter-spacing:-.01em}
+.foot p{margin:0 0 26px;max-width:640px}
+pre{margin:0 0 26px;padding:16px 18px;overflow-x:auto;
+ border:1px solid var(--soft);border-radius:8px;background:var(--code);
+ font:400 11.5px/1.7 "JetBrains Mono",monospace;color:var(--dim)}
+@media(max-width:560px){
+ .wrap{padding-top:52px}dl{grid-template-columns:1fr}
+ h1{font-size:27px}.score b{font-size:50px}}
 """
+
+# tone -> the site's severity ramp. The badge keeps the shields palette; this is
+# the same decision wearing the site's clothes.
+_TONE_VAR = {"pass": "var(--ok)", "warn": "var(--warn)", "fail": "var(--bad)",
+             "stale": "var(--none)"}
 
 
 def _age_phrase(days: float) -> str:
@@ -246,22 +311,39 @@ def _trend_svg(trend: list[dict[str, Any]]) -> str:
     if len(points) < 2:
         return ""
     scores = [max(0, min(100, int(p["score"]))) for p in points]
-    w, h, pad = 600, 56, 4
-    step = w / (len(scores) - 1)
-    # A fixed 0–100 axis: an auto-scaled one turns a wobble between 97 and 99
-    # into a cliff, which is the graph lying about the numbers beside it.
-    coords = " ".join(
-        f"{i * step:.1f},{pad + (100 - s) / 100 * (h - 2 * pad):.1f}"
-        for i, s in enumerate(scores)
+
+    # A fixed 0–100 axis, because an auto-scaled one turns a wobble between 97
+    # and 99 into a cliff. But a fixed axis only tells the truth if it is tall
+    # enough to resolve it: squeezed into a sparkline, a real thirty-point climb
+    # flattens into a straight line, and the graph understates instead of
+    # exaggerating. So the axis is drawn, labelled, and given room.
+    w, h = 600, 150
+    left, top, bottom = 34, 12, 126
+    span = bottom - top
+
+    def y_for(score: float) -> float:
+        return top + (100 - score) / 100 * span
+
+    step = (w - left) / (len(scores) - 1)
+    coords = " ".join(f"{left + i * step:.1f},{y_for(s):.1f}" for i, s in enumerate(scores))
+    last_x, last_y = coords.split(" ")[-1].split(",")
+
+    grid = "".join(
+        f'<line x1="{left}" x2="{w}" y1="{y_for(v):.1f}" y2="{y_for(v):.1f}" '
+        f'stroke="currentColor" stroke-opacity="{0.14 if v else 0.22}"/>'
+        f'<text x="{left - 9}" y="{y_for(v) + 3.5:.1f}" text-anchor="end" '
+        f'fill="currentColor" fill-opacity=".45" '
+        f'font-family="JetBrains Mono, monospace" font-size="9.5">{v}</text>'
+        for v in (100, 50, 0)
     )
     return (
-        f'<svg class="trend" viewBox="0 0 {w} {h}" width="100%" height="{h}" '
-        f'role="img" aria-label="Score over the last {len(scores)} runs, oldest first: '
-        f'{", ".join(str(s) for s in scores)}">'
-        f'<polyline fill="none" stroke="#30363d" stroke-width="1" '
-        f'points="0,{h / 2} {w},{h / 2}"/>'
-        f'<polyline fill="none" stroke="#58a6ff" stroke-width="2" '
+        f'<svg class="trend" viewBox="0 0 {w} {h}" width="100%" role="img" '
+        f'aria-label="Score out of 100 over the last {len(scores)} runs, '
+        f'oldest first: {", ".join(str(s) for s in scores)}">'
+        f"{grid}"
+        f'<polyline fill="none" stroke="#ff8257" stroke-width="2" '
         f'stroke-linejoin="round" stroke-linecap="round" points="{coords}"/>'
+        f'<circle cx="{last_x}" cy="{last_y}" r="3.5" fill="#ff8257"/>'
         "</svg>"
     )
 
@@ -272,19 +354,19 @@ def trust_page_html(summary: dict[str, Any], *, site_url: str = "") -> str:
     latest = summary.get("latest")
     name = _esc(str(summary.get("name") or "This agent"))
     slug = _esc(str(summary.get("slug") or ""))
-    colour = badge["colour"]
+    tone = _TONE_VAR.get(str(badge.get("tone") or "stale"), "var(--none)")
 
     if latest:
-        verdict = _esc(str(latest["verdict"] or "—"))
-        score = f'<b style="color:{colour}">{latest["score"]}</b><span>/ 100</span>'
-        checked = _age_phrase(_age_days(float(latest["at"])))
+        verdict = _esc(str(latest["verdict"] or "unknown"))
+        score = f'<b style="color:{tone}">{latest["score"]}</b><i>/ 100</i>'
         tiers = latest["detection"]["tiers"]
         tier_html = (
-            " ".join(f"<code>{_esc(str(t))}</code>" for t in tiers) if tiers else "—"
+            "".join(f'<span class="tier">{_esc(str(t))}</span>' for t in tiers)
+            if tiers else "—"
         )
         facts = f"""
     <dl>
-      <div><dt>Last checked</dt><dd>{_esc(checked)}</dd></div>
+      <div><dt>Last checked</dt><dd>{_esc(_age_phrase(_age_days(float(latest["at"]))))}</dd></div>
       <div><dt>Risk index</dt><dd>{latest["risk_index"]:.3f}</dd></div>
       <div><dt>Detection tiers that ran</dt><dd>{tier_html}</dd></div>
       <div><dt>Channels examined</dt><dd>{latest["channels_checked"]}</dd></div>
@@ -292,8 +374,8 @@ def trust_page_html(summary: dict[str, Any], *, site_url: str = "") -> str:
       <div><dt>Runs recorded</dt><dd>{summary["runs_recorded"]}</dd></div>
     </dl>"""
     else:
-        verdict = "Not checked"
-        score = '<b style="color:#8b949e">—</b>'
+        verdict = "not checked"
+        score = f'<b style="color:{tone}">—</b>'
         facts = ""
 
     # The warnings are the page. A reader who skims should still leave knowing
@@ -303,8 +385,8 @@ def trust_page_html(summary: dict[str, Any], *, site_url: str = "") -> str:
         notes.append(
             f"<b>This score is stale.</b> It was measured "
             f"{_esc(str(badge.get('reason', 'some time ago')))}, and describes the code as it was "
-            f"then. Anything after {summary['stale_after_days']} days says nothing about what is "
-            "running today."
+            f"then. Anything older than {summary['stale_after_days']} days says nothing about "
+            "what is running today."
         )
     if latest and latest["detection"]["degraded"]:
         notes.append(
@@ -321,8 +403,8 @@ def trust_page_html(summary: dict[str, Any], *, site_url: str = "") -> str:
     trend_html = _trend_svg(summary.get("trend") or [])
     if trend_html:
         trend_html = (
-            f'<hr><p class="trend-label">Score over the last {len(summary["trend"])} runs</p>'
-            f"{trend_html}"
+            f'<hr><p class="trend-label">Score over the last '
+            f'{len(summary["trend"])} runs</p>{trend_html}'
         )
 
     badge_url = f"{site_url}/a/{slug}/badge.svg"
@@ -341,15 +423,14 @@ covering what its agent trace exposed and which detection tiers looked.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="robots" content="index,follow">
-<style>{_PAGE_CSS}</style>
+<style>{_font_faces()}{_PAGE_CSS}</style>
 </head><body><main class="wrap">
   <p class="eyebrow">Measured by AgentLeak</p>
   <h1>{name}</h1>
   <p class="slug">{slug}</p>
 
   <div class="score">{score}</div>
-  <span class="verdict" style="color:{colour};border-color:{colour}33;background:{colour}14">\
-{verdict}</span>
+  <span class="verdict" style="color:{tone};border-color:{tone}">{verdict}</span>
 
   {notes_html}
   <hr>
@@ -364,6 +445,6 @@ covering what its agent trace exposed and which detection tiers looked.">
     to reconstruct the run.</p>
     <h2>Embed this badge</h2>
     <pre>{snippet}</pre>
-    <p><a href="https://github.com/yagobski/agentleak">How the score is measured</a></p>
+    <p><a href="https://www.agentleak.org">How the score is measured</a></p>
   </div>
 </main></body></html>"""

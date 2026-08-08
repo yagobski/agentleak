@@ -6,6 +6,29 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-08-08
+
+### The trust page now looks like the site it is served from
+
+- **Rebuilt in agentleak.org's own design language** — its palette, its two
+  typefaces, its spacing and its mono-uppercase labels. The page is served by the
+  package rather than the marketing site, so the tokens are transcribed rather
+  than imported; a self-hosted install has no marketing stylesheet to borrow
+  from. Dark by default because that is the site's default, with the site's own
+  light palette for a light-mode reader.
+- The fonts already travelled in the wheel for the product UI, so the page uses
+  those rather than fetching any. A build without them falls back to the system
+  grotesque instead of failing to load.
+- `badge_state` now returns a `tone` alongside its colour. The badge keeps the
+  shields palette so it sits naturally beside other README badges and the page
+  uses the site's — one decision, two renderings, so the two can never disagree
+  about whether a run passed.
+- **The trend chart was understating real change.** A fixed 0–100 axis is right
+  — auto-scaling turns a wobble between 97 and 99 into a cliff — but squeezed
+  into a 64px sparkline a genuine thirty-point climb drew as a flat line, which
+  is the same lie in the other direction. The axis is now drawn, labelled and
+  given room.
+
 ## [0.11.1] - 2026-08-08
 
 ### The page the badge points at
@@ -447,6 +470,7 @@ First public release.
 - Local platform: SQLite persistence (projects + runs), SDK client, compare/stats.
 - Web GUI (React + shadcn/ui), CLI (`init/run/report/validate/scenarios/serve`).
 
+[0.11.2]: https://github.com/yagobski/agentleak/releases/tag/v0.11.2
 [0.11.1]: https://github.com/yagobski/agentleak/releases/tag/v0.11.1
 [0.11.0]: https://github.com/yagobski/agentleak/releases/tag/v0.11.0
 [0.10.0]: https://github.com/yagobski/agentleak/releases/tag/v0.10.0
