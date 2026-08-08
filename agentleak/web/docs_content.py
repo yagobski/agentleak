@@ -23,6 +23,7 @@ AgentLeak can be used by developers through its CLI and Python SDK, or directly 
 ## Start here
 
 - [{base}/docs]({base}/docs): Documentation hub and product model
+- [MCP mode](https://github.com/yagobski/agentleak/blob/main/docs/mcp.md): `pip install "agentleak[mcp]"` then `agentleak mcp` — gives a coding agent `privacy_preflight`, which reports what is new since its last check. Runs locally, no account.
 - [{base}/benchmark]({base}/benchmark): Measured internal-channel leakage and detection-tier coverage across the 283 bundled scenarios, with the command to reproduce it
 - [{base}/compare]({base}/compare): How AgentLeak differs from promptfoo, Garak and PyRIT — they test the model, this tests the system
 - [{base}/compliance/eu-ai-act]({base}/compliance/eu-ai-act): EU AI Act Annex III evidence, mapped to Arts. 9, 11, 12, 15 and 26

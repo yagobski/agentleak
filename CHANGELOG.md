@@ -6,6 +6,35 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Agent-native: coding agents can check their own work
+
+- **`agentleak mcp` — the engine as MCP tools** (`agentleak[mcp]`). A coding
+  agent will not shell out to a CLI or chain four HTTP calls on a hunch; it calls
+  tools. Four of them now: `privacy_preflight`, `privacy_scan_code`,
+  `privacy_check_trace`, `privacy_redact`. Local by default — no account, no key,
+  no network — because the teams who most need this are the ones whose traces
+  cannot leave the building. Kept behind an extra so the core stays at four
+  dependencies.
+- **`preflight` reports what is *new* since the last check.** A score on its own
+  changes nothing: an agent reads the number and moves on. Being told "this
+  finding is new since you last looked" is what makes it iterate. The comparison
+  comes from a local `.agentleak/history.jsonl` holding redacted snippets only.
+- **Finding identity ignores the line number** (`core.memory`). Keying on
+  `file:line` would turn every reformat into a page of false "new" findings, and
+  a tool that cries wolf on every commit gets muted within a day. Identity is
+  `(file, rule, fingerprint of the matched value)`. Moving a secret between files
+  reads as one fixed plus one new — the rarer case, and arguably the honest one.
+- **An empty trace is refused rather than scored.** `Trace.from_dict` accepts a
+  payload with no events and yields a run that scores a confident 100/100. An
+  agent sending a malformed trace would read that as clean: the exact false pass
+  this tool exists to catch, committed by the tool itself.
+- **Findings are deduplicated by identity.** Two detectors can land on the same
+  value with the same rule; left alone an agent reads one problem as two, and the
+  counts disagree with the deltas that are keyed by id.
+- Discovery paths all say the same thing now: `SKILL.md`, `llms.txt` and
+  `docs/mcp.md`. A tool an agent cannot find is a tool that does not exist.
+
+
 ## [0.10.0] - 2026-08-02
 
 ### Distribution and CI (closes the P0 gaps from the 2026-08 product audit)

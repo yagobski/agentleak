@@ -504,6 +504,27 @@ def admin_list_users() -> None:
 # serve (web GUI)
 # ----------------------------------------------------------------------
 @app.command()
+def mcp() -> None:
+    """Serve AgentLeak to coding agents over MCP (requires the [mcp] extra).
+
+    Point an MCP-capable agent at this and it gets `privacy_preflight` and the
+    scan/trace/redact primitives as native tools. Everything runs locally.
+    """
+    from .mcp_server import MCP_MISSING, run_stdio
+
+    try:
+        run_stdio()
+    except RuntimeError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    except ImportError as exc:  # the SDK import lives inside run_stdio
+        typer.secho(MCP_MISSING, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    except KeyboardInterrupt:  # pragma: no cover - normal way to stop a server
+        pass
+
+
+@app.command()
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="Host to bind."),
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind."),

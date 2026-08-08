@@ -25,6 +25,24 @@ Everything below runs locally. No network call, no telemetry, values redacted by
 agentleak version || pip install agentleak
 ```
 
+## If you are a coding agent, start here
+
+Install the MCP tools once and check your own work before you call it done:
+
+```bash
+pip install "agentleak[mcp]"     # then point your MCP client at: agentleak mcp
+```
+
+`privacy_preflight` is the tool to reach for. It scans the project and reports
+what is **new since your last check** — which is the part that tells you whether
+your last fix actually held. Full setup in `docs/mcp.md`.
+
+Without an MCP client, the same checks are one command away:
+
+```bash
+agentleak scan .                 # secrets, PII in logs, unsafe sends
+```
+
 ## Core commands
 
 ```bash

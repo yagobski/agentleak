@@ -36,6 +36,12 @@ gui = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
 ]
+mcp = [
+  # Coding agents reach for MCP tools, not a CLI. Kept an extra because the
+  # core stays dependency-light: nobody analyzing a trace should pay for a
+  # server SDK they will never start.
+  "mcp>=1.0",
+]
 llm = [
   # No extra dependencies — uses stdlib urllib. Requires API key at runtime.
   # Kept as a named extra to signal intent and allow future optional LLM libs.
@@ -53,6 +59,7 @@ full = [
   "uvicorn>=0.27",
   "presidio-analyzer>=2.2",
   "spacy>=3.7",
+  "mcp>=1.0",
 ]
 dev = [
   "pytest>=7.0",

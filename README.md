@@ -50,8 +50,9 @@ runtime defenses, the GitHub Action and the local web UI.
 ```bash
 pip install agentleak                 # core
 pip install "agentleak[gui]"       # + local web UI
+pip install "agentleak[mcp]"       # + MCP tools for coding agents
 pip install "agentleak[presidio]"  # + Presidio
-pip install "agentleak[full]"      # gui + presidio
+pip install "agentleak[full]"      # everything above
 ```
 
 From source:
@@ -275,6 +276,7 @@ Start with the [quickstart](docs/quickstart.md); the same pages are rendered at
 there.
 
 - [Quickstart](docs/quickstart.md)
+- [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
 - [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 283 bundled scenarios
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — coverage map, honest gaps, market position, roadmap
 - [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does
