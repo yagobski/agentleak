@@ -687,7 +687,7 @@ function TraceDialog({
             <Download /> Download
           </Button>
           <Button onClick={() => onRun(detail.id)}>
-            <Play /> Run in playground
+            <Play /> Analyze sample trace
           </Button>
         </div>
       </DialogContent>

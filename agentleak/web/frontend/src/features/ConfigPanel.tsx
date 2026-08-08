@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Play, Plus, Trash2, Upload, Wand2 } from "lucide-react"
+import { FileJson2, Play, Plus, Trash2, Upload, Wand2 } from "lucide-react"
 import { toast } from "sonner"
 import { api, type AnalyzePayload, type CustomRule, type Scenario, DETECTORS, DETECTOR_LABEL } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -114,27 +114,29 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-1">
         <div className="space-y-5 p-5">
-          {/* scenario */}
-          <div className="space-y-2">
-            <Label className="eyebrow">Scenario</Label>
-            <Select value={scenarioId} onValueChange={loadScenario}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pick a scenario" />
-              </SelectTrigger>
-              <SelectContent>
-                {scenarios.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name ?? s.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {scenarios.length > 0 && (
+            <div className="space-y-2">
+              <Label className="eyebrow">Prerecorded scenario</Label>
+              <Select value={scenarioId} onValueChange={loadScenario}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a sample trace" />
+                </SelectTrigger>
+                <SelectContent>
+                  {scenarios.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name ?? s.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] leading-relaxed text-muted-foreground">Loads packaged JSON only. It does not execute an agent.</p>
+            </div>
+          )}
 
           {/* trace */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Label className="eyebrow">Trace (JSON)</Label>
+              <Label className="eyebrow">Captured execution (JSON)</Label>
               <div className="flex items-center gap-3">
                 <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(event) => importTrace(event.target.files?.[0])} />
                 <button onClick={() => fileInput.current?.click()} className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"><Upload className="size-3" /> Import</button>
@@ -146,8 +148,9 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
               onChange={(e) => setTraceText(e.target.value)}
               spellCheck={false}
               className="h-52 resize-y font-mono text-[12px] leading-relaxed"
-              placeholder="Paste an agent trace…"
+              placeholder={'Paste one captured trace, for example:\n{\n  "run_id": "support-001",\n  "agent_name": "support-bot",\n  "events": [...]\n}'}
             />
+            {!traceText.trim() && <div className="flex gap-2 rounded-md border border-dashed border-border p-3"><FileJson2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><p className="text-[10px] leading-relaxed text-muted-foreground">Import the evidence produced by your agent. This panel never starts or contacts the agent itself.</p></div>}
           </div>
 
           <Separator />
@@ -290,10 +293,11 @@ export function ConfigPanel({ scenarios, loading, onAnalyze, initialScenarioId }
       </ScrollArea>
 
       <div className="border-t border-border p-4">
-        <Button className="w-full" size="lg" onClick={run} disabled={loading}>
+        <Button className="w-full" size="lg" onClick={run} disabled={loading || !traceText.trim()}>
           {loading ? <AgentLeakMark className="agentleak-mark-loading !h-5 !w-4" label="" /> : <Play />}
-          {loading ? "Analyzing…" : "Analyze"}
+          {loading ? "Analyzing captured evidence…" : "Analyze this trace"}
         </Button>
+        <p className="mt-2 text-center text-[9px] text-muted-foreground">No model call · no agent execution</p>
       </div>
     </div>
   )

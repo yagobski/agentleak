@@ -379,7 +379,7 @@ export function RedTeamView({ projectId }: Props) {
   const [vertical, setVertical] = useState<Vertical>("healthcare")
   const [adversaryLevel, setAdversaryLevel] = useState<AdversaryLevel>("A1")
   const [n, setN] = useState(10)
-  const [mode, setMode] = useState<"live" | "scripted">("live")
+  const [mode, setMode] = useState<"live" | "scripted">("scripted")
   const [baseUrl, setBaseUrl] = useState("")
   const [model, setModel] = useState("")
   const [catalog, setCatalog] = useState<RedTeamCatalog | null>(null)
@@ -452,8 +452,8 @@ export function RedTeamView({ projectId }: Props) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold"><Shield className="size-5 text-sev-l4" /> Adversarial red team</h2>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Attack the real agent across prompts, tools, memory, handoffs, logs and files. Each probe is scored, stored and linked to its full execution trace.</p>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Shield className="size-5 text-sev-l4" /> Run an adversarial campaign</h2>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Choose the threats and delivery methods, then decide whether to validate AgentLeak offline or execute a configured model inside the AgentLeak test harness. Every probe is scored and stored.</p>
         </div>
         {result && <button type="button" onClick={run} disabled={loading} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"><RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} /> Re-run batch</button>}
       </div>
@@ -516,23 +516,23 @@ export function RedTeamView({ projectId }: Props) {
             </div>
 
             <div>
-              <label className="text-xs font-semibold">Execution mode</label>
+              <label className="text-xs font-semibold">What should AgentLeak execute?</label>
               <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => setMode("live")} className={`rounded-lg border p-4 text-left transition-all ${mode === "live" ? "border-sev-l4/60 bg-sev-l4/[0.04] ring-1 ring-sev-l4/40" : "hover:bg-muted/40"}`}><div className="flex items-center gap-2 text-sm font-semibold"><Zap className="size-4 text-sev-l4" /> Live agent</div><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Runs each adversarial task through the configured agent or an OpenRouter-compatible endpoint. This measures real behavior.</p></button>
-                <button type="button" onClick={() => setMode("scripted")} className={`rounded-lg border p-4 text-left transition-all ${mode === "scripted" ? "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/30" : "hover:bg-muted/40"}`}><div className="flex items-center gap-2 text-sm font-semibold"><BarChart3 className="size-4" /> Scripted baseline</div><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Deterministic offline agent for validating detector coverage and creating a repeatable baseline.</p></button>
+                <button type="button" onClick={() => setMode("scripted")} className={`rounded-lg border p-4 text-left transition-all ${mode === "scripted" ? "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/30" : "hover:bg-muted/40"}`}><div className="flex items-center gap-2 text-sm font-semibold"><BarChart3 className="size-4" /> Detector check · no model</div><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Builds a deterministic, deliberately vulnerable trace. Use it to verify detector coverage and create a repeatable baseline. It says nothing about your model's behavior.</p><span className="mt-3 inline-flex rounded-full bg-muted px-2 py-1 text-[9px] font-medium text-muted-foreground">Offline · zero model calls</span></button>
+                <button type="button" onClick={() => setMode("live")} className={`rounded-lg border p-4 text-left transition-all ${mode === "live" ? "border-sev-l4/60 bg-sev-l4/[0.04] ring-1 ring-sev-l4/40" : "hover:bg-muted/40"}`}><div className="flex items-center gap-2 text-sm font-semibold"><Zap className="size-4 text-sev-l4" /> Model test · AgentLeak harness</div><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Sends each probe to the configured OpenAI-compatible model with AgentLeak's controlled tools. This tests the model in the harness, not an arbitrary deployed application.</p><span className="mt-3 inline-flex rounded-full bg-sev-l4/10 px-2 py-1 text-[9px] font-medium text-sev-l4">Executes a configured model</span></button>
               </div>
             </div>
 
             {mode === "live" && (
               <div className="rounded-lg border bg-muted/20 p-4">
-                <div className="flex flex-wrap items-center gap-2"><Server className="size-4 text-muted-foreground" /><span className="text-xs font-semibold">Optional endpoint override</span><span className="text-[10px] text-muted-foreground">Leave empty to use project settings or OPENROUTER_API_KEY.</span></div>
+                <div className="flex flex-wrap items-center gap-2"><Server className="size-4 text-muted-foreground" /><span className="text-xs font-semibold">Model endpoint used by the harness</span><span className="text-[10px] text-muted-foreground">Leave empty to use the project's model settings or your account model key.</span></div>
                 <div className="mt-3 flex flex-wrap gap-1.5">{LOCAL_PRESETS.map((preset) => <button key={preset.label} type="button" onClick={() => { setBaseUrl(preset.url); if (preset.model) setModel(preset.model) }} className="rounded-full border px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground">{preset.label}</button>)}</div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2"><input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://openrouter.ai/api/v1" className="rounded-md border bg-background px-3 py-2 font-mono text-xs" /><input value={model} onChange={(event) => setModel(event.target.value)} placeholder="openai/gpt-4.1-mini" className="rounded-md border bg-background px-3 py-2 font-mono text-xs" /></div>
               </div>
             )}
 
             {error && <div className="flex gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"><FileWarning className="mt-0.5 size-4 shrink-0" /> {error}</div>}
-            <button type="button" onClick={run} disabled={loading || !catalog || !selectedPlugins.length || !selectedStrategies.length} className="inline-flex items-center gap-2 rounded-md bg-sev-l4 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">{loading ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}{loading ? (mode === "live" ? `Running ${n} live probes…` : "Building baseline…") : `Launch ${n}-probe campaign`}</button>
+            <button type="button" onClick={run} disabled={loading || !catalog || !selectedPlugins.length || !selectedStrategies.length} className="inline-flex items-center gap-2 rounded-md bg-sev-l4 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">{loading ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}{loading ? (mode === "live" ? `Testing the model with ${n} probes…` : "Building detector baseline…") : (mode === "live" ? `Run ${n} probes against the model` : `Build ${n}-probe detector baseline`)}</button>
           </div>
         </Card>
       )}
@@ -545,7 +545,7 @@ export function RedTeamView({ projectId }: Props) {
             <span><strong className="text-foreground">{result.scenarios_run}</strong> probes executed</span>
             <span><strong className="text-foreground">{result.coverage.plugins_exercised.length}</strong> plugins exercised</span>
             <span><strong className="text-foreground">{result.coverage.strategies_exercised.length}</strong> strategies exercised</span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${result.live ? "bg-sev-l4/10 text-sev-l4" : "bg-muted text-muted-foreground"}`}>{result.live ? "Live agent" : "Scripted baseline"}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${result.live ? "bg-sev-l4/10 text-sev-l4" : "bg-muted text-muted-foreground"}`}>{result.live ? "Model executed in harness" : "Detector baseline · no model"}</span>
           </div>
           {result.coverage.plugins_not_exercised.length > 0 && (
             <div className="rounded-lg border border-sev-l2/25 bg-sev-l2/[0.045] px-4 py-3 text-xs">

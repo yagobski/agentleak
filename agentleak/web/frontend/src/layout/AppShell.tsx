@@ -44,7 +44,7 @@ import { AgentLeakLogo } from "@/features/AgentLeakLogo"
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/projects", label: "Projects", icon: FolderKanban, end: false },
-  { to: "/playground", label: "Playground", icon: FlaskConical, end: false },
+  { to: "/playground", label: "Test lab", icon: FlaskConical, end: false },
   { to: "/scenarios", label: "Scenarios", icon: Library, end: false },
 ]
 

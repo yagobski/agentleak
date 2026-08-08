@@ -152,7 +152,7 @@ export function Dashboard() {
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                 No runs yet. Create a project and run an agent, or try the{" "}
                 <Link to="/playground" className="text-primary underline-offset-2 hover:underline">
-                  playground
+                  test lab
                 </Link>
                 .
               </div>
@@ -173,7 +173,7 @@ export function Dashboard() {
             </p>
             <Button variant="outline" size="sm" className="mt-3 w-full" asChild>
               <Link to="/playground">
-                Open playground <ArrowRight />
+                Open test lab <ArrowRight />
               </Link>
             </Button>
           </Card>
