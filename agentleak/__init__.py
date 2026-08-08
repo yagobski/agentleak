@@ -39,6 +39,7 @@ from .core.scenario import Scenario
 from .core.scoring import Score, score_findings, verdict_for
 from .core.store import Store
 from .core.trace import CHANNELS, Channel, Event, Trace
+from .monitor import Alert, Monitor
 from .sdk import Capture, capture, monitor, record
 from .track import Run, watch
 
@@ -75,6 +76,8 @@ __all__ = [
     "record",
     # unified one-line API
     "watch",
+    "Monitor",
+    "Alert",
     "Run",
     # platform
     "AgentLeakClient",

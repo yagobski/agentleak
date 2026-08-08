@@ -6,6 +6,32 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### A score others can check, and one that keeps being checked
+
+- **Public trust page and README badge** (`/a/<slug>`, `/a/<slug>/badge.svg`).
+  A badge an agent awards itself is worth nothing; what makes this worth
+  embedding is that AgentLeak measured the number and anyone can follow the link.
+  Opt-in and reversible — a run never publishes anything as a side effect.
+- **The badge is built to refuse three specific lies.** A score older than 30 days
+  goes grey and shows its *age* rather than its number, because the number
+  describes code that may no longer exist. A degraded run can never show the
+  passing colour, since a pass from the pattern tier alone is a narrower claim.
+  And the badge always shows the latest run, never the best one.
+- **The public page shows the verdict, never the evidence.** Findings name real
+  values from private data. A stranger sees the score, the date, the tiers that
+  ran and a trend line — enough to judge the claim, not enough to reconstruct a
+  run. The SVG is self-contained, because GitHub's image proxy renders anything
+  needing a script or an external font as a broken image.
+- **`Monitor` — continuous watch** (`agentleak.Monitor`). Sampled scoring of
+  production runs with a rolling trend and threshold alerts, in-process, no
+  thread and no timer. Designed around the two ways a monitor makes itself
+  useless: it stays quiet on single bad samples and flat lines so nobody mutes
+  it, and it reports a never-before-seen severity immediately rather than waiting
+  for a trend. The baseline tracks improvement but never decays toward a
+  regression — a baseline that follows a slow slide is what hides the slide.
+- An exception thrown by an alert callback is swallowed. Your pager being down is
+  not a reason for the agent to stop answering users.
+
 ### Agent-native: coding agents can check their own work
 
 - **`agentleak mcp` — the engine as MCP tools** (`agentleak[mcp]`). A coding

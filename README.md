@@ -277,6 +277,7 @@ there.
 
 - [Quickstart](docs/quickstart.md)
 - [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
+- [Trust page and monitoring](docs/trust-and-monitoring.md) — publish a verifiable score, and watch it over time
 - [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 283 bundled scenarios
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — coverage map, honest gaps, market position, roadmap
 - [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does

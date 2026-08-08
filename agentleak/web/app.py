@@ -50,6 +50,7 @@ from ..scenarios import SCENARIOS, list_scenarios, load_example_trace
 from ..scenarios.convert import normalize_upload
 from ..scenarios.packs import expand_pack, list_packs
 from .docs_content import agent_instructions, llms_full, llms_index, official_platform_card
+from .trust import badge_state, badge_svg, public_summary
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _SITE_URL = "https://www.agentleak.org"
@@ -608,7 +609,13 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         _serve_ui = os.environ.get("AGENTLEAK_NO_UI", "0") != "1"
     try:
         from fastapi import Body, Cookie, Depends, FastAPI, Header, HTTPException
-        from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+        from fastapi.responses import (
+            FileResponse,
+            HTMLResponse,
+            JSONResponse,
+            PlainTextResponse,
+            Response,
+        )
         from fastapi.staticfiles import StaticFiles
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(_GUI_IMPORT_ERROR) from exc
@@ -1232,6 +1239,61 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def leaderboard(user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
         """The user's agents ranked by their latest AgentRisk result."""
         return {"entries": db.leaderboard(owner_id=user["id"])}
+
+    # -- public trust page ---------------------------------------------
+    # No auth: the whole point is that a stranger can check the number. Only a
+    # project its owner explicitly published is reachable, and only the verdict
+    # is exposed — never the findings, which name real values.
+    @app.get("/api/public/agents/{slug}")
+    def public_agent(slug: str) -> dict[str, Any]:
+        project = db.project_by_slug(slug)
+        if not project:
+            raise HTTPException(status_code=404, detail="No published agent with that name")
+        runs = db.list_runs(project["id"], limit=20)
+        # list_runs returns light summaries without the report body, and the
+        # report is where `detection` lives. Fetching the latest one in full is
+        # what lets the page name the tiers that actually ran — without it the
+        # page would quietly claim less scrutiny than it should, or none.
+        if runs:
+            full = db.get_run(runs[0]["id"])
+            if full:
+                runs = [full, *runs[1:]]
+        return public_summary(project, runs)
+
+    @app.get("/a/{slug}/badge.svg", include_in_schema=False)
+    def public_badge(slug: str) -> Response:
+        """The README badge. Always the latest run, never the best one."""
+        project = db.project_by_slug(slug)
+        runs = db.list_runs(project["id"], limit=1) if project else []
+        latest = db.get_run(runs[0]["id"]) if runs else None
+        svg = badge_svg(badge_state(latest))
+        return Response(
+            content=svg,
+            media_type="image/svg+xml",
+            # Short cache: a badge that outlives the run it describes is the
+            # failure this feature exists to avoid. GitHub's proxy caches on
+            # top of this anyway; no need to help it hold a stale score.
+            headers={"Cache-Control": "public, max-age=300, must-revalidate"},
+        )
+
+    @app.post("/api/projects/{pid}/publish")
+    def publish_project(
+        pid: str,
+        payload: dict[str, Any] = Body(default={}),
+        user: dict[str, Any] = Depends(require_user),
+    ) -> dict[str, Any]:
+        """Publish or unpublish a trust page. Owner-only, and always deliberate."""
+        project = db.get_project(pid)
+        if not project or project.get("owner_id") not in ("", user["id"]):
+            raise HTTPException(status_code=404, detail="Project not found")
+        requested = str(payload.get("slug", "")).strip()
+        slug = db.set_public_slug(pid, requested)
+        return {
+            "slug": slug,
+            "published": bool(slug),
+            "url": f"{_SITE_URL}/a/{slug}" if slug else "",
+            "badge": f"{_SITE_URL}/a/{slug}/badge.svg" if slug else "",
+        }
 
     # -- stateless playground analysis ---------------------------------
     @app.post("/api/analyze")

@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -233,6 +234,16 @@ class Store:
         # Agent card (A2A-style identity + code source) — added in 0.9.
         if "agent_card" not in proj_cols:
             c.execute("ALTER TABLE projects ADD COLUMN agent_card TEXT DEFAULT ''")
+        # Public trust page (added in 0.11). Opt-in and off by default: a score
+        # is the project owner's to publish, never something a run does for
+        # them. The slug is separate from the project id so a public URL never
+        # leaks an internal identifier, and so it can be changed without
+        # breaking the run history behind it.
+        if "public_slug" not in proj_cols:
+            c.execute("ALTER TABLE projects ADD COLUMN public_slug TEXT DEFAULT ''")
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug "
+                      "ON projects(public_slug) WHERE public_slug != ''")
+
         # Admin console: roles + account state (added in 0.10).
         user_cols = {r["name"] for r in c.execute("PRAGMA table_info(users)")}
         if "is_admin" not in user_cols:
@@ -963,6 +974,35 @@ class Store:
             return c.execute("DELETE FROM code_scans WHERE id=?", (sid,)).rowcount > 0
 
     # -- runs -----------------------------------------------------------
+    # -- public trust page ------------------------------------------------
+    def set_public_slug(self, pid: str, slug: str) -> str:
+        """Publish (or unpublish, with an empty slug) a project's trust page.
+
+        Returns the slug actually stored, which may differ from the one asked
+        for if it was taken. Publishing is a deliberate act by the owner: a run
+        never turns itself public as a side effect of being recorded.
+        """
+        slug = re.sub(r"[^a-z0-9-]+", "-", slug.strip().lower()).strip("-")[:48]
+        if not slug:
+            with self._conn() as c:
+                c.execute("UPDATE projects SET public_slug='' WHERE id=?", (pid,))
+            return ""
+        with self._conn() as c:
+            taken = c.execute(
+                "SELECT id FROM projects WHERE public_slug=? AND id!=?", (slug, pid)
+            ).fetchone()
+            if taken:
+                slug = f"{slug}-{pid[:6]}"
+            c.execute("UPDATE projects SET public_slug=? WHERE id=?", (slug, pid))
+        return slug
+
+    def project_by_slug(self, slug: str) -> dict[str, Any] | None:
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT * FROM projects WHERE public_slug=? AND public_slug!=''", (slug,)
+            ).fetchone()
+        return self._project_row(row) if row else None
+
     def create_run(
         self,
         project_id: str,
@@ -1230,6 +1270,7 @@ class Store:
             "owner_id": row["owner_id"] if "owner_id" in keys else "",
             "config": json.loads(row["config"]),
             "agent_card": json.loads(card_raw) if card_raw else None,
+            "public_slug": row["public_slug"] if "public_slug" in keys else "",
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
