@@ -10,15 +10,26 @@ error that only surfaces when someone is trying to reproduce a bug report.
 from __future__ import annotations
 
 import pathlib
-
-import tomllib
+import re
 
 from agentleak import __version__
 
 
+def _declared_version(text: str) -> str:
+    """Read `version` out of pyproject without needing a TOML parser.
+
+    `tomllib` only arrives in 3.11 and this package supports 3.10, so a test
+    that imports it does not run on the oldest Python we promise to work on —
+    which is the one where a version mismatch is least likely to be noticed.
+    """
+    match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
+    assert match, "no top-level `version` line found in pyproject.toml"
+    return match.group(1)
+
+
 def test_the_declared_version_matches_the_packaged_one() -> None:
     pyproject = pathlib.Path(__file__).resolve().parents[1] / "pyproject.toml"
-    declared = tomllib.loads(pyproject.read_text())["project"]["version"]
+    declared = _declared_version(pyproject.read_text())
     assert declared == __version__, (
         f"pyproject says {declared}, agentleak.__version__ says {__version__}. "
         "A release would publish one number and report the other."

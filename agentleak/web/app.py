@@ -50,7 +50,7 @@ from ..scenarios import SCENARIOS, list_scenarios, load_example_trace
 from ..scenarios.convert import normalize_upload
 from ..scenarios.packs import expand_pack, list_packs
 from .docs_content import agent_instructions, llms_full, llms_index, official_platform_card
-from .trust import badge_state, badge_svg, public_summary
+from .trust import badge_state, badge_svg, public_summary, trust_page_html
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _SITE_URL = "https://www.agentleak.org"
@@ -1259,6 +1259,29 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             if full:
                 runs = [full, *runs[1:]]
         return public_summary(project, runs)
+
+    @app.get("/a/{slug}", include_in_schema=False)
+    def public_page(slug: str) -> Response:
+        """The page the badge links to — where the claim gets checked.
+
+        Server-rendered rather than left to the SPA: the badge is worth nothing
+        if following it lands on an empty shell, and a link preview or a crawler
+        never runs the JavaScript that would fill one in.
+        """
+        project = db.project_by_slug(slug)
+        if not project:
+            raise HTTPException(status_code=404, detail="No published agent with that name")
+        runs = db.list_runs(project["id"], limit=20)
+        if runs:
+            full = db.get_run(runs[0]["id"])
+            if full:
+                runs = [full, *runs[1:]]
+        html = trust_page_html(public_summary(project, runs), site_url=_SITE_URL)
+        return Response(
+            content=html,
+            media_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "public, max-age=300, must-revalidate"},
+        )
 
     @app.get("/a/{slug}/badge.svg", include_in_schema=False)
     def public_badge(slug: str) -> Response:

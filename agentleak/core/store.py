@@ -71,7 +71,16 @@ class Store:
     """Thread-safe-enough SQLite store (one connection per call)."""
 
     def __init__(self, path: str | None = None) -> None:
-        self.path = path or str(data_dir() / "agentleak.db")
+        # AGENTLEAK_DB names the file; AGENTLEAK_HOME names the directory it
+        # sits in. Honouring both matters because a deployment that sets only
+        # the first would otherwise land on the default path inside the
+        # container — that is, off the mounted volume, where the database is
+        # silently destroyed by the next rebuild while the setting that was
+        # supposed to prevent exactly that sits there looking authoritative.
+        self.path = path or os.environ.get("AGENTLEAK_DB") or str(data_dir() / "agentleak.db")
+        parent = Path(self.path).parent
+        if str(parent):
+            parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
     def _conn(self) -> sqlite3.Connection:

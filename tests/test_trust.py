@@ -129,3 +129,88 @@ def test_a_project_with_no_runs_still_renders() -> None:
     summary = public_summary({"name": "a", "public_slug": "a"}, [])
     assert summary["latest"] is None
     assert summary["badge"]["message"] == "not checked"
+
+
+# ------------------------------------------------- the page behind the badge
+def page(**kw: Any) -> str:
+    from agentleak.web.trust import trust_page_html
+    runs = kw.pop("runs", None)
+    if runs is None:
+        runs = [run(**kw)] if kw or not kw.get("empty") else []
+    return trust_page_html(
+        public_summary({"name": "Support bot", "public_slug": "support-bot"}, runs),
+        site_url="https://www.agentleak.org",
+    )
+
+
+def test_the_page_shows_the_verdict_and_never_a_finding() -> None:
+    """Following the badge must not hand over the private values it measured."""
+    html = page()
+    assert "95" in html and "Pass" in html
+    assert "sk-**" not in html
+
+
+def test_the_page_needs_nothing_from_the_network() -> None:
+    """A page that renders blank without a CDN cannot be used to check a claim."""
+    html = page()
+    for forbidden in ("<script", "@import", "src=", "cdn.", "fonts.googleapis"):
+        assert forbidden not in html, f"page reaches for {forbidden}"
+
+
+def test_a_stale_page_says_so_in_words_not_just_colour() -> None:
+    html = page(days_ago=STALE_AFTER_DAYS + 12)
+    assert "stale" in html.lower()
+
+
+def test_a_degraded_run_is_called_out_on_the_page() -> None:
+    assert "degraded" in page(degraded=True).lower()
+
+
+def test_the_page_admits_it_shows_the_latest_run() -> None:
+    """Someone checking a badge deserves to know it was not cherry-picked."""
+    assert "latest run, not the best" in page()
+
+
+def test_the_page_names_the_tiers_that_ran() -> None:
+    assert "entropy" in page(tiers=["regex", "entropy"])
+
+
+def test_a_hostile_project_name_cannot_inject_markup() -> None:
+    from agentleak.web.trust import trust_page_html
+    html = trust_page_html(
+        public_summary({"name": "<script>x</script>", "public_slug": "a"}, [run()]),
+        site_url="",
+    )
+    assert "<script>x</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_a_project_with_no_runs_still_renders_a_page() -> None:
+    from agentleak.web.trust import trust_page_html
+    html = trust_page_html(public_summary({"name": "a", "public_slug": "a"}, []), site_url="")
+    assert "Not checked" in html
+
+
+def test_one_run_draws_no_trend_line() -> None:
+    """A line through a single point invents a direction that was never measured."""
+    assert "<polyline" not in page(runs=[run()])
+    assert "<polyline" in page(runs=[run(score=90), run(score=70, days_ago=1)])
+
+
+def test_the_page_offers_the_badge_snippet_it_describes() -> None:
+    html = page()
+    assert "/a/support-bot/badge.svg" in html
+
+
+def test_the_age_reads_like_something_a_person_would_say() -> None:
+    from agentleak.web.trust import _age_phrase
+    assert _age_phrase(0.4) == "today"
+    assert _age_phrase(1.2) == "yesterday"
+    assert _age_phrase(9.9) == "9 days ago"
+
+
+def test_the_page_uses_no_definition_tag_outside_a_list() -> None:
+    """A <dt> loose in the body is invalid markup; browsers style it unpredictably."""
+    html = page(runs=[run(score=90), run(score=70, days_ago=1)])
+    assert html.count("<dt") == html.count("</dt>")
+    assert "<dl>" in html and html.index("<dl>") < html.index("<dt")

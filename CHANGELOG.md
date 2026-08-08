@@ -6,6 +6,37 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-08-08
+
+### The page the badge points at
+
+- **`/a/<slug>` now serves a real page.** 0.11.0 shipped the badge and the JSON
+  but no page, so the URL the publish endpoint handed out — the one URL the badge
+  exists to make checkable — landed on a 404. It is server-rendered in the
+  package rather than the marketing site, so the data and the honesty rules stay
+  together, a crawler or link preview sees the actual verdict instead of an empty
+  shell, and anyone self-hosting gets a working link rather than a dead one.
+- The page carries its own caveats in words, not just colour: stale scores,
+  degraded runs, and a standing note that this is the latest run rather than the
+  best one. It shows the verdict, the date, the tiers and a trend — never a
+  finding.
+- The trend is drawn on a fixed 0–100 axis. An auto-scaled one turns a wobble
+  between 97 and 99 into a cliff, which is the graph contradicting the numbers
+  printed beside it. Fewer than two runs draws no line at all, because a line
+  through one point invents a direction nobody measured.
+
+### Fixed
+
+- **`AGENTLEAK_DB` is now honoured.** It was set in the Docker image and read by
+  nothing: `Store()` looked only at `AGENTLEAK_HOME`. Production was correct by
+  way of a second variable, but a deployment that set only the documented one
+  would have written its database to a container-local path and lost every
+  account, run and published page on the next rebuild — silently, with the
+  setting meant to prevent that sitting there looking authoritative.
+- The version-consistency test imported `tomllib`, which is stdlib only from 3.11
+  while the package supports 3.10 — so it failed on the oldest Python we promise
+  to support, which is exactly where a mismatch is least likely to be noticed.
+
 ## [0.11.0] - 2026-08-08
 
 ### A score others can check, and one that keeps being checked
@@ -416,6 +447,7 @@ First public release.
 - Local platform: SQLite persistence (projects + runs), SDK client, compare/stats.
 - Web GUI (React + shadcn/ui), CLI (`init/run/report/validate/scenarios/serve`).
 
+[0.11.1]: https://github.com/yagobski/agentleak/releases/tag/v0.11.1
 [0.11.0]: https://github.com/yagobski/agentleak/releases/tag/v0.11.0
 [0.10.0]: https://github.com/yagobski/agentleak/releases/tag/v0.10.0
 [0.6.0]: https://github.com/yagobski/agentleak/releases/tag/v0.6.0

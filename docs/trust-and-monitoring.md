@@ -55,8 +55,15 @@ The verdict, the score, the date, the tiers that ran, and a 20-point trend line.
 Never the findings — those name real values from someone's private data. The
 point of the page is that a score was measured and by what, not what it found.
 
-The SVG is self-contained: no scripts, no external fonts, no remote images.
-GitHub's image proxy would silently render any of those as a broken badge.
+The page states its own caveats in words rather than leaving them to a colour: a
+stale score, a degraded run, and a standing note that this is the latest result
+and not the best one.
+
+Both the page and the badge are self-contained — no scripts, no external fonts,
+no remote images. GitHub's image proxy would render any of those as a broken
+badge, and a page that needs a CDN to say what it means cannot be used to check
+a claim. Both are rendered by the package rather than the marketing site, so a
+self-hosted install gets a working link too.
 
 ---
 
