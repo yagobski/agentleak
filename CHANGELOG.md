@@ -6,6 +6,26 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-08-09
+
+### Fixed
+
+- **The CLI help deleted the word the reader needed.** Typer renders help through
+  rich, and rich reads `[gui]` as a style tag — so "requires the `[gui]` extra"
+  printed as "requires the  extra". It hit `serve` and `mcp`, the two commands a
+  new user reaches before they have the extra installed, and the help now gives
+  the whole install command. A test renders every command and fails on the gap a
+  swallowed tag leaves behind.
+- **The agent card is served at the names agents actually try.** A2A renamed the
+  file from `agent.json` to `agent-card.json`; only the new name was served, so a
+  client probing the old one — or the plugin-style convention — found nothing.
+  All three names now return the same document.
+
+### Added
+
+- The trust page carries the AgentLeak mark, drawn in `currentColor` so one copy
+  serves both themes.
+
 ## [0.11.2] - 2026-08-08
 
 ### The trust page now looks like the site it is served from

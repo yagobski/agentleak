@@ -251,8 +251,9 @@ body{margin:0;background:var(--paper);color:var(--ink);
 a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
 a:hover{border-color:var(--muted)}
 .wrap{max-width:var(--wrap);margin:0 auto;padding:72px var(--gutter) 96px}
-.eyebrow{margin:0 0 14px;color:var(--accent);
+.eyebrow{display:flex;align-items:center;gap:8px;margin:0 0 14px;color:var(--accent);
  font:500 10px/1 "JetBrains Mono",monospace;letter-spacing:.09em;text-transform:uppercase}
+.mark{flex:0 0 auto;display:block}
 h1{margin:0 0 6px;font-size:34px;line-height:1.1;font-weight:500;letter-spacing:-.03em}
 .slug{margin:0 0 44px;color:var(--muted);font:400 12px/1 "JetBrains Mono",monospace}
 .score{display:flex;align-items:baseline;gap:14px;margin:0 0 14px}
@@ -284,6 +285,18 @@ pre{margin:0 0 26px;padding:16px 18px;overflow-x:auto;
  .wrap{padding-top:52px}dl{grid-template-columns:1fr}
  h1{font-size:27px}.score b{font-size:50px}}
 """
+
+# The AgentLeak mark, drawn in currentColor so one copy serves both of the
+# site's themes — the brand ships a black file and a white file, and a page that
+# carries both palettes would otherwise need logic to pick between them. Only the
+# glyph: the wordmark would just repeat the line of text sitting next to it.
+_MARK = (
+    '<svg class="mark" viewBox="-6 71 266 292" width="15" height="16" '
+    'aria-hidden="true" focusable="false">'
+    '<path fill="currentColor" d="M254.055 120.935C254.055 120.935 221.678 112.525 189.301 99.4902C160.288 87.7168 136.32 73 136.32 73C136.32 73 112.773 88.1373 83.3397 99.4902C51.3832 112.525 19.0062 120.514 18.5857 120.935C16.0629 135.231 14.8014 150.368 14.8014 165.506C14.8014 168.869 14.8014 170.551 15.2219 173.915C16.9038 191.996 48.8603 183.166 60.2133 178.961C61.4747 178.54 63.1566 177.7 64.4181 177.279C68.6229 175.597 72.8277 173.915 77.4529 171.813C86.283 168.028 95.5336 163.403 105.205 158.357C119.08 150.789 133.377 142.379 145.571 132.708C127.49 157.096 88.8059 186.109 45.4965 204.61C34.564 209.236 19.4267 215.122 8.91471 214.702C-3.69969 214.281 0.505106 216.384 1.34607 216.804C14.8014 223.532 22.3701 233.203 26.1544 242.033C28.6773 247.92 37.5073 257.17 85.0216 232.782C111.932 218.907 146.412 199.144 181.312 171.392C182.573 170.551 183.834 169.29 185.096 168.449C192.664 162.142 200.654 155.835 208.222 149.107C190.142 185.689 139.264 228.157 77.8734 259.693C58.5313 269.785 53.4856 271.046 45.076 273.989C33.723 277.774 22.7905 276.092 22.7905 278.194C22.3701 281.138 37.0869 284.081 52.2242 299.218C66.1 313.094 101 297.116 115.717 289.127C132.115 279.876 161.549 261.375 181.312 244.135C185.096 240.772 188.46 237.408 191.824 234.044C177.107 268.944 145.571 294.172 103.943 317.719C93.4312 323.606 75.771 328.652 68.2024 330.754C66.1 331.595 63.1566 331.595 63.1566 332.857C63.1566 335.38 79.9758 337.061 90.9083 342.948C106.046 350.937 116.558 355.142 120.342 356.404C125.388 358.506 130.854 359.767 136.32 361.029C208.643 345.051 257.418 262.216 257.418 165.085C257.839 150.368 256.577 135.231 254.055 120.935Z"/>'
+    "</svg>"
+)
+
 
 # tone -> the site's severity ramp. The badge keeps the shields palette; this is
 # the same decision wearing the site's clothes.
@@ -425,7 +438,7 @@ covering what its agent trace exposed and which detection tiers looked.">
 <meta name="robots" content="index,follow">
 <style>{_font_faces()}{_PAGE_CSS}</style>
 </head><body><main class="wrap">
-  <p class="eyebrow">Measured by AgentLeak</p>
+  <p class="eyebrow">{_MARK}<span>Measured by AgentLeak</span></p>
   <h1>{name}</h1>
   <p class="slug">{slug}</p>
 

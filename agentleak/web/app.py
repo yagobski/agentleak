@@ -1066,6 +1066,17 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         """
         return official_platform_card(_public_base_url(request), __version__)
 
+    # A2A renamed this file from `agent.json` to `agent-card.json`, and plenty
+    # of clients still probe the old name — as do agents trying the OpenAI
+    # plugin convention. Discovery only works if the document sits where the
+    # caller looks, and serving one dict from three paths costs nothing next to
+    # being undiscoverable to a client that guessed an older spelling.
+    @app.get("/.well-known/agent.json", include_in_schema=False)
+    @app.get("/agent.json", include_in_schema=False)
+    def platform_agent_card_aliases(request: Request) -> dict[str, Any]:
+        """The same card, at the names agents actually try."""
+        return official_platform_card(_public_base_url(request), __version__)
+
     @app.get("/api/meta")
     def meta() -> dict[str, Any]:
         return {

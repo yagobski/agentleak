@@ -505,7 +505,7 @@ def admin_list_users() -> None:
 # ----------------------------------------------------------------------
 @app.command()
 def mcp() -> None:
-    """Serve AgentLeak to coding agents over MCP (requires the [mcp] extra).
+    """Serve AgentLeak to coding agents over MCP (pip install 'agentleak\\[mcp]').
 
     Point an MCP-capable agent at this and it gets `privacy_preflight` and the
     scan/trace/redact primitives as native tools. Everything runs locally.
@@ -530,7 +530,7 @@ def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind."),
     no_browser: bool = typer.Option(False, "--no-browser", help="Don't open a browser."),
 ) -> None:
-    """Launch the local web GUI (requires the [gui] extra)."""
+    """Launch the local web GUI (pip install 'agentleak\\[gui]')."""
     try:
         from .web import run_server
     except Exception as exc:  # noqa: BLE001

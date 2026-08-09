@@ -290,3 +290,13 @@ def test_the_trend_axis_is_labelled_so_the_scale_is_not_guessed() -> None:
     svg = _trend_svg([{"at": 0, "score": 90}, {"at": 0, "score": 70}])
     for label in (">100<", ">50<", ">0<"):
         assert label in svg, f"axis label {label} missing"
+
+
+def test_the_page_carries_the_agentleak_mark() -> None:
+    """The brand ships a black file and a white file; the page carries both
+    palettes, so the mark is drawn in currentColor rather than picked at render."""
+    html = page()
+    assert 'class="mark"' in html
+    assert 'fill="currentColor"' in html
+    assert 'aria-hidden="true"' in html, "a decorative mark should not be announced twice"
+    assert "Measured by AgentLeak" in html
