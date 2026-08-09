@@ -11,10 +11,12 @@ Escaping is `\\[gui]`, which rich prints as `[gui]`.
 
 from __future__ import annotations
 
+import pathlib
 import re
 
 from typer.testing import CliRunner
 
+from agentleak import cli
 from agentleak.cli import app
 
 runner = CliRunner()
@@ -44,15 +46,33 @@ def test_every_command_renders_its_help() -> None:
         assert _help(command).strip(), f"`{command} --help` printed nothing"
 
 
-def test_no_help_text_has_a_hole_where_a_word_should_be() -> None:
-    """A swallowed tag leaves a doubled space mid-sentence. Catch the shape."""
-    offenders = []
-    for command in [None, *COMMANDS]:
-        text = _help(*( [] if command is None else [command] ))
-        # Collapse the box-drawing padding rich uses to align the right border,
-        # then look for a gap left mid-sentence between two lowercase words.
-        for line in text.splitlines():
-            body = re.sub(r"^[│|]\s?|\s*[│|]$", "", line)
-            if re.search(r"[a-z],?\s{2}[a-z]", body.strip()):
-                offenders.append((command or "<root>", body.strip()))
-    assert not offenders, f"help text looks like a tag was eaten: {offenders[:4]}"
+def test_no_help_string_contains_an_unescaped_markup_tag() -> None:
+    """Check the cause, not the shape of the damage.
+
+    The first version of this matched rendered output for a gap mid-sentence.
+    That passed locally and failed on CI, where rich emits ANSI colour and pads
+    option tables with runs of spaces — a false failure, which is worse than no
+    test. The invariant is in the source: a `[word]` in help text is a rich tag
+    unless it is escaped, so look for that directly.
+    """
+    source = pathlib.Path(cli.__file__).read_text(encoding="utf-8")
+    offenders = [
+        match.group(0)
+        for match in re.finditer(r'(?<!\\)\[[a-z][a-z0-9_-]*\]', source)
+        if _inside_help_text(source, match.start())
+    ]
+    assert not offenders, (
+        f"rich will silently delete these from the help output: {sorted(set(offenders))}. "
+        "Escape them as \\\\[gui]."
+    )
+
+
+def _inside_help_text(source: str, index: int) -> bool:
+    """Whether this offset sits in a docstring or a `help=` string.
+
+    A `[str]` in a type annotation is fine; only text that reaches rich matters.
+    """
+    line_start = source.rfind("\n", 0, index) + 1
+    line = source[line_start : source.find("\n", index)]
+    stripped = line.lstrip()
+    return stripped.startswith('"""') or 'help="' in line or stripped.startswith(('"', "'"))
