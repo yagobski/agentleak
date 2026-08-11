@@ -38,6 +38,7 @@ from ..core.agentcard import AgentCard, UnsafeURLError, fetch_agent_card, parse_
 from ..core.agentrisk import dominates
 from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
+from ..core.compliance import FRAMEWORKS
 from ..core.config import Config
 from ..core.report import AnalysisResult
 from ..core.runner import AgentLeakRunner
@@ -1083,6 +1084,17 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "version": __version__,
             "channels": list(CHANNELS),
             "detectors": list(BUILTIN_DETECTORS),
+            # The counts the documentation and the marketing site quote, taken
+            # from the engine rather than restated. Every number published about
+            # this software should be checkable against the running software in
+            # one request — a claim nobody can verify is a claim that drifts, and
+            # ours already had (the site advertised 7 frameworks against 14).
+            "compliance_frameworks": [f.id for f in FRAMEWORKS],
+            "scenarios": {
+                "total": len(SCENARIOS) + sum(p["count"] for p in list_packs()),
+                "builtin": len(SCENARIOS),
+                "packs": {p["id"]: p["count"] for p in list_packs()},
+            },
             "agent_types": registry.frameworks(),
             "agent_card_url": "/.well-known/agent-card.json",
             "documentation": {

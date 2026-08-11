@@ -6,6 +6,21 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-08-09
+
+### Every published number now comes from the software
+
+- **`/api/meta` reports the compliance frameworks and the scenario counts**
+  alongside the channels and version it already carried. The site advertised
+  "all 7 compliance frameworks" while the engine evaluated 14 — a figure written
+  once by hand and left behind as the code moved. Understating is the harmless
+  direction, but the same mechanism overstates just as easily, and on a tool
+  whose pitch is *measured, not asserted*, a claim nobody can check is the
+  expensive kind of wrong. Any number on the site can now be verified against
+  the running software in one request.
+- `CITATION.cff`, so the software and the benchmark paper behind it can be cited
+  properly.
+
 ## [0.11.3] - 2026-08-09
 
 ### Fixed
@@ -490,6 +505,8 @@ First public release.
 - Local platform: SQLite persistence (projects + runs), SDK client, compare/stats.
 - Web GUI (React + shadcn/ui), CLI (`init/run/report/validate/scenarios/serve`).
 
+[0.11.4]: https://github.com/yagobski/agentleak/releases/tag/v0.11.4
+[0.11.3]: https://github.com/yagobski/agentleak/releases/tag/v0.11.3
 [0.11.2]: https://github.com/yagobski/agentleak/releases/tag/v0.11.2
 [0.11.1]: https://github.com/yagobski/agentleak/releases/tag/v0.11.1
 [0.11.0]: https://github.com/yagobski/agentleak/releases/tag/v0.11.0

@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+title: "AgentLeak: privacy-leakage testing for agentic AI systems"
+message: >-
+  If you use this software in your research, please cite both the software
+  itself and the benchmark paper it implements.
+type: software
+authors:
+  - given-names: Faouzi
+    family-names: El Yagoubi
+  - given-names: Godwin
+    family-names: Badu-Marfo
+  - given-names: Ranwa
+    family-names: Al Mallah
+repository-code: "https://github.com/yagobski/agentleak"
+url: "https://www.agentleak.org"
+abstract: >-
+  AgentLeak audits a complete agent execution trace for privacy leakage across
+  eight channels — user input, tool calls, tool responses, shared memory,
+  inter-agent messages, logs, generated files and the final answer — and scores
+  it deterministically. An agent can return a clean answer while private data
+  leaves through a channel nobody reads; across the 283 scenarios bundled with
+  the tool, every leak behaves that way. Scoring uses exact ground-truth
+  matching rather than a judge model, so the same trace always yields the same
+  number.
+keywords:
+  - privacy
+  - agentic AI
+  - multi-agent systems
+  - data leakage
+  - software testing
+  - compliance
+license: MIT
+version: 0.11.4
+date-released: "2026-08-09"
+preferred-citation:
+  type: article
+  title: "AgentLeak: measuring privacy leakage in agentic AI systems"
+  authors:
+    - given-names: Faouzi
+      family-names: El Yagoubi
+    - given-names: Godwin
+      family-names: Badu-Marfo
+    - given-names: Ranwa
+      family-names: Al Mallah
+  url: "https://arxiv.org/abs/2602.11510"
+  year: 2026
