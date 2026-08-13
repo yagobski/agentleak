@@ -2,23 +2,36 @@
   <a href="https://www.agentleak.org">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-white.svg">
-      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-dark.svg">
-      <img alt="AgentLeak" src="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-dark.svg" width="280">
+      <img alt="AgentLeak" src="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-dark.svg" width="340">
     </picture>
   </a>
 </p>
 
-# AgentLeak
+<p align="center">
+  <b>Privacy-leakage testing for AI agents.</b><br>
+  Audit every execution channel, score it deterministically, gate it in CI.
+</p>
 
-**Open-source privacy-leakage testing for AI agents.** MIT.
+<p align="center">
+  <a href="https://pypi.org/project/agentleak/"><img alt="PyPI" src="https://img.shields.io/pypi/v/agentleak?style=flat-square&color=0969da&labelColor=24292f&logo=pypi&logoColor=white"></a>
+  <a href="https://pypi.org/project/agentleak/"><img alt="Python" src="https://img.shields.io/pypi/pyversions/agentleak?style=flat-square&color=0969da&labelColor=24292f&logo=python&logoColor=white"></a>
+  <a href="https://github.com/yagobski/agentleak/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/yagobski/agentleak/ci.yml?branch=main&style=flat-square&label=tests&color=1a7f37&labelColor=24292f&logo=githubactions&logoColor=white"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-57606a?style=flat-square&labelColor=24292f"></a>
+  <a href="https://arxiv.org/abs/2602.11510"><img alt="Paper" src="https://img.shields.io/badge/arXiv-2602.11510-b31b1b?style=flat-square&labelColor=24292f"></a>
+</p>
 
-[![PyPI](https://img.shields.io/pypi/v/agentleak)](https://pypi.org/project/agentleak/)
-[![Python](https://img.shields.io/pypi/pyversions/agentleak)](https://pypi.org/project/agentleak/)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Website](https://img.shields.io/badge/website-agentleak.org-black)](https://www.agentleak.org)
+<p align="center">
+  <a href="docs/quickstart.md">Quickstart</a> &nbsp;·&nbsp;
+  <a href="https://www.agentleak.org/docs">Documentation</a> &nbsp;·&nbsp;
+  <a href="https://www.agentleak.org/benchmark">Benchmark</a> &nbsp;·&nbsp;
+  <a href="docs/scoring.md">Scoring</a> &nbsp;·&nbsp;
+  <a href="https://www.agentleak.org">Website</a>
+</p>
+
+---
 
 Your agent's *final answer* can look perfectly clean while sensitive data leaks
-through its **tool calls, shared memory, inter-agent messages, and logs** —
+through its **tool calls, shared memory, inter-agent messages, and logs**, the
 channels that output-only audits never inspect. AgentLeak tests for exactly
 that, locally, before you ship.
 
@@ -36,7 +49,7 @@ contained — that's why RI is 0.44, not 1.0.)
 ```
 
 A trace goes in, a privacy report comes out. Leakage is scored with
-**[AgentRisk](docs/scoring.md)** — a severity-weighted, density-normalized Risk
+**[AgentRisk](docs/scoring.md)**, a severity-weighted, density-normalized Risk
 Index grounded in GDPR Article 9 and Québec Law 25. No cloud, no LLM dependency,
 no data ever leaves your machine.
 
@@ -59,11 +72,11 @@ runtime defenses, the GitHub Action and the local web UI.
 ## Install
 
 ```bash
-pip install agentleak                 # core
-pip install "agentleak[gui]"       # + local web UI
-pip install "agentleak[mcp]"       # + MCP tools for coding agents
-pip install "agentleak[presidio]"  # + Presidio
-pip install "agentleak[full]"      # everything above
+pip install agentleak               # core
+pip install "agentleak[gui]"        # + local web UI
+pip install "agentleak[mcp]"        # + MCP tools for coding agents
+pip install "agentleak[presidio]"   # + Presidio
+pip install "agentleak[full]"       # everything above
 ```
 
 From source:
@@ -81,8 +94,9 @@ pip install 'agentleak[gui]'
 agentleak serve              # opens http://127.0.0.1:8000/app/
 ```
 
-A full local platform — React + Tailwind + **shadcn/ui** (black theme), fully
-self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
+A full local platform built with React, Tailwind and **shadcn/ui** (black
+theme), fully self-contained (no CDN, self-hosted fonts), with a left-sidebar
+navigation:
 
 - **Projects** — each is an agent under test. **Run a real agent** against any
   scenario, or use the built-in scripted agent offline. Connect your own agent
@@ -99,15 +113,15 @@ self-contained (no CDN, self-hosted fonts), with a left-sidebar navigation:
 - **Leak flow & topology** — every run renders an **agent topology diagram**
   (who talks to whom, leak-carrying edges flagged by severity) and **leak paths**
   that trace each secret from where it entered the system through every agent that
-  handled it to where it was disclosed — so you can debug *where* a multi-agent
+  handled it to where it was disclosed, so you can debug *where* a multi-agent
   leak originated.
 - **Playground** — score any trace instantly, nothing saved.
 - **Scenarios** — a managed test library: search/filter built-in scenarios,
-  **upload** your own (AgentLeak traces, AgentLeak specs, or ai4privacy records —
+  **upload** your own (AgentLeak traces, AgentLeak specs, or ai4privacy records,
   auto-detected and converted), and **import packs** (the 36-scenario *AgentLeak
   Bench* and *PII Probes*). One click runs any of them in the Playground.
 
-Connect an agent in one line — `agentleak.watch()` works for **any** framework
+Connect an agent in one line. `agentleak.watch()` works for **any** framework
 (LangChain, LangGraph, CrewAI, OpenAI Swarm / Agents SDK, Google ADK,
 computer-use / coding agents like OpenHands & Cline, or plain Python). One
 context manager: it records, analyzes on exit, and uploads to the platform if a
@@ -227,18 +241,19 @@ privacy_score = round(100 × (1 − RI))
 RI is reported globally **and per channel**, so a clean final answer still
 surfaces the `tool_call`/`shared_memory`/`log` leaks behind it. It satisfies five
 formal properties (boundedness, monotonicity, severity sensitivity, scale
-invariance, rank robustness) — checked in CI. See [docs/scoring.md](docs/scoring.md).
+invariance, rank robustness), all checked in CI. See
+[docs/scoring.md](docs/scoring.md).
 
 ## Compliance frameworks
 
-Every report maps its findings to the controls of the frameworks privacy
-auditors care about — **GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10,
-  the EU AI Act, HIPAA, PCI-DSS, FERPA, COPPA, GLBA, TCPA, insurance, telecom and
-  real-estate profiles** — so you see which controls a run puts at
-  risk (e.g. a leaked health identifier trips GDPR Art. 9; a leaked key trips
-  Art. 32). Shown in the
-  UI, the HTML/Markdown exports, the CLI, and the JSON report. It flags controls to
-  review — not legal certification. See [docs/compliance.md](docs/compliance.md).
+Every report maps its findings to the controls of the 14 frameworks privacy
+auditors care about: **GDPR, Québec Law 25, NIST AI RMF, OWASP LLM Top 10, the
+EU AI Act, HIPAA, PCI-DSS, FERPA, COPPA, GLBA, TCPA, insurance, telecom and
+real-estate profiles**. You see which controls a run puts at risk, so a leaked
+health identifier trips GDPR Art. 9 and a leaked key trips Art. 32. The mapping
+appears in the UI, the HTML/Markdown exports, the CLI and the JSON report. It
+flags controls to review, and is not a legal certification. See
+[docs/compliance.md](docs/compliance.md).
 
 The sector profiles are explicit in the report as **Insurance**, **Telecom / CPNI**
 and **Real-estate**, alongside **FERPA**, **COPPA**, **GLBA** and **TCPA**. They are
@@ -246,7 +261,7 @@ technical evidence mappings, not legal attestations.
 
 ## Integrations
 
-Agent frameworks are a **pluggable registry** — adding one is a single
+Agent frameworks are a **pluggable registry**. Adding one is a single
 `register()` call in `agentleak/integrations/registry.py`, and it shows up in the
 platform's project pickers and Connect snippets automatically. Built in:
 generic, LangChain, LangGraph, CrewAI, AutoGen, OpenAI Swarm / Agents SDK,
@@ -274,7 +289,7 @@ See [docs/integrations.md](docs/integrations.md).
 
 ## Privacy guarantees
 
-- **Detection & scoring are 100% local** — regex/dict detectors, a closed-form
+- **Detection and scoring are 100% local**: regex/dict detectors, a closed-form
   score, no LLM, no telemetry. Traces are analyzed in-process.
 - Reports show **masked** values (`TR********78`) by default.
 - Raw traces are not stored unless you opt in (`privacy.store_raw_traces`).
@@ -323,7 +338,7 @@ there.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Everything in this repository is MIT: use it,
+MIT, see [LICENSE](LICENSE). Everything in this repository is MIT: use it,
 fork it, ship it inside your own product.
 
 Two of the bundled scenario packs are derived from public research datasets and
