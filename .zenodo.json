@@ -1,0 +1,32 @@
+{
+  "title": "AgentLeak: privacy-leakage testing for agentic AI systems",
+  "description": "AgentLeak audits a complete agent execution trace for privacy leakage across eight channels — user input, tool calls, tool responses, shared memory, inter-agent messages, logs, generated files and the final answer — and scores it deterministically. An agent can return a clean answer while private data leaves through a channel nobody reads; across the 283 scenarios bundled with the tool, every leak behaves that way. Scoring uses exact ground-truth matching rather than a judge model, so the same trace always yields the same number.",
+  "creators": [
+    { "name": "El Yagoubi, Faouzi" },
+    { "name": "Badu-Marfo, Godwin" },
+    { "name": "Al Mallah, Ranwa" }
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "keywords": [
+    "privacy",
+    "agentic AI",
+    "multi-agent systems",
+    "data leakage",
+    "software testing",
+    "compliance"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://arxiv.org/abs/2602.11510",
+      "relation": "isSupplementTo",
+      "resource_type": "publication-preprint"
+    },
+    {
+      "identifier": "https://www.agentleak.org",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-softwaredocumentation"
+    }
+  ]
+}
