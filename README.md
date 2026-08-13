@@ -1,3 +1,13 @@
+<p align="center">
+  <a href="https://www.agentleak.org">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-white.svg">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-dark.svg">
+      <img alt="AgentLeak" src="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-dark.svg" width="280">
+    </picture>
+  </a>
+</p>
+
 # AgentLeak
 
 **Open-source privacy-leakage testing for AI agents.** MIT.
@@ -5,6 +15,7 @@
 [![PyPI](https://img.shields.io/pypi/v/agentleak)](https://pypi.org/project/agentleak/)
 [![Python](https://img.shields.io/pypi/pyversions/agentleak)](https://pypi.org/project/agentleak/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Website](https://img.shields.io/badge/website-agentleak.org-black)](https://www.agentleak.org)
 
 Your agent's *final answer* can look perfectly clean while sensitive data leaks
 through its **tool calls, shared memory, inter-agent messages, and logs** —
