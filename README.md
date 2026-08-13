@@ -36,16 +36,16 @@ channels that output-only audits never inspect. AgentLeak tests for exactly
 that, locally, before you ship.
 
 ```text
-Risk Index: 0.44 / 1.0   High risk
+Risk Index: 0.379 / 1.0   High risk   (privacy 62/100)
 
 Final output:   clean ✓
-Shared memory:  L4 — health identifier + diagnosis leaked ✗
-Inter-agent:    L4 — diagnosis leaked ✗
-Logs:           L2 — email leaked ✗
+Shared memory:  L4  health identifier + diagnosis leaked ✗
+Inter-agent:    L4  diagnosis leaked ✗
+Logs:           L2  email leaked ✗
 
 Key insight: the final answer appears safe, but sensitive data leaked through
 internal channels. (The SIN, medication and address the agent received stayed
-contained — that's why RI is 0.44, not 1.0.)
+contained, which is why RI is 0.379 and not 1.0.)
 ```
 
 A trace goes in, a privacy report comes out. Leakage is scored with

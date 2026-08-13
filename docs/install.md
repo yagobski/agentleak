@@ -120,7 +120,7 @@ Summarize in this shape:
 
 ```
 ✅ AgentLeak installed (version X.Y.Z)
-✅ Demo scan passed — Risk Index 0.44 on the bundled scenario
+✅ Demo scan passed — Risk Index 0.379 on the bundled healthcare scenario
 📁 Reports will be written to ./reports/
 ⬜ Not yet wired to your agent — tell me which framework you use
 ⬜ Optional: `pip install "agentleak[gui]"` then `agentleak serve` for the web dashboard
