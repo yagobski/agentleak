@@ -376,7 +376,7 @@ class TestScenarioGenChannelPaths:
 
     def test_to_dict_unknown_family_fallback(self):
         """AdversarialScenario.to_dict falls back to 'unknown' for a fabricated attack id."""
-        from agentleak.core.attacks import AdversaryLevel, Channel
+        from agentleak.core.attacks import AdversaryLevel, AttackChannel
         from agentleak.core.trace import Trace
         from agentleak.generators.scenario_gen import AdversarialScenario
         from agentleak.generators.vault import generate_vault
@@ -386,7 +386,7 @@ class TestScenarioGenChannelPaths:
             name="Fake",
             description="Fake attack class not in any family",
             adversary_level=AdversaryLevel.A0,
-            primary_channel=Channel.C1,
+            primary_channel=AttackChannel.C1,
             injection_surface="user_message",
             payload_template="test",
         )

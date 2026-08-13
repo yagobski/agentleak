@@ -6,6 +6,16 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **`agentleak.core.attacks.Channel` is now `AttackChannel`.** Two enums named
+  `Channel` lived in `agentleak.core`: the trace model's eight channels, and the
+  attack taxonomy's seven (the paper's `C1`-`C7`, which has no `user_input`
+  because a source is not a leak site). Reading either one you had to check
+  which import you were looking at. The taxonomy keeps the paper's names and
+  loses the collision. The exported `agentleak.Channel` is unchanged; only the
+  attack-taxonomy symbol moved.
+
 ## [0.11.4] - 2026-08-09
 
 ### Every published number now comes from the software
