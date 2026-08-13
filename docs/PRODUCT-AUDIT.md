@@ -1,5 +1,15 @@
 # AgentLeak product audit — 2026-08-02 (v0.9.0)
 
+> **This is a point-in-time snapshot, kept as a record rather than updated.**
+> The figures below were true at v0.9.0 and several have since moved: the suite
+> is at 891 tests (not 731), compliance covers 34 controls (not 22), the
+> red-team catalog reaches 46 attack classes (not 32), and the TypeScript count
+> dropped when the marketing site moved to its own repository. For current
+> numbers, run `pytest`, or read them off the running software with
+> `GET /api/meta`, which reports channels, detectors, frameworks and scenario
+> counts straight from the engine. The roadmap and market analysis are what
+> this page is still useful for.
+
 A full-project audit done hands-on: every claim below was verified against the
 code, the test suite (731 passing), or a live exercise of the shipped product
 (clean `pip install` of the wheel, the CLI first-run, the `watch()` SDK, and
