@@ -180,17 +180,19 @@ Eight normalized **channels**: `user_input`, `final_output`,
 `inter_agent_message`, `shared_memory`, `tool_call`, `tool_response`, `log`,
 `generated_file`.
 
-Built-in **detectors** (regex + dictionaries, no LLM):
+Nine **detectors**, six of them regex/dictionary and always on, three optional:
 
 | Detector | Examples |
 | --- | --- |
-| `pii` | email, phone, SSN/SIN, credit card (Luhn-checked), IP, DOB, client ids, names |
+| `pii` | email, phone, SSN/SIN, credit card (Luhn-checked), IP, DOB, client ids, names, street addresses, postal codes |
 | `secrets` | API keys, AWS keys, GitHub/Slack tokens, JWTs, private keys, connection strings |
 | `healthcare` | NAM-like health identifiers, diagnoses, medications |
 | `finance` | IBAN, account numbers, credit scores, income, loans, internal risk notes |
 | `hr` | salary, sick leave, performance reviews, disciplinary actions, complaints |
-| `pii` (cont.) | street addresses, postal codes |
-| custom | your own regex rules from `agentleak.yaml` |
+| `keyname` | key/value pairs that look like credentials by their key (`password=`, `token=`, `secret=`) |
+| `custom` | your own regex rules from `agentleak.yaml` |
+| `presidio` *(optional, `[presidio]` extra)* | Microsoft Presidio NER — names and entities regex alone misses |
+| `llm_judge` *(optional, `[llm]` extra, BYOK)* | paraphrased or contextual leaks no pattern matches |
 
 ## Scoring — AgentRisk
 
@@ -276,6 +278,7 @@ Start with the [quickstart](docs/quickstart.md); the same pages are rendered at
 there.
 
 - [Quickstart](docs/quickstart.md)
+- [Install (agent-oriented)](docs/install.md) — the walkthrough written for a coding agent to follow and report back on
 - [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
 - [Trust page and monitoring](docs/trust-and-monitoring.md) — publish a verifiable score, and watch it over time
 - [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 283 bundled scenarios
@@ -302,6 +305,7 @@ there.
 - [Integrations](docs/integrations.md)
 - [Platform (projects, runs, SDK)](docs/platform.md)
 - [Agent API](docs/agent-api.md) — autonomous discovery, self-test and improvement loop
+- [Public API (hosted Cloud)](docs/public-api.md) — free-tier quotas, BYOK, and the onboarding HTTP calls
 - [Compliance frameworks](docs/compliance.md)
 - [Web GUI](docs/gui.md)
 - [AGENTS.md](AGENTS.md) — architecture map & contributor/agent guide

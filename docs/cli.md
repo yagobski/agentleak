@@ -9,14 +9,18 @@ version's complete help output.
 | `init [PATH]` | Scaffold configuration, folders and a sample trace. `--force` overwrites config. |
 | `validate CONFIG` | Validate configuration; `--trace` also validates a trace. |
 | `scenarios` | List built-in scenarios and sensitive-data domains. |
+| `agent-card` | Print AgentLeak's own A2A agent card offline — no server needed. |
 | `schema [NAME]` | Print the schema catalog or one named JSON Schema. |
 | `skill` | Register AgentLeak as a skill so coding agents discover it themselves. |
 | `run` | Analyze a trace or scenario and write reports. |
 | `report` | Re-render a saved JSON report. |
 | `scan` | Scan source code locally, from ZIP or GitHub. |
+| `redact` | Sanitize sensitive values out of text — detection's defensive counterpart. |
 | `history` | Show stored project progression. |
 | `compare` | Compare two stored runs. |
 | `serve` | Start the local web interface. |
+| `mcp` | Serve AgentLeak to coding agents over MCP (`pip install "agentleak[mcp]"`). |
+| `admin reset-password` / `admin list-users` | Operator recovery for a self-hosted platform. |
 
 ## Skill
 
@@ -72,6 +76,29 @@ agentleak scan --repo owner/repository --branch main --output reports/code.json
 
 SARIF contains file, line, rule, privacy level, tier, confidence and redacted
 snippets. It does not contain raw matched secrets.
+
+## Redact
+
+```bash
+agentleak redact --style mask path/to/log.txt
+cat prompt.txt | agentleak redact --style hash
+```
+
+Applies the same detection rules as a defense: `placeholder` (default),
+`mask`, `hash`, or `remove`. Reads stdin when no path is given. See
+[docs/defenses.md](defenses.md).
+
+## MCP
+
+```bash
+pip install "agentleak[mcp]"
+agentleak mcp
+```
+
+Serves `privacy_preflight`, `privacy_scan_code`, `privacy_check_trace` and
+`privacy_redact` as MCP tools so a coding agent (Claude Code, Cursor, …) can
+check its own work locally, with no account or network call. See
+[docs/mcp.md](mcp.md).
 
 ## Re-render and compare
 
