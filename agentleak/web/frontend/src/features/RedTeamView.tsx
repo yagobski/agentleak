@@ -380,6 +380,7 @@ export function RedTeamView({ projectId }: Props) {
   const [adversaryLevel, setAdversaryLevel] = useState<AdversaryLevel>("A1")
   const [n, setN] = useState(10)
   const [mode, setMode] = useState<"live" | "scripted">("scripted")
+  const [setupMode, setSetupMode] = useState<"simple" | "advanced">("simple")
   const [baseUrl, setBaseUrl] = useState("")
   const [model, setModel] = useState("")
   const [catalog, setCatalog] = useState<RedTeamCatalog | null>(null)
@@ -416,6 +417,14 @@ export function RedTeamView({ projectId }: Props) {
     if (profile) setSelectedStrategies(profile.strategy_ids)
   }
 
+  const chooseSetupMode = (nextMode: "simple" | "advanced") => {
+    setSetupMode(nextMode)
+    if (nextMode === "simple") {
+      choosePluginPreset("agent_core")
+      chooseStrategyProfile("balanced")
+    }
+  }
+
   const togglePlugin = (pluginId: string) => {
     setPluginPreset("custom")
     setSelectedPlugins((current) => current.includes(pluginId) ? current.filter((item) => item !== pluginId) : [...current, pluginId])
@@ -448,12 +457,20 @@ export function RedTeamView({ projectId }: Props) {
     }
   }
 
+  const selectedVertical = VERTICALS.find((item) => item.value === vertical)?.label ?? vertical
+  const selectedAdversary = ADVERSARY_LEVELS.find((item) => item.value === adversaryLevel)
+  const selectedPluginPreset = catalog?.plugin_presets.find((item) => item.id === pluginPreset)
+  const selectedStrategyProfile = catalog?.strategy_profiles.find((item) => item.id === strategyProfile)
+  const expectedResult = mode === "live"
+    ? "A vulnerability and remediation report based on the configured model's behavior inside the AgentLeak harness."
+    : "A repeatable detector baseline from a deliberately vulnerable trace. It validates detection coverage, not your model's security."
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold"><Shield className="size-5 text-sev-l4" /> Run an adversarial campaign</h2>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Choose the threats and delivery methods, then decide whether to validate AgentLeak offline or execute a configured model inside the AgentLeak test harness. Every probe is scored and stored.</p>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Choose the test type and level, use balanced defaults or customize the coverage, then run. Every probe is scored and stored.</p>
         </div>
         {result && <button type="button" onClick={run} disabled={loading} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"><RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} /> Re-run batch</button>}
       </div>
@@ -461,88 +478,128 @@ export function RedTeamView({ projectId }: Props) {
       {!result && (
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-5">
-            <div><div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-sev-l3" /> Configure the attack campaign</div><p className="mt-1 text-xs text-muted-foreground">{catalog ? `${catalog.plugins.length} vulnerability plugins, ${catalog.attack_classes} attack classes, ${catalog.strategies.length} delivery strategies` : "Loading the attack catalog…"} across seven observable execution channels.</p></div>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">results persist as project runs</span>
+            <div><div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-sev-l3" /> Configure the attack campaign</div><p className="mt-1 text-xs text-muted-foreground">Three choices are enough to start. AgentLeak applies useful vulnerability and delivery defaults unless you customize them.</p></div>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">results are saved to this project</span>
           </div>
-          <div className="space-y-6 p-6">
-            <div className="grid gap-5 md:grid-cols-3">
-              <div className="space-y-1.5"><label className="text-xs font-semibold">Industry context</label><select value={vertical} onChange={(event) => setVertical(event.target.value as Vertical)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{VERTICALS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><p className="text-[10px] text-muted-foreground">Shapes the private vault and realistic task context.</p></div>
-              <div className="space-y-1.5"><label className="text-xs font-semibold">Adversary capability</label><select value={adversaryLevel} onChange={(event) => setAdversaryLevel(event.target.value as AdversaryLevel)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{ADVERSARY_LEVELS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><p className="text-[10px] text-muted-foreground">{ADVERSARY_LEVELS.find((item) => item.value === adversaryLevel)?.desc}</p></div>
-              <div className="space-y-1.5"><label className="text-xs font-semibold">Probe budget</label><div className="grid grid-cols-3 gap-1.5">{[5, 10, 20].map((value) => <button key={value} type="button" onClick={() => setN(value)} className={`rounded-md border px-3 py-2 font-mono text-sm transition-colors ${n === value ? "border-foreground bg-foreground text-background" : "hover:bg-muted"}`}>{value}</button>)}</div><p className="text-[10px] text-muted-foreground">More probes increase class coverage and API usage.</p></div>
-            </div>
+          <div className="grid grid-cols-3 border-b border-border bg-muted/15 px-6 py-3" aria-label="Campaign setup steps">
+            {["Choose the test", "Set up coverage", "Run campaign"].map((label, index) => (
+              <div key={label} className="flex min-w-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[9px] text-background">{index + 1}</span>
+                <span className="truncate">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="divide-y divide-border">
+            <section className="p-6" aria-labelledby="test-type-heading">
+              <div className="flex items-center gap-3 text-sm font-semibold">
+                <span className="flex size-7 items-center justify-center rounded-full bg-foreground font-mono text-xs text-background">1</span>
+                <h3 id="test-type-heading">Choose the test type and level</h3>
+              </div>
+              <p className="mt-1 pl-10 text-xs text-muted-foreground">First choose whether to validate AgentLeak's detectors or exercise a real model in its controlled harness.</p>
 
-            <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div><div className="text-xs font-semibold">Vulnerability plugins</div><p className="mt-1 text-[10px] text-muted-foreground">What to test. The catalog maps high-signal Promptfoo plugin IDs to observable AgentLeak classes.</p></div>
-                <div className="flex items-center gap-2"><span className="font-mono text-xs font-semibold">{selectedPlugins.length}/{catalog?.plugins.length ?? 0}</span><span className="text-[10px] text-muted-foreground">selected</span></div>
+              <div className="mt-5 space-y-5">
+
+              <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Test execution type">
+                <button type="button" role="radio" aria-checked={mode === "scripted"} onClick={() => setMode("scripted")} className={`rounded-lg border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mode === "scripted" ? "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/30" : "hover:bg-muted/40"}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2 text-sm font-semibold"><BarChart3 className="size-4" /> Detector check · no model</div>{mode === "scripted" && <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden="true" />}</div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Runs a deliberately vulnerable offline trace to verify detector coverage. It does not test your model or deployed application.</p>
+                  <span className="mt-3 inline-flex rounded-full bg-muted px-2 py-1 text-[9px] font-medium text-muted-foreground">Offline · deterministic · zero model calls</span>
+                </button>
+                <button type="button" role="radio" aria-checked={mode === "live"} onClick={() => setMode("live")} className={`rounded-lg border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mode === "live" ? "border-sev-l4/60 bg-sev-l4/[0.04] ring-1 ring-sev-l4/40" : "hover:bg-muted/40"}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2 text-sm font-semibold"><Zap className="size-4 text-sev-l4" /> Model test · AgentLeak harness</div>{mode === "live" && <CheckCircle2 className="size-4 shrink-0 text-sev-l4" aria-hidden="true" />}</div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Sends probes to an OpenAI-compatible model with controlled tools. This measures the model in the harness, not an arbitrary production app.</p>
+                  <span className="mt-3 inline-flex rounded-full bg-sev-l4/10 px-2 py-1 text-[9px] font-medium text-sev-l4">Executes the configured model</span>
+                </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {catalog?.plugin_presets.map((preset) => <button key={preset.id} type="button" title={preset.description} onClick={() => choosePluginPreset(preset.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors ${pluginPreset === preset.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{preset.name}</button>)}
+
+              {mode === "live" && (
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <div className="flex flex-wrap items-center gap-2"><Server className="size-4 text-muted-foreground" /><span className="text-xs font-semibold">Model endpoint used only by the harness</span><span className="text-[10px] text-muted-foreground">Leave empty to use the project's model settings or your account model key.</span></div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">{LOCAL_PRESETS.map((preset) => <button key={preset.label} type="button" onClick={() => { setBaseUrl(preset.url); if (preset.model) setModel(preset.model) }} className="rounded-full border px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{preset.label}</button>)}</div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2"><label className="space-y-1"><span className="text-[10px] font-medium text-muted-foreground">Base URL</span><input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://openrouter.ai/api/v1" className="w-full rounded-md border bg-background px-3 py-2 font-mono text-xs" /></label><label className="space-y-1"><span className="text-[10px] font-medium text-muted-foreground">Model</span><input value={model} onChange={(event) => setModel(event.target.value)} placeholder="openai/gpt-4.1-mini" className="w-full rounded-md border bg-background px-3 py-2 font-mono text-xs" /></label></div>
+                </div>
+              )}
+
+              <div className="grid gap-5 md:grid-cols-3">
+                <label className="space-y-1.5"><span className="text-xs font-semibold">Industry context</span><select value={vertical} onChange={(event) => setVertical(event.target.value as Vertical)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{VERTICALS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><span className="block text-[10px] text-muted-foreground">Shapes the synthetic private vault and task context.</span></label>
+                <label className="space-y-1.5"><span className="text-xs font-semibold">Adversary capability</span><select value={adversaryLevel} onChange={(event) => setAdversaryLevel(event.target.value as AdversaryLevel)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{ADVERSARY_LEVELS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><span className="block text-[10px] text-muted-foreground">{selectedAdversary?.desc}</span></label>
+                <div className="space-y-1.5"><span className="text-xs font-semibold">Probe budget</span><div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Probe budget">{[5, 10, 20].map((value) => <button key={value} type="button" role="radio" aria-checked={n === value} onClick={() => setN(value)} className={`rounded-md border px-3 py-2 font-mono text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${n === value ? "border-foreground bg-foreground text-background" : "hover:bg-muted"}`}>{value}</button>)}</div><p className="text-[10px] text-muted-foreground">More probes increase coverage and, for model tests, API usage.</p></div>
               </div>
-              <details className="group rounded-md border bg-background">
-                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
-                  Customize individual plugins <span className="ml-1 text-[10px] opacity-60">({catalog?.plugins.length ?? 0} available)</span>
-                </summary>
-                <div className="grid gap-3 border-t p-3 lg:grid-cols-2">
-                  {pluginGroups.map(([category, plugins]) => (
-                    <div key={category} className="rounded-md border bg-background p-3">
-                      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {plugins.map((plugin) => {
-                          const active = selectedPlugins.includes(plugin.id)
-                          return <button key={plugin.id} type="button" onClick={() => togglePlugin(plugin.id)} title={`${plugin.name}: ${plugin.description}`} className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors ${active ? "border-primary/45 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>{active ? "✓ " : ""}{plugin.id}</button>
-                        })}
-                      </div>
+              </div>
+            </section>
+
+            <section className="p-6" aria-labelledby="setup-mode-heading">
+              <div className="flex items-center gap-3 text-sm font-semibold">
+                <span className="flex size-7 items-center justify-center rounded-full bg-foreground font-mono text-xs text-background">2</span>
+                <h3 id="setup-mode-heading">Choose simple or advanced setup</h3>
+              </div>
+              <p className="mt-1 pl-10 text-xs text-muted-foreground">Simple setup uses balanced defaults. Advanced setup keeps every plugin and delivery strategy available.</p>
+              <div className="mt-4 space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Campaign setup mode">
+                <button type="button" role="radio" aria-checked={setupMode === "simple"} onClick={() => chooseSetupMode("simple")} className={`rounded-lg border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${setupMode === "simple" ? "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/30" : "hover:bg-muted/40"}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="text-sm font-semibold">Simple · recommended</div>{setupMode === "simple" && <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden="true" />}</div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Tests core agent risks with a balanced mix of direct and evasive delivery strategies.</p>
+                </button>
+                <button type="button" role="radio" aria-checked={setupMode === "advanced"} onClick={() => chooseSetupMode("advanced")} className={`rounded-lg border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${setupMode === "advanced" ? "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/30" : "hover:bg-muted/40"}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="text-sm font-semibold">Advanced</div>{setupMode === "advanced" && <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden="true" />}</div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Choose coverage presets, then optionally edit individual vulnerability plugins and delivery strategies.</p>
+                </button>
+              </div>
+
+              {setupMode === "simple" ? (
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-primary/15 bg-primary/[0.025] px-4 py-3 text-xs">
+                  <span className="font-semibold">Balanced defaults applied</span>
+                  <span className="text-muted-foreground"><strong className="text-foreground">{selectedPlugins.length}</strong> core vulnerability plugins</span>
+                  <span className="text-muted-foreground"><strong className="text-foreground">{selectedStrategies.length}</strong> delivery strategies</span>
+                  <span className="text-muted-foreground">Change to Advanced to customize coverage.</span>
+                </div>
+              ) : (
+                <div className="space-y-4 rounded-lg border border-border bg-muted/10 p-4">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <div><div className="text-xs font-semibold">Vulnerability coverage preset</div><p className="mt-1 text-[10px] text-muted-foreground">What the campaign tries to exploit.</p></div>
+                      <div className="flex flex-wrap gap-1.5">{catalog?.plugin_presets.map((preset) => <button key={preset.id} type="button" title={preset.description} aria-pressed={pluginPreset === preset.id} onClick={() => choosePluginPreset(preset.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pluginPreset === preset.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{preset.name}</button>)}</div>
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      <div><div className="text-xs font-semibold">Delivery profile</div><p className="mt-1 text-[10px] text-muted-foreground">How probes reach the model or offline trace.</p></div>
+                      <div className="flex flex-wrap gap-1.5">{catalog?.strategy_profiles.map((profile) => <button key={profile.id} type="button" title={profile.description} aria-pressed={strategyProfile === profile.id} onClick={() => chooseStrategyProfile(profile.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${strategyProfile === profile.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{profile.name}</button>)}</div>
+                    </div>
+                  </div>
+
+                  <details className="group rounded-md border bg-background">
+                    <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-3 text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                      <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90" aria-hidden="true" />
+                      Advanced customization
+                      <span className="ml-auto text-[10px] font-normal opacity-70">{selectedPlugins.length} plugins · {selectedStrategies.length} strategies selected</span>
+                    </summary>
+                    <div className="space-y-5 border-t p-4">
+                      <section aria-labelledby="plugin-customization-heading" className="space-y-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 id="plugin-customization-heading" className="text-xs font-semibold">Individual vulnerability plugins</h3><p className="mt-1 text-[10px] text-muted-foreground">Promptfoo-compatible selectors mapped to observable AgentLeak attack classes.</p></div><span className="font-mono text-xs font-semibold">{selectedPlugins.length}/{catalog?.plugins.length ?? 0}</span></div>
+                        <div className="grid gap-3 lg:grid-cols-2">{pluginGroups.map(([category, plugins]) => <div key={category} className="rounded-md border bg-background p-3"><div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</div><div className="flex flex-wrap gap-1.5">{plugins.map((plugin) => { const active = selectedPlugins.includes(plugin.id); return <button key={plugin.id} type="button" aria-pressed={active} onClick={() => togglePlugin(plugin.id)} title={`${plugin.name}: ${plugin.description}`} className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-primary/45 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>{plugin.id}</button> })}</div></div>)}</div>
+                      </section>
+                      <section aria-labelledby="strategy-customization-heading" className="space-y-3 border-t pt-5">
+                        <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 id="strategy-customization-heading" className="text-xs font-semibold">Individual delivery strategies</h3><p className="mt-1 text-[10px] text-muted-foreground">Direct, bypass, encoding, Unicode and multi-turn delivery variants.</p></div><span className="font-mono text-xs font-semibold">{selectedStrategies.length} selected</span></div>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{catalog?.strategies.map((strategy) => { const active = selectedStrategies.includes(strategy.id); return <button key={strategy.id} type="button" aria-pressed={active} onClick={() => toggleStrategy(strategy.id)} className={`rounded-md border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-primary/45 bg-primary/[0.06]" : "hover:bg-muted/40"}`}><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{strategy.name}</span><span className="font-mono text-[9px] text-muted-foreground">{strategy.estimated_turns}t</span></div><p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{strategy.description}</p></button> })}</div>
+                      </section>
+                    </div>
+                  </details>
                 </div>
-              </details>
-            </div>
+              )}
+              </div>
+            </section>
 
-            <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div><div className="text-xs font-semibold">Attack strategies</div><p className="mt-1 text-[10px] text-muted-foreground">How to deliver each probe: direct, guardrail bypass, encoding, Unicode, or multi-turn escalation.</p></div>
-                <span className="font-mono text-xs font-semibold">{selectedStrategies.length} selected</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {catalog?.strategy_profiles.map((profile) => <button key={profile.id} type="button" title={profile.description} onClick={() => chooseStrategyProfile(profile.id)} className={`rounded-full border px-2.5 py-1 text-[10px] transition-colors ${strategyProfile === profile.id ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{profile.name}</button>)}
-              </div>
-              <details className="rounded-md border bg-background">
-                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
-                  Customize delivery strategies <span className="ml-1 text-[10px] opacity-60">({catalog?.strategies.length ?? 0} available)</span>
-                </summary>
-                <div className="grid gap-2 border-t p-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {catalog?.strategies.map((strategy) => {
-                    const active = selectedStrategies.includes(strategy.id)
-                    return (
-                      <button key={strategy.id} type="button" onClick={() => toggleStrategy(strategy.id)} className={`rounded-md border p-3 text-left transition-colors ${active ? "border-primary/45 bg-primary/[0.06]" : "hover:bg-muted/40"}`}>
-                        <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{active ? "✓ " : ""}{strategy.name}</span><span className="font-mono text-[9px] text-muted-foreground">{strategy.estimated_turns}t</span></div>
-                        <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{strategy.description}</p>
-                      </button>
-                    )
-                  })}
+            <section className="space-y-4 p-6" aria-labelledby="run-campaign-heading">
+              <div className="flex items-center gap-3 text-sm font-semibold" id="run-campaign-heading"><span className="flex size-7 items-center justify-center rounded-full bg-foreground font-mono text-xs text-background">3</span>Review and run the campaign</div>
+              <div className="grid gap-4 rounded-lg border bg-muted/15 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs"><span><strong>{mode === "live" ? "Model test" : "Detector check"}</strong></span><span>{selectedVertical} · {adversaryLevel}</span><span>{n} probes</span><span>{setupMode === "simple" ? "Balanced defaults" : `${selectedPluginPreset?.name ?? "Custom plugins"} · ${selectedStrategyProfile?.name ?? "Custom delivery"}`}</span></div>
+                  <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground"><strong className="text-foreground">Expected result:</strong> {expectedResult}</p>
                 </div>
-              </details>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold">What should AgentLeak execute?</label>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => setMode("scripted")} className={`rounded-lg border p-4 text-left transition-all ${mode === "scripted" ? "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/30" : "hover:bg-muted/40"}`}><div className="flex items-center gap-2 text-sm font-semibold"><BarChart3 className="size-4" /> Detector check · no model</div><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Builds a deterministic, deliberately vulnerable trace. Use it to verify detector coverage and create a repeatable baseline. It says nothing about your model's behavior.</p><span className="mt-3 inline-flex rounded-full bg-muted px-2 py-1 text-[9px] font-medium text-muted-foreground">Offline · zero model calls</span></button>
-                <button type="button" onClick={() => setMode("live")} className={`rounded-lg border p-4 text-left transition-all ${mode === "live" ? "border-sev-l4/60 bg-sev-l4/[0.04] ring-1 ring-sev-l4/40" : "hover:bg-muted/40"}`}><div className="flex items-center gap-2 text-sm font-semibold"><Zap className="size-4 text-sev-l4" /> Model test · AgentLeak harness</div><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Sends each probe to the configured OpenAI-compatible model with AgentLeak's controlled tools. This tests the model in the harness, not an arbitrary deployed application.</p><span className="mt-3 inline-flex rounded-full bg-sev-l4/10 px-2 py-1 text-[9px] font-medium text-sev-l4">Executes a configured model</span></button>
+                <button type="button" onClick={run} disabled={loading || !catalog || !selectedPlugins.length || !selectedStrategies.length} className="inline-flex min-w-56 items-center justify-center gap-2 rounded-md bg-sev-l4 px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50">{loading ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}{loading ? (mode === "live" ? `Testing with ${n} probes…` : "Building baseline…") : (mode === "live" ? `Test model with ${n} probes` : `Build ${n}-probe baseline`)}</button>
               </div>
-            </div>
-
-            {mode === "live" && (
-              <div className="rounded-lg border bg-muted/20 p-4">
-                <div className="flex flex-wrap items-center gap-2"><Server className="size-4 text-muted-foreground" /><span className="text-xs font-semibold">Model endpoint used by the harness</span><span className="text-[10px] text-muted-foreground">Leave empty to use the project's model settings or your account model key.</span></div>
-                <div className="mt-3 flex flex-wrap gap-1.5">{LOCAL_PRESETS.map((preset) => <button key={preset.label} type="button" onClick={() => { setBaseUrl(preset.url); if (preset.model) setModel(preset.model) }} className="rounded-full border px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground">{preset.label}</button>)}</div>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2"><input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://openrouter.ai/api/v1" className="rounded-md border bg-background px-3 py-2 font-mono text-xs" /><input value={model} onChange={(event) => setModel(event.target.value)} placeholder="openai/gpt-4.1-mini" className="rounded-md border bg-background px-3 py-2 font-mono text-xs" /></div>
-              </div>
-            )}
-
-            {error && <div className="flex gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"><FileWarning className="mt-0.5 size-4 shrink-0" /> {error}</div>}
-            <button type="button" onClick={run} disabled={loading || !catalog || !selectedPlugins.length || !selectedStrategies.length} className="inline-flex items-center gap-2 rounded-md bg-sev-l4 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">{loading ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}{loading ? (mode === "live" ? `Testing the model with ${n} probes…` : "Building detector baseline…") : (mode === "live" ? `Run ${n} probes against the model` : `Build ${n}-probe detector baseline`)}</button>
+              {!selectedPlugins.length || !selectedStrategies.length ? <p className="text-xs text-destructive">Select at least one vulnerability plugin and one delivery strategy to run the campaign.</p> : null}
+              {error && <div role="alert" className="flex gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"><FileWarning className="mt-0.5 size-4 shrink-0" /> {error}</div>}
+            </section>
           </div>
         </Card>
       )}
