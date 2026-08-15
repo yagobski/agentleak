@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Continuous watch, and the ways a monitor makes itself useless.
 
 Two failure modes, both fatal in practice: alert on every wobble and people mute

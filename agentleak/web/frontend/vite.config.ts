@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { fileURLToPath, URL } from "node:url"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"

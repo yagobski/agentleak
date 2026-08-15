@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for self-service account management: profile update, password
 change (with session revocation), and account self-deletion."""
 

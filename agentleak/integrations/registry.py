@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Registry of agent frameworks.
 
 The single source of truth for which agent frameworks AgentLeak supports, their

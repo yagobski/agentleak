@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, ChevronRight, CircleDashed, ExternalLink, FileCheck2, Fingerprint, Info, Scale, ShieldCheck } from "lucide-react"
 import type { Compliance, ControlResult, FrameworkResult } from "@/lib/api"

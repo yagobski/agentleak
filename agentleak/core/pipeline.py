@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Hybrid detection pipeline — orchestrates up to three detection tiers.
 
 Tier 1+2 — Regex detectors (always available, stdlib only)

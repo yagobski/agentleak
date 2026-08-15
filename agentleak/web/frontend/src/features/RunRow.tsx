@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import type { ReactNode } from "react"
 import type { RunSummary } from "@/lib/api"
 import { scoreColor, verdictColor } from "@/lib/format"

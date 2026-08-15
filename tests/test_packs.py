@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Bundled scenario packs load, convert, and produce leaking traces."""
 
 from __future__ import annotations
@@ -11,10 +13,17 @@ from agentleak.scenarios.packs import expand_pack, list_packs, load_pack
 
 def test_builtin_packs_present():
     ids = {p["id"] for p in list_packs()}
-    assert {"agentleak_bench", "ai4privacy_probes"} <= ids
+    assert {"agentleak_bench", "privacylens_ci", "agentdojo_exfil"} == ids
     for pack in list_packs():
         assert pack["count"] > 0
         assert pack["name"] and pack["source"]
+
+
+def test_every_pack_declares_complete_provenance():
+    """No pack ships without source, URL, licence and attribution."""
+    for pack in list_packs():
+        for field in ("source", "source_url", "license", "attribution"):
+            assert pack[field], f"{pack['id']} is missing {field}"
 
 
 def test_load_pack_unknown_raises():
@@ -31,7 +40,7 @@ def test_expand_pack_yields_traces_with_origin():
         assert meta["origin_id"]  # every entry is traceable to its source
 
 
-@pytest.mark.parametrize("pack_id", ["agentleak_bench", "ai4privacy_probes"])
+@pytest.mark.parametrize("pack_id", ["agentleak_bench"])
 def test_every_pack_scenario_leaks(pack_id: str):
     """Each bundled scenario should be a meaningful (scoring) leak test."""
     runner = AgentLeakRunner()

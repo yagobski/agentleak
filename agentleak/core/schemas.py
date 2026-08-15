@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Machine-readable JSON Schemas for every public AgentLeak document."""
 
 from __future__ import annotations

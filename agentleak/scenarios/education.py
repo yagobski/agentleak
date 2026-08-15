@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Education scenarios (inspired by real-world school-document publication cases)."""
 
 from __future__ import annotations

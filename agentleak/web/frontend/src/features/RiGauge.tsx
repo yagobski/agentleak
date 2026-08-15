@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import type { Report } from "@/lib/api"
 import { verdictColor } from "@/lib/format"
 

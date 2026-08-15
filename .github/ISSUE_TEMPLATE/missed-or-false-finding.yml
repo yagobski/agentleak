@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 name: A finding is wrong
 description: AgentLeak missed a leak, or reported one that is not there.
 labels: ["detection"]

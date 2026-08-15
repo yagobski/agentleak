@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """OpenAI Swarm / Agents SDK integration.
 
 Swarm and the OpenAI Agents SDK orchestrate *multiple* agents that hand control

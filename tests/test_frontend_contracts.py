@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Source-level contracts for UI behavior that is otherwise browser-only.
 
 The frontend build type-checks React but has no DOM test runtime. These focused

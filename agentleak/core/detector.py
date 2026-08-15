@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Detection primitives: severities, raw matches, findings, and the base
 :class:`Detector` contract.
 

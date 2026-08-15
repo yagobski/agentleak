@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Local, per-project memory of what a previous check already found.
 
 A score on its own tells an agent almost nothing: it reads the number, files it

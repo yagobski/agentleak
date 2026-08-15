@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Promptfoo-compatible attack metadata used by AgentLeak.
 
 This module contains data only so :mod:`agentleak.core.attacks` can keep the

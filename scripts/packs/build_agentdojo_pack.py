@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Extract a privacy-exfiltration pack from AgentDojo (MIT, ETH SPY Lab).
 
 AgentDojo pairs a legitimate user task with an injection task whose text is

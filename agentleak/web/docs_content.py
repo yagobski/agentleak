@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Public, machine-readable documentation for agents and developer tooling."""
 
 from __future__ import annotations

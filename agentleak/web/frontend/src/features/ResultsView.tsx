@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useMemo, useState, type ReactNode } from "react"
 import { ArrowRight, Check, Code2, Copy, Download, FileJson, FileText, Lightbulb, ListChecks, ScrollText, Search, ShieldAlert, ShieldCheck, Workflow, X } from "lucide-react"
 import { toast } from "sonner"

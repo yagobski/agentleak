@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Public-SaaS runtime limits and configuration.
 
 AgentLeak runs in two shapes from the same code:

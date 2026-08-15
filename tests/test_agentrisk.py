@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentRisk: paper worked example + the five formal properties (conformance)."""
 
 from __future__ import annotations

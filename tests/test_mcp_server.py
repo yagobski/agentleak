@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The MCP surface, and the memory that makes it worth calling twice.
 
 The load-bearing test here is the first one. If a finding's identity moves when

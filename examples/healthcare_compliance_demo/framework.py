@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Lightweight multi-agent framework — no external dependencies.
 
 Provides the minimal scaffolding for a realistic agent pipeline:

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Multi-agent pipeline example using the generic recorder.
 
 Simulates an orchestrator + summary agent flow (the shape of a LangGraph /

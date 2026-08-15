@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Static privacy scan of agent source code — powered by the same hybrid
 detection pipeline as the runtime analysis.
 

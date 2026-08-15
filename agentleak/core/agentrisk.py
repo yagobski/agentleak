@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentRisk — a detector-agnostic, severity-weighted Risk Index.
 
 Implements the scoring layer from *AgentRisk: A Detector-Agnostic,

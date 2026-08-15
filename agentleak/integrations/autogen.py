@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AutoGen integration.
 
 AutoGen drives multi-agent conversations as lists of messages. This adapter

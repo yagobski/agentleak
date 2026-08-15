@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Internal-channel guard — protects inter_agent_message and shared_memory.
 
 The reference paper (IEEE benchmark) found that internal channels (C2, C5)

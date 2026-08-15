@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ArrowRight, Baseline, Bot, BriefcaseMedical, CheckCircle2, ChevronRight, FileJson2, FlaskConical, GraduationCap, Headset, Info, RotateCcw, Shield, Sparkles, TrendingUp, Users, Zap } from "lucide-react"

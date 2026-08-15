@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Lightweight Python SDK: a ``capture()`` context manager and a ``@monitor``
 decorator for recording function calls into a trace without wiring a full
 framework integration.

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Markdown report — readable in any editor, PR, or terminal."""
 
 from __future__ import annotations

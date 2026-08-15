@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Expose AgentLeak to coding agents over the Model Context Protocol.
 
 An agent writing code has no reason to shell out to a CLI, and it will not

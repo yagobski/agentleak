@@ -18,10 +18,9 @@ abstract: >-
   eight channels — user input, tool calls, tool responses, shared memory,
   inter-agent messages, logs, generated files and the final answer — and scores
   it deterministically. An agent can return a clean answer while private data
-  leaves through a channel nobody reads; across the 283 scenarios bundled with
-  the tool, every leak behaves that way. Scoring uses exact ground-truth
-  matching rather than a judge model, so the same trace always yields the same
-  number.
+  leaves through an internal channel. Version 0.11.5 bundles 266 scenarios with
+  complete source, license and attribution metadata and supports deterministic,
+  NER-assisted and semantic detection tiers.
 keywords:
   - privacy
   - agentic AI
@@ -30,8 +29,8 @@ keywords:
   - software testing
   - compliance
 license: MIT
-version: 0.11.4
-date-released: "2026-08-09"
+version: 0.11.5
+date-released: "2026-08-15"
 preferred-citation:
   type: article
   title: "AgentLeak: measuring privacy leakage in agentic AI systems"

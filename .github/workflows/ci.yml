@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 name: CI
 
 on:
@@ -29,6 +31,9 @@ jobs:
         # Everything, examples included: they are the first code a contributor
         # reads, and lint that never runs on them is lint that rots.
         run: ruff check .
+
+      - name: Verify SPDX headers
+        run: python scripts/add_spdx_headers.py --check --root "$GITHUB_WORKSPACE"
 
       - name: Type check (mypy)
         run: mypy agentleak/

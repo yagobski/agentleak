@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentLeak compliance tests for the healthcare multi-agent pipeline.
 
 These are pytest-runnable proofs that:

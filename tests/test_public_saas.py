@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Integration tests for public-SaaS mode: quotas, per-IP throttle, BYOK,
 readiness, and free-tier discovery. These build a fresh app with the public
 knobs set so the local/self-hosted defaults elsewhere stay untouched."""

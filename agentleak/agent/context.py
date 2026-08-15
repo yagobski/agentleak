@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Normalize a scenario into a run context the agent runner can execute.
 
 Works from an AgentLeak **spec** (objective + private_vault + tools) when one is

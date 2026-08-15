@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Local persistence for the AgentLeak platform — projects and runs.
 
 Backed by SQLite (stdlib, no extra dependency), stored under a local data

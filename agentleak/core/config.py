@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Configuration model for ``agentleak.yaml`` (spec section 10).
 
 Validated with Pydantic so ``agentleak validate`` can give precise errors.

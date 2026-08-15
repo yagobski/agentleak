@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useMemo, useState, type MouseEvent } from "react"
 import { Activity, ArrowDownRight, ArrowRight, ArrowUpRight, ShieldCheck } from "lucide-react"
 import type { RunSummary } from "@/lib/api"

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the hybrid detection pipeline and canary matching."""
 
 from __future__ import annotations

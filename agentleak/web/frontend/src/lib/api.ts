@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 export type LevelLabel = "L1" | "L2" | "L3" | "L4"
 export type Badge = "critical" | "high" | "medium" | "low"
 

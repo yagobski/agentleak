@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Platform API: projects, runs, compare, stats (skipped without [gui])."""
 
 from __future__ import annotations
@@ -258,19 +260,19 @@ def test_scenarios_list_includes_builtin(client: TestClient):
 def test_scenario_packs_listed(client: TestClient):
     packs = client.get("/api/scenario-packs").json()
     ids = {p["id"] for p in packs}
-    assert {"agentleak_bench", "ai4privacy_probes"} <= ids
+    assert {"agentleak_bench", "privacylens_ci", "agentdojo_exfil"} <= ids
     assert all(p["imported_count"] == 0 for p in packs)
 
 
 def test_import_pack_is_idempotent(client: TestClient):
-    first = client.post("/api/scenario-packs/ai4privacy_probes/import").json()
+    first = client.post("/api/scenario-packs/agentleak_bench/import").json()
     assert first["imported"] > 0 and first["skipped"] == 0
-    again = client.post("/api/scenario-packs/ai4privacy_probes/import").json()
+    again = client.post("/api/scenario-packs/agentleak_bench/import").json()
     assert again["imported"] == 0 and again["skipped"] == first["imported"]
     # now reflected in the library and pack listing
     imported = [s for s in client.get("/api/scenarios").json() if s["source"] == "imported"]
     assert len(imported) == first["imported"]
-    pack = next(p for p in client.get("/api/scenario-packs").json() if p["id"] == "ai4privacy_probes")
+    pack = next(p for p in client.get("/api/scenario-packs").json() if p["id"] == "agentleak_bench")
     assert pack["imported_count"] == first["imported"]
 
 
@@ -298,7 +300,7 @@ def test_upload_trace_then_run_and_delete(client: TestClient):
     assert client.get(f"/api/scenarios/{sid}").status_code == 404
 
 
-def test_upload_ai4privacy_autodetected(client: TestClient):
+def test_upload_pii_record_autodetected(client: TestClient):
     rec = {"id": "x", "category": "finance",
            "source_text": "Card 4111-1111-1111-1111 for john@x.com",
            "pii_annotations": [{"type": "CREDIT_CARD"}]}

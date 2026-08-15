@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Attack taxonomy for AI agent red-teaming.
 
 Built on the 6-family / 3-adversary-level taxonomy from the reference

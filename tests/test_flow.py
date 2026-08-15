@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Leak provenance + agent topology (core/flow.py)."""
 
 from __future__ import annotations

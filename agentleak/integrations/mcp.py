@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Model Context Protocol (MCP) integration.
 
 MCP-based agents reach external **tools** and **resources** through MCP servers.

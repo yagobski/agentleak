@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Shared tool schema and dispatch logic for single- and multi-agent runners.
 
 Both :mod:`~agentleak.agent.runner` and :mod:`~agentleak.agent.orchestrator`

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Google Agent Development Kit (ADK) integration.
 
 ADK runs emit a stream of ``Event`` objects, each authored by a named agent and

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Measure the bundled corpus and emit the public benchmark.
 
 Two questions, answered by running the analyzer over every scenario that ships
@@ -51,7 +53,6 @@ INTERNAL_CHANNELS = (
 LEAK_MODE = {
     "builtin": "pattern",
     "agentleak_bench": "pattern",
-    "ai4privacy_probes": "pattern",
     "privacylens_ci": "norm",
     "agentdojo_exfil": "hijack",
 }

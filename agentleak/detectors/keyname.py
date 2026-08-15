@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Key-name-aware sensitivity detector.
 
 Dictionary and pattern detectors only fire when they *recognise the value*

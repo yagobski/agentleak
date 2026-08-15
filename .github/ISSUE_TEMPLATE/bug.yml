@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 name: Something is broken
 description: A crash, a wrong output, or a command that does not do what it says.
 labels: ["bug"]

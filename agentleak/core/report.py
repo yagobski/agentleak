@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The analysis result object — what :class:`AgentLeakRunner` returns and what
 every reporter renders.
 """

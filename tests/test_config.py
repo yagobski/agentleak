@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Config loading and custom-detector wiring tests."""
 
 from __future__ import annotations

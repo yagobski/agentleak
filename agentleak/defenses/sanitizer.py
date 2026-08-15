@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Multi-style text sanitizer (redaction defense).
 
 Supports 6 redaction styles:

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Local web GUI for AgentLeak (optional, requires the ``[gui]`` extra)."""
 
 from __future__ import annotations

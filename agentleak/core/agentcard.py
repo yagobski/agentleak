@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentCard — A2A-style identity card for an agent under test.
 
 An *agent card* is a small JSON document describing an agent: its name,

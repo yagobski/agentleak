@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Scoring engine tests (AgentRisk-backed)."""
 
 from __future__ import annotations

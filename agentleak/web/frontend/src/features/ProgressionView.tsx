@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState } from "react"
 import { ArrowDown, ArrowRight, ArrowUp, GitCompare, Minus, Trophy } from "lucide-react"
 import { toast } from "sonner"

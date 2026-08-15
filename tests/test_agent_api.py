@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the agent-first platform API: agent cards, code scans, and the
 autonomous self-improvement loop (register → scan → improve → status)."""
 

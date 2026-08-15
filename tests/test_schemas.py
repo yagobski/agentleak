@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Machine contracts remain discoverable and versioned."""
 
 from agentleak.core.schemas import get_schema, schema_catalog

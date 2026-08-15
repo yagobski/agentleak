@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """SQLite store: projects + runs persistence."""
 
 from __future__ import annotations

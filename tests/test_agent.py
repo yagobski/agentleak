@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Live agent runner: context building, scripted runs, and the live loop."""
 
 from __future__ import annotations

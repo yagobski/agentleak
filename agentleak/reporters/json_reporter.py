@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """JSON report — the machine-readable, canonical output."""
 
 from __future__ import annotations

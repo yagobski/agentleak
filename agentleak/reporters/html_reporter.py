@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """HTML report — a single self-contained file (inline CSS, no external assets,
 no network calls), consistent with the local-only privacy guarantee.
 """

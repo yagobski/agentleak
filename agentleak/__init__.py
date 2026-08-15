@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentLeak OSS — open-source privacy-leakage testing for AI agents.
 
 Quick start::
@@ -17,7 +19,7 @@ Quick start::
 
 from __future__ import annotations
 
-__version__ = "0.11.4"
+__version__ = "0.11.5"
 
 from .client import AgentLeakClient, AgentSelfClient, connect
 from .core.agentcard import AgentCard, fetch_agent_card, parse_agent_card

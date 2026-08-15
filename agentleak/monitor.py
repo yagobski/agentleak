@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Continuous watch: sample production runs and notice when they get worse.
 
 A one-shot audit tells you about the code you had on the day you ran it.

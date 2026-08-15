@@ -289,9 +289,11 @@ with user scenarios persisted in the store (`source: custom` for uploads,
   scenario's adversary level (A0<A1<A2). Pure & deterministic.
 - **Packs** (`scenarios/packs/`). A *package* (not a module — see invariant 11)
   of JSON bundles + a loader. `list_packs()` / `expand_pack(id)` convert every
-  entry via `normalize_upload`. Two ship: `agentleak_bench` (36 curated AgentLeak
-  scenarios) and `ai4privacy_probes` (17 PII records). Add a pack = drop a JSON
-  file here (force-included in the wheel via `pyproject.toml` artifacts).
+  entry via `normalize_upload`. Three ship: `agentleak_bench` (36 curated
+  AgentLeak scenarios, MIT), `privacylens_ci` (120, CC-BY-4.0) and
+  `agentdojo_exfil` (100, MIT). Every pack must declare `source`, `source_url`,
+  `license` and `attribution` — this is enforced by a test. Add a pack = drop a
+  JSON file here (force-included in the wheel via `pyproject.toml` artifacts).
 - **Store** (`store.create_scenario` / `list_scenarios` / `get_scenario` /
   `delete_scenario` / `scenario_exists` / `count_pack_scenarios`). Imports are
   idempotent on `(pack_id, origin_id)`.

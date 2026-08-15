@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """End-to-end demo: two REAL autonomous agents using the AgentLeak API.
 
 Run a platform first::

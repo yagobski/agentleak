@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom"

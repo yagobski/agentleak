@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 name: Support a framework
 description: You want AgentLeak to capture traces from something it does not cover yet.
 labels: ["integration", "good first issue"]

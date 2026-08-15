@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """CLI tests via Typer's CliRunner."""
 
 from __future__ import annotations

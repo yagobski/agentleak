@@ -58,7 +58,7 @@ no data ever leaves your machine.
 ## What is in this repository
 
 Everything you run yourself, under MIT: the SDK, the CLI, the detection and
-scoring engine, the 283 bundled scenarios, the framework integrations, the
+scoring engine, the 266 bundled scenarios, the framework integrations, the
 runtime defenses, the GitHub Action and the local web UI.
 
 | | Where |
@@ -307,7 +307,7 @@ there.
 - [Install (agent-oriented)](docs/install.md) — the walkthrough written for a coding agent to follow and report back on
 - [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
 - [Trust page and monitoring](docs/trust-and-monitoring.md) — publish a verifiable score, and watch it over time
-- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 283 bundled scenarios
+- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 266 bundled scenarios
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — a v0.9.0 snapshot: coverage map, honest gaps, market position, roadmap
 - [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does
 - [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report
@@ -344,7 +344,10 @@ fork it, ship it inside your own product.
 Two of the bundled scenario packs are derived from public research datasets and
 carry their own terms, displayed wherever the pack appears:
 [PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) (CC-BY-4.0)
-and [AgentDojo](https://github.com/ethz-spylab/agentdojo) (MIT).
+and [AgentDojo](https://github.com/ethz-spylab/agentdojo) (MIT). Every bundled
+pack declares its source, source URL, licence and attribution; per-file
+copyright and licensing follow the [REUSE](https://reuse.software) specification
+(`.reuse/dep5`, SPDX headers, `LICENSES/`).
 
 > AgentLeak is the developer-facing tool. It is the practical counterpart to the
 > AgentLeak research benchmark

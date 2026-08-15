@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Declarative privacy assertions evaluated against every AgentLeak run.
 
 This is the privacy-focused equivalent of a general eval assertion system. A

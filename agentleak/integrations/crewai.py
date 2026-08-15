@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """CrewAI integration.
 
 CrewAI exposes ``step_callback`` and ``task_callback`` hooks. This adapter maps

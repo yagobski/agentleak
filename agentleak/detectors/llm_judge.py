@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """LLM-as-Judge semantic detector — Tier 3 of the hybrid pipeline.
 
 Detects leaks that regex cannot catch:

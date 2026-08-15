@@ -158,12 +158,12 @@ realistic, leaky one (see *Conversion* below).
 
 ## Scenario packs
 
-A **pack** is a curated, importable bundle. Four ship with AgentLeak:
+A **pack** is a curated, importable bundle. Three ship with AgentLeak, and each
+declares its source, source URL, licence and attribution:
 
 | Pack | Source | Contents |
 | --- | --- | --- |
-| **AgentLeak Bench** (`agentleak_bench`) | AgentLeak (arXiv:2602.11510) | 36 scenarios — healthcare / finance / legal / corporate × adversary levels A0/A1/A2 |
-| **PII Probes** (`ai4privacy_probes`) | ai4privacy/pii-masking-200k (HuggingFace) | short PII-laden records that leak onto memory and logs |
+| **AgentLeak Bench** (`agentleak_bench`) | AgentLeak benchmark (El Yagoubi et al., IEEE Access 2026) — MIT | 36 scenarios — healthcare / finance / legal / corporate × adversary levels A0/A1/A2 |
 | **PrivacyLens** (`privacylens_ci`) | [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) — NeurIPS 2024 D&B, CC-BY-4.0 | 120 contextual-integrity scenarios: the agent pulls private context in through its tools, then acts toward a recipient the norm says must not receive it |
 | **AgentDojo** (`agentdojo_exfil`) | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo) — NeurIPS 2024 D&B, MIT | 100 prompt-injection exfiltrations: a planted instruction turns the agent's own tools into the leak path |
 

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Convert external scenario / PII formats into AgentLeak OSS traces.
 
 The OSS analyzer consumes **traces** (events on channels). External privacy

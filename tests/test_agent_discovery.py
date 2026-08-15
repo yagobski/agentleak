@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Discovery only works if the document sits where the caller looks.
 
 An agent finding AgentLeak does not read the docs first — it probes the

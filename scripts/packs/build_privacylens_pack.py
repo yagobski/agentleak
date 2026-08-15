@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Curate a balanced PrivacyLens pack for AgentLeak.
 
 Ships a subset rather than all 493: the pack travels inside the wheel, and a
