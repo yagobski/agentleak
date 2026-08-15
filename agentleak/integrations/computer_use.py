@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Computer-use / autonomous-coding agent integration.
 
 This covers the *action–observation* genre of agent — OpenHands, Open

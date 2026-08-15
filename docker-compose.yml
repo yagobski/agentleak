@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 # AgentLeak Cloud — production compose.
 #
 # The app binds to 127.0.0.1:8787 on the host ONLY, so it is never exposed

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 # Copy this into .github/workflows/ to make agent privacy a required check.
 #
 # Mark "privacy / gate" as a required status check in your branch protection

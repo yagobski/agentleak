@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Help text has to survive the renderer that prints it.
 
 Typer formats help through rich, and rich reads `[word]` as a style tag. So a

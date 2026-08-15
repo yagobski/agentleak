@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Hugging Face smolagents integration.
 
 smolagents records each reasoning/acting step in ``agent.memory.steps``. A

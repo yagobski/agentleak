@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Canary-token definitions and exact-matching logic.
 
 A *canary* is a synthetic secret value deliberately planted in the agent vault.

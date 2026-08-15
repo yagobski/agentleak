@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Synthetic vault generator with three-tier canary support.
 
 A *vault* represents the private data the agent receives (via tool_response

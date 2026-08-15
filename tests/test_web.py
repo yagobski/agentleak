@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Web GUI tests (skipped if the [gui] extra isn't installed)."""
 
 from __future__ import annotations

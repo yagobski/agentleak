@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Activity, Bot, Clock3, FileSearch, FolderKanban, Gauge, RefreshCw, ScanLine, ScrollText, Search, Server, ShieldAlert, ShieldCheck, Trash2, UserCog, Users, Zap } from "lucide-react"

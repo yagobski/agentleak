@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the A2A-style AgentCard model (core/agentcard.py)."""
 
 from __future__ import annotations

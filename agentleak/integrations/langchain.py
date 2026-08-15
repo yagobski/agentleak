@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """LangChain integration.
 
 ``LangChainCallback`` is duck-typed: LangChain calls ``on_*`` methods on any

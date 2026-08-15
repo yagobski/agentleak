@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Scenario model.
 
 A scenario is a named, domain-specific privacy test: a description, the kinds

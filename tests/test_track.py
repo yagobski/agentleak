@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the unified one-line API: agentleak.watch()."""
 
 from __future__ import annotations

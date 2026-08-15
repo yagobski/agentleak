@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the static code privacy scanner (core/codescan.py)."""
 
 from __future__ import annotations

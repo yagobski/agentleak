@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """LangGraph integration.
 
 LangGraph is built on langchain-core, so the LangChain callback works directly

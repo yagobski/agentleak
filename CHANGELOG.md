@@ -6,6 +6,32 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.5] - 2026-08-15
+
+Provenance and licensing release. No detection, scoring or reporting behaviour
+changes; every reported number for the bundled corpus is unchanged because the
+removed pack was already excluded from published results.
+
+### Removed
+
+- **`ai4privacy_probes` scenario pack (17 records).** The pack was described as
+  modelled on `ai4privacy/pii-masking-200k`, whose upstream terms are
+  non-standard, and it shipped without complete source/licence/attribution
+  fields. The bundled corpus is now 266 scenarios (10 built-ins, 36
+  `agentleak_bench`, 120 `privacylens_ci`, 100 `agentdojo_exfil`), all with
+  resolved provenance. The `ai4privacy`-shaped record *converter* is unaffected:
+  it reads a record shape supplied by the user and redistributes no dataset.
+
+### Added
+
+- **Complete pack provenance metadata.** `agentleak_bench` now declares
+  `source_url`, `license` and `attribution`. A test asserts that every bundled
+  pack declares all four provenance fields, so an undocumented pack cannot ship.
+- **REUSE/SPDX compliance.** Per-file `SPDX-FileCopyrightText` and
+  `SPDX-License-Identifier` headers, a `.reuse/dep5` manifest recording the
+  third-party terms of the derived packs, and canonical licence texts under
+  `LICENSES/`.
+
 ### Changed
 
 - **`agentleak.core.attacks.Channel` is now `AttackChannel`.** Two enums named

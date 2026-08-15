@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Presidio-based detector — Tier 2 of the hybrid pipeline (optional extra).
 
 Requires: ``pip install agentleak[presidio]`` which pulls in

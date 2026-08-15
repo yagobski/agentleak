@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Monitor, Moon, Sun } from "lucide-react"

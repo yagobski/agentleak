@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """User-defined regex detectors loaded from ``agentleak.yaml``.
 
 Each custom rule provides a name, a regex pattern, a severity, and a data type

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The version has to be one number, not two that happen to agree.
 
 `pyproject.toml` is what PyPI publishes and what the release workflow checks

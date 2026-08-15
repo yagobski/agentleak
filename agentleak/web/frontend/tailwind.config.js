@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],

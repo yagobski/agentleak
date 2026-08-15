@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 // Display labels for agent frameworks. The authoritative list (and the SDK
 // connection snippets) come from the backend registry via /api/meta and
 // /api/projects/{id}/connect — this is only a fallback for rendering labels.

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Bot, Plus } from "lucide-react"

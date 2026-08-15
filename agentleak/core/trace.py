@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Trace data model — the central format of AgentLeak OSS.
 
 Everything (framework traces, JSON files, SDK calls) is normalized into a

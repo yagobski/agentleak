@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Pydantic AI integration.
 
 A Pydantic AI ``result`` exposes the full exchange via ``result.all_messages()``

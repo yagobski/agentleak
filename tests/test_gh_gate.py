@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the GitHub Action entry point (scripts/gh_gate.py).
 
 The Action is the artifact behind the "privacy is a required status check"

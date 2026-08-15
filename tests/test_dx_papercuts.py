@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Regression tests for the first-session papercuts found in the 2026-08 audit.
 
 Each of these was a wall a developer hit in their first minutes with the tool:

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Integration adapter tests (no third-party frameworks required)."""
 
 from __future__ import annotations

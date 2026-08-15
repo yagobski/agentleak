@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Declarative privacy policy assertions at the runner seam."""
 
 from __future__ import annotations

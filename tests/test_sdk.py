@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """SDK tests: capture context manager and the @monitor decorator."""
 
 from __future__ import annotations

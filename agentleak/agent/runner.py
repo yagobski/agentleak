@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Execute an agent against a scenario and capture its trace.
 
 The live runner gives a real LLM a task plus a toolbox and records every channel

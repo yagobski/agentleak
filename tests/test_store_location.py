@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Where the database goes, and why guessing wrong is expensive.
 
 A deployment mounts a volume and points the app at it. If the app quietly

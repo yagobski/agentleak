@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Multi-agent orchestration tests (no network / no LLM)."""
 
 from __future__ import annotations

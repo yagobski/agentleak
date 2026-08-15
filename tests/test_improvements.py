@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Regression tests for detection-quality improvements.
 
 These lock in behaviour discovered during an end-to-end dogfood of a real

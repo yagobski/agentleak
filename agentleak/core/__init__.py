@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Core engine: trace model, detectors contract, scoring, config, runner."""
 
 from __future__ import annotations

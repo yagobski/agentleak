@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Leak provenance and agent topology — the debugging views.
 
 Two graphs are derived from a run's events and findings:

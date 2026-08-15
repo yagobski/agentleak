@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Agent-skill installation.
 
 AgentLeak ships a ``SKILL.md`` so that coding agents (Claude Code, OpenClaw, Cursor,

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentLeak compliance audit for the healthcare multi-agent pipeline.
 
 Runs the pipeline twice — first in VULNERABLE mode to demonstrate what leaks,

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The public trust page: a score someone else can check.
 
 A badge an agent awards itself is worth nothing. The only thing that makes this

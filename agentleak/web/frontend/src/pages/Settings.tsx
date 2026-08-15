@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react"
 import { ExternalLink, Github, KeyRound, Loader2, Save, ShieldCheck, Trash2, UserRound } from "lucide-react"
 import { toast } from "sonner"

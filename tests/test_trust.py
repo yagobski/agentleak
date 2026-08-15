@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The public trust page, and the ways a badge could quietly lie.
 
 A badge is a claim made to someone who will not read the report behind it. Every

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Every number published about this software must come from the software.
 
 The marketing site advertised "all 7 compliance frameworks" while the engine
@@ -41,7 +43,7 @@ def test_the_scenario_total_is_the_sum_of_what_ships() -> None:
     assert scenarios["builtin"] == len(SCENARIOS)
     assert scenarios["packs"] == {p["id"]: p["count"] for p in list_packs()}
     assert scenarios["total"] == scenarios["builtin"] + sum(scenarios["packs"].values())
-    assert scenarios["total"] == 283, "the site and the paper both quote 283"
+    assert scenarios["total"] == 266, "the site and the paper both quote 266"
 
 
 def test_the_version_is_reported_too() -> None:

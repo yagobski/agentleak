@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Built-in scenarios and helpers to load their bundled example traces."""
 
 from __future__ import annotations

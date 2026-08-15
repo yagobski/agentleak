@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
 import { ApiError, UNAUTHORIZED_EVENT, api, type User } from "@/lib/api"
 

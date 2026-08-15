@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Session authentication for the local AgentLeak platform.
 
 Accounts and sessions live entirely in the local SQLite store (see

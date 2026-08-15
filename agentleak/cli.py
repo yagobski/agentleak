@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """``agentleak`` command-line interface.
 
 Commands: init, run, report, validate, scenarios, version.

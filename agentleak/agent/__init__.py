@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Live agent execution — run a real agent against a scenario, capture its trace.
 
 This is the bridge between a *scenario* (a task + private data) and a *trace*

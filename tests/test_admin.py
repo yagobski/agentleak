@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the admin console: roles, account management, platform stats,
 health probe, and login rate limiting."""
 

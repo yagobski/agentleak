@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Financial data detector: IBANs, account numbers, credit scores, income,
 loan amounts, balances, and internal risk notes.
 """

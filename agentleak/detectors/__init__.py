@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Built-in detectors and a registry that assembles the active set from
 configuration toggles.
 """

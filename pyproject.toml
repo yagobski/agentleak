@@ -1,10 +1,12 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
 name = "agentleak"
-version = "0.11.4"
+version = "0.11.5"
 description = "Privacy-leakage testing for AI agents: audit the whole execution trace, score it deterministically, gate it in CI."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -98,7 +100,19 @@ artifacts = [
 ]
 
 [tool.hatch.build.targets.sdist]
-include = ["agentleak", "tests", "docs", "README.md", "LICENSE"]
+include = [
+  ".reuse",
+  ".zenodo.json",
+  "agentleak",
+  "docs",
+  "LICENSES",
+  "scripts",
+  "tests",
+  "CHANGELOG.md",
+  "CITATION.cff",
+  "LICENSE",
+  "README.md",
+]
 exclude = ["**/node_modules", "agentleak/web/frontend/**"]
 
 [tool.pytest.ini_options]

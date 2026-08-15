@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """PrivacyLens scenarios: conversion, ground truth, and the false-Pass guard.
 
 The point of this pack is contextual integrity: the leaked value is a *fact*

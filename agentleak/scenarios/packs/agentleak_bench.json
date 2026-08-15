@@ -2,8 +2,11 @@
   "id": "agentleak_bench",
   "name": "AgentLeak Bench",
   "description": "Curated privacy scenarios across healthcare, finance, legal and corporate verticals at three adversary levels (A0 benign, A1 weak, A2 strong), from the AgentLeak research benchmark. Each imports as a ready-to-run leak test.",
-  "source": "AgentLeak (arXiv:2602.11510)",
+  "source": "AgentLeak benchmark (El Yagoubi et al., IEEE Access 2026)",
   "format": "agentleak_spec",
+  "source_url": "https://doi.org/10.1109/ACCESS.2026.3704541",
+  "license": "MIT",
+  "attribution": "AgentLeak-authored scenarios associated with El Yagoubi, Badu-Marfo and Al Mallah (IEEE Access, 2026). Distributed under the repository MIT License.",
   "scenarios": [
     {
       "scenario_id": "agentleak_cor_00800",

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Scenario format conversion: AgentLeak specs and ai4privacy -> traces."""
 
 from __future__ import annotations

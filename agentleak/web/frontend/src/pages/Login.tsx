@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, User } from "lucide-react"

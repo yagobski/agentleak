@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Minimal OpenAI-compatible chat client (stdlib only).
 
 Talks to any endpoint that implements ``POST /chat/completions`` with function

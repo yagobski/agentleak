@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Promptfoo-compatible plugin and strategy coverage for AgentLeak red-team."""
 
 from __future__ import annotations

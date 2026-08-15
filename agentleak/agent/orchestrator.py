@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Multi-agent orchestration — run a pipeline of configured agents against a
 scenario and capture **one** combined trace.
 

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The one-import, one-context-manager way to test any agent for privacy leaks.
 
 `watch()` unifies every framework path (LangChain, LangGraph, CrewAI, OpenAI

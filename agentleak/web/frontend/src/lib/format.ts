@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import type { Badge, Report } from "./api"
 
 // Severity badge -> CSS custom property name (used for SVG strokes / inline color).

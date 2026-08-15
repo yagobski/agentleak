@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for defenses: sanitizer, internal channel guard, and policy gate."""
 
 from __future__ import annotations

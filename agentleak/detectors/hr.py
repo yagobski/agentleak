@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """HR data detector: salaries, sick leave, performance reviews, disciplinary
 actions, and complaints/grievances.
 """

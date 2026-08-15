@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Scenario registry and bundled example-trace tests.
 
 The registry has grown past "one scenario per domain" into a small mixed

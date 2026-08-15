@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Microsoft Semantic Kernel integration.
 
 Semantic Kernel runs single agents (``ChatCompletionAgent``) and multi-agent

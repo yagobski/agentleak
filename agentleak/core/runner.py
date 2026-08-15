@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """The orchestrator: run detectors over a trace, score the findings with
 AgentRisk, and produce an :class:`AnalysisResult`.
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """GitHub Action entry point for the AgentLeak privacy gate.
 
 Runs one analysis (a captured trace, a built-in/benchmark scenario, or a static

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Healthcare data detector: synthetic health identifiers (NAM-like),
 diagnoses/conditions, and medications.
 

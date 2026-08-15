@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 name: "AgentLeak privacy gate"
 description: "Fail a build when an agent leaks personal data or secrets through its internal channels. Annotates the PR with the exact finding."
 author: "AgentLeak"

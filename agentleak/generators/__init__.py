@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Generators: synthetic vault creation and adversarial scenario generation."""
 
 from .scenario_gen import AdversarialScenario, ScenarioGenerator

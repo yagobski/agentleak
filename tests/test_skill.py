@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for the agent-skill installer (`agentleak skill`)."""
 
 from __future__ import annotations

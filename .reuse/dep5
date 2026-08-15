@@ -1,0 +1,41 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: AgentLeak
+Upstream-Contact: Faouzi El Yagoubi <faouzi.el-yagoubi@polymtl.ca>
+Source: https://github.com/yagobski/agentleak
+
+Files: *
+Copyright: 2026 AgentLeak contributors
+License: MIT
+
+Files: agentleak/scenarios/packs/agentleak_bench.json
+Copyright: 2026 AgentLeak contributors
+License: MIT
+Comment: AgentLeak-authored scenarios associated with El Yagoubi, Badu-Marfo and
+ Al Mallah, IEEE Access 2026 (doi:10.1109/ACCESS.2026.3704541).
+
+Files: agentleak/scenarios/packs/privacylens_ci.json
+Copyright: PrivacyLens authors; 2026 AgentLeak contributors for the conversion
+ and packaging
+License: CC-BY-4.0
+Comment: Derived from PrivacyLens by Shao et al. (NeurIPS 2024 Datasets &
+ Benchmarks), https://huggingface.co/datasets/SALT-NLP/PrivacyLens. Records were
+ subset and reshaped into AgentLeak traces; the source URL, attribution
+ statement and indication of modifications are carried in the pack metadata and
+ displayed wherever the pack appears.
+
+Files: agentleak/scenarios/packs/agentdojo_exfil.json
+Copyright: AgentDojo authors; 2026 AgentLeak contributors for the conversion and
+ packaging
+License: MIT
+Comment: Derived from AgentDojo by Debenedetti et al. (NeurIPS 2024 Datasets &
+ Benchmarks), https://github.com/ethz-spylab/agentdojo. Upstream attribution and
+ conversion notes are carried in the pack metadata.
+
+Files: agentleak/web/static/*
+Copyright: 2026 AgentLeak contributors
+License: MIT
+Comment: Generated frontend bundle; the source lives in agentleak/web/frontend.
+
+Files: docs/* *.md
+Copyright: 2026 AgentLeak contributors
+License: MIT

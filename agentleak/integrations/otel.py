@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """OpenTelemetry / OpenInference span integration.
 
 Instead of writing a bespoke adapter per framework, reuse the open-source

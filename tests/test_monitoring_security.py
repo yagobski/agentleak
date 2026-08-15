@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Tests for admin monitoring (runs/consumption/results per project), the
 public agent-discovery surface, and the security hardening added alongside
 the SaaS admin console: disabled-owner API lockout, per-key agent rate

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Regression tests for :func:`agentleak.core.metrics._result_from_analysis`.
 
 The bug: ``detected_leaks`` was built from *all* findings (``result.findings``),

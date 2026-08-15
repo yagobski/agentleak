@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 AgentLeak contributors
+// SPDX-License-Identifier: MIT
 import { ArrowRight, Bot, Database, HardDrive, Plug, Sparkles, User, Wrench } from "lucide-react"
 import type { Badge as Sev } from "@/lib/api"
 import { type LeakPath, type ModelEdge, type ModelNode, type ProjectModel } from "@/lib/api"

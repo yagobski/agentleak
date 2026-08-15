@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Scoring engine — now built on the AgentRisk Risk Index.
 
 The headline metric is the density-normalized Risk Index ``RI ∈ [0, 1]`` (see

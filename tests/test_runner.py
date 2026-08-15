@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """End-to-end runner tests — the product's core promise."""
 
 from __future__ import annotations

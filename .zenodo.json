@@ -1,14 +1,16 @@
 {
   "title": "AgentLeak: privacy-leakage testing for agentic AI systems",
-  "description": "AgentLeak audits a complete agent execution trace for privacy leakage across eight channels — user input, tool calls, tool responses, shared memory, inter-agent messages, logs, generated files and the final answer — and scores it deterministically. An agent can return a clean answer while private data leaves through a channel nobody reads; across the 283 scenarios bundled with the tool, every leak behaves that way. Scoring uses exact ground-truth matching rather than a judge model, so the same trace always yields the same number.",
+  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight channels. Version 0.11.5 bundles 266 scenarios with complete source, license and attribution metadata and supports deterministic, NER-assisted and semantic detection tiers.",
   "creators": [
-    { "name": "El Yagoubi, Faouzi" },
-    { "name": "Badu-Marfo, Godwin" },
-    { "name": "Al Mallah, Ranwa" }
+    { "name": "El Yagoubi, Faouzi", "affiliation": "Polytechnique Montréal" },
+    { "name": "Badu-Marfo, Godwin", "affiliation": "Polytechnique Montréal" },
+    { "name": "Al Mallah, Ranwa", "affiliation": "Polytechnique Montréal" }
   ],
   "license": "MIT",
   "upload_type": "software",
   "access_right": "open",
+  "version": "0.11.5",
+  "publication_date": "2026-08-15",
   "keywords": [
     "privacy",
     "agentic AI",
@@ -19,14 +21,15 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "https://arxiv.org/abs/2602.11510",
+      "identifier": "10.1109/ACCESS.2026.3704541",
       "relation": "isSupplementTo",
-      "resource_type": "publication-preprint"
+      "resource_type": "publication-article"
     },
     {
       "identifier": "https://www.agentleak.org",
       "relation": "isDocumentedBy",
       "resource_type": "publication-softwaredocumentation"
     }
-  ]
+  ],
+  "notes": "Release 0.11.5 removes the unresolved-provenance fixture pack, provides complete pack attribution, and adds REUSE/SPDX licensing metadata."
 }

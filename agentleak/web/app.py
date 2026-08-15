@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """FastAPI app for the local AgentLeak platform.
 
 Everything runs locally — traces are analyzed in-process and stored in a local

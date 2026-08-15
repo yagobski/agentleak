@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """AgentDojo scenarios: injection in, secret out, ground truth attached.
 
 The shape under test is a prompt-injection exfiltration: the attack arrives on a

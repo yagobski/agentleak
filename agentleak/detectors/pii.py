@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """General PII detector: emails, phones, SSN/SIN, credit cards, IPs, DOB,
 client identifiers, and keyword-anchored probable names.
 

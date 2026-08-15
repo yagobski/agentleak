@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Thin HTTP client to connect an agent to a running AgentLeak platform.
 
 Lets your agent push traces to ``agentleak serve`` so runs show up in the web

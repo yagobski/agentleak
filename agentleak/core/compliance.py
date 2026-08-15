@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Compliance framework mapping.
 
 Turns an AgentRisk report into per-framework compliance findings — which

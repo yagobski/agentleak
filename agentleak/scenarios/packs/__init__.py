@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Importable scenario packs — curated bundles of external privacy scenarios.
 
 A *pack* is a JSON file in this package holding a list of scenarios in some

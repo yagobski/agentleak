@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Framework integrations.
 
 The generic recorder works everywhere; the framework-specific adapters add

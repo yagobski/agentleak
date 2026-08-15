@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Adversarial scenario generator.
 
 Takes a :class:`~agentleak.generators.vault.Vault` and an
