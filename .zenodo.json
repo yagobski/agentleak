@@ -1,15 +1,15 @@
 {
   "title": "AgentLeak: privacy-leakage testing for agentic AI systems",
-  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight channels. Version 0.11.5 bundles 266 scenarios with complete source, license and attribution metadata and supports deterministic, NER-assisted and semantic detection tiers.",
+  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight channels. Version 0.11.6 bundles 266 scenarios with complete source, license and attribution metadata and supports deterministic, NER-assisted and semantic detection tiers.",
   "creators": [
     { "name": "El Yagoubi, Faouzi", "affiliation": "Polytechnique Montréal" },
-    { "name": "Badu-Marfo, Godwin", "affiliation": "Polytechnique Montréal" },
+    { "name": "Quintero, José Alejandro", "affiliation": "Polytechnique Montréal" },
     { "name": "Al Mallah, Ranwa", "affiliation": "Polytechnique Montréal" }
   ],
   "license": "MIT",
   "upload_type": "software",
   "access_right": "open",
-  "version": "0.11.5",
+  "version": "0.11.6",
   "publication_date": "2026-08-15",
   "keywords": [
     "privacy",
@@ -31,5 +31,5 @@
       "resource_type": "publication-softwaredocumentation"
     }
   ],
-  "notes": "Release 0.11.5 removes the unresolved-provenance fixture pack, provides complete pack attribution, and adds REUSE/SPDX licensing metadata."
+  "notes": "Release 0.11.6 corrects the second-author metadata. Runtime behavior and the 266-scenario corpus are unchanged from v0.11.5."
 }

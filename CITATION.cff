@@ -7,8 +7,9 @@ type: software
 authors:
   - given-names: Faouzi
     family-names: El Yagoubi
-  - given-names: Godwin
-    family-names: Badu-Marfo
+  - given-names: José Alejandro
+    family-names: Quintero
+    email: alejandro.quintero@polymtl.ca
   - given-names: Ranwa
     family-names: Al Mallah
 repository-code: "https://github.com/yagobski/agentleak"
@@ -18,7 +19,7 @@ abstract: >-
   eight channels — user input, tool calls, tool responses, shared memory,
   inter-agent messages, logs, generated files and the final answer — and scores
   it deterministically. An agent can return a clean answer while private data
-  leaves through an internal channel. Version 0.11.5 bundles 266 scenarios with
+  leaves through an internal channel. Version 0.11.6 bundles 266 scenarios with
   complete source, license and attribution metadata and supports deterministic,
   NER-assisted and semantic detection tiers.
 keywords:
@@ -29,7 +30,7 @@ keywords:
   - software testing
   - compliance
 license: MIT
-version: 0.11.5
+version: 0.11.6
 date-released: "2026-08-15"
 preferred-citation:
   type: article
@@ -37,8 +38,8 @@ preferred-citation:
   authors:
     - given-names: Faouzi
       family-names: El Yagoubi
-    - given-names: Godwin
-      family-names: Badu-Marfo
+    - given-names: José Alejandro
+      family-names: Quintero
     - given-names: Ranwa
       family-names: Al Mallah
   url: "https://arxiv.org/abs/2602.11510"
