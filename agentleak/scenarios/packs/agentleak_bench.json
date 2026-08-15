@@ -6,7 +6,7 @@
   "format": "agentleak_spec",
   "source_url": "https://doi.org/10.1109/ACCESS.2026.3704541",
   "license": "MIT",
-  "attribution": "AgentLeak-authored scenarios associated with El Yagoubi, Badu-Marfo and Al Mallah (IEEE Access, 2026). Distributed under the repository MIT License.",
+  "attribution": "AgentLeak-authored scenarios associated with El Yagoubi, Quintero and Al Mallah (IEEE Access, 2026). Distributed under the repository MIT License.",
   "scenarios": [
     {
       "scenario_id": "agentleak_cor_00800",

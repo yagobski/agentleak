@@ -6,6 +6,13 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.6] - 2026-08-15
+
+Metadata-only authorship correction: José Alejandro Quintero replaces Godwin
+Badu-Marfo as the second author in citation, archive and fixture-attribution
+metadata. Detection, scoring, packaged scenarios, reports and public APIs are
+unchanged from v0.11.5.
+
 ## [0.11.5] - 2026-08-15
 
 Provenance and licensing release. No detection, scoring or reporting behaviour
