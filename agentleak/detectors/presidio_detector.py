@@ -223,7 +223,7 @@ def _build_analyzer(score_threshold: float = 0.5) -> Any:
 
 
 class PresidioDetector(Detector):
-    """Tier-2 detector using Microsoft Presidio + domain-specific recognizers.
+    """Tier-2 detector using Presidio + domain-specific recognizers.
 
     Requires ``pip install agentleak[presidio]``. When not installed the
     detector is a no-op (returns ``[]`` for every input).
