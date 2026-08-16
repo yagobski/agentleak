@@ -6,6 +6,15 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.8] - 2026-08-16
+
+Corrective metadata release. Every attribution of the published IEEE Access
+article now names its published authors: Faouzi El Yagoubi, Godwin Badu-Marfo
+and Ranwa Al Mallah. This restores Godwin Badu-Marfo in the bundled benchmark
+pack and REUSE manifest, and records his ORCID in the preferred citation.
+Software authorship remains El Yagoubi, Quintero and Al Mallah. Runtime
+behavior and the 266-scenario corpus are unchanged from v0.11.7.
+
 ## [0.11.7] - 2026-08-16
 
 Metadata and documentation correction: the preferred citation now names the

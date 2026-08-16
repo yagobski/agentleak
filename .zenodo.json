@@ -1,6 +1,6 @@
 {
   "title": "AgentLeak: privacy-leakage testing for agentic AI systems",
-  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight channels. Version 0.11.7 bundles 266 scenarios with complete source, license and attribution metadata and supports deterministic, NER-assisted and semantic detection tiers.",
+  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight channels. Version 0.11.8 bundles 266 scenarios with complete source, license and corrected publication-attribution metadata and supports deterministic, NER-assisted and semantic detection tiers.",
   "creators": [
     { "name": "El Yagoubi, Faouzi", "affiliation": "Polytechnique Montréal" },
     { "name": "Quintero, José Alejandro", "affiliation": "Polytechnique Montréal" },
@@ -9,8 +9,8 @@
   "license": "MIT",
   "upload_type": "software",
   "access_right": "open",
-  "version": "0.11.7",
-  "publication_date": "2026-08-15",
+  "version": "0.11.8",
+  "publication_date": "2026-08-16",
   "keywords": [
     "privacy",
     "agentic AI",
@@ -31,5 +31,5 @@
       "resource_type": "publication-softwaredocumentation"
     }
   ],
-  "notes": "Release 0.11.7 corrects the preferred article citation and current Presidio project branding. Runtime behavior and the 266-scenario corpus are unchanged from v0.11.6."
+  "notes": "Release 0.11.8 restores Godwin Badu-Marfo in every attribution of the published IEEE Access article. Software authorship remains El Yagoubi, Quintero and Al Mallah. Runtime behavior and the 266-scenario corpus are unchanged from v0.11.7."
 }

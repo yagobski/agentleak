@@ -26,6 +26,13 @@ def test_every_pack_declares_complete_provenance():
             assert pack[field], f"{pack['id']} is missing {field}"
 
 
+def test_benchmark_pack_credits_the_published_article_authors():
+    """The IEEE Access attribution must not be rewritten as software authorship."""
+    attribution = load_pack("agentleak_bench")["attribution"]
+    assert "Badu-Marfo" in attribution
+    assert "Quintero" not in attribution
+
+
 def test_load_pack_unknown_raises():
     with pytest.raises(KeyError):
         load_pack("does_not_exist")

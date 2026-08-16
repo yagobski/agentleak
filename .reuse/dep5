@@ -10,7 +10,7 @@ License: MIT
 Files: agentleak/scenarios/packs/agentleak_bench.json
 Copyright: 2026 AgentLeak contributors
 License: MIT
-Comment: AgentLeak-authored scenarios associated with El Yagoubi, Quintero and
+Comment: AgentLeak-authored scenarios associated with El Yagoubi, Badu-Marfo and
  Al Mallah, IEEE Access 2026 (doi:10.1109/ACCESS.2026.3704541).
 
 Files: agentleak/scenarios/packs/privacylens_ci.json
