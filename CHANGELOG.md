@@ -12,8 +12,12 @@ Corrective metadata release. Every attribution of the published IEEE Access
 article now names its published authors: Faouzi El Yagoubi, Godwin Badu-Marfo
 and Ranwa Al Mallah. This restores Godwin Badu-Marfo in the bundled benchmark
 pack and REUSE manifest, and records his ORCID in the preferred citation.
-Software authorship remains El Yagoubi, Quintero and Al Mallah. Runtime
-behavior and the 266-scenario corpus are unchanged from v0.11.7.
+Software authorship remains El Yagoubi, Quintero and Al Mallah. The wheel now
+includes canonical MIT and CC-BY-4.0 texts, the REUSE mapping, and a third-party
+fixture NOTICE.
+README licensing language now distinguishes AgentLeak-authored MIT components
+from PrivacyLens-derived CC-BY-4.0 fixtures. Runtime behavior and the
+266-scenario corpus are unchanged from v0.11.7.
 
 ## [0.11.7] - 2026-08-16
 
