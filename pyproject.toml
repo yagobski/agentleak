@@ -96,8 +96,14 @@ artifacts = [
   "agentleak/reporters/templates/*.j2",
   "agentleak/examples/*.json",
   "agentleak/scenarios/packs/*.json",
+  "agentleak/scenarios/packs/NOTICE.md",
   "agentleak/web/static/**/*",
 ]
+
+[tool.hatch.build.targets.wheel.force-include]
+"LICENSES/MIT.txt" = "agentleak/licenses/MIT.txt"
+"LICENSES/CC-BY-4.0.txt" = "agentleak/licenses/CC-BY-4.0.txt"
+".reuse/dep5" = "agentleak/licenses/REUSE_DEP5"
 
 [tool.hatch.build.targets.sdist]
 include = [

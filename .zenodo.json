@@ -31,5 +31,5 @@
       "resource_type": "publication-softwaredocumentation"
     }
   ],
-  "notes": "Release 0.11.8 restores Godwin Badu-Marfo in every attribution of the published IEEE Access article. Software authorship remains El Yagoubi, Quintero and Al Mallah. Runtime behavior and the 266-scenario corpus are unchanged from v0.11.7."
+  "notes": "Release 0.11.8 restores the published IEEE Access author attribution and embeds MIT and CC-BY-4.0 license texts plus fixture provenance in the wheel. Software authorship remains El Yagoubi, Quintero and Al Mallah. Runtime behavior and the 266-scenario corpus are unchanged from v0.11.7."
 }

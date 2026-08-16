@@ -57,13 +57,16 @@ no data ever leaves your machine.
 
 ## What is in this repository
 
-Everything you run yourself, under MIT: the SDK, the CLI, the detection and
-scoring engine, the 266 bundled scenarios, the framework integrations, the
-runtime defenses, the GitHub Action and the local web UI.
+AgentLeak-authored software and scenarios are released under MIT. Bundled
+third-party-derived research fixtures retain their upstream licenses and
+attribution: PrivacyLens-derived fixtures are CC-BY-4.0 and AgentDojo-derived
+fixtures are MIT. The wheel includes the applicable license texts and NOTICE.
 
 | | Where |
 |---|---|
-| SDK, CLI, engine, scenarios, Action, local UI | this repository, MIT |
+| SDK, CLI, engine, AgentLeak-authored scenarios, Action, local UI | this repository, MIT |
+| PrivacyLens-derived fixtures | bundled research fixtures, CC-BY-4.0 |
+| AgentDojo-derived fixtures | bundled research fixtures, MIT |
 | Hosted workspace | [agentleak.org/app](https://www.agentleak.org/app/) |
 | Published benchmark | [agentleak.org/benchmark](https://www.agentleak.org/benchmark) |
 

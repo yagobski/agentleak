@@ -49,14 +49,16 @@ jobs:
         run: |
           python -m venv /tmp/verify
           /tmp/verify/bin/pip install --quiet dist/*.whl
-          # The exact first-run path a new user or agent follows.
+          # Run outside the checkout: importing from the repository would hide
+          # missing files in the installed wheel.
+          cd /tmp
           /tmp/verify/bin/agentleak version
           /tmp/verify/bin/agentleak scenarios --packs | grep -q agentleak_bench
           /tmp/verify/bin/agentleak run --scenario healthcare_clean_referral \
             --output /tmp/verify-reports --format json
           test -s /tmp/verify-reports/*.json
-          # Packaged data must travel with the wheel, not just exist in git.
           /tmp/verify/bin/python -c "from agentleak.skill import skill_text; assert 'AgentLeak' in skill_text()"
+          /tmp/verify/bin/python -c "from importlib.resources import files; root=files('agentleak'); assert root.joinpath('licenses/CC-BY-4.0.txt').is_file(); assert root.joinpath('licenses/MIT.txt').is_file(); assert root.joinpath('licenses/REUSE_DEP5').is_file(); assert root.joinpath('scenarios/packs/NOTICE.md').is_file()"
           echo 'API_KEY = "sk-live-abcdef0123456789"' > /tmp/leaky.py
           /tmp/verify/bin/agentleak scan /tmp/leaky.py | grep -q hardcoded_secret
 
