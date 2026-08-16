@@ -216,7 +216,7 @@ Nine **detectors**, six of them regex/dictionary and always on, three optional:
 | `hr` | salary, sick leave, performance reviews, disciplinary actions, complaints |
 | `keyname` | key/value pairs that look like credentials by their key (`password=`, `token=`, `secret=`) |
 | `custom` | your own regex rules from `agentleak.yaml` |
-| `presidio` *(optional, `[presidio]` extra)* | Microsoft Presidio NER — names and entities regex alone misses |
+| `presidio` *(optional, `[presidio]` extra)* | Presidio NER — names and entities regex alone misses |
 | `llm_judge` *(optional, `[llm]` extra, BYOK)* | paraphrased or contextual leaks no pattern matches |
 
 ## Scoring — AgentRisk

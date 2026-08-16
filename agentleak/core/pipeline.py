@@ -7,7 +7,7 @@ Tier 1+2 — Regex detectors (always available, stdlib only)
     Custom.  Fast (<1 ms/event) and deterministic.
 
 Tier 2b — Presidio (optional, ``pip install agentleak[presidio]``)
-    Microsoft Presidio with 20+ domain-specific recognizers. Catches entity
+    Presidio with 20+ domain-specific recognizers. Catches entity
     types the regex tier misses (VIN, IMEI, GPS, etc.).
 
 Tier 3 — LLM-as-Judge (optional, requires API key + model config)

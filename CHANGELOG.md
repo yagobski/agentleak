@@ -6,6 +6,14 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.7] - 2026-08-16
+
+Metadata and documentation correction: the preferred citation now names the
+published IEEE Access article and its published author list, while software
+authorship remains El Yagoubi, Quintero and Al Mallah. Presidio references now
+use the current Data Privacy Stack project branding. Runtime behavior and the
+266-scenario corpus are unchanged from v0.11.6.
+
 ## [0.11.6] - 2026-08-15
 
 Metadata-only authorship correction: José Alejandro Quintero replaces Godwin

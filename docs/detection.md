@@ -48,7 +48,7 @@ custom_detectors:
 
 ## Tier 2b — Presidio
 
-Microsoft Presidio with 20+ entity recognizers, plus 12 domain-specific
+Presidio with 20+ entity recognizers, plus 12 domain-specific
 recognizers added by AgentLeak:
 
 `PatientIDRecognizer` · `MedicalLicenseRecognizer` · `InsuranceIDRecognizer` ·

@@ -38,7 +38,7 @@ Optional extras — only install what the user asks for:
 |---|---|---|
 | Local web UI | `pip install "agentleak[gui]"` | `agentleak serve` → dashboard, red team, leak topology |
 | Coding agents (MCP) | `pip install "agentleak[mcp]"` | `agentleak mcp` → privacy tools inside Claude Code, Cursor, … |
-| Advanced PII | `pip install "agentleak[presidio]"` | Microsoft Presidio + 12 custom recognizers |
+| Advanced PII | `pip install "agentleak[presidio]"` | Presidio + 12 custom recognizers |
 | Semantic detection | `pip install "agentleak[llm]"` | LLM judge for paraphrased leaks (works with a local model) |
 | Everything | `pip install "agentleak[full]"` | all of the above |
 

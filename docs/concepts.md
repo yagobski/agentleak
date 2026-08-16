@@ -62,7 +62,7 @@ A detector scans text and emits matches. The pipeline runs up to three tiers:
 | Tier | What runs | Default |
 | --- | --- | --- |
 | **Tier 1+2 — Regex** | Built-in pattern matchers: `pii`, `secrets`, `healthcare`, `finance`, `hr`, custom rules | Always |
-| **Tier 2b — Presidio** | Microsoft Presidio + 12 domain-specific recognizers (VIN, IMEI, GPS, CVV, …) | `pip install agentleak[presidio]` |
+| **Tier 2b — Presidio** | Presidio + 12 domain-specific recognizers (VIN, IMEI, GPS, CVV, …) | `pip install agentleak[presidio]` |
 | **Tier 3 — LLM-judge** | Semantic detector: calls an OpenAI-compatible endpoint to catch paraphrased / inferred leaks | Requires API key + config |
 
 See [Detection pipeline](detection.md) for configuration details.
