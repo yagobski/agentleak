@@ -6,6 +6,15 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.10] - 2026-08-26
+
+Redesigned the dashboard sign-in and registration pages. The wordmark is now
+set as text, flush left in a tinted header band, and the AgentLeak shield is
+drawn in ASCII beside the form: its three cuts are the three internal channels
+the audit reads, named in the caption underneath. Both themes and the small
+viewports were rebuilt with it, and the stylesheet lost the rules belonging to
+the layout this replaces.
+
 ## [0.11.8] - 2026-08-16
 
 Corrective metadata release. Every attribution of the published IEEE Access
