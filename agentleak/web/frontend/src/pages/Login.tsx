@@ -2,20 +2,46 @@
 // SPDX-License-Identifier: MIT
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, User } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Brand, ThemeSwitch, usePageMeta } from "@/features/SiteChrome"
+import { ThemeSwitch, usePageMeta } from "@/features/SiteChrome"
 
-const auditRows = [
-  ["01", "tool_response", "Customer record received", "source"],
-  ["02", "tool_call", "Forwarded email and address to calendar", "exposed"],
-  ["03", "shared_memory", "Account ID persisted for next agent", "exposed"],
-  ["04", "final_output", "Clean response to the customer", "clean"],
+// The AgentLeak mark, traced from the logo: a shield cut by three slashes.
+// The three cuts are the three internal channels the audit reads, which is
+// what the caption underneath names.
+const SHIELD = [
+  "                    .:#@=.",
+  "                 .:=@@@@@@#=:.",
+  "             .:=#@@@@@@@@@@@@@#=.",
+  "        ..:=#@@@@@@@@@@@@@@@@@@@@@#=:.",
+  "   .:==#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#=:.",
+  "   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@=",
+  "  .@@@@@@@@@@@@@@@@@@@###@@@@@@@@@@@@@@@@@@#",
+  "  :@@@@@@@@@@@@@@@@@#::#@@@@@@@@@@@@@@@@@@@@",
+  "  :@@@@@@@@@@@@@@#:..=@@@@@@@@@@@=:@@@@@@@@@",
+  "  :@@@@@@@@@@@=:  .#@@@@@@@@@@@#.:@@@@@@@@@@",
+  "  .@@@@@@##:.   :#@@@@@@@@@@@=. =@@@@@@@@@@@",
+  "   .:::..    :#@@@@@@@@@@@@=. .#@@@@@@@@@@@#",
+  "         .:#@@@@@@@@@@@@#:  .=@@@@@@@@@@@@@#",
+  "     .:=#@@@@@@@@@@@@#=.  .=@@@@@@@@@@@@@@@=",
+  ".=###@@@@@@@@@@@@@#=.   .=@@@@@@@@@@@@@@@@@.",
+  " .=@@@@@@@@@@@@#=.    :#@@@@@@@@@@@@@@@@@@#",
+  "   .@@@@@@@@#=.    .=#@@@@@@@@@##@@@@@@@@@:",
+  "    .=##==:.    .:#@@@@@@@@@@@=:#@@@@@@@@#",
+  "             .:#@@@@@@@@@@@@= .@@@@@@@@@@:",
+  "          .=#@@@@@@@@@@@@#:  =@@@@@@@@@@=",
+  "    .::=#@@@@@@@@@@@@@#=.  .#@@@@@@@@@@#",
+  "    .=#@@@@@@@@@@@@@=:   .#@@@@@@@@@@@@.",
+  "       .=@@@@@@@#=:    :#@@@@@@@@@@@@@.",
+  "         .::::..    .=#@@@@@@@@@@@@@#.",
+  "                 .:#@@@@@@@@@@@@@@@=",
+  "            ..:=#@@@@@@@@@@@@@@@@#:",
+  "           :#@@@@@@@@@@@@@@@@@@@:",
 ]
 
 export function Login({ initialMode = "login" }: { initialMode?: "login" | "register" }) {
@@ -54,161 +80,99 @@ export function Login({ initialMode = "login" }: { initialMode?: "login" | "regi
   )
 
   return (
-    <div className="auth-shell min-h-screen">
-      <nav className="auth-nav">
-        <Brand />
-        <div>
-          <Link to="/docs">Docs</Link>
-          <a href="/openapi.json">API</a>
-          <ThemeSwitch />
-          <Link to={isRegister ? "/login" : "/register"}>{isRegister ? "Sign in" : "Create account"}</Link>
-        </div>
-      </nav>
-
+    <div className="auth-shell">
       <main className="auth-stage">
-        <section className="auth-product">
-          <div className="auth-copy">
-            <p>Private workspace / local-first audit</p>
-            <h1>{isRegister ? "Create the place where agents get tested." : "Return to the audit room."}</h1>
-            <span>
-              AgentLeak keeps the account simple: a server-side session for humans,
-              scoped project keys for agents, and no client-side token storage.
-            </span>
-          </div>
-          <div className="auth-live" aria-label="AgentLeak product preview">
-            <div className="auth-platform-window">
-              <header>
-                <span>support-router</span>
-                <b>Analysis complete</b>
-              </header>
-              <div className="auth-platform-body">
-                <aside>
-                  <span data-active="true">Trace</span>
-                  <span>AgentRisk</span>
-                  <span>Policy</span>
-                </aside>
-                <section>
-                  <div className="auth-risk">
-                    <small>AgentRisk RI</small>
-                    <strong>0.38</strong>
-                    <i>
-                      <b />
-                    </i>
-                    <span>2 blocked channels / final answer clean</span>
+        <div className="auth-card">
+          <header className="auth-card-head">
+            <Link to="/" className="auth-wordmark">agentleak</Link>
+          </header>
+
+          <div className="auth-card-body">
+            <section className="auth-mark">
+              <pre className="auth-ascii" aria-hidden="true">
+                {SHIELD.map((line, i) => (
+                  <span key={i} style={{ "--row": i } as React.CSSProperties}>{line}</span>
+                ))}
+              </pre>
+              <p className="auth-mark-caption">
+                <span>tool calls</span>
+                <span>shared memory</span>
+                <span>logs</span>
+              </p>
+            </section>
+
+            <section className="auth-form-col" aria-labelledby="auth-title">
+              <h1 className="auth-col-label" id="auth-title">
+                {isRegister ? "Create your account" : "Sign in with email"}
+              </h1>
+
+              <form className="auth-form" onSubmit={submit}>
+                {isRegister && (
+                  <div className="auth-field">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" autoComplete="name" />
                   </div>
-                  <div className="auth-events">
-                    {auditRows.map(([id, channel, detail, status]) => (
-                      <div key={id} data-status={status}>
-                        <i>{id}</i>
-                        <span>
-                          <b>{channel}</b>
-                          <small>{detail}</small>
-                        </span>
-                        <em>{status}</em>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-            </div>
-            <div className="auth-terminal-strip">
-              <header>
-                <span>agent terminal</span>
-                <b>project key</b>
-              </header>
-              <code>
-                <span>$ agentleak scan --project support-router</span>
-                <span>trace accepted: 41 events</span>
-              </code>
-            </div>
-          </div>
-        </section>
-
-        <section className="auth-form-panel" aria-labelledby="auth-title">
-          <div className="auth-form-head">
-            <p>{isRegister ? "New workspace" : "Existing workspace"}</p>
-            <h2 id="auth-title">{isRegister ? "Create your account" : "Sign in"}</h2>
-            <span>{isRegister ? "Start with one local account, then create project keys for agents." : "Continue auditing agents, scenarios and project runs."}</span>
-          </div>
-
-          <p className="auth-agent-note">
-            This form creates a <b>human</b> account for the browser dashboard. Building an autonomous
-            agent instead? Skip signup entirely — agents onboard through the{" "}
-            <Link to="/docs/agents">machine API</Link>, no browser session required.
-          </p>
-
-          <form className="auth-form" onSubmit={submit}>
-            {isRegister && (
-              <div className="auth-field">
-                <Label htmlFor="name">Name</Label>
-                <div>
-                  <User aria-hidden="true" />
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" autoComplete="name" />
+                )}
+                <div className="auth-field">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
                 </div>
-              </div>
-            )}
-            <div className="auth-field">
-              <Label htmlFor="email">Email</Label>
-              <div>
-                <Mail aria-hidden="true" />
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
-              </div>
-            </div>
-            <div className="auth-field">
-              <Label htmlFor="password">Password</Label>
-              <div>
-                <LockKeyhole aria-hidden="true" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={isRegister ? 8 : undefined}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={isRegister ? "At least 8 characters" : "Password"}
-                  autoComplete={isRegister ? "new-password" : "current-password"}
-                />
-                <button
-                  type="button"
-                  className="auth-reveal"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </button>
-              </div>
-            </div>
-            <Button type="submit" className="auth-submit" disabled={busy}>
-              {busy ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-              {isRegister ? "Create account" : "Sign in"}
-            </Button>
-          </form>
+                <div className="auth-field">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="auth-password">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength={isRegister ? 8 : undefined}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={isRegister ? "At least 8 characters" : "Password"}
+                      autoComplete={isRegister ? "new-password" : "current-password"}
+                    />
+                    <button
+                      type="button"
+                      className="auth-reveal"
+                      onClick={() => setShowPassword((value) => !value)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </button>
+                  </div>
+                </div>
+                <Button type="submit" className="auth-submit" disabled={busy}>
+                  {busy && <Loader2 className="animate-spin" />}
+                  {isRegister ? "Create account" : "Sign in"}
+                </Button>
+              </form>
 
-          <div className="auth-assurance">
-            <span>
-              <CheckCircle2 /> Passwords are hashed server-side
-            </span>
-            <span>
-              <CheckCircle2 /> HTTP-only session cookie
-            </span>
-            <span>
-              <CheckCircle2 /> Project keys stay scoped to one agent
-            </span>
+              <p className="auth-switch">
+                {isRegister ? "Already have an account?" : "No account yet?"}{" "}
+                <Link to={isRegister ? "/login" : "/register"}>{isRegister ? "Sign in" : "Create one"}</Link>
+              </p>
+            </section>
           </div>
 
-          <p className="auth-switch">
-            {isRegister ? "Already have an account?" : "No account yet?"}{" "}
-            <Link to={isRegister ? "/login" : "/register"}>{isRegister ? "Sign in" : "Create one"}</Link>
-          </p>
-        </section>
+          <footer className="auth-card-foot">
+            <p>
+              Building an agent? It signs in through the{" "}
+              <Link to="/docs/agents">machine API</Link>, no browser session needed.
+            </p>
+            <div className="auth-foot-links">
+              <Link to="/docs">Docs</Link>
+              <a href="/openapi.json">API</a>
+              <ThemeSwitch />
+            </div>
+          </footer>
+        </div>
       </main>
     </div>
   )
