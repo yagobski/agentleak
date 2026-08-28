@@ -959,78 +959,74 @@ a.integrations-card:hover .integrations-card-link svg { transform: translateX(3p
 .platform-content pre { border-radius: 7px; }
 .platform-content .animate-fade-up { animation-duration: .55s; }
 
-/* Authentication — one centred card on a recessed backdrop. The wordmark is
-   set as text, flush left in a tinted band; the body splits into the ASCII
-   mark and the form, divided by a hairline. */
-.auth-shell { display: grid; min-height: 100vh; place-items: center; overflow-x: hidden; padding: 30px 20px; background: var(--s-080909); color: var(--s-ebeae5); font-family: "Hanken Grotesk Variable", "Helvetica Neue", Helvetica, Arial, sans-serif; }
-.auth-stage { width: 100%; max-width: 880px; }
-.auth-card { overflow: hidden; border: 1px solid var(--s-252520); border-radius: 14px; background: var(--s-121210); box-shadow: 0 24px 70px var(--s-shadow-a, rgb(0 0 0 / .38)); }
+/* Authentication — full-bleed, split down the middle. The complete logo sits in
+   the top bar; the ASCII mark holds the left pane at whatever size the viewport
+   allows, and the form takes a fixed measure on the right. Both panes stretch to
+   the bottom of the window, so the page has no card edge to end at. */
+.auth-shell { --gutter: clamp(20px, 3vw, 44px); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 100vh; overflow-x: hidden; background: var(--s-0e0e0c); color: var(--s-ebeae5); font-family: "Hanken Grotesk Variable", "Helvetica Neue", Helvetica, Arial, sans-serif; }
 
-/* Head band: wordmark left, halftone fading right. */
-.auth-card-head { position: relative; display: flex; height: 64px; align-items: center; overflow: hidden; border-bottom: 1px solid var(--s-252520); background: var(--s-191915); padding: 0 30px; }
-.auth-card-head::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 46%; background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 7px 7px; opacity: .12; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000); mask-image: linear-gradient(90deg, transparent, #000); }
-.auth-wordmark { position: relative; z-index: 1; font-size: 21px; font-weight: 700; letter-spacing: -.045em; line-height: 1; color: var(--s-ebeae5); }
-.auth-wordmark:hover { color: var(--s-ebeae5); }
+/* Top bar: the full logo, then the ways out of a signed-out page. */
+.auth-nav { display: flex; height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 var(--gutter); }
+.auth-nav-links { display: flex; align-items: center; gap: 8px; }
+.auth-nav-links a { display: inline-flex; min-height: 34px; align-items: center; border: 1px solid transparent; border-radius: 999px; padding: 0 13px; font-size: 14px; color: var(--s-b2b1ab); transition: border-color .2s ease, background .2s ease, color .2s ease; }
+/* Scope the plain and the solid link apart: `.auth-nav-links a` would otherwise
+   outrank a bare `.auth-nav-cta` and leave the call to action grey on grey. */
+.auth-nav-links a:not(.auth-nav-cta):hover { border-color: var(--s-252520); background: var(--s-121210); color: var(--s-ebeae5); }
+.auth-nav-links a.auth-nav-cta { border-color: var(--s-e4e4e0); background: var(--s-e4e4e0); color: var(--s-0e0e0c); }
+.auth-nav-links a.auth-nav-cta:hover { border-color: var(--s-f1f1ed); background: var(--s-f1f1ed); }
 
-.auth-card-body { display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1fr); }
+.auth-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 33vw); align-items: stretch; border-top: 1px solid var(--s-252520); }
 
 /* Left: the mark, drawn in ASCII and scanned in one row at a time. */
-.auth-mark { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; border-right: 1px solid var(--s-252520); padding: 40px 26px; }
-/* The art is a fixed 44 columns, so size it off the viewport (~26.4 character
-   advances plus the surrounding padding) and cap it — it never overflows. */
-.auth-ascii { margin: 0; max-width: 100%; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: clamp(6px, calc((100vw - 130px) / 27), 11px); line-height: 1; letter-spacing: 0; white-space: pre; color: var(--s-ebeae5); }
+.auth-mark { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; overflow: hidden; border-right: 1px solid var(--s-252520); background: var(--s-121210); padding: 40px var(--gutter); }
+/* The art is a fixed 48 columns by 32 rows. A monospace cell is .6em wide and
+   1em tall, so the width it needs is 28.8em and the height 32em — size it off
+   whichever of the two runs out first, and cap it so it stays a mark. */
+.auth-ascii { margin: 0; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: clamp(5px, min(calc((67vw - 120px) / 36), calc((100vh - 250px) / 34)), 21px); line-height: 1; letter-spacing: 0; white-space: pre; color: var(--s-ebeae5); }
 .auth-ascii span { display: block; animation: auth-scan .52s cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(var(--row) * 24ms); }
 @keyframes auth-scan {
   0% { opacity: 0; color: #ff6a3d; }
   55% { opacity: .94; color: #ff6a3d; }
   100% { opacity: .8; color: var(--s-ebeae5); }
 }
-.auth-mark-caption { display: flex; flex-wrap: wrap; justify-content: center; margin: 0; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .02em; color: var(--s-8e8e87); }
-.auth-mark-caption span + span::before { content: "·"; margin: 0 7px; opacity: .6; }
+.auth-mark-caption { display: flex; flex-wrap: wrap; justify-content: center; margin: 0; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .02em; color: var(--s-8e8e87); }
+.auth-mark-caption span + span::before { content: "\00b7"; margin: 0 7px; opacity: .6; }
 
-/* Right: the form. */
-.auth-form-col { display: flex; flex-direction: column; justify-content: center; padding: 40px 34px; }
-.auth-col-label { margin: 0 0 22px; text-align: center; font-size: 13.5px; font-weight: 500; color: var(--s-8e8e87); }
+/* Right: the form, on one fixed measure whatever the pane does. */
+.auth-form-panel { display: flex; flex-direction: column; justify-content: center; background: var(--s-0c0c0b); padding: 48px var(--gutter); }
+.auth-form-inner { width: 100%; max-width: 340px; margin: 0 auto; }
+.auth-col-label { margin: 0 0 24px; text-align: center; font-size: 13.5px; font-weight: 500; color: var(--s-8e8e87); }
 .auth-form { display: grid; gap: 14px; }
 .auth-field { display: grid; gap: 6px; }
 .auth-field label { font-size: 12px; font-weight: 500; color: var(--s-8e8e87); }
-.auth-field input { height: 42px; width: 100%; border: 1px solid transparent; border-radius: 8px; background: var(--s-0e0e0c) !important; box-shadow: none; padding: 0 12px; font-size: 14px; color: var(--s-ebeae5); transition: border-color .18s ease; }
+.auth-field input { height: 42px; width: 100%; border: 1px solid var(--s-252520); border-radius: 8px; background: var(--s-0e0e0c) !important; box-shadow: none; padding: 0 12px; font-size: 14px; color: var(--s-ebeae5); transition: border-color .18s ease; }
 .auth-field input:focus, .auth-field input:focus-visible { border-color: var(--s-8e8e87); outline: 0; box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
-.auth-card a:focus-visible, .auth-reveal:focus-visible, .auth-submit:focus-visible { outline: 2px solid var(--s-8e8e87); outline-offset: 2px; border-radius: 4px; }
+.auth-shell a:focus-visible, .auth-reveal:focus-visible, .auth-submit:focus-visible { outline: 2px solid var(--s-8e8e87); outline-offset: 2px; border-radius: 4px; }
 .auth-password { position: relative; }
 .auth-password input { padding-right: 42px; }
 .auth-reveal { position: absolute; top: 50%; right: 7px; display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; transform: translateY(-50%); border-radius: 6px; color: var(--s-8e8e87); }
 .auth-reveal svg { width: 16px; height: 16px; }
 .auth-reveal:hover { background: var(--s-1a1a18); color: var(--s-ebeae5); }
 .auth-submit { height: 44px; width: 100%; margin-top: 6px; border-radius: 8px; box-shadow: none; background: var(--s-f1f1ed); color: var(--s-0e0e0c); font-size: 14px; font-weight: 560; }
-.auth-submit:hover:not(:disabled) { background: #fff; color: var(--s-0e0e0c); }
+.auth-submit:hover:not(:disabled) { background: var(--s-ebeae5); color: var(--s-0e0e0c); }
 .auth-submit:disabled { opacity: .6; }
 .auth-switch { margin: 20px 0 0; text-align: center; font-size: 13px; color: var(--s-8e8e87); }
 .auth-switch a { color: var(--s-ebeae5); text-decoration: underline; text-underline-offset: 4px; }
 
-/* Foot: the one thing a signed-out agent builder needs to know. */
-.auth-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--s-252520); background: var(--s-0e0e0c); padding: 14px 30px; }
-.auth-card-foot p { margin: 0; font-size: 12px; color: var(--s-8e8e87); }
-.auth-card-foot p a { color: var(--s-ebeae5); text-decoration: underline; text-underline-offset: 3px; }
-.auth-foot-links { display: flex; align-items: center; gap: 14px; }
-.auth-foot-links a { font-size: 12px; color: var(--s-8e8e87); }
-.auth-foot-links a:hover { color: var(--s-ebeae5); }
+/* The one thing a signed-out agent builder needs to know. */
+.auth-agent-note { margin: 28px 0 0; border-top: 1px solid var(--s-252520); padding-top: 18px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--s-8e8e87); }
+.auth-agent-note a { color: var(--s-ebeae5); text-decoration: underline; text-underline-offset: 3px; }
 
-/* Light theme: lift the card off a tinted page, the way the dark one floats. */
-:root[data-site-theme="light"] .auth-shell { background: #eceae5; }
-:root[data-site-theme="light"] .auth-card { background: #fff; }
-:root[data-site-theme="light"] .auth-card-head { background: #faf9f6; }
-:root[data-site-theme="light"] .auth-field input { background: #f4f3f0 !important; }
-:root[data-site-theme="light"] .auth-card-foot { background: #faf9f6; }
-:root[data-site-theme="light"] .auth-submit { background: #1b1a15; color: #f7f6f3; }
-:root[data-site-theme="light"] .auth-submit:hover:not(:disabled) { background: #000; color: #fff; }
-
-@media (max-width: 760px) {
-  .auth-card-body { grid-template-columns: minmax(0, 1fr); }
-  .auth-mark { order: 2; border-right: 0; border-top: 1px solid var(--s-252520); padding: 30px 26px; }
-  .auth-form-col { padding: 32px 24px 6px; }
-  .auth-card-head { height: 58px; padding: 0 22px; }
-  .auth-card-foot { padding: 14px 22px; }
+/* Stacked: the form comes first, and the mark becomes a band under it. */
+@media (max-width: 900px) {
+  .auth-stage { grid-template-columns: minmax(0, 1fr); }
+  .auth-form-panel { order: -1; padding: 40px var(--gutter) 44px; }
+  .auth-mark { gap: 22px; border-right: 0; border-top: 1px solid var(--s-252520); padding: 40px var(--gutter); }
+  .auth-ascii { font-size: clamp(5px, calc((100vw - 90px) / 36), 15px); }
+}
+@media (max-width: 620px) {
+  .auth-nav { height: 62px; }
+  .auth-nav-links a:not(.auth-nav-cta) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-ascii span { animation: none; opacity: .8; }

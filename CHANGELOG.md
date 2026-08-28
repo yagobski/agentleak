@@ -6,6 +6,15 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+Rebuilt the dashboard sign-in and registration pages as a full-screen split
+rather than a centred card. The complete logo — shield and wordmark — sits in
+the top bar, the ASCII mark holds the left pane at whatever size the viewport
+allows, and the form keeps a fixed measure on the right; both panes run to the
+bottom of the window. The mark itself was re-rasterised from the logo's own
+outline at 48 by 32, so the shield closes to its point instead of stopping
+short of it, and the surfaces are drawn from the shared theme tokens, so light
+and dark need no separate rules.
+
 ## [0.11.10] - 2026-08-26
 
 Redesigned the dashboard sign-in and registration pages. The wordmark is now
