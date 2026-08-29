@@ -36,7 +36,7 @@ channels that output-only audits never inspect. AgentLeak tests for exactly
 that, locally, before you ship.
 
 ```text
-Risk Index: 0.379 / 1.0   High risk   (privacy 62/100)
+Risk Index: 0.440 / 1.0   High risk   (privacy 56/100)
 
 Final output:   clean ✓
 Shared memory:  L4  health identifier + diagnosis leaked ✗
@@ -45,7 +45,7 @@ Logs:           L2  email leaked ✗
 
 Key insight: the final answer appears safe, but sensitive data leaked through
 internal channels. (The SIN, medication and address the agent received stayed
-contained, which is why RI is 0.379 and not 1.0.)
+contained, which is why RI is 0.440 and not 1.0.)
 ```
 
 A trace goes in, a privacy report comes out. Leakage is scored with
@@ -316,6 +316,7 @@ there.
 - [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report
 - [Concepts](docs/concepts.md)
 - [Detection pipeline](docs/detection.md) — Tier 1+2 regex, Tier 2b Presidio, Tier 3 LLM-judge
+- [Detection quality](docs/detection-quality.md) — measured recall, false positives, and what the deterministic tier misses
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
