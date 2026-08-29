@@ -202,6 +202,14 @@ class Sanitizer:
         it is kept, because then it is the only signal there is — which is the
         whole reason the key-name detector exists, for the rare diagnosis or the
         experimental drug no dictionary lists.
+
+        The trade-off is real and it is chosen, not accidental. Preferring the
+        inner span can leave a modifier behind — ``diagnosis: Type 2 diabetes``
+        redacts to ``diagnosis: Type 2 [REDACTED_HEALTH_CONDITION]``, because
+        the dictionary match is ``diabetes``. A modifier is not a
+        re-identifier, and the alternative rule deletes the rest of any
+        sentence a sensitive key appears in, which is how a guardrail gets
+        switched off. Run ``--mode standard`` when spans must be exact.
         """
         found: list[tuple[int, int, str, str]] = []
 

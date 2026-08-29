@@ -158,3 +158,16 @@ def test_clean_text_is_returned_untouched() -> None:
 
 def test_redaction_count_matches_what_is_removed() -> None:
     assert Sanitizer().redaction_count("SSN: 412-55-9087 email: a@b.com") == 2
+
+
+def test_a_modifier_may_survive_and_that_is_the_documented_trade() -> None:
+    """Chosen behaviour, pinned so it stays a decision rather than a drift.
+
+    The dictionary match is ``diabetes``, so the inner-span rule leaves
+    ``Type 2`` behind. A modifier is not a re-identifier, and the alternative —
+    always taking the key-name span — deletes the rest of any sentence a
+    sensitive key appears in.
+    """
+    result = sanitize_text("diagnosis: Type 2 diabetes")
+    assert "diabetes" not in result
+    assert "REDACTED_HEALTH_CONDITION" in result
