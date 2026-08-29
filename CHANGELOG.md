@@ -6,6 +6,107 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+Rebuilt the dashboard sign-in and registration pages as a full-screen split
+rather than a centred card. The complete logo — shield and wordmark — sits in
+the top bar, the ASCII mark holds the left pane at whatever size the viewport
+allows, and the form keeps a fixed measure on the right; both panes run to the
+bottom of the window. The mark itself was re-rasterised from the logo's own
+outline at 48 by 32, so the shield closes to its point instead of stopping
+short of it, and the surfaces are drawn from the shared theme tokens, so light
+and dark need no separate rules.
+
+## [0.12.0] - 2026-08-29
+
+Detection-integrity release. Five defects, all in the deterministic tier that
+runs for everyone by default, all found by exercising the shipped wheel rather
+than by reading the code. **The bundled healthcare scenario now scores 0.44
+instead of 0.3793** — see below for why the old number was wrong.
+
+### Fixed
+
+- **`agentleak redact` could not remove a SIN, a spaced credit card, a
+  diagnosis or a medication.** The sanitizer kept its own table of ten patterns
+  — described in its own comment as "a simplified subset of the full detector"
+  — while the detector registry emitted thirty-eight data types. There was no
+  SIN pattern in any format, none for special-category health data, the card
+  pattern required contiguous digits so `4111 1111 1111 1111` passed through,
+  and the health identifier was `[A-Z]{4}\d{8}`, which cannot match the
+  `TR12345678` in this project's own demo trace. The command is the documented
+  door into prevention and is exposed to coding agents as an MCP tool: it
+  returned text that looked sanitised and was not.
+
+  The `Sanitizer` now reads the detector registry — which is what its docstring
+  already claimed. Spans are resolved before substitution instead of running
+  patterns over a mutating string, and where spans nest the inner one wins, so
+  `ssn: 412-55-9087 and more text` loses the SSN and keeps the sentence. An
+  outer span with nothing inside it is still removed, because for a rare
+  diagnosis it is the only signal there is. 35 types are redactable; 3 are
+  declared detect-only with their reason in `DETECT_ONLY`.
+
+- **The same secret was counted more than once, and the Risk Index moved with
+  it.** AgentRisk identifies a secret by data type plus matched string, so
+  `diabetes` and `Type 2 diabetes` entered the vault as two diagnoses. The
+  score therefore depended on *phrasing*: the same secrets written as prose and
+  as JSON scored differently, which makes a CI regression as likely to be a
+  rewording as a leak. `agentleak.core.coalesce` resolves matches that contain
+  one another at token boundaries into one secret, keeping the tightest span as
+  its identity and the strongest classification in the cluster as its level.
+  Boundaries matter: `1234` inside `12345` is a different account.
+
+- **The key-name capture ran to the end of the line instead of the end of the
+  sentence.** `final_output`, `log` and `inter_agent_message` carry prose, which
+  supplies none of the delimiters the pattern stopped at, so
+  `medication: insulin. Please forward to the specialist.` was stored as a
+  42-character medication and a 106-character health identifier reached the
+  leak-path explorer as unreadable masked evidence. A period now closes the
+  value only when whitespace or the end of the text follows, so decimals and
+  dotted identifiers survive; past a 120-character cap the match is dropped.
+
+- **`agentleak scan` flagged an innocent line three times and missed the
+  export.** Reading source rather than a trace, the key-name detector captured
+  `patient[` out of `SIN={patient['sin']}` and reported a bracket as a leaked
+  SIN, health identifier and diagnosis — all attributed to the first occurrence
+  in the file, on a line containing none of them. Values that are source rather
+  than data no longer become findings, and findings are emitted per occurrence
+  instead of once per file. This matters past the terminal: the Action
+  annotates PR lines with these.
+
+### Added
+
+- **`sensitive_to_memory` and `credentialed_record_export` code rules.** The
+  first reads writes into memory/store/cache/session — the C4 channel this
+  project exists to audit, which had no code rule at all. The second fires when
+  one call carries both a credential and a whole record; either half alone is
+  ordinary code, and the existing HTTP rule missed it because such calls go
+  through an SDK wrapper rather than requests or fetch. That combination is the
+  shape behind this year's MCP incidents.
+
+- **Labelled-SIN detection.** A bare run of nine digits is an order number as
+  often as an identifier, so the unseparated form counts only next to the word
+  that names it: `SIN 123456789` is detected, `order 123456789` is not.
+
+- **Published detection quality** — `docs/detection-quality.md`, reproducible
+  with `python scripts/detection_quality.py`. 378 labelled values from the
+  bundled vaults, deterministic tier only, reported in two conditions because
+  the tier reads field names as well as values: **structured 0.926** (the
+  internal channels the product is about) and **prose 0.275** (with the key
+  gone, this tier finds emails and SSNs and little else). Zero false positives
+  across independent benign controls. Every figure carries its numerator,
+  denominator, version, tier and provenance; nine malformed bundled fixtures
+  are excluded and the exclusion is counted rather than hidden.
+
+- **`GET /api/meta` reports redaction coverage,** so "anything we detect, we
+  can redact" is checkable against the running software rather than asserted.
+
+### Changed
+
+- **The bundled healthcare scenario scores 0.44, not 0.3793.** Its vault held
+  `health_condition: 'diabetes'` *and* `health_condition: 'Type 2 diabetes'` —
+  one diagnosis counted twice. The duplicate sat only on `tool_response`, a
+  baseline channel, so it padded ρ_S without ever reaching WSL and the
+  published figure read *below* the truth. Four secrets of eight leak, not four
+  of nine. README, quickstart and install carry the corrected numbers.
+
 ## [0.11.10] - 2026-08-26
 
 Redesigned the dashboard sign-in and registration pages. The wordmark is now

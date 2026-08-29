@@ -65,7 +65,7 @@ Two weak spots are visible even in the strong condition and are worth fixing:
 
 ## Results
 
-AgentLeak 0.11.10 · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.12.0 · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
 Ground truth: private_vault records in the bundled scenario packs.
 
