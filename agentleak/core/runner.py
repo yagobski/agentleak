@@ -14,6 +14,7 @@ from typing import Any
 from ..detectors import build_detectors
 from .agentrisk import DEFAULT_WEIGHTS
 from .canary import CanarySet
+from .coalesce import coalesce_findings
 from .config import Config
 from .detector import Detector, Finding
 from .pipeline import DetectionMode, HybridPipeline
@@ -186,6 +187,12 @@ class AgentLeakRunner:
             )
             counter += len(event_findings)
             findings.extend(event_findings)
+
+        # One identity per secret before anything counts them. Detectors
+        # disagree on where an entity ends, and AgentRisk keys a secret on the
+        # matched string, so overlapping matches would enter the vault as
+        # separate secrets and inflate both WSL and rho_S.
+        findings = coalesce_findings(findings)
 
         # Stable, readable ordering: highest severity level first, then confidence.
         findings.sort(key=lambda f: (-f.level, -f.confidence))
