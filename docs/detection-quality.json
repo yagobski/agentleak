@@ -1,0 +1,310 @@
+{
+  "software_version": "0.12.0",
+  "detector_tier": "fast (deterministic: regex + dictionaries)",
+  "tiers_not_run": [
+    "presidio",
+    "semantic judge"
+  ],
+  "source": "private_vault records in the bundled scenario packs",
+  "conditions": {
+    "structured": {
+      "recall": 0.9259,
+      "ci95": [
+        0.895,
+        0.9483
+      ],
+      "numerator": 350,
+      "denominator": 378,
+      "by_data_type": [
+        {
+          "data_type": "account_number",
+          "recall": 1.0,
+          "ci95": [
+            0.7575,
+            1.0
+          ],
+          "hit": 12,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 12,
+          "confused_as": {}
+        },
+        {
+          "data_type": "address",
+          "recall": 1.0,
+          "ci95": [
+            0.9312,
+            1.0
+          ],
+          "hit": 52,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 52,
+          "confused_as": {}
+        },
+        {
+          "data_type": "date_of_birth",
+          "recall": 1.0,
+          "ci95": [
+            0.8668,
+            1.0
+          ],
+          "hit": 25,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 25,
+          "confused_as": {}
+        },
+        {
+          "data_type": "email",
+          "recall": 1.0,
+          "ci95": [
+            0.945,
+            1.0
+          ],
+          "hit": 66,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 66,
+          "confused_as": {}
+        },
+        {
+          "data_type": "health_condition",
+          "recall": 0.6667,
+          "ci95": [
+            0.4171,
+            0.8482
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 5,
+          "labelled_values": 15,
+          "confused_as": {}
+        },
+        {
+          "data_type": "person_name",
+          "recall": 1.0,
+          "ci95": [
+            0.9615,
+            1.0
+          ],
+          "hit": 96,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 96,
+          "confused_as": {}
+        },
+        {
+          "data_type": "phone_number",
+          "recall": 1.0,
+          "ci95": [
+            0.918,
+            1.0
+          ],
+          "hit": 43,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 43,
+          "confused_as": {}
+        },
+        {
+          "data_type": "salary",
+          "recall": 0.3429,
+          "ci95": [
+            0.2083,
+            0.5085
+          ],
+          "hit": 12,
+          "type_confused": 0,
+          "missed": 23,
+          "labelled_values": 35,
+          "confused_as": {}
+        },
+        {
+          "data_type": "ssn",
+          "recall": 1.0,
+          "ci95": [
+            0.8985,
+            1.0
+          ],
+          "hit": 34,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 34,
+          "confused_as": {}
+        }
+      ]
+    },
+    "prose": {
+      "recall": 0.2751,
+      "ci95": [
+        0.2325,
+        0.3222
+      ],
+      "numerator": 104,
+      "denominator": 378,
+      "by_data_type": [
+        {
+          "data_type": "account_number",
+          "recall": 0.0,
+          "ci95": [
+            0.0,
+            0.2425
+          ],
+          "hit": 0,
+          "type_confused": 0,
+          "missed": 12,
+          "labelled_values": 12,
+          "confused_as": {}
+        },
+        {
+          "data_type": "address",
+          "recall": 0.0192,
+          "ci95": [
+            0.0034,
+            0.1012
+          ],
+          "hit": 1,
+          "type_confused": 0,
+          "missed": 51,
+          "labelled_values": 52,
+          "confused_as": {}
+        },
+        {
+          "data_type": "date_of_birth",
+          "recall": 0.0,
+          "ci95": [
+            0.0,
+            0.1332
+          ],
+          "hit": 0,
+          "type_confused": 0,
+          "missed": 25,
+          "labelled_values": 25,
+          "confused_as": {}
+        },
+        {
+          "data_type": "email",
+          "recall": 1.0,
+          "ci95": [
+            0.945,
+            1.0
+          ],
+          "hit": 66,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 66,
+          "confused_as": {}
+        },
+        {
+          "data_type": "health_condition",
+          "recall": 0.2,
+          "ci95": [
+            0.0705,
+            0.4519
+          ],
+          "hit": 3,
+          "type_confused": 0,
+          "missed": 12,
+          "labelled_values": 15,
+          "confused_as": {}
+        },
+        {
+          "data_type": "person_name",
+          "recall": 0.0,
+          "ci95": [
+            0.0,
+            0.0385
+          ],
+          "hit": 0,
+          "type_confused": 0,
+          "missed": 96,
+          "labelled_values": 96,
+          "confused_as": {}
+        },
+        {
+          "data_type": "phone_number",
+          "recall": 0.0,
+          "ci95": [
+            0.0,
+            0.082
+          ],
+          "hit": 0,
+          "type_confused": 0,
+          "missed": 43,
+          "labelled_values": 43,
+          "confused_as": {}
+        },
+        {
+          "data_type": "salary",
+          "recall": 0.0,
+          "ci95": [
+            0.0,
+            0.0989
+          ],
+          "hit": 0,
+          "type_confused": 0,
+          "missed": 35,
+          "labelled_values": 35,
+          "confused_as": {}
+        },
+        {
+          "data_type": "ssn",
+          "recall": 1.0,
+          "ci95": [
+            0.8985,
+            1.0
+          ],
+          "hit": 34,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 34,
+          "confused_as": {}
+        }
+      ]
+    }
+  },
+  "false_positives": {
+    "control_texts": 15,
+    "detections": 0,
+    "rate_per_text": 0.0,
+    "detail": [],
+    "note": "Independent negatives \u2014 ordinary operational text, not clean counterparts derived from the leaking fixtures. Never pool the two."
+  },
+  "fixture_integrity": {
+    "excluded": 9,
+    "note": "Bundled records whose value contradicts its own field name (e.g. an 'ssn' field holding a sentence about a diagnosis). An upstream generation artefact, not a detector result; excluded from recall so the exclusion is visible.",
+    "examples": [
+      {
+        "data_type": "ssn",
+        "field": "ssn",
+        "value": "has bipolar disorder managed with lithium",
+        "pack": "agentleak_bench"
+      },
+      {
+        "data_type": "ssn",
+        "field": "ssn",
+        "value": "undergoing chemotherapy for breast cancer",
+        "pack": "agentleak_bench"
+      },
+      {
+        "data_type": "ssn",
+        "field": "ssn",
+        "value": "CANARY_SSN_WOCT46I8",
+        "pack": "agentleak_bench"
+      },
+      {
+        "data_type": "ssn",
+        "field": "ssn",
+        "value": "diagnosed with HIV in 2019",
+        "pack": "agentleak_bench"
+      },
+      {
+        "data_type": "ssn",
+        "field": "ssn",
+        "value": "CANARY_SSN_LUMKL5MS",
+        "pack": "agentleak_bench"
+      }
+    ]
+  }
+}

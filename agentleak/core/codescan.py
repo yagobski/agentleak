@@ -179,6 +179,45 @@ def _compile_code_rules(
             "Sensitive fields flow into an outbound HTTP call — strip or tokenize before external tools (C3 tool_call channel).",
         ),
         (
+            # C4 shared_memory. An agent's memory outlives the request that
+            # filled it and is read by every later turn — and, in a shared
+            # deployment, by other subjects. Writing a diagnosis there is the
+            # leak this project was built to find, and no rule looked for it.
+            "sensitive_to_memory",
+            re.compile(
+                rf"(?:memory|store|cache|session|state|context|scratchpad|vectorstore|kv)"
+                rf"\s*\.\s*(?:save|set|put|add|write|store|update|append|upsert|insert|remember)"
+                rf"\s*\(.{{0,200}}{ident}",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            "sensitive_to_memory",
+            Severity.HIGH,
+            "Sensitive fields are written to agent memory — persist an opaque reference instead (C4 shared_memory channel).",
+        ),
+        (
+            # The pattern behind this year's MCP incidents: one call carrying a
+            # credential and a whole record to a callee the code does not
+            # constrain. Either half alone is ordinary; together they are an
+            # authenticated export of personal data to a third party, and the
+            # HTTP rule missed it because the call goes through an SDK wrapper
+            # rather than requests/httpx/fetch.
+            "credentialed_record_export",
+            re.compile(
+                r"\w+\s*\([^()]{0,240}?"
+                r"\b(?:api[_-]?key|apikey|token|secret|credential|password|auth)\w*\s*="
+                r"[^()]{0,240}?"
+                r"\b(?:payload|record|profile|customer|patient|subject|body|document|dossier)\w*\s*="
+                r"|\w+\s*\([^()]{0,240}?"
+                r"\b(?:payload|record|profile|customer|patient|subject|body|document|dossier)\w*\s*="
+                r"[^()]{0,240}?"
+                r"\b(?:api[_-]?key|apikey|token|secret|credential|password|auth)\w*\s*=",
+                re.IGNORECASE | re.DOTALL,
+            ),
+            "sensitive_to_third_party",
+            Severity.CRITICAL,
+            "A credential and a full record leave in the same call — send the minimum field set, and never alongside the key (C3 tool_call channel).",
+        ),
+        (
             "insecure_tls",
             re.compile(r"verify\s*=\s*False|rejectUnauthorized\s*:\s*false", re.IGNORECASE),
             "insecure_transport",
@@ -196,6 +235,35 @@ def _compile_code_rules(
             "Credential-looking literal assigned in code — move it to a secret manager or environment variable.",
         ),
     ]
+
+
+# ----------------------------------------------------------------------
+# Source code is not data
+# ----------------------------------------------------------------------
+# The key-name detector reads ``key: value`` and reports the value, which is
+# right for a trace and wrong for a file of source. Reading
+# ``SIN={patient['sin']}`` it captured ``{patient[`` and reported it as a leaked
+# SIN — three L4 findings whose "secret" was a bracket. The secret in that line
+# is not the expression, it is whatever the expression resolves to at runtime,
+# and that is the *log_sensitive* rule's job.
+#
+# A value earns a finding here when it is a literal. The test is deliberately
+# narrow — bracket punctuation and unbalanced quotes — because the obvious
+# wider rule, "looks like attribute access", also describes every email
+# address, hostname and version string. That trade is the wrong way round: it
+# would buy three false positives at the cost of a much worse false negative.
+_CODE_PUNCTUATION_RE = re.compile(r"""[\[\](){}]|^(?:self|cls)\.|^f?["']$""")
+
+
+def _looks_like_code_expression(value: str) -> bool:
+    """Is this a fragment of source rather than a value a person could leak?"""
+    text = value.strip()
+    if not text:
+        return True
+    if _CODE_PUNCTUATION_RE.search(text):
+        return True
+    # An unclosed quote means the capture ran into a literal it does not own.
+    return text.count('"') % 2 == 1 or text.count("'") % 2 == 1
 
 
 # Placeholder values that make credential/entropy matches false positives.
@@ -456,6 +524,18 @@ def _is_scannable(path: str) -> bool:
     )
 
 
+def _occurrences(text: str, value: str) -> list[int]:
+    """Every start offset of ``value`` in ``text``."""
+    if not value:
+        return []
+    out: list[int] = []
+    idx = text.find(value)
+    while idx >= 0:
+        out.append(idx)
+        idx = text.find(value, idx + 1)
+    return out
+
+
 def _line_of(text: str, index: int) -> int:
     return text.count("\n", 0, index) + 1
 
@@ -592,27 +672,46 @@ class CodeScanner:
                 run_id="codescan",
                 channel="log",  # code at rest ≈ a log-tier surface
             ):
+                if _looks_like_code_expression(f.matched_value):
+                    continue
                 tier = str(f.metadata.get("tier", "regex"))
-                idx = text.find(f.matched_value)
-                deobfuscated = variant_name == "joined" and idx < 0
+                deobfuscated = variant_name == "joined" and f.matched_value not in text
                 rule = (
                     "decomposed_pii" if deobfuscated
                     else "hardcoded_secret" if f.detector == "secrets_detector"
                     else "semantic_leak" if tier == "semantic"
                     else "pii_in_code"
                 )
-                _add(CodeFinding(
-                    file=path,
-                    line=_line_of(text, idx) if idx >= 0 else 1,
-                    rule=rule,
-                    data_type=f.data_type,
-                    severity=f.severity,
-                    level=f.level,
-                    snippet=_snippet(text, idx, f.matched_value) if idx >= 0 else f.redacted_value,
-                    recommendation=f.recommendation or "Remove literal sensitive values from source code.",
-                    tier="deobfuscation" if deobfuscated else tier,
-                    confidence=f.confidence,
-                ), f.matched_value)
+                # Every occurrence, not the first. A value repeated on three
+                # lines is three places to fix, and reporting it once — at
+                # whichever line happened to come first in the file — put the
+                # Action's PR annotation on a line that did not contain it.
+                for idx in _occurrences(text, f.matched_value):
+                    _add(CodeFinding(
+                        file=path,
+                        line=_line_of(text, idx),
+                        rule=rule,
+                        data_type=f.data_type,
+                        severity=f.severity,
+                        level=f.level,
+                        snippet=_snippet(text, idx, f.matched_value),
+                        recommendation=f.recommendation or "Remove literal sensitive values from source code.",
+                        tier="deobfuscation" if deobfuscated else tier,
+                        confidence=f.confidence,
+                    ), f"{f.data_type}:{f.matched_value}:{_line_of(text, idx)}")
+                if deobfuscated:
+                    _add(CodeFinding(
+                        file=path,
+                        line=1,
+                        rule=rule,
+                        data_type=f.data_type,
+                        severity=f.severity,
+                        level=f.level,
+                        snippet=f.redacted_value,
+                        recommendation=f.recommendation or "Remove literal sensitive values from source code.",
+                        tier="deobfuscation",
+                        confidence=f.confidence,
+                    ), f"{f.data_type}:{f.matched_value}:joined")
 
         # Layer 4 — digit-run de-obfuscation (decomposed PII).
         for digit_finding in _decomposed_digit_findings(path, text):

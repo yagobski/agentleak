@@ -99,12 +99,32 @@ _TRIVIAL_VALUE_RE = re.compile(
 )
 
 
+# The longest value we will believe a sensitive key carries. Past this, the
+# capture has stopped describing a field and started swallowing narrative, so
+# the match is dropped rather than stored: an unbounded span is not evidence,
+# and it would enter scoring as its own "distinct secret".
+_MAX_VALUE_LEN = 120
+
+# Trailing characters that belong to the sentence, not to the value.
+_VALUE_TAIL_RE = re.compile(r"[\s.;:!?)\]]+$")
+
+
 def _compile(stem: str) -> re.Pattern[str]:
-    # Optional surrounding quote on the key (JSON), an ``=``/``:`` separator,
-    # then the value up to the next field delimiter (``|``), quote, comma,
-    # closing brace, or newline.
+    """Compile the key-name pattern for one sensitive-field stem.
+
+    The value runs up to the next *field* delimiter — quote, pipe, comma,
+    semicolon, closing brace, newline — or up to the end of the *sentence*.
+
+    That last clause is what keeps prose honest. ``final_output``, ``log`` and
+    ``inter_agent_message`` carry sentences, not JSON, and a sentence supplies
+    none of the structural delimiters; without a sentence boundary the capture
+    ran from the key to the end of the line, so ``medication: insulin. Please
+    forward to the specialist.`` was stored as a 42-character "medication".
+    A period only ends the value when whitespace or the end of the text follows
+    it, so decimals (``3.5``), hostnames and addresses inside a value survive.
+    """
     return re.compile(
-        rf"""["']?\b(?:{stem})\b["']?\s*[:=]\s*["']?([^"'|,}}\n]+)""",
+        rf"""["']?\b(?:{stem})\b["']?\s*[:=]\s*["']?((?:[^"'|,;}}\n.]|\.(?!\s|$))+)""",
         re.IGNORECASE,
     )
 
@@ -122,8 +142,14 @@ class SensitiveKeyDetector(Detector):
         matches: list[RawMatch] = []
         for pattern, data_type, severity, advice in _COMPILED:
             for m in pattern.finditer(text):
-                value = m.group(1).strip().strip("\"'").strip()
+                value = m.group(1).strip().strip("\"'")
+                value = _VALUE_TAIL_RE.sub("", value)
                 if len(value) < 2 or _TRIVIAL_VALUE_RE.match(value):
+                    continue
+                if len(value) > _MAX_VALUE_LEN:
+                    # Not a field value any more. Reporting it would put an
+                    # unreadable span in the evidence and a phantom secret in
+                    # the vault; the value detectors still cover this text.
                     continue
                 matches.append(self._match(
                     data_type=data_type, severity=severity,
