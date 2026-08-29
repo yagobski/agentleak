@@ -18,6 +18,15 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9-.]+")
 # US SSN (xxx-xx-xxxx) and Canadian SIN (xxx-xxx-xxx) are distinct shapes.
 SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 SIN_RE = re.compile(r"\b\d{3}[- ]\d{3}[- ]\d{3}\b")
+# A bare run of nine digits is not a SIN on its own — it is also an order
+# number, a timestamp, or a part code. It becomes one when the text says so,
+# which is how people actually write it ("SIN 123456789"), so the unseparated
+# form is matched only next to the word that names it. The capture keeps the
+# digits alone so the redactor removes the number, not the label.
+SIN_LABELLED_RE = re.compile(
+    r"\b(?:sin|nas|social[ _]?insurance(?:[ _]?number)?)\b[\s:=#]*(\d{9})\b",
+    re.IGNORECASE,
+)
 PHONE_RE = re.compile(
     r"(?<!\d)(?:\+?\d{1,3}[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]\d{3}[-.\s]\d{4}(?!\d)"
 )
@@ -112,6 +121,13 @@ class PIIDetector(Detector):
             matches.append(self._match(
                 data_type="sin", severity=Severity.HIGH, confidence=0.8,
                 matched_value=m.group(0),
+                recommendation="Never transmit full social insurance numbers; tokenize them.",
+            ))
+
+        for m in SIN_LABELLED_RE.finditer(text):
+            matches.append(self._match(
+                data_type="sin", severity=Severity.HIGH, confidence=0.8,
+                matched_value=m.group(1),
                 recommendation="Never transmit full social insurance numbers; tokenize them.",
             ))
 
