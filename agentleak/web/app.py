@@ -46,6 +46,7 @@ from ..core.report import AnalysisResult
 from ..core.runner import AgentLeakRunner
 from ..core.store import Store
 from ..core.trace import CHANNELS, Trace
+from ..defenses.sanitizer import redaction_coverage
 from ..detectors import BUILTIN_DETECTORS
 from ..integrations import registry
 from ..reporters import render
@@ -1092,6 +1093,12 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             # one request — a claim nobody can verify is a claim that drifts, and
             # ours already had (the site advertised 7 frameworks against 14).
             "compliance_frameworks": [f.id for f in FRAMEWORKS],
+            # Detection and prevention were two inventories that drifted: the
+            # engine found a SIN, a diagnosis and a spaced credit card that the
+            # redactor could not remove. They now read from one registry, and
+            # the split is reported here so "anything we detect, we can redact"
+            # is a fact you can check rather than a sentence in a README.
+            "redaction": redaction_coverage(),
             "scenarios": {
                 "total": len(SCENARIOS) + sum(p["count"] for p in list_packs()),
                 "builtin": len(SCENARIOS),
