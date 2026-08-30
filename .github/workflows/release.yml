@@ -34,13 +34,24 @@ jobs:
       - name: Metadata must be valid for PyPI
         run: python -m twine check --strict dist/*
 
-      - name: Tag must match the package version
+      # Both version strings, not just the published one. v0.12.1 shipped with
+      # pyproject at 0.12.1 and __version__ still at 0.12.0, so PyPI served a
+      # wheel that reported itself as the previous release — through
+      # `agentleak version`, /api/health and every report's provenance field.
+      # The unit test caught it and CI went red; this step is why that mattered
+      # too late, because the tag only ever had to agree with pyproject.
+      - name: Tag must match both version strings
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
           PKG=$(python -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          RUNTIME=$(python -c "import re,pathlib;print(re.search(r'__version__ = \"([^\"]+)\"', pathlib.Path('agentleak/__init__.py').read_text()).group(1))")
           if [ "$TAG" != "$PKG" ]; then
             echo "::error::Tag v$TAG does not match pyproject version $PKG"
+            exit 1
+          fi
+          if [ "$TAG" != "$RUNTIME" ]; then
+            echo "::error::Tag v$TAG does not match agentleak.__version__ $RUNTIME — the wheel would report the wrong version at runtime"
             exit 1
           fi
           echo "Releasing version $PKG"
