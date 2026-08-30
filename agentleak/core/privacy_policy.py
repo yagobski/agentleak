@@ -10,8 +10,10 @@ receive the same policy decision without reimplementing gate logic.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from .contextual_integrity import evaluate_flows, parse_flow_rules
 
 _SOURCE_CHANNELS = {"user_input", "tool_response"}
 
@@ -38,14 +40,21 @@ class PolicyEvaluation:
     passed: bool = True
     violations: tuple[PolicyViolation, ...] = ()
     assertions_checked: tuple[str, ...] = ()
+    # Per-flow detail behind any `flows` violation: which data went from whom
+    # to whom for what, and which rule spoke. A count of violations tells an
+    # operator that something is wrong; this tells them what to change.
+    flows: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "enabled": self.enabled,
             "passed": self.passed,
             "assertions_checked": list(self.assertions_checked),
             "violations": [violation.to_dict() for violation in self.violations],
         }
+        if self.flows:
+            data["flows"] = self.flows
+        return data
 
 
 def evaluate_privacy_policy(
@@ -130,9 +139,28 @@ def evaluate_privacy_policy(
                 "Policy requires an explicit audited vault scope for comparable scoring.",
             ))
 
+    # Contextual integrity: is this flow appropriate, not merely present.
+    flow_detail: dict[str, Any] = {}
+    flow_rules = parse_flow_rules(getattr(policy, "flows", None))
+    if flow_rules:
+        checks.append("flows")
+        evaluation = evaluate_flows(flow_rules, leaked)
+        flow_detail = evaluation.to_dict()
+        breaches = evaluation.violations
+        if breaches:
+            summary = "; ".join(sorted({d.describe() for d in breaches})[:3])
+            violations.append(PolicyViolation(
+                "flows",
+                f"{len(breaches)} inappropriate flow(s): {summary}"
+                + ("; ..." if len(breaches) > 3 else ""),
+                count=len(breaches),
+                finding_ids=tuple(d.finding_id for d in breaches if d.finding_id),
+            ))
+
     return PolicyEvaluation(
         enabled=bool(checks),
         passed=not violations,
         violations=tuple(violations),
         assertions_checked=tuple(checks),
+        flows=flow_detail,
     )
