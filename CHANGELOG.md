@@ -6,6 +6,18 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **`agentleak.__version__` was left at 0.12.0 when 0.12.1 was cut.** The
+  published 0.12.1 wheel therefore reports itself as 0.12.0 through
+  `agentleak version`, `GET /api/health`, `GET /api/meta` and the provenance
+  field on every report — on a project whose stated rule is that every public
+  number must be checkable against the running software. `tests/test_version.py`
+  caught it and CI went red on the release commit, but the release ran anyway:
+  the tag gate only ever compared the tag with `pyproject.toml`. It now checks
+  `__version__` too, so a wheel that would misreport itself cannot be published.
+  The 0.12.1 already on PyPI is immutable and keeps the wrong string.
+
 ## [0.12.1] - 2026-08-30
 
 Rebuilt the dashboard sign-in and registration pages as a full-screen split
