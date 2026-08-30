@@ -56,10 +56,27 @@ class Limits:
     force_byok: bool
     #: Send the session cookie with the Secure attribute (HTTPS only).
     cookie_secure: bool
+    #: Single-user mode for a loopback install: no sign-in, one implicit owner.
+    #:
+    #: A tool whose first claim is "100% local, nothing leaves your machine"
+    #: should not open by asking for an email address. This removes that, and it
+    #: is deliberately explicit rather than inferred: an unauthenticated web app
+    #: that switches itself on is the wrong failure to be clever about. It
+    #: cannot coexist with public mode, and ``run_server`` refuses to bind
+    #: anything but loopback while it is on.
+    local_mode: bool = False
 
     @classmethod
     def from_env(cls) -> Limits:
         public = _env_flag("AGENTLEAK_PUBLIC_MODE", False)
+        local = _env_flag("AGENTLEAK_LOCAL_MODE", False)
+        if local and public:
+            raise RuntimeError(
+                "AGENTLEAK_LOCAL_MODE and AGENTLEAK_PUBLIC_MODE are mutually "
+                "exclusive: local mode serves an unauthenticated single-user "
+                "workspace, and public mode is a hosted multi-account service. "
+                "Refusing to start rather than guessing which one you meant."
+            )
         # Public mode flips the sensible-for-a-hosted-service defaults on; each
         # can still be overridden explicitly.
         return cls(
@@ -75,6 +92,7 @@ class Limits:
             ),
             force_byok=_env_flag("AGENTLEAK_FORCE_BYOK", public),
             cookie_secure=_env_flag("AGENTLEAK_COOKIE_SECURE", public),
+            local_mode=local,
         )
 
 

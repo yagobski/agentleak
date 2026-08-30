@@ -12,6 +12,32 @@ agentleak serve --port 9000 --no-browser
 Everything runs in-process on your machine. Traces are never sent anywhere; the
 frontend is fully self-contained (no CDN, self-hosted fonts).
 
+## Local mode: no sign-in
+
+`agentleak serve` presents a sign-in page on 127.0.0.1, directly under the
+footer that says "100% local". The workspace belongs to whoever is at the
+machine, so requiring an account to reach it is ceremony that contradicts the
+product's first claim.
+
+```bash
+agentleak serve --local
+```
+
+One implicit owner, no registration, no password. The account is created on
+first use with an unusable password, so nothing guessable is left behind if you
+later turn local mode off.
+
+**It may only listen on loopback**, and three independent gates enforce that: the
+CLI flag refuses a routable `--host`, `Limits.from_env()` refuses to combine it
+with `AGENTLEAK_PUBLIC_MODE`, and `run_server` refuses the bind even when the
+`AGENTLEAK_LOCAL_MODE` environment variable is set directly. The feature is an
+unauthenticated web application; the cost of one missed check is a dashboard on
+a routable address, so it fails closed at every layer.
+
+Without `--local` nothing changes: accounts, sessions and the sign-in page work
+exactly as before.
+
+
 ## What you can do
 
 - **Pick a scenario** or paste your own trace JSON (with a Format button and

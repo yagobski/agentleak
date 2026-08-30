@@ -644,19 +644,55 @@ def evidence(
             typer.echo(f"  {data_type:<22} {count}")
 
 
+def _is_loopback_host(host: str) -> bool:
+    return str(host).strip().lower() in {"127.0.0.1", "localhost", "::1", "[::1]"}
+
+
 @app.command()
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="Host to bind."),
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind."),
     no_browser: bool = typer.Option(False, "--no-browser", help="Don't open a browser."),
+    local: bool = typer.Option(
+        False, "--local",
+        help="Single-user workspace with no sign-in. Loopback only.",
+    ),
 ) -> None:
-    """Launch the local web GUI (pip install 'agentleak\\[gui]')."""
+    """Launch the local web GUI (pip install 'agentleak\\[gui]').
+
+    `--local` skips the account entirely: a tool whose first claim is "100%
+    local, nothing leaves your machine" should not open by asking for an email
+    address. The workspace then belongs to whoever is at the machine, which is
+    why it may only listen on loopback — the server refuses to start otherwise.
+    """
+    if local:
+        if not _is_loopback_host(host):
+            typer.secho(
+                f"✗ --local cannot bind {host}. It serves an unauthenticated "
+                "workspace, so it only listens on loopback. Drop --local to "
+                "serve accounts, or bind 127.0.0.1.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=2)
+        if os.environ.get("AGENTLEAK_PUBLIC_MODE", "").strip().lower() in {"1", "true", "yes", "on"}:
+            typer.secho(
+                "✗ --local and AGENTLEAK_PUBLIC_MODE are mutually exclusive.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=2)
+        os.environ["AGENTLEAK_LOCAL_MODE"] = "1"
+
     try:
         from .web import run_server
     except Exception as exc:  # noqa: BLE001
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     typer.secho(f"AgentLeak GUI → http://{host}:{port}  (Ctrl+C to stop)", fg=typer.colors.GREEN)
+    if local:
+        typer.secho(
+            "  local mode: no sign-in, single workspace, loopback only.",
+            fg=typer.colors.YELLOW,
+        )
     try:
         run_server(host=host, port=port, open_browser=not no_browser)
     except RuntimeError as exc:

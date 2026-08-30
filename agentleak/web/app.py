@@ -727,8 +727,32 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     # ``Request``/``Response`` annotation) because this module uses
     # ``from __future__ import annotations`` and FastAPI cannot resolve the
     # locally-imported ``Request``/``Response`` names from string annotations.
+    LOCAL_OWNER_EMAIL = "owner@localhost"
+
+    def _local_owner() -> dict[str, Any]:
+        """The implicit account a loopback single-user install runs as.
+
+        Created on first use with an unusable password: local mode never checks
+        one, and leaving a guessable credential behind would matter the moment
+        somebody turns local mode off again.
+        """
+        user = db.get_user_by_email(LOCAL_OWNER_EMAIL)
+        if user is None:
+            user = db.create_user(
+                LOCAL_OWNER_EMAIL, secrets.token_urlsafe(48), name="Local owner"
+            )
+        return user
+
     def require_user(token: str = Cookie(default="", alias=COOKIE_NAME)) -> dict[str, Any]:
-        """Resolve the signed-in user from the session cookie or raise 401."""
+        """Resolve the signed-in user from the session cookie or raise 401.
+
+        In local mode there is no sign-in: the workspace belongs to whoever is
+        at the machine, which is the honest model for a tool that runs entirely
+        on it. The seam stays here so every route keeps its single auth check
+        rather than growing a local special case each.
+        """
+        if limits.local_mode:
+            return _local_owner()
         user = db.session_user(token)
         if not user:
             raise HTTPException(status_code=401, detail="Not authenticated")
@@ -2559,11 +2583,33 @@ def create_app_dev(store: Store | None = None):  # noqa: ANN201
     return create_app(store=store, serve_ui=False)
 
 
+# Addresses that only this machine can reach. Local mode serves an
+# unauthenticated workspace, so binding anywhere else is not a configuration
+# choice — it is publishing the workspace, and the server refuses.
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
+
+
+def is_loopback(host: str) -> bool:
+    return str(host).strip().lower() in _LOOPBACK_HOSTS
+
+
 def run_server(host: str = "127.0.0.1", port: int = 8000, *, open_browser: bool = True) -> None:
     try:
         import uvicorn
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(_GUI_IMPORT_ERROR) from exc
+
+    # Defence in depth: the CLI checks this too, but the environment variable
+    # can be set directly, and the cost of getting it wrong is an
+    # unauthenticated dashboard on a routable address.
+    from .limits import Limits
+
+    if Limits.from_env().local_mode and not is_loopback(host):
+        raise RuntimeError(
+            f"Refusing to bind local mode to {host}. Local mode serves an "
+            "unauthenticated single-user workspace, so it may only listen on "
+            "loopback. Drop --local to serve accounts, or bind 127.0.0.1."
+        )
 
     app = create_app(serve_ui=True)  # CLI mode always serves the built bundle
     if open_browser:
