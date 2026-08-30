@@ -99,13 +99,14 @@ class Run:
         *,
         run_id: str = "run",
         agent_name: str = "agent",
+        subject: str = "",
         config: Config | None = None,
         project: str | None = None,
         base_url: str | None = None,
         submit: bool | None = None,
         print_summary: bool = True,
     ) -> None:
-        self.trace = Trace(run_id=run_id, agent_name=agent_name)
+        self.trace = Trace(run_id=run_id, agent_name=agent_name, subject=subject)
         self.config = config
         self.project = project
         env_url = os.environ.get("AGENTLEAK_PLATFORM_URL", "").strip()
@@ -303,6 +304,7 @@ def watch(
     *,
     run_id: str = "run",
     agent_name: str = "agent",
+    subject: str = "",
     config: Config | str | None = None,
     submit: bool | None = None,
     base_url: str | None = None,
@@ -316,6 +318,10 @@ def watch(
             local unless a platform is configured (see ``base_url``).
         run_id: Identifier for this run.
         agent_name: Name recorded on the trace.
+        subject: Whose data this run is about — a tenant, customer or patient
+            id. Naming it enables cross-session checking, which catches a
+            secret written to memory while serving one person and repeated
+            while serving another. Per-run analysis cannot see that failure.
         config: A :class:`~agentleak.Config`, a path to ``agentleak.yaml``, or
             ``None`` to auto-discover one in the current directory.
         submit: Force-enable/disable platform submission. ``None`` = auto
@@ -333,6 +339,7 @@ def watch(
     return Run(
         run_id=run_id,
         agent_name=agent_name,
+        subject=subject,
         config=_resolve_config(config),
         project=project,
         base_url=base_url,

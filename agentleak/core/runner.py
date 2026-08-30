@@ -21,6 +21,7 @@ from .pipeline import DetectionMode, HybridPipeline
 from .privacy_policy import evaluate_privacy_policy
 from .report import AnalysisResult
 from .scoring import score_findings
+from .subjects import SubjectLedger, evaluate_subjects
 from .trace import Trace
 
 
@@ -130,6 +131,7 @@ class AgentLeakRunner:
             self._vault: Any = None
             self._scope_def: str | None = None
             self._privacy_policy: Any = None
+            self._subject_ledger: SubjectLedger | None = None
         else:
             raw_detectors = build_detectors(
                 config.detectors.as_dict(), config.custom_rules_raw()
@@ -143,6 +145,12 @@ class AgentLeakRunner:
             self._level_overrides = dict(config.scoring.level_overrides)
             self._vault, self._scope_def = config.vault_spec()
             self._privacy_policy = config.privacy_policy
+            # Cross-session checking is opt-in: without a declared ledger the
+            # runner has no project root to write one into, and inventing a
+            # location that quietly accumulates subject data would be the wrong
+            # default for a tool about not accumulating subject data.
+            ledger_path = getattr(config.privacy, "subject_ledger", "")
+            self._subject_ledger = SubjectLedger(path=ledger_path) if ledger_path else None
 
         self.detectors = raw_detectors
         self._pipeline, self._warnings = _build_pipeline(config, raw_detectors)
@@ -154,6 +162,8 @@ class AgentLeakRunner:
         vault: Any = None,
         scope_def: str | None = None,
         canary_set: CanarySet | None = None,
+        subject_ledger: SubjectLedger | None = None,
+        subject: str = "",
     ) -> AnalysisResult:
         """Analyze a trace. An explicit ``vault`` (per-level counts, a list of
         secrets, or a raw ρ_S) overrides the config and the observed-reachable
@@ -205,12 +215,21 @@ class AgentLeakRunner:
             scope_def=scope_def or self._scope_def,
         )
 
+        # Cross-session attribution, after scoring so it never moves the score.
+        # A secret that belongs to another subject still leaked in this trace
+        # and AgentRisk already counts it; what this adds is whose it was.
+        ledger = subject_ledger if subject_ledger is not None else self._subject_ledger
+        subject_evaluation = evaluate_subjects(
+            ledger, findings, trace=trace, subject=subject
+        )
+
         selected_vault = vault if vault is not None else self._vault
         policy_evaluation = evaluate_privacy_policy(
             self._privacy_policy,
             findings,
             risk_index=score.risk_index,
             explicit_vault=selected_vault is not None,
+            subject_evaluation=subject_evaluation,
         )
 
         return AnalysisResult(
@@ -224,6 +243,7 @@ class AgentLeakRunner:
             block_on_critical=self._block_on_critical,
             fail_below=self._fail_below,
             policy_evaluation=policy_evaluation,
+            subject_evaluation=subject_evaluation,
             warnings=list(self._warnings),
             detection_mode=self._pipeline.mode.value,
             tiers=self._pipeline.finding_tiers,

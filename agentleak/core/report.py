@@ -188,6 +188,11 @@ class AnalysisResult:
     # letting the reader assume the strongest reading.
     detection_mode: str = "fast"
     tiers: list[str] = field(default_factory=lambda: ["regex"])
+    # Cross-session attribution: which of this run's secrets belong to somebody
+    # else. Deliberately *beside* the score rather than inside it — the secret
+    # genuinely leaked in this trace and AgentRisk already counts it. What this
+    # adds is whose it was, which is a different claim from how severe it is.
+    subject_evaluation: Any = None
 
     # -- convenience accessors (used by the SDK and reporters) -----------
     @property
@@ -312,6 +317,11 @@ class AnalysisResult:
             },
             "warnings": list(self.warnings),
             "privacy_policy": self.policy_evaluation.to_dict(),
+            **(
+                {"cross_session": self.subject_evaluation.to_dict()}
+                if self.subject_evaluation is not None
+                else {}
+            ),
             "summary": {
                 "total_findings": len(leaked),
                 "detected_total": len(self.findings),
