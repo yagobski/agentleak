@@ -42,6 +42,37 @@ toxicity, and content-safety plugins are not presented as privacy leakage tests.
 Use `GET /api/redteam/catalog` to inspect the current catalog, requirements,
 presets, and strategy profiles.
 
+### What this catalog is not competing on
+
+Promptfoo has 18,000 stars, several hundred thousand users, adoption across a
+quarter of the Fortune 500, and — since March 2026 — OpenAI behind it. It
+remains MIT-licensed and it is a good tool. If you want the largest library of
+adversarial probes, use it.
+
+So the plugin count here is **compatibility, not a scoreboard**: the point of
+the 38 transpositions is that a taxonomy your team already knows keeps working,
+not that 62 is a bigger number than somebody else's. Comparing catalog sizes
+with a project that has those resources is a race with one outcome, and winning
+it would not make an agent's privacy any better understood.
+
+What AgentLeak does that a prompt-and-response red-teamer structurally cannot:
+
+- **It reads the internal channels.** A probe "fails" for Promptfoo when the
+  model's *answer* is bad. Here it fails when private data crossed any execution
+  boundary — a tool call, shared memory, an inter-agent message, a log, a
+  generated file — even when the answer is spotless. That is the case the
+  benchmark this project comes from measured at 2.6× more frequent than
+  output-only leakage.
+- **Every probe leaves an auditable trace, scored the same way as a normal
+  run.** The evidence is an AgentRisk report against the same eight channels,
+  not a pass/fail on a string.
+- **The result is deterministic and reproducible**, which is what makes it
+  usable as a release gate and as regulatory evidence rather than as a report
+  somebody has to trust.
+
+Use both. They answer different questions, and this one is worth running on an
+agent that already passed the other.
+
 Adversary levels:
 
 | Level | Who | Controls |
