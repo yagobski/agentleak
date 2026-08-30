@@ -649,6 +649,53 @@ def _is_loopback_host(host: str) -> bool:
 
 
 @app.command()
+def subjects(
+    ledger: str = typer.Option(".agentleak/subjects.jsonl", "--ledger", help="Subject ledger to read."),
+    forget: str | None = typer.Option(None, "--forget", help="Erase every secret attributed to this subject."),
+    fmt: str = typer.Option("text", "--format", "-f", help="text | json."),
+) -> None:
+    """Inspect the cross-session subject ledger, or erase one subject from it.
+
+    The ledger records which subject each secret belongs to, so a value written
+    to memory while serving one person and repeated while serving another is
+    caught — the failure per-run analysis cannot see. It holds salted
+    fingerprints, never values.
+
+    `--forget` exists because erasure is a right, not a feature request: a
+    fingerprint of somebody's SIN is still about them.
+    """
+    from .core.subjects import SubjectLedger
+
+    store = SubjectLedger(path=ledger)
+    if not Path(ledger).exists():
+        typer.secho(
+            f"No ledger at {ledger}. Set privacy.subject_ledger in your config "
+            "and give each run a subject to start one.",
+            fg=typer.colors.YELLOW,
+        )
+        raise typer.Exit(code=1)
+
+    if forget:
+        removed = store.forget(forget)
+        typer.secho(f"✓ erased {removed} secret(s) attributed to '{forget}'", fg=typer.colors.GREEN)
+        return
+
+    summary = store.summary()
+    if fmt == "json":
+        typer.echo(json.dumps(summary, indent=2))
+        return
+    typer.echo(f"{summary['secrets_tracked']} secret(s) tracked across {summary['subjects']} subject(s)")
+    typer.echo("")
+    for subject, count in summary["by_subject"].items():
+        typer.echo(f"  {subject:<24} {count}")
+    if summary["by_data_type"]:
+        typer.echo("")
+        typer.echo("By data type:")
+        for data_type, count in summary["by_data_type"].items():
+            typer.echo(f"  {data_type:<24} {count}")
+
+
+@app.command()
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="Host to bind."),
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind."),
@@ -919,6 +966,20 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
             purpose = decision.get("purpose") or "no declared purpose"
             typer.echo(
                 f"      {decision['data_type']} -> {recipient} ({purpose})"
+            )
+
+    cross = data.get("cross_session") or {}
+    if cross.get("enabled") and not cross.get("passed"):
+        breaches = cross["cross_subject_disclosures"]
+        typer.secho(
+            f"Cross-session: {len(breaches)} disclosure(s) of another subject's data",
+            fg=typer.colors.RED,
+        )
+        for breach in breaches:
+            typer.echo(
+                f"  - {breach['data_type']}: belongs to '{breach['owner']}', "
+                f"disclosed on {breach['channel']} while serving "
+                f"'{breach['disclosed_to']}'"
             )
 
     if data["channel_risks"]:

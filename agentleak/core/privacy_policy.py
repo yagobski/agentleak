@@ -63,6 +63,7 @@ def evaluate_privacy_policy(
     *,
     risk_index: float,
     explicit_vault: bool,
+    subject_evaluation: Any = None,
 ) -> PolicyEvaluation:
     """Evaluate one configured policy against a scored run."""
     if policy is None:
@@ -156,6 +157,23 @@ def evaluate_privacy_policy(
                 count=len(breaches),
                 finding_ids=tuple(d.finding_id for d in breaches if d.finding_id),
             ))
+
+    # Cross-session: did this run disclose somebody else's data. Only checkable
+    # when a ledger is configured and the run named its subject; without both,
+    # the assertion says nothing rather than passing vacuously.
+    if bool(getattr(policy, "forbid_cross_subject", False)):
+        if subject_evaluation is not None and getattr(subject_evaluation, "enabled", False):
+            checks.append("forbid_cross_subject")
+            breaches = list(getattr(subject_evaluation, "disclosures", ()) or ())
+            if breaches:
+                summary = "; ".join(sorted({d.describe() for d in breaches})[:3])
+                violations.append(PolicyViolation(
+                    "forbid_cross_subject",
+                    f"{len(breaches)} cross-subject disclosure(s): {summary}"
+                    + ("; ..." if len(breaches) > 3 else ""),
+                    count=len(breaches),
+                    finding_ids=tuple(d.finding_id for d in breaches if d.finding_id),
+                ))
 
     return PolicyEvaluation(
         enabled=bool(checks),
