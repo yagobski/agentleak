@@ -120,11 +120,26 @@ export function Scenarios() {
     return c
   }, [scenarios])
 
+  // Everything the engine ships, whether or not this account has imported it.
+  const available = useMemo(
+    () => scenarios.length + packs.reduce((n, p) => n + (p.count - p.imported_count), 0),
+    [scenarios, packs],
+  )
+
   return (
     <div className="animate-fade-up">
       <PageHeader
         title="Scenarios"
-        description="Packaged traces and executable test specs. Open one in the test lab, upload evidence, or import a curated pack."
+        description={
+          // The library opens on 10 built-ins while /api/meta advertises 266.
+          // The other 256 are in packs, in a section below the grid — off
+          // screen — so the first impression is a tenth of what the product
+          // says it has. Saying the number here costs one line and closes the
+          // gap between the advertised figure and the visible one.
+          available > scenarios.length
+            ? `Packaged traces and executable test specs. ${scenarios.length} loaded, ${available} available — the rest are in the packs below.`
+            : "Packaged traces and executable test specs. Open one in the test lab, upload evidence, or import a curated pack."
+        }
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setBuilderOpen(true)}>
