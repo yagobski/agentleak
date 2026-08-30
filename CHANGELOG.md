@@ -6,6 +6,8 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-08-30
+
 Rebuilt the dashboard sign-in and registration pages as a full-screen split
 rather than a centred card. The complete logo — shield and wordmark — sits in
 the top bar, the ASCII mark holds the left pane at whatever size the viewport
