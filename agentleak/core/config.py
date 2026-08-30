@@ -156,6 +156,25 @@ class PrivacyPolicyConfig(BaseModel):
     forbid_data_types: list[str] = Field(default_factory=list)
     require_explicit_vault: bool = False
 
+    # Contextual-integrity rules: which flows of which data are appropriate.
+    # Every assertion above judges data *presence* — this type, that channel,
+    # that many findings. None of them can express the difference between a SIN
+    # reaching a KYC vendor for an identity check and the same SIN reaching an
+    # analytics sink, which is the difference privacy law actually turns on.
+    # See agentleak.core.contextual_integrity for the rule grammar.
+    flows: list[dict[str, Any]] = Field(default_factory=list)
+
+    @field_validator("flows")
+    @classmethod
+    def validate_flows(cls, flows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # Parse eagerly so a malformed rule fails at config load, where the line
+        # number is, rather than silently governing nothing at run time.
+        from .contextual_integrity import FlowRule
+
+        for rule in flows:
+            FlowRule.from_mapping(rule)
+        return flows
+
     @field_validator("forbid_levels")
     @classmethod
     def validate_forbid_levels(cls, levels: list[int]) -> list[int]:
@@ -305,6 +324,25 @@ privacy:
 # Optional privacy assertions. Any violation blocks the run in CLI, CI, SDK,
 # the web platform, and autonomous-agent self-tests.
 # privacy_policy:
+#   # Contextual integrity: which flows of which data are appropriate. Every
+#   # assertion below judges data *presence*; these judge the flow. A SIN
+#   # reaching a KYC vendor for an identity check and the same SIN reaching an
+#   # analytics sink are identical to every other rule here, and opposite under
+#   # privacy law.
+#   #
+#   # An allow rule is scoped default-deny: naming `sin` means SIN may reach the
+#   # recipients you listed and nowhere else, while data types you have said
+#   # nothing about stay unjudged. A deny rule wins over any allow rule.
+#   flows:
+#     - data_type: sin
+#       to: kyc-vendor
+#       for: identity_check
+#     - data_type: [health_condition, medication]
+#       to: [clinician, ehr]
+#     - data_type: "*"
+#       to: analytics
+#       deny: true
+#       description: "Nothing personal reaches the analytics sink."
 #   max_risk_index: 0.20
 #   max_findings: 0
 #   forbid_levels: [4]
