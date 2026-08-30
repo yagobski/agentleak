@@ -100,6 +100,14 @@ class ReportsConfig(BaseModel):
 class PrivacyConfig(BaseModel):
     redact_values: bool = True
     store_raw_traces: bool = False
+    #: Path to the cross-session subject ledger. Empty disables the check.
+    #:
+    #: Opt-in on purpose. The ledger remembers which subject each secret
+    #: belongs to, so enabling it by default would mean a privacy tool quietly
+    #: starting to accumulate data about people in a location nobody chose.
+    #: It stores salted fingerprints rather than values, and
+    #: `agentleak subjects --forget` erases one subject's entries.
+    subject_ledger: str = ""
 
 
 class CustomDetectorConfig(BaseModel):
@@ -163,6 +171,10 @@ class PrivacyPolicyConfig(BaseModel):
     # analytics sink, which is the difference privacy law actually turns on.
     # See agentleak.core.contextual_integrity for the rule grammar.
     flows: list[dict[str, Any]] = Field(default_factory=list)
+    #: Fail the gate when a run discloses another subject's data. Needs
+    #: `privacy.subject_ledger` and a subject on each run; without both it has
+    #: nothing to check and stays silent rather than passing vacuously.
+    forbid_cross_subject: bool = False
 
     @field_validator("flows")
     @classmethod
@@ -319,6 +331,10 @@ reports:
 
 privacy:
   redact_values: true
+  # Cross-session leak detection. Names whose data each run is about, so a
+  # secret written to memory while serving one person and repeated while
+  # serving another is caught — the failure per-run analysis cannot see.
+  # subject_ledger: .agentleak/subjects.jsonl
   store_raw_traces: false
 
 # Optional privacy assertions. Any violation blocks the run in CLI, CI, SDK,

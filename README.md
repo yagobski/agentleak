@@ -104,7 +104,9 @@ navigation:
 - **Projects** — each is an agent under test. **Run a real agent** against any
   scenario, or use the built-in scripted agent offline. Connect your own agent
   via the SDK (the Connect tab generates a copy-paste snippet).
-- **Red Team** — 62 executable plugin IDs (24 native plus 38 Promptfoo-compatible)
+- **Red Team** — 62 executable plugin IDs (24 native, plus 38 transposed for
+  Promptfoo compatibility so an existing taxonomy keeps working —
+  [not a scoreboard](docs/redteam.md#what-this-catalog-is-not-competing-on))
   privacy/security transpositions, mapped to 46
   observable attack classes across 6 families, combined with 10 delivery
   strategies (direct, jailbreak framing, markup, encodings, Unicode, and
@@ -319,6 +321,7 @@ there.
 - [Detection quality](docs/detection-quality.md) — measured recall, false positives, and what the deterministic tier misses
 - [Contextual integrity](docs/contextual-integrity.md) — judge the flow (data × sender × recipient × purpose), not the presence
 - [Runtime gateway](docs/runtime-gateway.md) — `agentleak proxy`: allow, redact or block a tool call before it is sent, with a hash-chained evidence log
+- [Cross-session leaks](docs/cross-session.md) — whose data is this, and did it end up in somebody else's session
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics

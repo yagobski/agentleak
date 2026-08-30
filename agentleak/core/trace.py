@@ -106,6 +106,16 @@ class Trace(BaseModel):
     run_id: str = Field(default="run", description="Unique id for this run")
     agent_name: str = Field(default="unknown_agent")
     scenario_id: str | None = None
+    #: Whose data this run is about — a tenant, a customer, a patient record.
+    #:
+    #: Per-run analysis cannot see the failure that matters in a shared
+    #: deployment: a secret written to memory while serving one person and
+    #: repeated while serving another. Both runs score independently, both may
+    #: score well, and the leak lives in the gap between them. Naming the
+    #: subject is what lets :mod:`agentleak.core.subjects` close it. An event
+    #: may override this via ``metadata["subject"]`` when one run legitimately
+    #: touches several people's records.
+    subject: str = ""
     timestamp: datetime = Field(default_factory=_utcnow)
     events: list[Event] = Field(default_factory=list)
 
