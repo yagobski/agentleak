@@ -6,6 +6,18 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-30
+
+### Fixed
+
+- **The scenario library said 10 when the engine has 266.** The other 256 sit in
+  packs, in a section below the grid — off screen on a normal viewport — so the
+  first impression of the product was a tenth of what it advertises. The header
+  now reads "10 loaded, 266 available — the rest are in the packs below",
+  counted from the packs the engine reports rather than written down, so it
+  cannot drift from `/api/meta` the way a hand-typed figure once did. The
+  sentence disappears once everything is imported.
+
 ## [0.14.0] - 2026-08-30
 
 Catches the leak that lives between two traces, and stops the platform saying
