@@ -6,6 +6,45 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-30
+
+Judge the flow, not the presence — and decide before emission rather than
+scoring after the fact.
+
+### Added
+
+- **Contextual integrity.** Every assertion this project shipped judged data
+  *presence*: this type, that channel, that many findings. A SIN reaching a KYC
+  vendor for an identity check and the same SIN reaching an analytics sink are
+  identical under all of them, and opposite under GDPR purpose limitation.
+  `privacy_policy.flows` moves the unit to the quadruple **(data type, sender,
+  recipient, purpose)**. Three quarters of it was already in the trace; purpose
+  comes from event metadata the SDK already passes through. Allow rules are
+  *scoped* default-deny, so adopting the feature never floods an existing
+  project with violations about data no rule mentions, and a flow that declares
+  no purpose fails a rule that requires one. See `docs/contextual-integrity.md`.
+
+- **`agentleak proxy` — a runtime gateway for MCP.** Sits between an agent and
+  its tool servers and judges each `tools/call` on the way out: allow, redact,
+  or block. Redact is the default for a refusal, deliberately — a gateway that
+  blocks whatever it dislikes breaks the agent and gets switched off — and
+  redaction is surgical, removing only the refused data types so the call still
+  works. Everything that is not a `tools/call` crosses untouched, and a refusal
+  arrives as a tool result with `isError` rather than a protocol error, so the
+  agent can read the reason and adapt. See `docs/runtime-gateway.md`.
+
+- **`agentleak evidence` — a hash-chained decision log.** Every gateway decision
+  is appended with the hash of the entry before it, so editing, removing or
+  reordering any entry breaks every hash after it and verification says which
+  one. Tamper-evident, not tamper-proof, and the docs say so. No secret value is
+  ever written to it.
+
+- **`agentleak serve --local`.** A loopback install no longer opens by asking
+  for an email address, under a footer that says "100% local". One implicit
+  owner, no registration. Because this is an unauthenticated web application,
+  three independent gates keep it on loopback: the CLI flag, the environment
+  resolution, and `run_server` itself. Without `--local` nothing changes.
+
 ### Fixed
 
 - **`agentleak.__version__` was left at 0.12.0 when 0.12.1 was cut.** The
@@ -16,7 +55,15 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   caught it and CI went red on the release commit, but the release ran anyway:
   the tag gate only ever compared the tag with `pyproject.toml`. It now checks
   `__version__` too, so a wheel that would misreport itself cannot be published.
-  The 0.12.1 already on PyPI is immutable and keeps the wrong string.
+  The 0.12.1 already on PyPI is immutable and keeps the wrong string; this is
+  the release that carries the corrected one.
+
+  The consequence reached further than a printed string. The site deployment
+  installs an exact version and then asks the running service which version it
+  is; 0.12.1 answered "0.12.0", so the check concluded the Docker build had
+  reused a cached layer and failed the deploy — with a diagnosis pointing at
+  the wrong cause entirely. Production was in fact running 0.12.1 the whole
+  time.
 
 ## [0.12.1] - 2026-08-30
 
