@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -526,19 +527,172 @@ def mcp() -> None:
         pass
 
 
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def proxy(
+    ctx: typer.Context,
+    config: str | None = typer.Option(None, "--config", "-c", help="agentleak.yaml holding the flow rules."),
+    evidence: str = typer.Option("agentleak-evidence.jsonl", "--evidence", help="Hash-chained decision log."),
+    recipient: str | None = typer.Option(None, "--recipient", help="Name this server goes by in flow rules."),
+    block: bool = typer.Option(False, "--block", help="Block every refused flow instead of redacting it."),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Don't narrate decisions on stderr."),
+) -> None:
+    """Guard an MCP server: judge every tool call before it is sent.
+
+    Put this between your agent and the server it calls. Arguments after `--`
+    are the server command:
+
+      agentleak proxy --config agentleak.yaml -- npx -y @modelcontextprotocol/server-github
+
+    Each `tools/call` is checked against the contextual-integrity rules in your
+    config: permitted flows pass, refused ones have the offending values removed,
+    and flows a `deny` rule names are refused outright with a reason the agent
+    can read. Every decision is appended to a hash-chained evidence log that
+    `agentleak evidence` can verify.
+    """
+    command = list(ctx.args)
+    if not command:
+        typer.secho(
+            "No server command. Put it after `--`, e.g.\n"
+            "  agentleak proxy -- npx -y @modelcontextprotocol/server-github",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+
+    flows: Any = None
+    if config:
+        try:
+            cfg = Config.load(config)
+            flows = list(cfg.privacy_policy.flows)
+        except Exception as exc:  # noqa: BLE001
+            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
+        if not flows:
+            typer.secho(
+                "Note: the config declares no privacy_policy.flows, so nothing is "
+                "refused. Every call is still recorded.",
+                fg=typer.colors.YELLOW, err=True,
+            )
+
+    from .mcp_proxy import run_proxy
+
+    try:
+        code = run_proxy(
+            command,
+            flows=flows,
+            evidence=evidence,
+            recipient=recipient or "",
+            block_on_violation=block,
+            verbose=not quiet,
+        )
+    except FileNotFoundError as exc:
+        typer.secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    except KeyboardInterrupt:  # pragma: no cover
+        code = 0
+    raise typer.Exit(code=code)
+
+
+@app.command()
+def evidence(
+    path: str = typer.Argument("agentleak-evidence.jsonl", help="Evidence log to read."),
+    verify_only: bool = typer.Option(False, "--verify", help="Only check the chain; print nothing else."),
+    fmt: str = typer.Option("text", "--format", "-f", help="text | json."),
+) -> None:
+    """Verify and summarize a gateway evidence log.
+
+    The log is hash-chained: each entry carries the hash of the one before it,
+    so editing, removing or reordering any entry breaks every hash after it and
+    this command says which one. That is tamper-evident, not tamper-proof —
+    anyone who can write the file can rewrite the whole chain — but it is the
+    property an auditor needs and a plain log does not have.
+    """
+    from .core.evidence import EvidenceLog
+    from .core.evidence import verify as verify_chain
+
+    result = verify_chain(path)
+    if verify_only:
+        if fmt == "json":
+            typer.echo(json.dumps(result.to_dict(), indent=2))
+        else:
+            colour = typer.colors.GREEN if result.ok else typer.colors.RED
+            typer.secho(result.detail, fg=colour)
+        raise typer.Exit(code=0 if result.ok else 1)
+
+    if not result.ok:
+        typer.secho(f"⛔ {result.detail}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    summary = EvidenceLog(path).summary()
+    if fmt == "json":
+        typer.echo(json.dumps(summary, indent=2))
+        return
+
+    typer.secho(f"✓ {result.detail}", fg=typer.colors.GREEN)
+    typer.echo("")
+    for action, count in summary["by_action"].items():
+        colour = {
+            "block": typer.colors.RED,
+            "redact": typer.colors.YELLOW,
+            "allow": typer.colors.GREEN,
+        }.get(action, typer.colors.WHITE)
+        typer.secho(f"  {action:<8}", fg=colour, nl=False)
+        typer.echo(f" {count}")
+    if summary["by_data_type"]:
+        typer.echo("")
+        typer.echo("Data types seen:")
+        for data_type, count in summary["by_data_type"].items():
+            typer.echo(f"  {data_type:<22} {count}")
+
+
+def _is_loopback_host(host: str) -> bool:
+    return str(host).strip().lower() in {"127.0.0.1", "localhost", "::1", "[::1]"}
+
+
 @app.command()
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="Host to bind."),
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind."),
     no_browser: bool = typer.Option(False, "--no-browser", help="Don't open a browser."),
+    local: bool = typer.Option(
+        False, "--local",
+        help="Single-user workspace with no sign-in. Loopback only.",
+    ),
 ) -> None:
-    """Launch the local web GUI (pip install 'agentleak\\[gui]')."""
+    """Launch the local web GUI (pip install 'agentleak\\[gui]').
+
+    `--local` skips the account entirely: a tool whose first claim is "100%
+    local, nothing leaves your machine" should not open by asking for an email
+    address. The workspace then belongs to whoever is at the machine, which is
+    why it may only listen on loopback — the server refuses to start otherwise.
+    """
+    if local:
+        if not _is_loopback_host(host):
+            typer.secho(
+                f"✗ --local cannot bind {host}. It serves an unauthenticated "
+                "workspace, so it only listens on loopback. Drop --local to "
+                "serve accounts, or bind 127.0.0.1.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=2)
+        if os.environ.get("AGENTLEAK_PUBLIC_MODE", "").strip().lower() in {"1", "true", "yes", "on"}:
+            typer.secho(
+                "✗ --local and AGENTLEAK_PUBLIC_MODE are mutually exclusive.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=2)
+        os.environ["AGENTLEAK_LOCAL_MODE"] = "1"
+
     try:
         from .web import run_server
     except Exception as exc:  # noqa: BLE001
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     typer.secho(f"AgentLeak GUI → http://{host}:{port}  (Ctrl+C to stop)", fg=typer.colors.GREEN)
+    if local:
+        typer.secho(
+            "  local mode: no sign-in, single workspace, loopback only.",
+            fg=typer.colors.YELLOW,
+        )
     try:
         run_server(host=host, port=port, open_browser=not no_browser)
     except RuntimeError as exc:
@@ -758,6 +912,14 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
         )
         for violation in policy.get("violations", []):
             typer.echo(f"  - {violation['rule']}: {violation['message']}")
+        # A flow violation names a recipient and a purpose, which is what the
+        # operator changes. Summarised in the message, listed in full here.
+        for decision in policy.get("flows", {}).get("violations", []):
+            recipient = decision.get("recipient") or "?"
+            purpose = decision.get("purpose") or "no declared purpose"
+            typer.echo(
+                f"      {decision['data_type']} -> {recipient} ({purpose})"
+            )
 
     if data["channel_risks"]:
         typer.echo("")

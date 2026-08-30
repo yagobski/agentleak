@@ -317,6 +317,8 @@ there.
 - [Concepts](docs/concepts.md)
 - [Detection pipeline](docs/detection.md) — Tier 1+2 regex, Tier 2b Presidio, Tier 3 LLM-judge
 - [Detection quality](docs/detection-quality.md) — measured recall, false positives, and what the deterministic tier misses
+- [Contextual integrity](docs/contextual-integrity.md) — judge the flow (data × sender × recipient × purpose), not the presence
+- [Runtime gateway](docs/runtime-gateway.md) — `agentleak proxy`: allow, redact or block a tool call before it is sent, with a hash-chained evidence log
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
