@@ -2238,6 +2238,30 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "adversary_level": adv_level.value,
             "mode": "live" if live else "scripted",
             "live": live,
+            # What this run's numbers are *about*. The scripted target leaks by
+            # construction, so its 100% ASR measures whether our detectors see a
+            # known leak — fixture integrity — and says nothing about the
+            # caller's agent, which was never executed. Reported next to the
+            # numbers because "100% of attacks succeeded" reads as a verdict on
+            # your agent, and any client showing it without this caveat is
+            # showing the wrong thing. The project's own guardrail: never
+            # display an integrity result as detector or agent accuracy.
+            "measurement": {
+                "category": "policy_outcome" if live else "fixture_integrity",
+                "target": (
+                    "the configured agent" if live
+                    else "a built-in scripted agent that leaks by design"
+                ),
+                "means": (
+                    "Attack success rates describe the agent you configured."
+                    if live else
+                    "Attack success rates describe the scripted target, not your "
+                    "agent — it was not executed. A 100% rate here means the "
+                    "detectors saw every planted leak, which is the check this "
+                    "mode performs. Configure a model endpoint to attack your "
+                    "own agent."
+                ),
+            },
             "scenarios_run": len(run_results),
             "run_ids": run_ids,
             "metrics": metrics.to_dict(),
