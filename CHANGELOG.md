@@ -6,6 +6,47 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-30
+
+Catches the leak that lives between two traces, and stops the platform saying
+two things badly.
+
+### Added
+
+- **Cross-session subject attribution.** Every other part of this project
+  scores one trace against itself, which cannot see the failure that matters in
+  a deployment serving more than one person: a secret written to memory while
+  serving Alice, repeated while serving Bob. Both runs score independently, both
+  may score well, and nothing said the second disclosed the first one's data.
+  A run now names whose data it is about — `Trace.subject`, `watch(subject=...)`,
+  or an event's `metadata["subject"]` — and `core/subjects.py` keeps a
+  per-project ledger that reports a cross-subject disclosure. Gated in CI with
+  `privacy_policy.forbid_cross_subject`; inspected and erased with
+  `agentleak subjects`. See `docs/cross-session.md`.
+
+  Attribution is reported *beside* the score, never folded into it: the secret
+  leaked in this trace either way and AgentRisk already counts it, so
+  discovering whose it was must not silently move the number. The ledger stores
+  salted fingerprints and never a value, with a per-ledger salt at mode 600,
+  because unsalted fingerprints are a dictionary attack away from the values
+  they stand for. `--forget` erases a subject, because erasure is a right.
+
+### Changed
+
+- **A scripted red-team run now says what it measured.** It returns ASR 1.0
+  across every family, which is correct — the target leaks by construction, so a
+  perfect score means the detectors saw every planted leak. Read without that,
+  "100% of attacks succeeded" is a devastating and false statement about an
+  agent that was never executed. The response declares `fixture_integrity` or
+  `policy_outcome` with a sentence naming what was attacked.
+
+- **The red-team catalog is presented as compatibility, not a scoreboard.**
+  Leading with a plugin count invites a comparison against a project with far
+  more resources behind it, and winning it would not make anybody's agent
+  privacy better understood. The docs say what the transpositions are for, what
+  this module does that a prompt-and-response red-teamer structurally cannot,
+  and that using both is the sensible answer.
+
 ## [0.13.0] - 2026-08-30
 
 Judge the flow, not the presence — and decide before emission rather than
