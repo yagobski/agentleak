@@ -758,6 +758,14 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
         )
         for violation in policy.get("violations", []):
             typer.echo(f"  - {violation['rule']}: {violation['message']}")
+        # A flow violation names a recipient and a purpose, which is what the
+        # operator changes. Summarised in the message, listed in full here.
+        for decision in policy.get("flows", {}).get("violations", []):
+            recipient = decision.get("recipient") or "?"
+            purpose = decision.get("purpose") or "no declared purpose"
+            typer.echo(
+                f"      {decision['data_type']} -> {recipient} ({purpose})"
+            )
 
     if data["channel_risks"]:
         typer.echo("")

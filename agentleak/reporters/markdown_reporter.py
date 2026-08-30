@@ -59,6 +59,18 @@ def render(data: dict[str, Any]) -> str:
             ids = ", ".join(violation.get("finding_ids", []))
             evidence = f" Evidence: `{ids}`." if ids else ""
             a(f"- **{violation['rule']}** — {violation['message']}{evidence}")
+        flow_violations = policy.get("flows", {}).get("violations", [])
+        if flow_violations:
+            a("")
+            a("| Data | From | To | Purpose | Why |")
+            a("|---|---|---|---|---|")
+            for decision in flow_violations:
+                a(
+                    f"| `{decision['data_type']}` | {decision.get('sender') or '—'} "
+                    f"| {decision.get('recipient') or '—'} "
+                    f"| {decision.get('purpose') or '_none declared_'} "
+                    f"| {decision['reason']} |"
+                )
         a("")
 
     a("## Risk by channel")
