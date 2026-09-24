@@ -10,14 +10,37 @@ is stored, forwarded, or returned.
 
 ### Redaction styles
 
+Every example below is the real output for `SSN: 412-55-9087`:
+
 | Style | Example output |
 | --- | --- |
-| `placeholder` | `[SSN REDACTED]` (default) |
-| `asterisk` | `***-**-****` |
-| `masked` | `XXX-XX-6789` (last 4 visible) |
-| `hash` | `[sha256:a3f…]` |
-| `category` | `[SOCIAL_SECURITY_NUMBER]` |
+| `placeholder` | `[REDACTED_SSN]` (default) |
+| `asterisk` | `***********` (one `*` per character) |
+| `masked` | `XXXXXXX9087` (last 4 visible; the CLI also accepts `mask`) |
+| `hash` | `1793fe1ffccd611f` (SHA-256, first 16 hex chars) |
+| `category` | `[PII: SSN]` |
 | `remove` | *(empty — removed entirely)* |
+
+### What is removed
+
+The sanitizer reads the same detector registry as the analysis, so anything
+AgentLeak can find it can remove; `GET /api/meta` lists the split
+(`redactable` vs `detect_only`). Two rules decide what a match covers:
+
+- **Credentials are removed whole.** A private key is the full
+  `BEGIN … END` block (or, when a log cut it off, the base64 lines after the
+  header), not the header line alone. A URL with a password in it —
+  `postgres://user:pass@host`, `https://bot:token@github.com/…` — goes as one
+  unit, even though `pass@host` also looks like an email address.
+- **Otherwise the most precise match wins.** A key-name match such as
+  `ssn: 412-55-9087 and more text` locates the secret only roughly, so the SSN
+  pattern inside it decides what is removed and the rest of the sentence stays.
+
+Assigned secrets (`password: hunter2`, `DB_PASSWORD=…`,
+`export OPENAI_API_KEY=…`) are redacted by value, so the key name — and the
+code around it — survives. Reads from the environment or a config object
+(`os.environ.get(...)`, `settings.API_KEY`, `response.next_page_token`) are
+references, not secrets, and are left alone.
 
 ### Usage
 
@@ -26,7 +49,7 @@ from agentleak.defenses.sanitizer import Sanitizer, RedactionStyle
 
 san = Sanitizer(style=RedactionStyle.MASKED)
 clean = san.sanitize("Patient SSN: 412-55-9087, email alice@example.com")
-# → "Patient SSN: XXX-XX-9087, email al***@***.com"
+# → "Patient SSN: XXXXXXX9087, email XXXXXXXXXXXXX.com"
 
 # Convenience function
 from agentleak.defenses.sanitizer import sanitize_text
@@ -38,7 +61,7 @@ clean = sanitize_text(text, style="placeholder")
 ```python
 data = {"patient": "Jane", "ssn": "412-55-9087", "notes": "allergic to penicillin"}
 clean = san.sanitize_dict(data)
-# → {"patient": "Jane", "ssn": "[SSN REDACTED]", "notes": "allergic to penicillin"}
+# → {"patient": "Jane", "ssn": "[REDACTED_SSN]", "notes": "allergic to penicillin"}
 ```
 
 ### Custom patterns
@@ -46,8 +69,9 @@ clean = san.sanitize_dict(data)
 ```python
 san = Sanitizer(
     style=RedactionStyle.PLACEHOLDER,
-    extra_patterns={"PROJ_ID": r"PROJ-\d{6}"},
+    extra_patterns={"PROJ_ID": r"PROJ-\d{6}"},  # or [("PROJ_ID", r"PROJ-\d{6}")]
 )
+san.sanitize("see PROJ-123456")  # → "see [REDACTED_PROJ_ID]"
 ```
 
 ### Configure in agentleak.yaml
