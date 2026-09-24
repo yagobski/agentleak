@@ -1,5 +1,5 @@
 {
-  "software_version": "0.12.0",
+  "software_version": "0.14.2",
   "detector_tier": "fast (deterministic: regex + dictionaries)",
   "tiers_not_run": [
     "presidio",

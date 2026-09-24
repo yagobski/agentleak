@@ -80,13 +80,16 @@ snippets. It does not contain raw matched secrets.
 ## Redact
 
 ```bash
-agentleak redact --style mask path/to/log.txt
+agentleak redact --style masked path/to/log.txt
 cat prompt.txt | agentleak redact --style hash
+echo "postgres://admin:pw@db:5432/prod" | agentleak redact
+# → [REDACTED_CONNECTION_STRING]
 ```
 
-Applies the same detection rules as a defense: `placeholder` (default),
-`mask`, `hash`, or `remove`. Reads stdin when no path is given. See
-[docs/defenses.md](defenses.md).
+Applies the same detection rules as a defense. Styles: `placeholder`
+(default), `asterisk`, `masked` (alias `mask`), `hash`, `category`, `remove`.
+Reads stdin when no path is given. Credentials — private-key blocks, URLs with
+a password in them — are removed whole. See [docs/defenses.md](defenses.md).
 
 ## MCP
 
