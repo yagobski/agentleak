@@ -97,6 +97,29 @@ a `deny` rule names, because a deny rule is somebody saying *not this, ever*.
 Stripping everything findable would take the order number out with the SIN and
 the call would fail for a reason nobody could see.
 
+## What passes unjudged
+
+Allow rules are [scoped default-deny](contextual-integrity.md#two-design-decisions-worth-knowing-about).
+A data type that no rule names is recorded in the evidence log and then
+**forwarded as is**. That includes credentials: with only the policy above, a
+`postgres://user:password@host` argument reaches the server unchanged.
+
+That is the right default for a database or a deployment server, which needs
+the credential it is sent. For every other server, say so:
+
+```yaml
+privacy_policy:
+  flows:
+    - data_type: [private_key, connection_string, llm_api_key, aws_access_key,
+                  github_token, slack_token, stripe_key, google_api_key, jwt,
+                  bearer_token]
+      to: "*"
+      deny: true
+```
+
+Deny beats allow, so an allow rule next to this deny would never apply. Give the
+one server that needs a credential its own proxy instance with its own config.
+
 ## Declaring purpose
 
 The proxy reads purpose from the call's `_meta`:

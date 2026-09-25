@@ -18,8 +18,11 @@ version's complete help output.
 | `redact` | Sanitize sensitive values out of text — detection's defensive counterpart. |
 | `history` | Show stored project progression. |
 | `compare` | Compare two stored runs. |
-| `serve` | Start the local web interface. |
+| `serve` | Start the local web interface; `--local` skips sign-in (loopback only). |
 | `mcp` | Serve AgentLeak to coding agents over MCP (`pip install "agentleak[mcp]"`). |
+| `proxy -- CMD…` | Guard an MCP server: allow, redact or block each tool call before it is sent. |
+| `evidence [PATH]` | Verify and summarize the gateway's hash-chained decision log. |
+| `subjects` | Inspect the cross-session subject ledger, or erase one subject with `--forget`. |
 | `admin reset-password` / `admin list-users` | Operator recovery for a self-hosted platform. |
 
 ## Skill
@@ -102,6 +105,47 @@ Serves `privacy_preflight`, `privacy_scan_code`, `privacy_check_trace` and
 `privacy_redact` as MCP tools so a coding agent (Claude Code, Cursor, …) can
 check its own work locally, with no account or network call. See
 [docs/mcp.md](mcp.md).
+
+## Proxy and evidence
+
+```bash
+agentleak proxy --config agentleak.yaml --evidence evidence.jsonl \
+  -- npx -y @modelcontextprotocol/server-github
+agentleak evidence evidence.jsonl            # summary + chain check
+agentleak evidence evidence.jsonl --verify   # chain check only, for CI
+```
+
+The proxy launches the real MCP server as a child and judges every
+`tools/call` against `privacy_policy.flows` before forwarding it. Permitted
+flows pass, refused ones have only the offending values removed, and flows
+that a `deny` rule names are blocked with a reason the agent can read. `--block`
+refuses instead of redacting, `--recipient` names the server in flow rules, and
+`--quiet` silences the narration on stderr. Data types that no rule names pass
+unjudged. See [docs/runtime-gateway.md](runtime-gateway.md).
+
+`evidence` exits non-zero and names the first broken entry when any line has
+been edited, removed or reordered. `--format json` is available for tooling.
+
+## Subjects
+
+```bash
+agentleak subjects                          # who is in the ledger
+agentleak subjects --forget customer-4812   # erase one subject
+```
+
+Reads `.agentleak/subjects.jsonl` (`--ledger` to change it), which holds salted
+fingerprints and never values. See [docs/cross-session.md](cross-session.md).
+
+## Serve
+
+```bash
+pip install "agentleak[gui]"
+agentleak serve --local          # single-user, no sign-in, 127.0.0.1 only
+agentleak serve --port 8080 --no-browser
+```
+
+`--local` refuses to start on anything but a loopback address, because the
+workspace then belongs to whoever can reach the port.
 
 ## Re-render and compare
 
