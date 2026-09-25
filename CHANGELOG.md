@@ -59,6 +59,15 @@ each one produced a placeholder, and the secret sat next to it.
 - `docs/detection.md` listed routing numbers and SWIFT codes, which no detector
   finds. The table now lists what the detectors actually emit.
 - `CITATION.cff` and `.zenodo.json` had said 0.12.0 since 0.12.0.
+- `docs/cli.md` never mentioned `proxy`, `evidence` or `subjects`, the three
+  commands 0.13 and 0.14 were about. It now has sections for them and for
+  `serve --local`. `tests/test_cli_reference.py` reads the command list from the
+  running CLI and fails when a command is missing from the reference.
+- `docs/runtime-gateway.md` now says plainly that a data type no rule names is
+  forwarded as is, credentials included. It gives the one `deny` rule that
+  keeps credentials away from every server, tested against the proxy.
+- `docs/contextual-integrity.md` still called the runtime proxy "the next
+  piece of work" a release after it shipped. It now links to it.
 
 ### Unchanged
 
