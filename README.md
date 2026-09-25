@@ -215,7 +215,7 @@ Nine **detectors**, six of them regex/dictionary and always on, three optional:
 | Detector | Examples |
 | --- | --- |
 | `pii` | email, phone, SSN/SIN, credit card (Luhn-checked), IP, DOB, client ids, names, street addresses, postal codes |
-| `secrets` | API keys, AWS keys, GitHub/Slack tokens, JWTs, private keys, connection strings |
+| `secrets` | API keys, AWS keys, GitHub/Slack tokens, JWTs, private keys, connection strings and credentialed URLs, assigned secrets |
 | `healthcare` | NAM-like health identifiers, diagnoses, medications |
 | `finance` | IBAN, account numbers, credit scores, income, loans, internal risk notes |
 | `hr` | salary, sick leave, performance reviews, disciplinary actions, complaints |
