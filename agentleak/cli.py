@@ -421,7 +421,10 @@ def scan(
 @app.command()
 def redact(
     path: str | None = typer.Argument(None, help="File to sanitize. Omit to read stdin."),
-    style: str = typer.Option("placeholder", "--style", help="placeholder | mask | hash | remove."),
+    style: str = typer.Option(
+        "placeholder", "--style",
+        help="placeholder | asterisk | masked | hash | category | remove.",
+    ),
     output: str | None = typer.Option(None, "--output", "-o", help="Write to a file instead of stdout."),
 ) -> None:
     """Redact sensitive values from text, so a leak never happens in the first place.
@@ -433,6 +436,9 @@ def redact(
     from .defenses import RedactionStyle, sanitize_text
 
     valid = {s.value for s in RedactionStyle}
+    # ``mask`` is what people type, and what this command's own help and docs
+    # said for several releases while rejecting it.
+    style = {"mask": "masked"}.get(style, style)
     if style not in valid:
         typer.secho(f"✗ style must be one of: {', '.join(sorted(valid))}", fg=typer.colors.RED)
         raise typer.Exit(code=2)

@@ -6,6 +6,75 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-09-23
+
+`redact` returned text that looked sanitised and still carried the credential.
+Every case below was found by piping text through the published 0.14.1 wheel;
+each one produced a placeholder, and the secret sat next to it.
+
+### Fixed
+
+- **A private key lost its header and kept its body.** The pattern matched the
+  `-----BEGIN … PRIVATE KEY-----` line only, so the redactor replaced that line
+  and returned every line of key material below it. The whole block is now one
+  match, through the `END` line. When a log limit has cut the `END` line off,
+  the base64 lines after the header are taken instead.
+- **A connection string's password was redacted as an email address, and its
+  username left in place.** In `postgres://admin:secret@db.internal/prod`,
+  `secret@db.internal` also looks like an email. The sanitizer's
+  "inner span wins" rule then discarded the connection-string match, so `admin`
+  survived and the label was wrong. That rule exists for imprecise key-name
+  spans. A credential is an exact match, so it is now removed whole, along with
+  anything matched inside it. URLs with credentials in any other scheme
+  (`https://bot:token@github.com/…`) are now detected too.
+- **`password: hunter2` came back from `redact` unchanged.**
+  `secret_assignment` was listed as detect-only because "blanking the
+  assignment would remove the code". The detector never matched the
+  assignment, only the value after the `=`, so redacting it keeps the code.
+  Assigned secrets are now redacted by value.
+- **`DB_PASSWORD=…`, `OPENAI_API_KEY=…` and `aws_secret_access_key = …` were not
+  seen at all.** The key-word boundary could not see past an underscore, and
+  that is how most secrets are named. Prefixed names now match. Reads
+  (`os.environ.get(...)`, `settings.API_KEY`, `response.next_page_token`) are
+  still left alone. On this repository's own examples, the change adds one
+  finding to `agentleak scan`: a hardcoded `CRM_TOKEN` that was always there.
+- **GitHub fine-grained tokens** (`github_pat_…`, GitHub's default since
+  2023) are detected.
+- **IBANs printed in groups of four** (`FR76 3000 6000 0112 …`), as banks and
+  invoices print them, are detected.
+- **French birth-date keywords** (`né le`, `née le`, `date de naissance`)
+  anchor a date of birth, as `born` and `DOB` already did.
+- **`agentleak redact --style mask` exited with code 2.** The command's own help
+  text and `docs/cli.md` both documented it. `mask` is now an alias for
+  `masked`, and the help lists all six styles.
+- **`Sanitizer(extra_patterns={...})` raised `ValueError`** although
+  `docs/defenses.md` showed exactly that call. A dict is now accepted beside the
+  list of tuples.
+
+### Documentation
+
+- `docs/defenses.md`: every style example was wrong (`[SSN REDACTED]`,
+  `XXX-XX-6789`, `[SOCIAL_SECURITY_NUMBER]`). They are now the real output, and
+  a new section explains what a redaction covers and why.
+- `docs/detection.md` listed routing numbers and SWIFT codes, which no detector
+  finds. The table now lists what the detectors actually emit.
+- `CITATION.cff` and `.zenodo.json` had said 0.12.0 since 0.12.0.
+- `docs/cli.md` never mentioned `proxy`, `evidence` or `subjects`, the three
+  commands 0.13 and 0.14 were about. It now has sections for them and for
+  `serve --local`. `tests/test_cli_reference.py` reads the command list from the
+  running CLI and fails when a command is missing from the reference.
+- `docs/runtime-gateway.md` now says plainly that a data type no rule names is
+  forwarded as is, credentials included. It gives the one `deny` rule that
+  keeps credentials away from every server, tested against the proxy.
+- `docs/contextual-integrity.md` still called the runtime proxy "the next
+  piece of work" a release after it shipped. It now links to it.
+
+### Unchanged
+
+The healthcare scenario still scores 0.44 (4 of 8 secrets), and every figure
+in `docs/detection-quality.md` is identical. That benchmark measures personal
+data, and none of these fixes touch it.
+
 ## [0.14.1] - 2026-08-30
 
 ### Fixed

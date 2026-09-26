@@ -93,12 +93,23 @@ DETECT_ONLY: dict[str, str] = {
         "Marks a passage as internal rather than naming a value to remove; "
         "the sensitive content inside it is caught by its own detectors."
     ),
-    "secret_assignment": (
-        "Flags the shape 'KEY = <value>' in source code. The credential itself "
-        "is redacted by the credential detectors; blanking the assignment would "
-        "remove the code."
-    ),
 }
+
+# ``secret_assignment`` used to sit in DETECT_ONLY on the grounds that blanking
+# an assignment would delete the code. The detector never matched the
+# assignment, only the value after the ``=``, so redacting it keeps the code —
+# and leaving it out meant ``password: hunter2`` came back from ``redact``
+# untouched, because no credential detector recognises a password.
+
+# Types whose match is an exact, self-delimiting credential. When one of these
+# spans contains a shorter match, the credential wins: the inner match is a
+# misreading of part of the secret (``pass@db.host`` read as an email inside a
+# connection string), and letting it win left the username and scheme — and the
+# wrong label — in the "sanitised" output.
+_CREDENTIAL_TYPES = frozenset({
+    "PRIVATE_KEY", "CONNECTION_STRING", "JWT", "BEARER_TOKEN", "AWS_ACCESS_KEY",
+    "GITHUB_TOKEN", "SLACK_TOKEN", "STRIPE_KEY", "LLM_API_KEY", "GOOGLE_API_KEY",
+})
 
 
 def _default_detectors() -> list[Any]:
@@ -166,19 +177,21 @@ class Sanitizer:
 
     Args:
         style: One of the :class:`RedactionStyle` values (default ``placeholder``).
-        extra_patterns: Additional ``(data_type, regex_pattern)`` tuples to
-            include on top of the built-in set.
+        extra_patterns: Additional ``(data_type, regex_pattern)`` tuples — or a
+            ``{data_type: regex_pattern}`` dict — on top of the built-in set.
     """
 
     def __init__(
         self,
         style: str | RedactionStyle = RedactionStyle.PLACEHOLDER,
-        extra_patterns: list[tuple[str, str]] | None = None,
+        extra_patterns: list[tuple[str, str]] | dict[str, str] | None = None,
         detectors: list[Any] | None = None,
     ) -> None:
         self.style = RedactionStyle(style) if isinstance(style, str) else style
         self._detectors = _default_detectors() if detectors is None else detectors
         self._patterns = list(_COMPILED_EXTRA)
+        if isinstance(extra_patterns, dict):
+            extra_patterns = list(extra_patterns.items())
         if extra_patterns:
             self._patterns.extend(
                 (dt, re.compile(pat)) for dt, pat in extra_patterns
@@ -194,7 +207,9 @@ class Sanitizer:
         short match blank part of a longer one, leaving the tail of a credential
         in the "sanitised" output.
 
-        Where spans nest, the *inner* ones win. A key-name match locates a
+        Where spans nest, the *inner* ones win — except inside a credential,
+        which is matched exactly and always removed whole (see
+        :data:`_CREDENTIAL_TYPES`). A key-name match locates a
         secret only as precisely as the surrounding punctuation allows, so
         ``ssn: 412-55-9087 and more text`` yields one span over the whole tail;
         the SSN pattern inside it says exactly where the secret is. Keeping the
@@ -229,17 +244,27 @@ class Sanitizer:
             for match in pattern.finditer(text):
                 found.append((match.start(), match.end(), match.group(0), dtype))
 
-        # Drop any span that strictly contains another: the inner span is a
-        # more precise reading of the same signal.
+        def contains(outer: tuple[int, int, str, str], inner: tuple[int, int, str, str]) -> bool:
+            return (
+                inner is not outer
+                and inner[0] >= outer[0]
+                and inner[1] <= outer[1]
+                and (inner[1] - inner[0]) < (outer[1] - outer[0])
+            )
+
+        # A credential swallows whatever was matched inside it.
+        credentials = [span for span in found if span[3] in _CREDENTIAL_TYPES]
+        found = [
+            span for span in found
+            if not any(contains(cred, span) for cred in credentials)
+        ]
+
+        # Otherwise drop any span that strictly contains another: the inner
+        # span is a more precise reading of the same signal.
         inner = [
             span for span in found
-            if not any(
-                other is not span
-                and other[0] >= span[0]
-                and other[1] <= span[1]
-                and (other[1] - other[0]) < (span[1] - span[0])
-                for other in found
-            )
+            if span[3] in _CREDENTIAL_TYPES
+            or not any(contains(span, other) for other in found)
         ]
 
         # Whatever still overlaps only does so partially — two detectors
@@ -295,7 +320,7 @@ def sanitize_text(
     text: str,
     *,
     style: str | RedactionStyle = RedactionStyle.PLACEHOLDER,
-    extra_patterns: list[tuple[str, str]] | None = None,
+    extra_patterns: list[tuple[str, str]] | dict[str, str] | None = None,
     detectors: list[Any] | None = None,
 ) -> str:
     """One-shot convenience function for sanitizing a text string."""

@@ -13,7 +13,11 @@ from ..core.detector import Detector, RawMatch, Severity
 # Tolerant separator: handles flattened "key: value", JSON quotes, and "=".
 _SEP = r"[\"'\s:=#-]*"
 
-IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b")
+# Contiguous, or printed in groups of four as banks and invoices print it
+# (``FR76 3000 6000 0112 3456 7890 189``).
+IBAN_RE = re.compile(
+    r"\b[A-Z]{2}\d{2}(?:[A-Z0-9]{11,30}|(?: [A-Z0-9]{4}){2,7}(?: [A-Z0-9]{1,3})?)\b"
+)
 ACCOUNT_RE = re.compile(
     r"(?i)\b(?:account|acct|compte)(?:\s*(?:number|no|num|#))?" + _SEP + r"([0-9]{6,})"
 )
