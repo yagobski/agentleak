@@ -34,6 +34,29 @@ from typing import Any
 from ..core.agentrisk import level_for
 from ..core.canary import CanarySet, match_canaries
 from ..core.detector import Finding, RawMatch, Severity, redact
+from ..core.transforms import CREDENTIAL_TYPES, decoded_views, describe
+
+
+def _occurrences(text: str, values: list[str]) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    for value in values:
+        start = text.find(value) if value else -1
+        while start >= 0:
+            spans.append((start, start + len(value)))
+            start = text.find(value, start + 1)
+    return spans
+
+
+def _all_inside(text: str, value: str, spans: list[tuple[int, int]]) -> bool:
+    """Is every occurrence of *value* in *text* inside one of *spans*?"""
+    start = text.find(value) if value else -1
+    if start < 0:
+        return False
+    while start >= 0:
+        if not any(s <= start and start + len(value) <= e for s, e in spans):
+            return False
+        start = text.find(value, start + 1)
+    return True
 
 
 class DetectionMode(str, Enum):
@@ -151,6 +174,56 @@ class HybridPipeline:
                         continue
                     seen.add(key)
                     findings.append(_make_finding(raw, tier="regex"))
+
+        # A match inside a credential is part of that credential. A DSN's
+        # URL-encoded password followed by its host reads as an email address;
+        # reporting it adds a second, mislabelled secret.
+        # Judged by position, not by substring: a whole source file is one
+        # text, and "123" inside an API key on line 28 says nothing about the
+        # "123" on line 179.
+        credential_spans = _occurrences(
+            text, [f.matched_value for f in findings if f.data_type in CREDENTIAL_TYPES]
+        )
+        if credential_spans:
+            findings = [
+                f for f in findings
+                if f.data_type in CREDENTIAL_TYPES
+                or not _all_inside(text, f.matched_value, credential_spans)
+            ]
+
+        # ---- Encoded copies: the same detectors over decoded spans ---------
+        # A base64 context blob or a hex identifier passed between agents is a
+        # disclosure a plaintext detector cannot read. The finding carries the
+        # decoded value, so it is the same secret to AgentRisk as its plaintext.
+        if self.mode != DetectionMode.LLM_ONLY:
+            for view in decoded_views(text):
+                if any(s <= view.start and view.end <= e for s, e in credential_spans):
+                    continue
+                if canary_set and not canary_set.is_empty():
+                    for tier_name, token in match_canaries(view.text, canary_set):
+                        if ("canary", token) in seen:
+                            continue
+                        seen.add(("canary", token))
+                        finding = _make_finding(RawMatch(
+                            data_type="canary", severity=Severity.CRITICAL, confidence=1.0,
+                            matched_value=token, detector="canary",
+                            recommendation=f"Canary token ({tier_name} tier) leaked {describe(view.transform)}.",
+                        ), tier=f"decoded:{view.transform}")
+                        finding.metadata["transform"] = view.transform
+                        findings.append(finding)
+                for detector in self._tier1:
+                    for raw in detector.detect(view.text):
+                        key = (raw.data_type, raw.matched_value)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        finding = _make_finding(raw, tier=f"decoded:{view.transform}")
+                        finding.metadata["transform"] = view.transform
+                        finding.recommendation = (
+                            f"Sent {describe(view.transform)}; encoding is not protection. "
+                            + raw.recommendation
+                        ).strip()
+                        findings.append(finding)
 
         # ---- Tier 2b: Presidio (STANDARD / HYBRID) ------------------------
         if (

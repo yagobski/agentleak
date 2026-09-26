@@ -36,6 +36,14 @@ AgentLeak can find it can remove; `GET /api/meta` lists the split
   `ssn: 412-55-9087 and more text` locates the secret only roughly, so the SSN
   pattern inside it decides what is removed and the rest of the sentence stays.
 
+- **An encoded token is removed whole.** Base64, hex, URL-encoded and
+  letter-spaced values are decoded, and when what is inside is sensitive the
+  token goes, labelled by the worst thing in it: `ctx=[REDACTED_LLM_API_KEY]`.
+  A URL-encoded value loses only its own URL component:
+  `/users/[REDACTED_EMAIL]/orders?page=2`. Reversed, ROT13 and split copies need
+  the whole trace to recognise, so they are found by `agentleak run`, not here
+  ([encoded-leaks.md](encoded-leaks.md)).
+
 Assigned secrets (`password: hunter2`, `DB_PASSWORD=…`,
 `export OPENAI_API_KEY=…`) are redacted by value, so the key name — and the
 code around it — survives. Reads from the environment or a config object

@@ -50,6 +50,8 @@ import re
 from enum import Enum
 from typing import Any
 
+from ..core.transforms import CREDENTIAL_TYPES, decoded_views
+
 
 class RedactionStyle(str, Enum):
     PLACEHOLDER = "placeholder"  # [REDACTED_<TYPE>]
@@ -106,10 +108,7 @@ DETECT_ONLY: dict[str, str] = {
 # misreading of part of the secret (``pass@db.host`` read as an email inside a
 # connection string), and letting it win left the username and scheme — and the
 # wrong label — in the "sanitised" output.
-_CREDENTIAL_TYPES = frozenset({
-    "PRIVATE_KEY", "CONNECTION_STRING", "JWT", "BEARER_TOKEN", "AWS_ACCESS_KEY",
-    "GITHUB_TOKEN", "SLACK_TOKEN", "STRIPE_KEY", "LLM_API_KEY", "GOOGLE_API_KEY",
-})
+_CREDENTIAL_TYPES = frozenset(t.upper() for t in CREDENTIAL_TYPES)
 
 
 def _default_detectors() -> list[Any]:
@@ -244,6 +243,24 @@ class Sanitizer:
             for match in pattern.finditer(text):
                 found.append((match.start(), match.end(), match.group(0), dtype))
 
+        # An encoded token that decodes to something sensitive is removed whole:
+        # the base64 of a SIN is the SIN to whoever receives it.
+        whole: set[tuple[int, int]] = set()
+        for view in decoded_views(text):
+            if (view.start, view.end) in whole:
+                continue
+            hits = [
+                r for detector in self._detectors for r in detector.detect(view.text)
+                if r.data_type not in DETECT_ONLY
+            ]
+            if hits:
+                # Labelled by the worst thing inside: a blob holding an email
+                # and an API key is an API key leak.
+                worst = max(hits, key=lambda r: (r.severity.weight, r.confidence))
+                found.append((view.start, view.end, text[view.start:view.end],
+                              worst.data_type.upper()))
+                whole.add((view.start, view.end))
+
         def contains(outer: tuple[int, int, str, str], inner: tuple[int, int, str, str]) -> bool:
             return (
                 inner is not outer
@@ -253,7 +270,10 @@ class Sanitizer:
             )
 
         # A credential swallows whatever was matched inside it.
-        credentials = [span for span in found if span[3] in _CREDENTIAL_TYPES]
+        credentials = [
+            span for span in found
+            if span[3] in _CREDENTIAL_TYPES or (span[0], span[1]) in whole
+        ]
         found = [
             span for span in found
             if not any(contains(cred, span) for cred in credentials)
@@ -264,6 +284,7 @@ class Sanitizer:
         inner = [
             span for span in found
             if span[3] in _CREDENTIAL_TYPES
+            or (span[0], span[1]) in whole
             or not any(contains(span, other) for other in found)
         ]
 
