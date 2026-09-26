@@ -1,0 +1,80 @@
+{
+  "software_version": "0.15.0",
+  "cells": {
+    "plaintext (control)": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "base64": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "base64 of base64": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "hex": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "URL-encoded": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "letter-spaced": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "reversed": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "ROT13": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "split in two": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": null,
+      "llm_api_key": true,
+      "health_condition": null
+    }
+  },
+  "obscured_detected": 46,
+  "obscured_total": 46,
+  "method": "tool_response holds the value; the next inter_agent_message carries it transformed. Detected = finding on that message, right type, original value."
+}

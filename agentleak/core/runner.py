@@ -14,7 +14,7 @@ from typing import Any
 from ..detectors import build_detectors
 from .agentrisk import DEFAULT_WEIGHTS
 from .canary import CanarySet
-from .coalesce import coalesce_findings
+from .coalesce import canonical_form, coalesce_findings
 from .config import Config
 from .detector import Detector, Finding
 from .pipeline import DetectionMode, HybridPipeline
@@ -23,6 +23,7 @@ from .report import AnalysisResult
 from .scoring import score_findings
 from .subjects import SubjectLedger, evaluate_subjects
 from .trace import Trace
+from .transforms import describe, find_obscured_copies
 
 
 def _build_pipeline(
@@ -198,6 +199,10 @@ class AgentLeakRunner:
             counter += len(event_findings)
             findings.extend(event_findings)
 
+        # Copies of an exposed value that no plaintext detector can read:
+        # reversed, ROT13-rotated, or split across messages to one recipient.
+        findings = _add_obscured_copies(trace, findings, self._channels, counter)
+
         # One identity per secret before anything counts them. Detectors
         # disagree on where an entity ends, and AgentRisk keys a secret on the
         # matched string, so overlapping matches would enter the vault as
@@ -259,6 +264,100 @@ class AgentLeakRunner:
                 for e in trace.events
             ],
         )
+
+
+# Types whose value names a category rather than identifying anyone; anchoring
+# on them would report every later mention of the word.
+_NOT_ANCHORS = frozenset({"employment_status", "internal_note"})
+
+
+def _alnum_key(value: str) -> str:
+    return "".join(ch for ch in value.casefold() if ch.isalnum())
+
+
+def _add_obscured_copies(
+    trace: Trace,
+    findings: list[Finding],
+    channels: set[str] | None,
+    counter: int,
+) -> list[Finding]:
+    """Findings for obscured copies of values this trace already exposed."""
+    events = [
+        e for e in trace.events
+        if e.searchable_text and (channels is None or e.channel_value in channels)
+    ]
+    if len(events) < 2 or not findings:
+        return findings
+    unique_ids = len({e.event_id for e in events}) == len(events)
+    templates: dict[str, Finding] = {}
+    for f in findings:
+        if f.data_type in _NOT_ANCHORS:
+            continue
+        key = canonical_form(f.matched_value)
+        if key not in templates or f.level > templates[key].level:
+            templates[key] = f
+    copies = find_obscured_copies(
+        [(e.searchable_text, e.target, e.channel_value) for e in events],
+        [t.matched_value for t in templates.values()],
+    )
+    if not copies:
+        return findings
+
+    out = list(findings)
+    for copy in copies:
+        event = events[copy.event_index]
+        template = templates[canonical_form(copy.value)]
+        if copy.transform == "reversed" and unique_ids:
+            # A reversed SIN still looks like a SIN, so a detector may already
+            # have reported it as a *different* one. It is this one, reversed.
+            reversed_canon = canonical_form(copy.value)[::-1]
+            out = [
+                f for f in out
+                if not (f.event_id == event.event_id
+                        and canonical_form(f.matched_value) == reversed_canon)
+            ]
+        if unique_ids:
+            # A detector may already have read the decoded copy in a different
+            # format (4111111111111111 for 4111 1111 1111 1111): same secret,
+            # so the anchored finding replaces it rather than counting twice.
+            target_alnum = _alnum_key(copy.value)
+            out = [
+                f for f in out
+                if not (f.event_id == event.event_id
+                        and f.metadata.get("transform")
+                        and f.data_type == template.data_type
+                        and _alnum_key(f.matched_value) == target_alnum)
+            ]
+        counter += 1
+        fragments = [events[i].event_id for i in copy.fragments]
+        out.append(Finding(
+            finding_id=f"finding_{counter:03d}",
+            run_id=trace.run_id,
+            event_id=event.event_id,
+            channel=event.channel_value,
+            data_type=template.data_type,
+            severity=template.severity,
+            confidence=0.8 if copy.transform == "split" else 0.85,
+            matched_value=template.matched_value,
+            redacted_value=template.redacted_value,
+            detector=template.detector,
+            recommendation=(
+                f"This {template.data_type.replace('_', ' ')} was {describe(copy.transform)}"
+                + (f" ({', '.join(fragments)})" if fragments else "")
+                + "; obscuring a value does not stop the recipient reading it. "
+                + template.recommendation
+            ).strip(),
+            source=event.source,
+            target=event.target,
+            level=template.level,
+            metadata={
+                **dict(event.metadata),
+                "tier": f"anchored:{copy.transform}",
+                "transform": copy.transform,
+                **({"fragments": fragments} if fragments else {}),
+            },
+        ))
+    return out
 
 
 def analyze(trace: Trace, config: Config | None = None, **kwargs: Any) -> AnalysisResult:
