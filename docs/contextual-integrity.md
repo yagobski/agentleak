@@ -108,12 +108,15 @@ because those are what an operator changes. The JSON report carries the same
 detail under `privacy_policy.flows.violations`, one entry per flow, and the
 Markdown report renders it as a table.
 
-## What this does not do yet
+## Enforcing it at runtime
 
-Rules are evaluated **after** a run, as a gate. Deciding a flow *before* it
-happens — allow, redact or block at the moment of emission — is the runtime
-proxy, which is the next piece of work. The rule grammar here is the same one it
-will read, so policies written now carry over.
+Rules here are evaluated **after** a run, as a gate. The same rules decide a
+flow **before** it happens in [`agentleak proxy`](runtime-gateway.md), which
+allows, redacts or blocks each MCP tool call and records the decision in a
+hash-chained evidence log. A policy written for the gate carries over
+unchanged.
+
+## What this does not do yet
 
 Recipients are matched as literal node names. There is no grouping yet
 (`to: group:third-parties`), and no inheritance between environments.

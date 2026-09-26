@@ -44,7 +44,8 @@ CREDIT_CARD_RE = re.compile(r"\b(?:\d[ -]?){13,16}\b")
 # Dates only flagged as DOB when anchored to a birth keyword (avoids matching
 # trace timestamps and arbitrary dates).
 DOB_RE = re.compile(
-    r"(?i)\b(?:dob|d\.o\.b\.|date of birth|born|birth ?date)\b[:\s]*"
+    r"(?i)\b(?:dob|d\.o\.b\.|date of birth|born|birth ?date"
+    r"|n[ée]e? le|date de naissance)(?!\w)[:\s]*"
     r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
 )
 CLIENT_ID_RE = re.compile(r"\b(?:ACC|ACCT|CUST|CLIENT|USER|MEMBER)[-_]?\d{3,}\b", re.IGNORECASE)

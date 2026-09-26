@@ -15,6 +15,8 @@ from ..core.detector import Detector, RawMatch, Severity
 
 AWS_ACCESS_KEY_RE = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
 GITHUB_TOKEN_RE = re.compile(r"\bgh[oprsu]_[A-Za-z0-9]{36}\b")
+# Fine-grained personal access tokens, GitHub's default since 2023.
+GITHUB_PAT_RE = re.compile(r"\bgithub_pat_[A-Za-z0-9_]{50,}\b")
 SLACK_TOKEN_RE = re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")
 STRIPE_KEY_RE = re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")
 # OpenAI / Anthropic keys use a hyphen separator (sk-..., sk-proj-..., sk-ant-...),
@@ -29,16 +31,32 @@ JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
 # Opaque `Authorization: Bearer <token>` values. JWTs are handled separately, so
 # the JWT branch is skipped here to avoid double-reporting the same substring.
 BEARER_TOKEN_RE = re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._~+/=-]{16,})")
+# The whole block, not the header. Matching only the BEGIN line meant the
+# redactor replaced the header and returned every line of key material below
+# it. A block cut off by a log limit has no END line, so the body is then taken
+# as the base64 lines that follow.
 PRIVATE_KEY_RE = re.compile(
-    r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"
+    r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----"
+    r"(?:[\s\S]*?-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----"
+    r"|(?:[ \t]*\r?\n[ \t]*[A-Za-z0-9+/=:,-]{8,})*)"
 )
 CONNECTION_STRING_RE = re.compile(
     r"(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqps?)://[^\s'\"]+"
 )
+# Credentials embedded in any other URL: ``https://user:token@host``. The
+# database schemes above are reported with or without credentials; for every
+# other scheme only the userinfo form is a secret.
+URL_CREDENTIALS_RE = re.compile(
+    r"(?i)\b[a-z][a-z0-9+.-]*://[^\s:/@'\"]+:[^\s/@'\"]+@[^\s'\"]+"
+)
 # Generic ``password: ...`` / ``api_key = ...`` assignments. Broad, so lower
 # confidence; the assigned value must be non-trivial.
+# The key may carry a prefix — ``DB_PASSWORD``, ``OPENAI_API_KEY``,
+# ``aws_secret_access_key`` — which is how most secrets are actually named; a
+# bare ``\b`` before the key word cannot see past the underscore.
 SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\b"
+    r"(?i)(?<![A-Za-z0-9])(?:[A-Za-z0-9]+[_-])*"
+    r"(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\b"
     r"\s*[:=]\s*[\"']?([^\"'\s,}]{6,})"
 )
 
@@ -61,6 +79,10 @@ _SECRET_REFERENCE_RE = re.compile(
 # Real inline secrets are quoted literals or mixed-case tokens; a genuinely
 # random ALL-CAPS token is still caught by the entropy tier.
 _CONSTANT_REFERENCE_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")
+
+# A dotted identifier path (``response.next_page_token``) is an attribute
+# lookup on any object, not only the well-known config names above.
+_ATTRIBUTE_REFERENCE_RE = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$")
 
 
 class SecretsDetector(Detector):
@@ -86,6 +108,13 @@ class SecretsDetector(Detector):
         for m in GITHUB_TOKEN_RE.finditer(text):
             matches.append(self._match(
                 data_type="github_token", severity=Severity.CRITICAL, confidence=0.95,
+                matched_value=m.group(0),
+                recommendation="Revoke the GitHub token; do not pass tokens through prompts or memory.",
+            ))
+
+        for m in GITHUB_PAT_RE.finditer(text):
+            matches.append(self._match(
+                data_type="github_token", severity=Severity.CRITICAL, confidence=0.97,
                 matched_value=m.group(0),
                 recommendation="Revoke the GitHub token; do not pass tokens through prompts or memory.",
             ))
@@ -147,6 +176,16 @@ class SecretsDetector(Detector):
                 recommendation="Strip database/connection strings (and embedded credentials) from traces.",
             ))
 
+        seen_urls = {m.group(0) for m in CONNECTION_STRING_RE.finditer(text)}
+        for m in URL_CREDENTIALS_RE.finditer(text):
+            if m.group(0) in seen_urls:
+                continue
+            matches.append(self._match(
+                data_type="connection_string", severity=Severity.CRITICAL, confidence=0.9,
+                matched_value=m.group(0),
+                recommendation="Never put credentials in a URL; they end up in logs, traces and shell history.",
+            ))
+
         for m in SECRET_ASSIGNMENT_RE.finditer(text):
             value = m.group(2)
             # Skip obvious placeholders to reduce false positives.
@@ -154,7 +193,11 @@ class SecretsDetector(Detector):
                 continue
             # Skip references (env reads, function calls, attribute lookups,
             # ALL-CAPS constants): they point at a secret, they don't embed one.
-            if _SECRET_REFERENCE_RE.match(value) or _CONSTANT_REFERENCE_RE.match(value):
+            if (
+                _SECRET_REFERENCE_RE.match(value)
+                or _CONSTANT_REFERENCE_RE.match(value)
+                or _ATTRIBUTE_REFERENCE_RE.match(value)
+            ):
                 continue
             matches.append(self._match(
                 data_type="secret_assignment", severity=Severity.HIGH, confidence=0.65,
