@@ -46,6 +46,17 @@ custom_detectors:
     severity: medium
 ```
 
+### Encoded and obscured copies
+
+The same detectors also read decoded text. Base64 (nested up to two levels),
+hex, URL-encoded components and letter-spaced strings are decoded before
+detection, and anything that decodes to binary is dropped. Reversed, ROT13 and
+split copies are matched only against values the trace has already exposed in
+plaintext, and only after they appeared. A finding from either path carries
+`metadata.transform` and is attributed to the original value, so it is the same
+secret to AgentRisk. See [encoded-leaks.md](encoded-leaks.md) for the
+measurement and the limits.
+
 ## Tier 2b — Presidio
 
 Presidio with 20+ entity recognizers, plus 12 domain-specific

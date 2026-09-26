@@ -6,6 +6,67 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-26
+
+Reads what agents pass each other in a form a plaintext detector cannot.
+
+### Added
+
+- **Encoded and obscured copies between agents.** A planner base64-encodes a
+  customer record into a context blob, a worker hex-encodes an email into an
+  identifier, and a SIN reaches one recipient in two halves. Of 46 such copies
+  between two agents, 0.14.1 detected 6. Three of those were ROT13 SINs, which
+  are plaintext SINs because ROT13 leaves digits alone. This release detects all
+  46 (`scripts/encoded_leaks.py`, `docs/encoded-leaks.md`).
+
+  Self-announcing encodings (base64, nested to two levels, hex, URL-encoded
+  components, letter spacing) are decoded and read by the ordinary detectors.
+  Anything that decodes to binary, such as hashes, commit IDs, images and
+  ciphertext, is dropped first. Reversed, ROT13 and split copies look like
+  ordinary text, so they are matched only against values the trace has already
+  exposed in plaintext, and only *after* they appeared. Without the second rule
+  matching is symmetric, and a SIN and its reversal each claim to be the other.
+  Splitting is reassembled from whole tokens, in messages to one recipient, for
+  identifiers only: values with at least four digits. The first version also
+  reassembled phrases, and the AgentDojo pack showed why that is wrong: a
+  placeholder `{hotel_address` was rebuilt from one message saying "Hotel" and
+  another saying "address".
+
+  `redact` and `agentleak proxy` remove an encoded token whole, labelled by the
+  worst thing inside it, and remove only the encoded component of a URL. A base64
+  SIN in a tool call is redacted surgically, and a hex-encoded diagnosis that a
+  `deny` rule names is blocked.
+
+  **What does not move:** all 266 bundled scenarios keep the same score and
+  finding count, the healthcare scenario stays at 0.44, and every figure in
+  `docs/detection-quality.md` is identical. None of them contain an encoded
+  copy.
+
+### Fixed
+
+- **A reversed SIN was counted as a different SIN.** It still matches the SIN
+  pattern, so 0.14.1 put a second secret into the vault that nobody holds. An
+  obscured copy is now attributed to the original value, so it raises exposure
+  on its channel without adding to ρ_S. On a trace that holds a reversed SIN,
+  ρ_S therefore *drops*: the phantom leaves the vault. The same applies when decoding loses
+  formatting: `4111111111111111` read back from letter spacing is the
+  `4111 1111 1111 1111` already in the trace.
+- **A match inside a credential was reported as a second secret.** In a DSN
+  with a URL-encoded password, the password followed by the host reads as an
+  email address, and it was reported as one beside the `connection_string`.
+  A `secret_assignment` whose value *is* an API key duplicated the
+  `llm_api_key` finding. Both now belong to the credential. The check is by
+  position, because `scan` reads a file as one text, and a first version that
+  compared substrings dropped an unrelated `123` on line 179 because `123`
+  appeared inside an API key on line 28. On this repository and three sample
+  agents, `scan` loses only those duplicates and gains nothing.
+
+### Known
+
+- The scripted red-team baseline is not deterministic. The same code gives a
+  mean RI between 0.9758 and 1.0 from one run to the next, so compare two
+  red-team runs with that spread in mind. It predates this release.
+
 ## [0.14.2] - 2026-09-23
 
 `redact` returned text that looked sanitised and still carried the credential.

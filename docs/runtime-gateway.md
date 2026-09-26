@@ -97,6 +97,11 @@ a `deny` rule names, because a deny rule is somebody saying *not this, ever*.
 Stripping everything findable would take the order number out with the SIN and
 the call would fail for a reason nobody could see.
 
+**Encoding does not get a value past it.** The gateway decodes base64, hex,
+URL-encoded and letter-spaced arguments before judging them, so a base64 SIN
+is redacted exactly like a plaintext one and a hex-encoded diagnosis that a
+`deny` rule names is blocked. See [encoded-leaks.md](encoded-leaks.md).
+
 ## What passes unjudged
 
 Allow rules are [scoped default-deny](contextual-integrity.md#two-design-decisions-worth-knowing-about).
