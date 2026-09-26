@@ -224,6 +224,17 @@ Nine **detectors**, six of them regex/dictionary and always on, three optional:
 | `presidio` *(optional, `[presidio]` extra)* | Presidio NER — names and entities regex alone misses |
 | `llm_judge` *(optional, `[llm]` extra, BYOK)* | paraphrased or contextual leaks no pattern matches |
 
+**Encoded and obscured copies.** Agents pass each other base64 context blobs,
+hex identifiers, URL-encoded parameters, and values split across messages. The
+detectors read these too. Self-announcing encodings (base64, hex,
+URL-encoding, letter spacing) are decoded before detection, so `redact` and the
+MCP gateway remove them as well. Reversed, ROT13 and split copies are matched
+against values the trace has already exposed. Across 46 transformed copies
+between two agents, detection went from **6 in 0.14.1 to 46**. The 266 bundled
+scenarios and a benign corpus of hashes, images and URL-encoded searches are
+unchanged. See [docs/encoded-leaks.md](docs/encoded-leaks.md), including what
+this does not catch.
+
 ## Scoring — AgentRisk
 
 Every leaked secret is graded on a four-tier severity taxonomy (GDPR Art. 9 /
@@ -319,6 +330,7 @@ there.
 - [Concepts](docs/concepts.md)
 - [Detection pipeline](docs/detection.md) — Tier 1+2 regex, Tier 2b Presidio, Tier 3 LLM-judge
 - [Detection quality](docs/detection-quality.md) — measured recall, false positives, and what the deterministic tier misses
+- [Encoded and obscured leaks](docs/encoded-leaks.md) — base64, hex, URL-encoding, reversal, ROT13 and split copies passed between agents, measured before and after
 - [Contextual integrity](docs/contextual-integrity.md) — judge the flow (data × sender × recipient × purpose), not the presence
 - [Runtime gateway](docs/runtime-gateway.md) — `agentleak proxy`: allow, redact or block a tool call before it is sent, with a hash-chained evidence log
 - [Cross-session leaks](docs/cross-session.md) — whose data is this, and did it end up in somebody else's session
