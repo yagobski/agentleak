@@ -634,6 +634,59 @@ def proxy(
     raise typer.Exit(code=code)
 
 
+@app.command("llm-proxy")
+def llm_proxy(
+    upstream: str = typer.Option(..., "--upstream", help="Model API to forward to, e.g. https://api.openai.com"),
+    config: str | None = typer.Option(None, "--config", "-c", help="agentleak.yaml holding the flow rules."),
+    evidence: str = typer.Option("agentleak-evidence.jsonl", "--evidence", help="Hash-chained decision log."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Address to listen on."),
+    port: int = typer.Option(8788, "--port", "-p", help="Port to listen on."),
+    recipient: str | None = typer.Option(None, "--recipient", help="Name the provider goes by in flow rules."),
+    agent: str = typer.Option("llm-client", "--agent", help="Name the agent goes by in flow rules."),
+    block: bool = typer.Option(False, "--block", help="Block every refused flow instead of redacting it."),
+    inspect_responses: bool = typer.Option(False, "--inspect-responses", help="Also judge non-streamed model responses."),
+    style: str = typer.Option("placeholder", "--style", help="placeholder | token | masked | hash."),
+    sign_key: str | None = typer.Option(None, "--sign-key", envvar="AGENTLEAK_EVIDENCE_KEY",
+                                        help="Ed25519 key that signs every evidence entry."),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Don't narrate decisions on stderr."),
+) -> None:
+    """Judge what an agent sends to its model: an OpenAI-compatible proxy.
+
+    Point the client's base URL at it (OPENAI_BASE_URL=http://127.0.0.1:8788/v1).
+    Each request's messages / input / prompt is checked against the same flow
+    rules as `agentleak proxy`, with the provider as recipient: permitted
+    content passes, refused values are redacted or tokenized, and denied flows
+    get an OpenAI-shaped error. Streamed responses pass through unjudged.
+    """
+    from .defenses import RedactionStyle
+    from .llm_proxy import run_llm_proxy
+
+    style = {"mask": "masked"}.get(style, style)
+    if style not in {x.value for x in RedactionStyle}:
+        typer.secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
+    if not _is_loopback_host(host):
+        typer.secho(
+            f"Note: listening on {host}. Anything that can reach this port can send "
+            "requests through it with its own credentials.", fg=typer.colors.YELLOW,
+        )
+    flows: Any = None
+    groups: dict[str, Any] = {}
+    if config:
+        try:
+            cfg = Config.load(config)
+        except Exception as exc:  # noqa: BLE001
+            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
+        flows = list(cfg.privacy_policy.flows)
+        groups = dict(cfg.privacy_policy.groups)
+    raise typer.Exit(code=run_llm_proxy(
+        upstream, flows=flows, groups=groups, evidence=evidence, host=host, port=port,
+        recipient=recipient or "", agent=agent, block_on_violation=block,
+        inspect_responses=inspect_responses, style=style, sign_key=sign_key, verbose=not quiet,
+    ))
+
+
 @app.command()
 def evidence(
     path: str = typer.Argument("agentleak-evidence.jsonl", help="Evidence log to read."),
