@@ -579,10 +579,12 @@ def proxy(
         raise typer.Exit(code=2)
 
     flows: Any = None
+    groups: dict[str, Any] = {}
     if config:
         try:
             cfg = Config.load(config)
             flows = list(cfg.privacy_policy.flows)
+            groups = dict(cfg.privacy_policy.groups)
         except Exception as exc:  # noqa: BLE001
             typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
@@ -606,6 +608,7 @@ def proxy(
             inspect_responses=inspect_responses,
             style={"mask": "masked"}.get(style, style),
             agent=agent,
+            groups=groups,
         )
     except FileNotFoundError as exc:
         typer.secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)

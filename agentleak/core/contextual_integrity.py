@@ -61,6 +61,40 @@ def purpose_of(finding: Any) -> str:
     return str(metadata.get("purpose") or "").strip()
 
 
+from .transforms import CREDENTIAL_TYPES  # noqa: E402
+
+GROUP_PREFIX = "group:"
+
+# Data-type groups every policy can use without defining them. A rule that must
+# cover every credential used to list ten types, and missed the eleventh the
+# day a detector added it; `group:credentials` follows the detectors.
+BUILTIN_TYPE_GROUPS: dict[str, tuple[str, ...]] = {
+    "credentials": (*sorted(CREDENTIAL_TYPES), "secret_assignment"),
+    "health": ("health_condition", "medication", "health_identifier"),
+    "financial": (
+        "credit_card", "iban", "account_number", "account_balance", "income",
+        "loan_amount", "credit_score",
+    ),
+    "government_ids": ("ssn", "sin", "national_insurance_number", "health_identifier"),
+    "contact": ("email", "phone_number", "address"),
+}
+
+
+def _expand(values: tuple[str, ...], groups: dict[str, tuple[str, ...]], facet: str) -> tuple[str, ...]:
+    """Replace every ``group:<name>`` in a facet by the group's members."""
+    out: list[str] = []
+    for value in values:
+        if not value.startswith(GROUP_PREFIX):
+            out.append(value)
+            continue
+        name = value[len(GROUP_PREFIX):]
+        if name not in groups:
+            known = ", ".join(sorted(groups)) or "none defined"
+            raise ValueError(f"unknown group {value!r} in {facet!r} (known: {known})")
+        out.extend(groups[name])
+    return tuple(dict.fromkeys(out))
+
+
 def _as_tuple(value: Any) -> tuple[str, ...]:
     """Accept a scalar, a list, or nothing, and normalise to a tuple."""
     if value is None:
@@ -98,7 +132,7 @@ class FlowRule:
     description: str = ""
 
     @classmethod
-    def from_mapping(cls, raw: Any) -> FlowRule:
+    def from_mapping(cls, raw: Any, groups: dict[str, Any] | None = None) -> FlowRule:
         """Build a rule from configuration.
 
         ``to``/``from``/``for`` read the way the sentence does — "sin to
@@ -107,7 +141,11 @@ class FlowRule:
         """
         if not isinstance(raw, dict):
             raise ValueError(f"a flow rule must be a mapping, got {type(raw).__name__}")
-        data_types = _as_tuple(raw.get("data_type") or raw.get("data_types"))
+        node_groups = {str(k): _as_tuple(v) for k, v in (groups or {}).items()}
+        type_groups = {**BUILTIN_TYPE_GROUPS, **node_groups}
+        data_types = _expand(
+            _as_tuple(raw.get("data_type") or raw.get("data_types")), type_groups, "data_type",
+        )
         if not data_types:
             raise ValueError("a flow rule must name at least one data_type")
         allow = raw.get("allow")
@@ -115,8 +153,8 @@ class FlowRule:
             allow = not bool(raw.get("deny"))
         return cls(
             data_types=data_types,
-            senders=_as_tuple(raw.get("from") or raw.get("senders")),
-            recipients=_as_tuple(raw.get("to") or raw.get("recipients")),
+            senders=_expand(_as_tuple(raw.get("from") or raw.get("senders")), node_groups, "from"),
+            recipients=_expand(_as_tuple(raw.get("to") or raw.get("recipients")), node_groups, "to"),
             purposes=_as_tuple(raw.get("for") or raw.get("purposes")),
             allow=bool(allow),
             description=str(raw.get("description") or "").strip(),
@@ -273,10 +311,14 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
     return evaluation
 
 
-def parse_flow_rules(raw: Any) -> tuple[FlowRule, ...]:
-    """Build rules from the ``flows:`` block of a configuration."""
+def parse_flow_rules(raw: Any, groups: dict[str, Any] | None = None) -> tuple[FlowRule, ...]:
+    """Build rules from the ``flows:`` block of a configuration.
+
+    ``groups`` maps a name to its members, for ``to: group:third-parties`` and
+    the like; the built-in data-type groups need no definition.
+    """
     if not raw:
         return ()
     if isinstance(raw, dict):
         raw = [raw]
-    return tuple(FlowRule.from_mapping(item) for item in raw)
+    return tuple(FlowRule.from_mapping(item, groups) for item in raw)
