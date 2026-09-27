@@ -188,3 +188,13 @@ def test_token_round_trip_through_a_real_child_process(tmp_path, flags, expect_r
         assert SIN not in received.read_text()
         assert len(held) == 2 and held[0] == held[1] and TOKEN_RE.fullmatch(held[0])
         assert SIN not in (tmp_path / "e.jsonl").read_text()
+
+
+def test_the_documented_return_flow_rule_permits_the_response(tmp_path):
+    policy = [*POLICY, {"data_type": "sin", "from": "crm", "to": "client"}]
+    gateway = Gateway(flows=policy, agent="client")
+    proxy = McpProxy(["echo"], gateway=gateway, recipient="crm", agent="client",
+                     inspect_responses=True)
+    proxy.handle_request(_call({"q": "c"}))
+    reply = _result(f"customer SIN {SIN}")
+    assert proxy.handle_response(reply) == reply

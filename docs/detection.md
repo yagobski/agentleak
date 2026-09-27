@@ -19,7 +19,7 @@ Five built-in detector groups, all pure Python regex, zero network calls:
 
 | Group | Data types |
 | --- | --- |
-| `pii` | SSN, email, phone, credit card, IBAN, address, date of birth (English and French keywords), person name |
+| `pii` | SSN, email, phone, credit card, IBAN, address (USPS street types, with unit and city/state/ZIP), date of birth (English and French keywords), person name (after a keyword, or a common given name followed by a surname) |
 | `secrets` | model-provider, Google, Stripe and AWS keys, GitHub tokens (classic and fine-grained `github_pat_`), Slack tokens, JWTs, bearer tokens, private-key blocks, connection strings and URLs with embedded credentials, assigned secrets (`DB_PASSWORD=…`) |
 | `healthcare` | NAM (health identifier), health conditions, medications, dosages |
 | `finance` | account numbers, credit scores, income, loans, balances, IBANs (contiguous or printed in groups of four) |

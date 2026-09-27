@@ -321,7 +321,10 @@ assert metrics.mean_elr <= 0.05
 ```
 
 Keep the plugin IDs, strategy IDs, vertical, adversary level, seed, and policy
-in version control. A useful CI split is:
+in version control. A scripted campaign is reproducible: the same request and
+seed give the same attack classes, vaults and findings, and the response echoes
+the `seed` it used. (Before 0.16.0 it was not — the same code scored a mean RI
+of 1.0 one run and 0.9758 the next.) A useful CI split is:
 
 1. `baseline` profile on every pull request;
 2. `balanced` on the protected branch;
@@ -339,6 +342,7 @@ nine strategies, plugin presets, and strategy profiles.
 
 | Field | Values | Default |
 | --- | --- | --- |
+| `seed` | integer; the same seed gives the same scenarios, vaults and findings | `0` |
 | `vertical` | five supported vertical IDs | `healthcare` |
 | `n` | integer, 1–20 | `5` |
 | `adversary_level` | `A0`, `A1`, `A2` | `A1` |

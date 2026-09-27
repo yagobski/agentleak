@@ -6,6 +6,96 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-27
+
+The first half of the backlog in the competitive analysis: the four P0 items and
+four of the P1s. Each one closes a gap measured against a named competitor or a
+defect found in this project, and each has a test that fails without it.
+
+### Added
+
+- **Response inspection** (`agentleak proxy --inspect-responses`). A tool's
+  result is data flowing *into* the agent's context. It is now judged as a flow
+  from the server to the agent, under the same rules: refused values are
+  redacted, a type a `deny` rule names is withheld with a readable reason, and
+  each decision is logged with `direction: response`. Lasso's open-source
+  gateway masks both directions; this one judged only requests. The option is
+  opt-in because it changes what an existing `allow` rule means for data coming
+  back (`docs/runtime-gateway.md` shows the return-flow rule to add).
+- **Tokens** (`--style token` for the proxy, `redact` and `Sanitizer`). A value
+  becomes a keyed pseudonym, `[[SIN:3f9a1c2e40]]`, and the same value always
+  gets the same token, so a tool that needs a stable reference still works. The
+  proxy restores tokens it issued on the way back to the agent. The
+  token-to-value map is kept in memory only and is never written.
+- **Groups in flow rules.** Rules can now say `to: group:third-parties`, with
+  groups defined under `privacy_policy.groups`. Built-in data-type groups
+  (`credentials`, `health`, `financial`, `government_ids`, `contact`) need no
+  definition, and `credentials` follows the detectors. An unknown group fails
+  at config load.
+- **Origin in flow rules.** `origin: ehr_database` judges a flow by where its
+  value first entered the run, however many agents it passed through. Every
+  finding now carries `metadata.origin` and `metadata.path`, and a violation
+  cites the path (`ehr_database → planner → summarizer → analytics`). The same
+  diagnosis volunteered by the user is left alone.
+- **Signed evidence log.** `agentleak evidence --keygen` creates an Ed25519 key
+  pair, `agentleak proxy --sign-key` signs each entry's hash, and
+  `agentleak evidence --public-key` requires every entry to be signed by that
+  key. A chain rewritten with recomputed hashes passes the hash check and fails
+  the signature check. This needs the `agentleak[sign]` extra.
+- **Tool pinning.** The proxy fingerprints every MCP tool on first sight
+  (`.agentleak/mcp-pins.json`, hashes only). A tool whose description or input
+  schema later changes (a "rug pull") is reported on stderr and in the evidence
+  log until accepted with `--repin`. `--block-changed-tools` hides the tool and
+  refuses calls to it. Reporting is on by default.
+
+### Changed
+
+- **Names and addresses are found in prose.** Prose recall in
+  `docs/detection-quality.md` goes from **0.275 to 0.574**. Names go from 0 to 81
+  of 96, through a gazetteer of about 425 common given names followed by a
+  capitalised surname. Addresses go from 1 to 33 of 52, through the USPS
+  street-type list, with an optional unit and city/state/ZIP. Phones without an
+  area code, bare dates, account numbers and salaries are deliberately not
+  guessed. Each exclusion (streets named after people, possessives, a time
+  before a person named Green, surname-like street types, the gazetteer
+  matching its own source) came from a false positive in the pack sweep. Zero
+  findings on 66,221 words of Python's reference documentation, and on the 15
+  benign controls.
+
+  **Published numbers that move because of it:**
+  - AgentDojo without canaries: clean passes 20 → 7, unblocked 64 → 45.
+  - PrivacyLens without canaries: clean passes 90 → 62, unblocked 95 → 67.
+  - 195 of the 266 bundled scenarios change score. RI goes down in 83 of them,
+    because a name found in a tool response enlarges the vault even when it does
+    not leak.
+  - The healthcare scenario stays at **0.44**. Finance goes 0.6818 → 0.6957,
+    education 0.5556 → 0.6667, HR is unchanged.
+  - `agentleak scan` finds real names in fixtures and example traces that it
+    missed before.
+
+### Fixed
+
+- **A scripted red-team campaign was not reproducible.** Attack classes came
+  from an unseeded `random.Random` and the vault from the process-wide `random`
+  module and `secrets`, so the same request scored a mean RI of 1.0 one run and
+  0.9758 the next, and one attack class produced 10, 11 or 12 findings. One
+  seeded generator now drives both. The API takes a `seed` (default 0) and
+  returns it.
+
+### Tooling
+
+- `scripts/build_benchmark.py --out` writes `benchmark.json` for the site
+  repository, which the old in-package path no longer reaches.
+
+### Not in this release
+
+These backlog items remain open:
+- the MAGPIE and PiSAs scenario packs (their licences need checking first)
+- integrations with LiteLLM, Portkey and promptfoo (they need running against
+  the real tools)
+- an OpenAI-compatible LLM proxy
+- utility-versus-leakage reporting
+
 ## [0.15.0] - 2026-09-26
 
 Reads what agents pass each other in a form a plaintext detector cannot.
