@@ -541,6 +541,15 @@ def proxy(
     recipient: str | None = typer.Option(None, "--recipient", help="Name this server goes by in flow rules."),
     block: bool = typer.Option(False, "--block", help="Block every refused flow instead of redacting it."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Don't narrate decisions on stderr."),
+    inspect_responses: bool = typer.Option(
+        False, "--inspect-responses",
+        help="Also judge each tool result on its way back to the agent (server -> agent flows).",
+    ),
+    style: str = typer.Option(
+        "placeholder", "--style",
+        help="How removed values are rendered: placeholder | token (stable pseudonym, restored in responses) | masked | hash.",
+    ),
+    agent: str = typer.Option("mcp-client", "--agent", help="Name the agent goes by in flow rules."),
 ) -> None:
     """Guard an MCP server: judge every tool call before it is sent.
 
@@ -555,6 +564,11 @@ def proxy(
     can read. Every decision is appended to a hash-chained evidence log that
     `agentleak evidence` can verify.
     """
+    from .defenses import RedactionStyle
+
+    if {"mask": "masked"}.get(style, style) not in {x.value for x in RedactionStyle}:
+        typer.secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
     command = list(ctx.args)
     if not command:
         typer.secho(
@@ -589,6 +603,9 @@ def proxy(
             recipient=recipient or "",
             block_on_violation=block,
             verbose=not quiet,
+            inspect_responses=inspect_responses,
+            style={"mask": "masked"}.get(style, style),
+            agent=agent,
         )
     except FileNotFoundError as exc:
         typer.secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)
