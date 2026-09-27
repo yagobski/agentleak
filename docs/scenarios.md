@@ -243,9 +243,9 @@ Canaries here are concrete values, so they split across two tiers: `realistic`
 for structured secrets (a passport number, a 2FA code, a card number) and
 `semantic` for prose (a private message, an email body). This pack is less
 invisible than PrivacyLens — some payloads do contain pattern-shaped PII — but
-without its ground truth **20 of the 100 still score a clean Pass, and 64 land at
+without its ground truth **7 of the 100 still score a clean Pass, and 45 land at
 "Conditional pass" or better**, which no CI gate blocks on. With canaries, none
-of them pass.
+of them pass. (Before 0.16.0 found names in prose it was 20 and 64.)
 
 Both derived packs are built by scripts kept in
 [`scripts/packs/`](../scripts/packs/README.md), which document exactly what was
