@@ -550,6 +550,14 @@ def proxy(
         help="How removed values are rendered: placeholder | token (stable pseudonym, restored in responses) | masked | hash.",
     ),
     agent: str = typer.Option("mcp-client", "--agent", help="Name the agent goes by in flow rules."),
+    pins: str = typer.Option(
+        ".agentleak/mcp-pins.json", "--pins",
+        help="Tool fingerprints, pinned on first use; a changed tool is reported. '' disables.",
+    ),
+    block_changed_tools: bool = typer.Option(
+        False, "--block-changed-tools", help="Hide and refuse a tool whose definition changed since it was pinned.",
+    ),
+    repin: bool = typer.Option(False, "--repin", help="Accept every tool's current definition as the new pin."),
     sign_key: str | None = typer.Option(
         None, "--sign-key", envvar="AGENTLEAK_EVIDENCE_KEY",
         help="Ed25519 private key; signs every evidence entry (pip install 'agentleak\\[sign]').",
@@ -614,6 +622,9 @@ def proxy(
             agent=agent,
             groups=groups,
             sign_key=sign_key,
+            pins_path=pins or None,
+            block_changed_tools=block_changed_tools,
+            repin=repin,
         )
     except FileNotFoundError as exc:
         typer.secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)
