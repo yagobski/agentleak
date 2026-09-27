@@ -45,12 +45,23 @@ Collapsing them into one figure would hide the finding that matters most.
 channels this project exists to audit, and it is the number that supports the
 product's claim.
 
-**Prose recall is 0.275.** With the field name gone, the deterministic tier
-finds emails and SSNs and very little else — no names, no phone numbers, no
-dates of birth. This is a real limit, it is a property of regex-and-dictionary
-detection rather than a defect, and it is the concrete argument for running
-`--mode standard` (Presidio) or `--mode hybrid` (semantic judge) when the
-channel you care about carries sentences.
+**Prose recall is 0.574** (0.275 before 0.16.0). With the field name gone,
+the deterministic tier finds emails, SSNs, most full names and most street
+addresses — and still no phone numbers without an area code, no dates of birth,
+no account numbers and no salaries. Those four are not shape problems: a bare
+`555-0152`, `1985-03-12` or `$125,000` in a sentence is indistinguishable from a
+serial number, a date or a price, and flagging them would trade this table's
+recall for false positives in real traces. They are the concrete argument for
+running `--mode standard` (Presidio) or `--mode hybrid` (semantic judge) when
+the channel you care about carries sentences.
+
+What changed in 0.16.0, and what it does not mean: names are found by a
+gazetteer of about 425 common given names (North American and French) followed
+by one or two capitalised surnames, and addresses by the USPS street-type list.
+The fixture names here are generated, common US names, which is the gazetteer's
+best case; a name outside the list is not found. On 66,221 words of Python's
+own reference documentation — capitalised technical English with no people in
+it — the name and address detectors report nothing, before or after.
 
 It also means a clean fast-tier result on prose is **not** a statement that the
 text is safe. It is "no finding from the enabled deterministic detectors", which
@@ -65,7 +76,7 @@ Two weak spots are visible even in the strong condition and are worth fixing:
 
 ## Results
 
-AgentLeak 0.12.0 · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.15.0 · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
 Ground truth: private_vault records in the bundled scenario packs.
 
@@ -93,16 +104,16 @@ sentence, with the key gone.
 
 ## Prose
 
-**Recall 0.275** (104/378, 95% CI 0.233–0.322)
+**Recall 0.574** (217/378, 95% CI 0.524–0.623)
 
 | Data type | Recall | 95% CI | Found | Wrong type | Missed | n |
 |---|---:|---|---:|---:|---:|---:|
 | `account_number` | 0.000 | 0.000–0.242 | 0 | 0 | 12 | 12 |
-| `address` | 0.019 | 0.003–0.101 | 1 | 0 | 51 | 52 |
+| `address` | 0.635 | 0.499–0.752 | 33 | 0 | 19 | 52 |
 | `date_of_birth` | 0.000 | 0.000–0.133 | 0 | 0 | 25 | 25 |
 | `email` | 1.000 | 0.945–1.000 | 66 | 0 | 0 | 66 |
 | `health_condition` | 0.200 | 0.070–0.452 | 3 | 0 | 12 | 15 |
-| `person_name` | 0.000 | 0.000–0.038 | 0 | 0 | 96 | 96 |
+| `person_name` | 0.844 | 0.758–0.903 | 81 | 0 | 15 | 96 |
 | `phone_number` | 0.000 | 0.000–0.082 | 0 | 0 | 43 | 43 |
 | `salary` | 0.000 | 0.000–0.099 | 0 | 0 | 35 | 35 |
 | `ssn` | 1.000 | 0.898–1.000 | 34 | 0 | 0 | 34 |
