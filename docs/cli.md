@@ -21,6 +21,7 @@ version's complete help output.
 | `serve` | Start the local web interface; `--local` skips sign-in (loopback only). |
 | `mcp` | Serve AgentLeak to coding agents over MCP (`pip install "agentleak[mcp]"`). |
 | `proxy -- CMD…` | Guard an MCP server: allow, redact or block each tool call before it is sent. |
+| `llm-proxy --upstream URL` | OpenAI-compatible proxy: judge what the agent sends to its model under the same flow rules. |
 | `evidence [PATH]` | Verify and summarize the gateway's hash-chained decision log. |
 | `subjects` | Inspect the cross-session subject ledger, or erase one subject with `--forget`. |
 | `admin reset-password` / `admin list-users` | Operator recovery for a self-hosted platform. |
