@@ -209,6 +209,10 @@ class AgentLeakRunner:
         # separate secrets and inflate both WSL and rho_S.
         findings = coalesce_findings(findings)
 
+        # Where each value entered the run and every node it passed through,
+        # so a flow rule can judge a leak by its source, not only its last hop.
+        _annotate_provenance(trace, findings)
+
         # Stable, readable ordering: highest severity level first, then confidence.
         findings.sort(key=lambda f: (-f.level, -f.confidence))
 
@@ -269,6 +273,34 @@ class AgentLeakRunner:
 # Types whose value names a category rather than identifying anyone; anchoring
 # on them would report every later mention of the word.
 _NOT_ANCHORS = frozenset({"employment_status", "internal_note"})
+
+
+def _annotate_provenance(trace: Trace, findings: list[Finding]) -> None:
+    """Set ``metadata["origin"]`` and ``metadata["path"]`` on each finding.
+
+    The origin is the sender of the first event, in trace order, whose text
+    holds the value; the path is every node that held it after, in order.
+    An origin already set by the caller (an SDK event's own metadata) wins.
+    """
+    events = [e for e in trace.events if e.searchable_text]
+    texts = [canonical_form(e.searchable_text) for e in events]
+    cache: dict[str, tuple[str, tuple[str, ...]]] = {}
+    for finding in findings:
+        key = canonical_form(finding.matched_value)
+        if not key:
+            continue
+        if key not in cache:
+            path: list[str] = []
+            for event, text in zip(events, texts, strict=True):
+                if key not in text:
+                    continue
+                for node in (event.source or "", event.target or ""):
+                    if node and (not path or path[-1] != node):
+                        path.append(node)
+            cache[key] = (path[0] if path else "", tuple(path))
+        origin, path_nodes = cache[key]
+        finding.metadata.setdefault("origin", origin)
+        finding.metadata.setdefault("path", list(path_nodes))
 
 
 def _alnum_key(value: str) -> str:

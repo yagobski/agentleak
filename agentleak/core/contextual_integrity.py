@@ -130,6 +130,11 @@ class FlowRule:
     purposes: tuple[str, ...] = ()
     allow: bool = True
     description: str = ""
+    #: Where the value first entered the run. A rule with an origin judges the
+    #: flow by its source, however many agents it passed through on the way:
+    #: "health data from ehr_database never reaches analytics" holds whether
+    #: the diagnosis went there directly or through a planner and a summariser.
+    origins: tuple[str, ...] = ()
 
     @classmethod
     def from_mapping(cls, raw: Any, groups: dict[str, Any] | None = None) -> FlowRule:
@@ -158,15 +163,19 @@ class FlowRule:
             purposes=_as_tuple(raw.get("for") or raw.get("purposes")),
             allow=bool(allow),
             description=str(raw.get("description") or "").strip(),
+            origins=_expand(_as_tuple(raw.get("origin") or raw.get("origins")), node_groups, "origin"),
         )
 
     def governs(self, data_type: str) -> bool:
         """Does this rule have anything to say about this data type?"""
         return _matches(self.data_types, data_type)
 
-    def matches(self, *, data_type: str, sender: str, recipient: str, purpose: str) -> bool:
+    def matches(
+        self, *, data_type: str, sender: str, recipient: str, purpose: str, origin: str = "",
+    ) -> bool:
         return (
-            _matches(self.data_types, data_type)
+            _matches(self.origins, origin)
+            and _matches(self.data_types, data_type)
             and _matches(self.senders, sender)
             and _matches(self.recipients, recipient)
             and _matches(self.purposes, purpose)
@@ -176,6 +185,8 @@ class FlowRule:
         if self.description:
             return self.description
         parts = [f"{'allow' if self.allow else 'deny'} {'/'.join(self.data_types)}"]
+        if self.origins:
+            parts.append(f"originating at {'/'.join(self.origins)}")
         if self.senders:
             parts.append(f"from {'/'.join(self.senders)}")
         if self.recipients:
@@ -197,6 +208,8 @@ class FlowDecision:
     permitted: bool
     reason: str
     rule: str = ""
+    origin: str = ""
+    path: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -208,6 +221,8 @@ class FlowDecision:
             "permitted": self.permitted,
             "reason": self.reason,
             "rule": self.rule,
+            "origin": self.origin,
+            "path": list(self.path),
         }
 
     def describe(self) -> str:
@@ -216,6 +231,8 @@ class FlowDecision:
             flow += f" for {self.purpose}"
         else:
             flow += " with no declared purpose"
+        if len(self.path) > 2:
+            flow += f" (via {' → '.join(self.path)})"
         return f"{flow} — {self.reason}"
 
 
@@ -260,12 +277,15 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
         sender = str(getattr(finding, "source", "") or "")
         recipient = str(getattr(finding, "target", "") or "")
         purpose = purpose_of(finding)
+        metadata = getattr(finding, "metadata", None) or {}
         context = {
             "data_type": data_type,
             "sender": sender,
             "recipient": recipient,
             "purpose": purpose,
+            "origin": str(metadata.get("origin") or ""),
         }
+        path = tuple(metadata.get("path") or ())
 
         # A deny is a statement about a flow that must not happen, so it is
         # checked first and beats any permission granted elsewhere.
@@ -276,6 +296,7 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
                 permitted=False,
                 reason=f"forbidden by rule: {denied.describe()}",
                 rule=denied.describe(),
+                path=path,
                 **context,
             ))
             continue
@@ -292,6 +313,7 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
                 permitted=True,
                 reason=f"permitted by rule: {permitted.describe()}",
                 rule=permitted.describe(),
+                path=path,
                 **context,
             ))
             continue
@@ -305,6 +327,7 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
                 f"no rule permits this flow, and {data_type} is governed by "
                 f"{len(governing_allows)} allow rule(s).{detail}"
             ),
+            path=path,
             **context,
         ))
 
