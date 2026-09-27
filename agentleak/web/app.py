@@ -2125,8 +2125,19 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             if not explicit:
                 llm = None
 
+        # Reproducible by default: the same request gives the same scenarios,
+        # vaults and findings. Without a seed the campaign drew from the
+        # process-wide RNG, and the same code scored 0.9758 one run and 1.0 the
+        # next. Pass a different seed for a different sample.
+        raw_seed = payload.get("seed", 0)
+        try:
+            seed = int(raw_seed)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="seed must be an integer") from exc
+
         try:
             gen = ScenarioGenerator(
+                seed=seed,
                 vertical=vertical,
                 adversary_level=adv_level,
                 plugin_ids=None if attack_class_id else selected_plugin_ids,
@@ -2238,6 +2249,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "adversary_level": adv_level.value,
             "mode": "live" if live else "scripted",
             "live": live,
+            # Resend it to reproduce this exact campaign.
+            "seed": seed,
             # What this run's numbers are *about*. The scripted target leaks by
             # construction, so its 100% ASR measures whether our detectors see a
             # known leak — fixture integrity — and says nothing about the
