@@ -253,6 +253,7 @@ class AgentLeakRunner:
             fail_below=self._fail_below,
             policy_evaluation=policy_evaluation,
             subject_evaluation=subject_evaluation,
+            task_success=trace.task_success,
             warnings=list(self._warnings),
             detection_mode=self._pipeline.mode.value,
             tiers=self._pipeline.finding_tiers,

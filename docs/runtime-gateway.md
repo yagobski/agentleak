@@ -271,6 +271,13 @@ signature, and on an entry whose signature was stripped. Keep the private key
 where the gateway can read it and the log's other writers cannot; the key is the
 whole guarantee. Timestamping by an external authority (RFC 3161) is not done.
 
+## The model is the other exit
+
+`agentleak proxy` guards the tools. The same rules can guard the model:
+`agentleak llm-proxy` is an OpenAI-compatible proxy, and
+`agentleak.integrations.litellm_guardrail` plugs into LiteLLM. See
+[integrations](integrations.md#5-on-the-traffic-path-model-gateways-and-eval-harnesses).
+
 ## Using the gateway directly
 
 The proxy is one caller. The decision engine is public:
