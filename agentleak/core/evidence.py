@@ -128,8 +128,12 @@ class VerificationResult:
 class EvidenceLog:
     """Append-only JSONL, one decision per line, each chained to the last."""
 
-    def __init__(self, path: str | os.PathLike[str]) -> None:
+    def __init__(self, path: str | os.PathLike[str], signer: Any = None) -> None:
         self.path = Path(path)
+        # Optional :class:`agentleak.core.signing.Signer`. The signature is kept
+        # outside the hashed body, so a signed and an unsigned log chain the
+        # same way; `verify(public_key=...)` is what requires it.
+        self.signer = signer
         self._last_hash = GENESIS
         self._sequence = 0
         if self.path.exists():
@@ -192,6 +196,9 @@ class EvidenceLog:
             metadata=dict(metadata or {}),
         )
         record = entry.to_dict()
+        if self.signer is not None:
+            record["signature"] = self.signer.sign(record["hash"])
+            record["key_id"] = self.signer.key_id
         self.path.parent.mkdir(parents=True, exist_ok=True)
         # Append and flush per line: a gateway that crashes mid-run must leave
         # the decisions it already made on disk, or the log proves nothing
@@ -227,8 +234,13 @@ class EvidenceLog:
         }
 
 
-def verify(path: str | os.PathLike[str]) -> VerificationResult:
-    """Walk the chain and report the first link that does not hold."""
+def verify(path: str | os.PathLike[str], public_key: Any = None) -> VerificationResult:
+    """Walk the chain and report the first link that does not hold.
+
+    With ``public_key``, every entry must also carry a valid signature by that
+    key: an unsigned entry fails as surely as a forged one, because stripping
+    signatures is the cheapest way to forge a signed log.
+    """
     file_path = Path(path)
     if not file_path.exists():
         return VerificationResult(ok=False, entries=0, detail=f"no evidence log at {file_path}")
@@ -268,7 +280,29 @@ def verify(path: str | os.PathLike[str]) -> VerificationResult:
                         f"to {previous[:12]}… — an entry was inserted, removed or reordered"
                     ),
                 )
+            if public_key is not None:
+                from .signing import key_id, verify_signature
+
+                signature = raw.get("signature")
+                if not signature:
+                    return VerificationResult(
+                        ok=False, entries=count, broken_at=line_number,
+                        detail=f"entry {entry.sequence} (line {line_number}) is not signed",
+                    )
+                if raw.get("key_id") not in (None, key_id(public_key)) or not verify_signature(
+                    public_key, expected, str(signature)
+                ):
+                    return VerificationResult(
+                        ok=False, entries=count, broken_at=line_number,
+                        detail=(
+                            f"entry {entry.sequence} (line {line_number}) has a signature "
+                            "this public key did not make"
+                        ),
+                    )
             previous = expected
             count += 1
 
-    return VerificationResult(ok=True, entries=count, detail=f"{count} entries, chain intact")
+    detail = f"{count} entries, chain intact"
+    if public_key is not None:
+        detail += ", every entry signed"
+    return VerificationResult(ok=True, entries=count, detail=detail)

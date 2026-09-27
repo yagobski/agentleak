@@ -81,6 +81,11 @@ class McpProxy:
         gateway: Gateway,
         recipient: str = "",
         verbose: bool = False,
+        inspect_responses: bool = False,
+        agent: str = "mcp-client",
+        pins: Any = None,
+        block_changed_tools: bool = False,
+        repin: bool = False,
     ) -> None:
         if not command:
             raise ValueError("a proxy needs a server command to forward to")
@@ -88,9 +93,22 @@ class McpProxy:
         self.gateway = gateway
         self.recipient = recipient or _server_name(command)
         self.verbose = verbose
+        self.inspect_responses = inspect_responses
+        self.agent = agent
         self.blocked = 0
         self.redacted = 0
         self.allowed = 0
+        # tools/call ids in flight -> (tool, purpose), so a result can be judged
+        # as the flow it is: from this server, to the agent, for that purpose.
+        self._pending: dict[Any, tuple[str, str]] = {}
+        self._lock = threading.Lock()
+        # Tool pinning: `tools/list` ids in flight, and tools withheld because
+        # they changed after they were pinned.
+        self.pins = pins
+        self.block_changed_tools = block_changed_tools
+        self.repin = repin
+        self._pending_lists: set[Any] = set()
+        self._withheld: set[str] = set()
 
     # ------------------------------------------------------------------
     def _note(self, message: str) -> None:
@@ -132,11 +150,25 @@ class McpProxy:
         Returns ``(forward, reply)``: the message to send to the server, and a
         message to send straight back to the client. Exactly one is not None.
         """
+        if message.get("method") == "tools/list" and self.pins is not None and "id" in message:
+            with self._lock:
+                self._pending_lists.add(message["id"])
         if message.get("method") != "tools/call":
             return message, None
 
         params = message.get("params") or {}
         tool = str(params.get("name") or "")
+        if tool in self._withheld:
+            self.blocked += 1
+            self._note(f"BLOCK {tool}: its definition changed since it was pinned")
+            return None, {
+                "jsonrpc": "2.0", "id": message.get("id"),
+                "result": {"isError": True, "content": [{"type": "text", "text": (
+                    f"Blocked by AgentLeak: the tool {tool!r} changed since it was first seen "
+                    "(its description or input schema is different). Nothing was sent. "
+                    "Review the change, then accept it with `agentleak proxy --repin`."
+                )}]},
+            }
         arguments = params.get("arguments")
         meta = params.get("_meta") or {}
         purpose = str(meta.get("purpose") or meta.get("agentleak/purpose") or "")
@@ -147,6 +179,9 @@ class McpProxy:
             recipient=self.recipient,
             purpose=purpose,
         )
+        if decision.action != Action.BLOCK and "id" in message:
+            with self._lock:
+                self._pending[message["id"]] = (tool, purpose)
 
         if decision.action == Action.BLOCK:
             self.blocked += 1
@@ -162,6 +197,93 @@ class McpProxy:
 
         self.allowed += 1
         return message, None
+
+    # ------------------------------------------------------------------
+    def handle_response(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Judge one server message on its way back to the agent.
+
+        Only results of a ``tools/call`` this proxy forwarded are touched, and
+        only when response inspection is on: a result carries data *into* the
+        agent's context, which is where minimisation has to happen, but turning
+        it on changes what an existing policy means (an ``allow`` for ``sin`` to
+        a KYC server says nothing about the SIN it sends back), so it is opt-in.
+
+        Tokens this proxy issued are put back last. They stand for values the
+        agent itself sent, so they are not new data flowing to it.
+        """
+        with self._lock:
+            pending = self._pending.pop(message.get("id"), None) if "id" in message else None
+            is_list = "id" in message and message.get("id") in self._pending_lists
+            if is_list:
+                self._pending_lists.discard(message.get("id"))
+        if is_list and isinstance(message.get("result"), dict):
+            return self._check_tools(message)
+        if pending is None or "result" not in message:
+            return self._restore(message)
+
+        tool, purpose = pending
+        if self.inspect_responses:
+            result = message["result"]
+            decision = self.gateway.check(
+                result,
+                tool=f"{self.recipient}/{tool}" if tool else self.recipient,
+                recipient=self.agent,
+                sender=self.recipient,
+                purpose=purpose,
+                direction="response",
+            )
+            if decision.action == Action.BLOCK:
+                self.blocked += 1
+                self._note(f"WITHHOLD {tool} result: {decision.reason}")
+                message = {**message, "result": {
+                    "isError": True,
+                    "content": [{"type": "text", "text": (
+                        "The tool ran, but AgentLeak withheld its result under the "
+                        f"privacy policy: {decision.reason}"
+                    )}],
+                    "_meta": {"agentleak": decision.to_dict()},
+                }}
+            elif decision.action == Action.REDACT:
+                self.redacted += 1
+                self._note(f"REDACT {tool} result: {decision.reason}")
+                message = {**message, "result": decision.arguments}
+        return self._restore(message)
+
+    def _check_tools(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Compare a ``tools/list`` result with the pins, and act on changes."""
+        tools = [t for t in (message["result"].get("tools") or []) if isinstance(t, dict)]
+        report = self.pins.check(self.recipient, tools, repin=self.repin)
+        for name in report.changed:
+            self._note(f"TOOL CHANGED {name}: its definition differs from the pinned one")
+            if self.gateway.log is not None:
+                self.gateway.log.append(
+                    action="tool_changed", tool=f"{self.recipient}/{name}",
+                    recipient=self.recipient, agent=self.agent,
+                    reason="description or input schema changed since first seen",
+                    metadata={"direction": "response", "withheld": self.block_changed_tools},
+                )
+        if report.new:
+            self._note(f"pinned {len(report.new)} new tool(s) from {self.recipient}")
+        if self.block_changed_tools and report.changed:
+            self._withheld = set(report.changed)
+            kept = [t for t in tools if t.get("name") not in self._withheld]
+            message = {**message, "result": {**message["result"], "tools": kept}}
+        return message
+
+    def _restore(self, message: dict[str, Any]) -> dict[str, Any]:
+        tokenizer = self.gateway.sanitizer.tokenizer
+        if tokenizer is None or len(tokenizer) == 0:
+            return message
+        restored = tokenizer.restore_obj(message)
+        return restored if isinstance(restored, dict) else message
+
+    @property
+    def _rewrites_responses(self) -> bool:
+        return (
+            self.inspect_responses
+            or self.gateway.sanitizer.tokenizer is not None
+            or self.pins is not None
+        )
 
     # ------------------------------------------------------------------
     def run(self, stdin: TextIO | None = None, stdout: TextIO | None = None) -> int:
@@ -181,11 +303,18 @@ class McpProxy:
         self._note(f"proxying {' '.join(self.command)} as recipient '{self.recipient}'")
 
         def pump_server_to_client() -> None:
-            # Server -> client is pure passthrough. Responses carry data coming
-            # *in*, which the analysis pipeline scores; rewriting them here
-            # would corrupt results the agent is waiting on.
+            # Server -> client passes through untouched unless responses are
+            # inspected or tokens need restoring; even then only messages that
+            # parse are rewritten, and the rest cross byte for byte.
             try:
                 for line in server.stdout:  # type: ignore[union-attr]
+                    if self._rewrites_responses and line.strip():
+                        try:
+                            message = json.loads(line)
+                        except json.JSONDecodeError:
+                            message = None
+                        if isinstance(message, dict):
+                            line = json.dumps(self.handle_response(message)) + "\n"
                     stdout.write(line)
                     stdout.flush()
             except (BrokenPipeError, ValueError):
@@ -238,13 +367,31 @@ def run_proxy(
     recipient: str = "",
     block_on_violation: bool = False,
     verbose: bool = False,
+    inspect_responses: bool = False,
+    style: str = "placeholder",
+    agent: str = "mcp-client",
+    groups: dict[str, Any] | None = None,
+    sign_key: str | None = None,
+    pins_path: str | None = None,
+    block_changed_tools: bool = False,
+    repin: bool = False,
 ) -> int:
     gateway = Gateway(
         flows=flows,
+        groups=groups,
+        sign_key=sign_key,
         evidence=evidence,
         block_on_violation=block_on_violation,
-        agent="mcp-client",
+        agent=agent,
+        redaction_style=style,
     )
+    pins = None
+    if pins_path:
+        from .core.toolpins import ToolPins
+
+        pins = ToolPins(pins_path)
     return McpProxy(
-        command, gateway=gateway, recipient=recipient, verbose=verbose
+        command, gateway=gateway, recipient=recipient, verbose=verbose,
+        inspect_responses=inspect_responses, agent=agent,
+        pins=pins, block_changed_tools=block_changed_tools, repin=repin,
     ).run()

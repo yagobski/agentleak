@@ -58,6 +58,57 @@ privacy_policy:
 | `for` | Permitted purpose(s), matched against `metadata["purpose"]`. | any |
 | `deny` | Make this a prohibition instead of a permission. | `false` |
 | `description` | What the rule is protecting, shown in violations. | generated |
+| `origin` | Where the value first entered the run (the sender of the first event that held it). Judges a flow by its source, however many hops it took. | any |
+
+Any facet except `for` accepts `group:<name>`; see [groups](#groups).
+
+## Groups
+
+Name a set once and use it in any rule:
+
+```yaml
+privacy_policy:
+  groups:
+    third-parties: [analytics, ads-sync, crm-export]
+  flows:
+    - data_type: group:health
+      to: group:third-parties
+      deny: true
+```
+
+Five data-type groups are built in: `credentials` (every credential type the
+detectors know, so a type added later is covered), `health`, `financial`,
+`government_ids` and `contact`. A group nobody defined fails at config load,
+not silently at run time.
+
+## Origin: a leak three hops away
+
+Every other facet judges one hop. In a multi-agent run the hop that reaches the
+sink is often innocent-looking — a summariser posting to analytics — and what
+makes it a leak is that the value started in the medical record three agents
+earlier:
+
+```yaml
+    - data_type: group:health
+      origin: ehr_database
+      to: group:third-parties
+      deny: true
+```
+
+The runner records, for every finding, the sender of the first event holding
+the value (`metadata.origin`) and every node that held it after
+(`metadata.path`). A violation carries both:
+
+```
+health_condition from summarizer to analytics with no declared purpose
+  (via ehr_database → planner → summarizer → analytics) — forbidden by rule:
+  deny health_condition/medication/health_identifier originating at ehr_database
+  to analytics/ads
+```
+
+The same diagnosis typed by the patient into the chat has origin `user`, and
+this rule leaves it alone. Origin is judged on a full trace, by the CI gate and
+`agentleak run`; a single proxy cannot see what another server returned.
 
 `senders`, `recipients`, `purposes` and `data_types` are accepted as aliases, so
 a generated config need not be written as prose.
@@ -118,5 +169,6 @@ unchanged.
 
 ## What this does not do yet
 
-Recipients are matched as literal node names. There is no grouping yet
-(`to: group:third-parties`), and no inheritance between environments.
+There is no inheritance between environments. Origin and path are found by
+exact value: a value that was reformatted on the way (a date written two ways)
+starts a new path.

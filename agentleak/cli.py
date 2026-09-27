@@ -541,6 +541,27 @@ def proxy(
     recipient: str | None = typer.Option(None, "--recipient", help="Name this server goes by in flow rules."),
     block: bool = typer.Option(False, "--block", help="Block every refused flow instead of redacting it."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Don't narrate decisions on stderr."),
+    inspect_responses: bool = typer.Option(
+        False, "--inspect-responses",
+        help="Also judge each tool result on its way back to the agent (server -> agent flows).",
+    ),
+    style: str = typer.Option(
+        "placeholder", "--style",
+        help="How removed values are rendered: placeholder | token (stable pseudonym, restored in responses) | masked | hash.",
+    ),
+    agent: str = typer.Option("mcp-client", "--agent", help="Name the agent goes by in flow rules."),
+    pins: str = typer.Option(
+        ".agentleak/mcp-pins.json", "--pins",
+        help="Tool fingerprints, pinned on first use; a changed tool is reported. '' disables.",
+    ),
+    block_changed_tools: bool = typer.Option(
+        False, "--block-changed-tools", help="Hide and refuse a tool whose definition changed since it was pinned.",
+    ),
+    repin: bool = typer.Option(False, "--repin", help="Accept every tool's current definition as the new pin."),
+    sign_key: str | None = typer.Option(
+        None, "--sign-key", envvar="AGENTLEAK_EVIDENCE_KEY",
+        help="Ed25519 private key; signs every evidence entry (pip install 'agentleak\\[sign]').",
+    ),
 ) -> None:
     """Guard an MCP server: judge every tool call before it is sent.
 
@@ -555,6 +576,11 @@ def proxy(
     can read. Every decision is appended to a hash-chained evidence log that
     `agentleak evidence` can verify.
     """
+    from .defenses import RedactionStyle
+
+    if {"mask": "masked"}.get(style, style) not in {x.value for x in RedactionStyle}:
+        typer.secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
     command = list(ctx.args)
     if not command:
         typer.secho(
@@ -565,10 +591,12 @@ def proxy(
         raise typer.Exit(code=2)
 
     flows: Any = None
+    groups: dict[str, Any] = {}
     if config:
         try:
             cfg = Config.load(config)
             flows = list(cfg.privacy_policy.flows)
+            groups = dict(cfg.privacy_policy.groups)
         except Exception as exc:  # noqa: BLE001
             typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
@@ -589,6 +617,14 @@ def proxy(
             recipient=recipient or "",
             block_on_violation=block,
             verbose=not quiet,
+            inspect_responses=inspect_responses,
+            style={"mask": "masked"}.get(style, style),
+            agent=agent,
+            groups=groups,
+            sign_key=sign_key,
+            pins_path=pins or None,
+            block_changed_tools=block_changed_tools,
+            repin=repin,
         )
     except FileNotFoundError as exc:
         typer.secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)
@@ -603,6 +639,12 @@ def evidence(
     path: str = typer.Argument("agentleak-evidence.jsonl", help="Evidence log to read."),
     verify_only: bool = typer.Option(False, "--verify", help="Only check the chain; print nothing else."),
     fmt: str = typer.Option("text", "--format", "-f", help="text | json."),
+    public_key: str | None = typer.Option(
+        None, "--public-key", help="Also require every entry to be signed by this Ed25519 key.",
+    ),
+    keygen: str | None = typer.Option(
+        None, "--keygen", help="Write a new signing key pair to this path (and PATH.pub), then exit.",
+    ),
 ) -> None:
     """Verify and summarize a gateway evidence log.
 
@@ -615,7 +657,31 @@ def evidence(
     from .core.evidence import EvidenceLog
     from .core.evidence import verify as verify_chain
 
-    result = verify_chain(path)
+    if keygen:
+        from .core.signing import generate_keypair
+
+        try:
+            private_file, public_file = generate_keypair(keygen)
+        except RuntimeError as exc:
+            typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
+        typer.secho(f"✓ private key → {private_file} (mode 600)", fg=typer.colors.GREEN)
+        typer.secho(f"✓ public key  → {public_file}", fg=typer.colors.GREEN)
+        typer.echo("Sign with:   agentleak proxy --sign-key " + str(private_file) + " -- …")
+        typer.echo("Verify with: agentleak evidence LOG --public-key " + str(public_file))
+        return
+
+    key = None
+    if public_key:
+        from .core.signing import load_public_key
+
+        try:
+            key = load_public_key(public_key)
+        except (RuntimeError, OSError, ValueError) as exc:
+            typer.secho(f"✗ could not load public key: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
+
+    result = verify_chain(path, public_key=key)
     if verify_only:
         if fmt == "json":
             typer.echo(json.dumps(result.to_dict(), indent=2))

@@ -96,8 +96,11 @@ class ScenarioGenerator:
     ) -> None:
         self.vertical = vertical
         self.adversary_level = adversary_level
+        self.seed = seed
         self._random = random.Random(seed)
-        self._vault_gen = VaultGenerator()
+        # One generator for the attack selection and the vault it attacks, so
+        # a seed reproduces the whole campaign rather than half of it.
+        self._vault_gen = VaultGenerator(self._random)
         self.plugin_ids = list(dict.fromkeys(plugin_ids or []))
         self.strategy_ids = resolve_strategy_ids(strategy_ids or ["basic"])
         self._available_classes = (

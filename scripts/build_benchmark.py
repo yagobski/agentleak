@@ -37,6 +37,8 @@ from agentleak.core.trace import Trace
 from agentleak.scenarios import SCENARIOS, get_scenario
 from agentleak.scenarios.packs import expand_pack, list_packs
 
+# The public site now lives in its own repository (agentleak-site), which reads
+# this file from frontend/src/data/benchmark.json. Pass --out to write it there.
 OUT = Path(__file__).resolve().parents[1] / "agentleak/web/frontend/src/data/benchmark.json"
 
 INTERNAL_CHANNELS = (
@@ -69,7 +71,7 @@ def builtin_traces() -> list[tuple[str, Trace]]:
     return out
 
 
-def main() -> None:
+def main(out: Path = OUT) -> None:
     runner = AgentLeakRunner()
     records: list[dict[str, Any]] = []
 
@@ -165,10 +167,10 @@ def main() -> None:
         "reproduce": "python scripts/build_benchmark.py",
     }
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
-    print(f"{OUT.relative_to(Path.cwd())}  ({OUT.stat().st_size / 1024:.1f} KB)")
+    print(f"{out}  ({out.stat().st_size / 1024:.1f} KB)")
     print(f"  {len(records)} scenarios, {len(leaky)} leaking")
     print(f"  internal-only leaks: {internal_only}  mixed: {mixed}  output-only: {output_only}")
     for row in by_source:
@@ -180,4 +182,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Measure the bundled corpus.")
+    parser.add_argument("--out", type=Path, default=OUT,
+                        help="Where to write benchmark.json (e.g. agentleak-site/frontend/src/data/).")
+    main(parser.parse_args().out)

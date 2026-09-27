@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentleak"
-version = "0.15.0"
+version = "0.16.0"
 description = "Privacy-leakage testing for AI agents: audit the whole execution trace, score it deterministically, gate it in CI."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -52,6 +52,11 @@ presidio = [
   "presidio-analyzer>=2.2",
   "spacy>=3.7",
 ]
+sign = [
+  # Ed25519 signatures on the gateway evidence log (agentleak proxy
+  # --sign-key, agentleak evidence --public-key).
+  "cryptography>=42",
+]
 guardrails = [
   # Optional guardrail backend wrappers (LLM Guard, NeMo, Lakera, etc.)
   # Install individually based on which backend you use.
@@ -62,8 +67,10 @@ full = [
   "presidio-analyzer>=2.2",
   "spacy>=3.7",
   "mcp>=1.0",
+  "cryptography>=42",
 ]
 dev = [
+  "cryptography>=42",
   "pytest>=7.0",
   "pytest-cov>=4.0",
   "ruff>=0.4",

@@ -142,7 +142,7 @@ def evaluate_privacy_policy(
 
     # Contextual integrity: is this flow appropriate, not merely present.
     flow_detail: dict[str, Any] = {}
-    flow_rules = parse_flow_rules(getattr(policy, "flows", None))
+    flow_rules = parse_flow_rules(getattr(policy, "flows", None), getattr(policy, "groups", None))
     if flow_rules:
         checks.append("flows")
         evaluation = evaluate_flows(flow_rules, leaked)

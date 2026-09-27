@@ -126,6 +126,17 @@ unjudged. See [docs/runtime-gateway.md](runtime-gateway.md).
 `evidence` exits non-zero and names the first broken entry when any line has
 been edited, removed or reordered. `--format json` is available for tooling.
 
+```bash
+agentleak proxy --inspect-responses --style token -- …   # judge results too; pseudonyms, restored on the way back
+agentleak proxy --block-changed-tools -- …               # refuse a tool whose definition changed
+agentleak evidence --keygen keys/evidence.key             # Ed25519 pair (pip install "agentleak[sign]")
+agentleak proxy --sign-key keys/evidence.key -- …
+agentleak evidence evidence.jsonl --public-key keys/evidence.key.pub
+```
+
+Tool definitions are pinned on first use in `.agentleak/mcp-pins.json` (`--pins`
+to move it, `--pins ''` to disable, `--repin` to accept a change).
+
 ## Subjects
 
 ```bash

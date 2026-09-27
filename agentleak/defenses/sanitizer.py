@@ -10,6 +10,7 @@ Supports 6 redaction styles:
 * ``hash``        — SHA-256 of the value, truncated to 16 hex chars
 * ``category``    — ``[PII: SSN]``
 * ``remove``      — delete the token entirely
+* ``token``       — ``[[SSN:3f9a1c2e40]]``, the same pseudonym for the same value
 
 The sanitizer applies the built-in regex detectors (Tier 1) over a piece of
 text and replaces every hit.  It is *not* the full analysis pipeline — no
@@ -51,6 +52,7 @@ from enum import Enum
 from typing import Any
 
 from ..core.transforms import CREDENTIAL_TYPES, decoded_views
+from .tokenizer import Tokenizer
 
 
 class RedactionStyle(str, Enum):
@@ -60,6 +62,7 @@ class RedactionStyle(str, Enum):
     HASH = "hash"                # sha256[:16]
     CATEGORY = "category"        # [PII: SSN]
     REMOVE = "remove"            # deleted
+    TOKEN = "token"              # [[SSN:3f9a1c2e40]] — stable keyed pseudonym
 
 
 # ---------------------------------------------------------------------------
@@ -152,8 +155,12 @@ def redaction_coverage() -> dict[str, Any]:
     }
 
 
-def _redact_value(value: str, dtype: str, style: RedactionStyle) -> str:
+def _redact_value(
+    value: str, dtype: str, style: RedactionStyle, tokenizer: Tokenizer | None = None,
+) -> str:
     """Apply the chosen redaction style to a single matched value."""
+    if style == RedactionStyle.TOKEN:
+        return (tokenizer if tokenizer is not None else Tokenizer()).token(value, dtype)
     if style == RedactionStyle.PLACEHOLDER:
         return f"[REDACTED_{dtype}]"
     if style == RedactionStyle.ASTERISK:
@@ -185,8 +192,13 @@ class Sanitizer:
         style: str | RedactionStyle = RedactionStyle.PLACEHOLDER,
         extra_patterns: list[tuple[str, str]] | dict[str, str] | None = None,
         detectors: list[Any] | None = None,
+        tokenizer: Tokenizer | None = None,
     ) -> None:
         self.style = RedactionStyle(style) if isinstance(style, str) else style
+        # One tokenizer per sanitizer, so a value keeps its token across calls.
+        self.tokenizer = tokenizer
+        if self.tokenizer is None and self.style == RedactionStyle.TOKEN:
+            self.tokenizer = Tokenizer()
         self._detectors = _default_detectors() if detectors is None else detectors
         self._patterns = list(_COMPILED_EXTRA)
         if isinstance(extra_patterns, dict):
@@ -300,6 +312,10 @@ class Sanitizer:
                 cursor = span[1]
         return resolved
 
+    def redact_value(self, value: str, dtype: str) -> str:
+        """Render one removed value in this sanitizer's style."""
+        return _redact_value(value, dtype, self.style, self.tokenizer)
+
     def sanitize(self, text: str) -> str:
         """Return *text* with all detected sensitive values replaced."""
         if not text:
@@ -308,7 +324,7 @@ class Sanitizer:
         cursor = 0
         for start, end, value, dtype in self._spans(text):
             out.append(text[cursor:start])
-            out.append(_redact_value(value, dtype, self.style))
+            out.append(self.redact_value(value, dtype))
             cursor = end
         out.append(text[cursor:])
         return "".join(out)

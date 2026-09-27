@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .trace import CHANNELS
 
@@ -171,21 +171,26 @@ class PrivacyPolicyConfig(BaseModel):
     # analytics sink, which is the difference privacy law actually turns on.
     # See agentleak.core.contextual_integrity for the rule grammar.
     flows: list[dict[str, Any]] = Field(default_factory=list)
+    #: Named sets of senders, recipients or data types for flow rules:
+    #: ``third-parties: [analytics, crm-x]`` lets a rule say
+    #: ``to: group:third-parties``. Built-in data-type groups (credentials,
+    #: health, financial, government_ids, contact) need no definition.
+    groups: dict[str, list[str]] = Field(default_factory=dict)
     #: Fail the gate when a run discloses another subject's data. Needs
     #: `privacy.subject_ledger` and a subject on each run; without both it has
     #: nothing to check and stays silent rather than passing vacuously.
     forbid_cross_subject: bool = False
 
-    @field_validator("flows")
-    @classmethod
-    def validate_flows(cls, flows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        # Parse eagerly so a malformed rule fails at config load, where the line
-        # number is, rather than silently governing nothing at run time.
+    @model_validator(mode="after")
+    def validate_flows(self) -> PrivacyPolicyConfig:
+        # Parse eagerly so a malformed rule — or a group nobody defined — fails
+        # at config load, where the line number is, rather than silently
+        # governing nothing at run time.
         from .contextual_integrity import FlowRule
 
-        for rule in flows:
-            FlowRule.from_mapping(rule)
-        return flows
+        for rule in self.flows:
+            FlowRule.from_mapping(rule, self.groups)
+        return self
 
     @field_validator("forbid_levels")
     @classmethod

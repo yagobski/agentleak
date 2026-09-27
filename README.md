@@ -214,7 +214,7 @@ Nine **detectors**, six of them regex/dictionary and always on, three optional:
 
 | Detector | Examples |
 | --- | --- |
-| `pii` | email, phone, SSN/SIN, credit card (Luhn-checked), IP, DOB, client ids, names, street addresses, postal codes |
+| `pii` | email, phone, SSN/SIN, credit card (Luhn-checked), IP, DOB, client ids, names (with or without a keyword), street addresses, postal codes |
 | `secrets` | API keys, AWS keys, GitHub/Slack tokens, JWTs, private keys, connection strings and credentialed URLs, assigned secrets |
 | `healthcare` | NAM-like health identifiers, diagnoses, medications |
 | `finance` | IBAN, account numbers, credit scores, income, loans, internal risk notes |
@@ -332,7 +332,7 @@ there.
 - [Detection quality](docs/detection-quality.md) — measured recall, false positives, and what the deterministic tier misses
 - [Encoded and obscured leaks](docs/encoded-leaks.md) — base64, hex, URL-encoding, reversal, ROT13 and split copies passed between agents, measured before and after
 - [Contextual integrity](docs/contextual-integrity.md) — judge the flow (data × sender × recipient × purpose), not the presence
-- [Runtime gateway](docs/runtime-gateway.md) — `agentleak proxy`: allow, redact or block a tool call before it is sent, with a hash-chained evidence log
+- [Runtime gateway](docs/runtime-gateway.md) — `agentleak proxy`: allow, redact or block a tool call before it is sent — and judge its result on the way back, swap values for pseudonyms, pin tool definitions, sign the evidence log
 - [Cross-session leaks](docs/cross-session.md) — whose data is this, and did it end up in somebody else's session
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
