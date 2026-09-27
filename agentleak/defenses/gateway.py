@@ -124,12 +124,13 @@ class Gateway:
         redaction_style: str | RedactionStyle = RedactionStyle.PLACEHOLDER,
         block_on_violation: bool = False,
         detectors: list[Any] | None = None,
+        groups: dict[str, Any] | None = None,
         agent: str = "",
         run_id: str = "",
     ) -> None:
         self.rules: tuple[FlowRule, ...] = (
             tuple(flows) if flows and isinstance(flows[0], FlowRule)  # type: ignore[index]
-            else parse_flow_rules(flows)
+            else parse_flow_rules(flows, groups)
         )
         self.sanitizer = Sanitizer(style=redaction_style, detectors=detectors)
         self.block_on_violation = block_on_violation

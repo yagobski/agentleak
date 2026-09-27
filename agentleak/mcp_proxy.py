@@ -316,9 +316,11 @@ def run_proxy(
     inspect_responses: bool = False,
     style: str = "placeholder",
     agent: str = "mcp-client",
+    groups: dict[str, Any] | None = None,
 ) -> int:
     gateway = Gateway(
         flows=flows,
+        groups=groups,
         evidence=evidence,
         block_on_violation=block_on_violation,
         agent=agent,
