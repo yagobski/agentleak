@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
+from .names import full_names
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9-.]+")
 # US SSN (xxx-xx-xxxx) and Canadian SIN (xxx-xxx-xxx) are distinct shapes.
@@ -57,10 +58,35 @@ NINO_RE = re.compile(
     r"[ABCEGHJ-PRSTW-Z][ABCEGHJ-NPRSTW-Z]\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b"
 )
 # Street address: number + street words + a street-type suffix.
+# The suffixes are the common USPS street-type words, minus the ones that are
+# mostly surnames (Green, Mills, Ford, Brooks…); the first version knew fifteen,
+# and a street ending in "Pines" or "Crescent" went unreported. An
+# optional unit and ", City, ST 12345" tail are taken too, so a redaction
+# removes the whole address rather than leaving the city and ZIP behind.
+_STREET_SUFFIXES = (
+    "Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Place|Pl|"
+    "Circle|Cir|Crescent|Cres|Terrace|Ter|Parkway|Pkwy|Highway|Hwy|Square|Sq|Squares|"
+    "Trail|Trl|Park|Pike|Plaza|Plz|Point|Pt|Ridge|Rdg|Row|Run|Spur|Station|Sta|"
+    "Pines|Manor|Manors|Mews|Loop|Locks|Lock|Landing|Knoll|Knolls|Junction|Jct|"
+    "Heights|Hts|Harbor|Hbr|Grove|Gv|Gardens|Gdns|Garden|Freeway|Fwy|Estates|"
+    "Crossing|Xing|Crossroad|Crossroads|Cove|Cv|Creek|Crk|Bridge|Brg|Bypass|Byp|"
+    "Branch|Br|Bend|Alley|Aly|Villages|Village|Vlg|Views|View|Vw|Valley|Vly|"
+    "Turnpike|Tpke|Summit|Springs|Spring|Shores|Shore|Rapids|Port|Prairie|Pass|"
+    "Oval|Orchard|Mill|Meadows|Meadow|Lodge|Lights|Island|Isle|Hollow|"
+    "Hill|Glen|Gateway|Forest|Fork|Forks|Field|Falls|Extension|Ext|Expressway|"
+    "Expy|Divide|Dale|Dam|Courts|Corners|Corner|Common|Commons|Cliffs|Causeway|"
+    "Canyon|Camp|Burgs|Burg|Brook|Bluffs|Bluff|Beach|Arcade|Walk|Walks|Wall|"
+    "Ways|Well|Unions|Union|Underpass|Tunnel|Track|Throughway|Streets|Stream|"
+    "Stravenue|Squares|Skyway|Shoals|Radial|Ramp|Ranch|Rest|Plains|Pines|Parks|"
+    "Neck|Motorway|Mount|Mountain|Mountains|Mission|Lakes|Lake|Keys|Key|Inlet|"
+    "Harbors|Haven|Fort|Ferry|Crest|Club|Center|Centers|Cape|Causeway"
+)
 ADDRESS_RE = re.compile(
-    r"\b\d{1,5}\s+(?:[A-Z][A-Za-z.]+\s){1,3}"
-    r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Place|Pl)\b\.?",
-    re.IGNORECASE,
+    # Not after ":" or "." — "10:00 AM. Alex Green" is a time and a person.
+    r"(?<![:.\d])\b\d{1,5}\s+(?:[A-Z][A-Za-z.]+\s){1,3}"
+    r"(?i:" + _STREET_SUFFIXES + r")\b\.?"
+    r"(?:,?\s+(?:Suite|Ste|Apt|Apartment|Unit|#)\.?\s*[A-Za-z0-9-]+)?"
+    r"(?:,\s*[A-Z][A-Za-z .'-]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)?",
 )
 # French / Québec civic address: number + street-type word *before* the name
 # (e.g. "1240 Rue Saint-Denis", "85 Boulevard René-Lévesque"). Grounded in
@@ -184,6 +210,13 @@ class PIIDetector(Detector):
                 data_type="national_insurance_number", severity=Severity.HIGH, confidence=0.8,
                 matched_value=m.group(0),
                 recommendation="Never transmit full National Insurance numbers; tokenize them.",
+            ))
+
+        for name in full_names(text):
+            matches.append(self._match(
+                data_type="person_name", severity=Severity.MEDIUM, confidence=0.5,
+                matched_value=name,
+                recommendation="Minimize full names passed between agents; prefer references.",
             ))
 
         for m in NAME_RE.finditer(text):

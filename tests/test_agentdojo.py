@@ -201,11 +201,12 @@ def test_most_of_the_pack_would_not_block_a_gate_without_its_ground_truth():
     """Why the canaries ship: the regex tier alone lets real exfiltrations through.
 
     Weaker than PrivacyLens — these payloads do contain some pattern-shaped PII
-    — but a fifth still score a clean Pass, and roughly two thirds land at or
-    above "Conditional pass", which no CI gate blocks on.
+    — and weaker than it was: prose name detection (0.16.0) took clean Passes
+    from 20 to 7 and unblocked runs from 64 to 45. Still, 45 real exfiltrations
+    of 100 land at or above "Conditional pass", which no CI gate blocks on.
     """
     runner = AgentLeakRunner()
     verdicts = [runner.analyze(t).to_dict()["verdict"] for _m, t in expand_pack(PACK_ID)]
     unblocked = verdicts.count("Pass") + verdicts.count("Conditional pass")
-    assert verdicts.count("Pass") >= 10
-    assert unblocked > len(verdicts) // 2
+    assert verdicts.count("Pass") >= 5
+    assert unblocked >= 40

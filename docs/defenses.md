@@ -20,6 +20,7 @@ Every example below is the real output for `SSN: 412-55-9087`:
 | `hash` | `1793fe1ffccd611f` (SHA-256, first 16 hex chars) |
 | `category` | `[PII: SSN]` |
 | `remove` | *(empty — removed entirely)* |
+| `token` | `[[SSN:3f9a1c2e40]]` — the same keyed pseudonym for the same value (`AGENTLEAK_TOKEN_KEY` keeps it stable across processes) |
 
 ### What is removed
 

@@ -61,6 +61,40 @@ def purpose_of(finding: Any) -> str:
     return str(metadata.get("purpose") or "").strip()
 
 
+from .transforms import CREDENTIAL_TYPES  # noqa: E402
+
+GROUP_PREFIX = "group:"
+
+# Data-type groups every policy can use without defining them. A rule that must
+# cover every credential used to list ten types, and missed the eleventh the
+# day a detector added it; `group:credentials` follows the detectors.
+BUILTIN_TYPE_GROUPS: dict[str, tuple[str, ...]] = {
+    "credentials": (*sorted(CREDENTIAL_TYPES), "secret_assignment"),
+    "health": ("health_condition", "medication", "health_identifier"),
+    "financial": (
+        "credit_card", "iban", "account_number", "account_balance", "income",
+        "loan_amount", "credit_score",
+    ),
+    "government_ids": ("ssn", "sin", "national_insurance_number", "health_identifier"),
+    "contact": ("email", "phone_number", "address"),
+}
+
+
+def _expand(values: tuple[str, ...], groups: dict[str, tuple[str, ...]], facet: str) -> tuple[str, ...]:
+    """Replace every ``group:<name>`` in a facet by the group's members."""
+    out: list[str] = []
+    for value in values:
+        if not value.startswith(GROUP_PREFIX):
+            out.append(value)
+            continue
+        name = value[len(GROUP_PREFIX):]
+        if name not in groups:
+            known = ", ".join(sorted(groups)) or "none defined"
+            raise ValueError(f"unknown group {value!r} in {facet!r} (known: {known})")
+        out.extend(groups[name])
+    return tuple(dict.fromkeys(out))
+
+
 def _as_tuple(value: Any) -> tuple[str, ...]:
     """Accept a scalar, a list, or nothing, and normalise to a tuple."""
     if value is None:
@@ -96,9 +130,14 @@ class FlowRule:
     purposes: tuple[str, ...] = ()
     allow: bool = True
     description: str = ""
+    #: Where the value first entered the run. A rule with an origin judges the
+    #: flow by its source, however many agents it passed through on the way:
+    #: "health data from ehr_database never reaches analytics" holds whether
+    #: the diagnosis went there directly or through a planner and a summariser.
+    origins: tuple[str, ...] = ()
 
     @classmethod
-    def from_mapping(cls, raw: Any) -> FlowRule:
+    def from_mapping(cls, raw: Any, groups: dict[str, Any] | None = None) -> FlowRule:
         """Build a rule from configuration.
 
         ``to``/``from``/``for`` read the way the sentence does — "sin to
@@ -107,7 +146,11 @@ class FlowRule:
         """
         if not isinstance(raw, dict):
             raise ValueError(f"a flow rule must be a mapping, got {type(raw).__name__}")
-        data_types = _as_tuple(raw.get("data_type") or raw.get("data_types"))
+        node_groups = {str(k): _as_tuple(v) for k, v in (groups or {}).items()}
+        type_groups = {**BUILTIN_TYPE_GROUPS, **node_groups}
+        data_types = _expand(
+            _as_tuple(raw.get("data_type") or raw.get("data_types")), type_groups, "data_type",
+        )
         if not data_types:
             raise ValueError("a flow rule must name at least one data_type")
         allow = raw.get("allow")
@@ -115,20 +158,24 @@ class FlowRule:
             allow = not bool(raw.get("deny"))
         return cls(
             data_types=data_types,
-            senders=_as_tuple(raw.get("from") or raw.get("senders")),
-            recipients=_as_tuple(raw.get("to") or raw.get("recipients")),
+            senders=_expand(_as_tuple(raw.get("from") or raw.get("senders")), node_groups, "from"),
+            recipients=_expand(_as_tuple(raw.get("to") or raw.get("recipients")), node_groups, "to"),
             purposes=_as_tuple(raw.get("for") or raw.get("purposes")),
             allow=bool(allow),
             description=str(raw.get("description") or "").strip(),
+            origins=_expand(_as_tuple(raw.get("origin") or raw.get("origins")), node_groups, "origin"),
         )
 
     def governs(self, data_type: str) -> bool:
         """Does this rule have anything to say about this data type?"""
         return _matches(self.data_types, data_type)
 
-    def matches(self, *, data_type: str, sender: str, recipient: str, purpose: str) -> bool:
+    def matches(
+        self, *, data_type: str, sender: str, recipient: str, purpose: str, origin: str = "",
+    ) -> bool:
         return (
-            _matches(self.data_types, data_type)
+            _matches(self.origins, origin)
+            and _matches(self.data_types, data_type)
             and _matches(self.senders, sender)
             and _matches(self.recipients, recipient)
             and _matches(self.purposes, purpose)
@@ -138,6 +185,8 @@ class FlowRule:
         if self.description:
             return self.description
         parts = [f"{'allow' if self.allow else 'deny'} {'/'.join(self.data_types)}"]
+        if self.origins:
+            parts.append(f"originating at {'/'.join(self.origins)}")
         if self.senders:
             parts.append(f"from {'/'.join(self.senders)}")
         if self.recipients:
@@ -159,6 +208,8 @@ class FlowDecision:
     permitted: bool
     reason: str
     rule: str = ""
+    origin: str = ""
+    path: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -170,6 +221,8 @@ class FlowDecision:
             "permitted": self.permitted,
             "reason": self.reason,
             "rule": self.rule,
+            "origin": self.origin,
+            "path": list(self.path),
         }
 
     def describe(self) -> str:
@@ -178,6 +231,8 @@ class FlowDecision:
             flow += f" for {self.purpose}"
         else:
             flow += " with no declared purpose"
+        if len(self.path) > 2:
+            flow += f" (via {' → '.join(self.path)})"
         return f"{flow} — {self.reason}"
 
 
@@ -222,12 +277,15 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
         sender = str(getattr(finding, "source", "") or "")
         recipient = str(getattr(finding, "target", "") or "")
         purpose = purpose_of(finding)
+        metadata = getattr(finding, "metadata", None) or {}
         context = {
             "data_type": data_type,
             "sender": sender,
             "recipient": recipient,
             "purpose": purpose,
+            "origin": str(metadata.get("origin") or ""),
         }
+        path = tuple(metadata.get("path") or ())
 
         # A deny is a statement about a flow that must not happen, so it is
         # checked first and beats any permission granted elsewhere.
@@ -238,6 +296,7 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
                 permitted=False,
                 reason=f"forbidden by rule: {denied.describe()}",
                 rule=denied.describe(),
+                path=path,
                 **context,
             ))
             continue
@@ -254,6 +313,7 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
                 permitted=True,
                 reason=f"permitted by rule: {permitted.describe()}",
                 rule=permitted.describe(),
+                path=path,
                 **context,
             ))
             continue
@@ -267,16 +327,21 @@ def evaluate_flows(rules: Sequence[FlowRule], findings: Iterable[Any]) -> FlowEv
                 f"no rule permits this flow, and {data_type} is governed by "
                 f"{len(governing_allows)} allow rule(s).{detail}"
             ),
+            path=path,
             **context,
         ))
 
     return evaluation
 
 
-def parse_flow_rules(raw: Any) -> tuple[FlowRule, ...]:
-    """Build rules from the ``flows:`` block of a configuration."""
+def parse_flow_rules(raw: Any, groups: dict[str, Any] | None = None) -> tuple[FlowRule, ...]:
+    """Build rules from the ``flows:`` block of a configuration.
+
+    ``groups`` maps a name to its members, for ``to: group:third-parties`` and
+    the like; the built-in data-type groups need no definition.
+    """
     if not raw:
         return ()
     if isinstance(raw, dict):
         raw = [raw]
-    return tuple(FlowRule.from_mapping(item) for item in raw)
+    return tuple(FlowRule.from_mapping(item, groups) for item in raw)
