@@ -83,6 +83,9 @@ class McpProxy:
         verbose: bool = False,
         inspect_responses: bool = False,
         agent: str = "mcp-client",
+        pins: Any = None,
+        block_changed_tools: bool = False,
+        repin: bool = False,
     ) -> None:
         if not command:
             raise ValueError("a proxy needs a server command to forward to")
@@ -99,6 +102,13 @@ class McpProxy:
         # as the flow it is: from this server, to the agent, for that purpose.
         self._pending: dict[Any, tuple[str, str]] = {}
         self._lock = threading.Lock()
+        # Tool pinning: `tools/list` ids in flight, and tools withheld because
+        # they changed after they were pinned.
+        self.pins = pins
+        self.block_changed_tools = block_changed_tools
+        self.repin = repin
+        self._pending_lists: set[Any] = set()
+        self._withheld: set[str] = set()
 
     # ------------------------------------------------------------------
     def _note(self, message: str) -> None:
@@ -140,11 +150,25 @@ class McpProxy:
         Returns ``(forward, reply)``: the message to send to the server, and a
         message to send straight back to the client. Exactly one is not None.
         """
+        if message.get("method") == "tools/list" and self.pins is not None and "id" in message:
+            with self._lock:
+                self._pending_lists.add(message["id"])
         if message.get("method") != "tools/call":
             return message, None
 
         params = message.get("params") or {}
         tool = str(params.get("name") or "")
+        if tool in self._withheld:
+            self.blocked += 1
+            self._note(f"BLOCK {tool}: its definition changed since it was pinned")
+            return None, {
+                "jsonrpc": "2.0", "id": message.get("id"),
+                "result": {"isError": True, "content": [{"type": "text", "text": (
+                    f"Blocked by AgentLeak: the tool {tool!r} changed since it was first seen "
+                    "(its description or input schema is different). Nothing was sent. "
+                    "Review the change, then accept it with `agentleak proxy --repin`."
+                )}]},
+            }
         arguments = params.get("arguments")
         meta = params.get("_meta") or {}
         purpose = str(meta.get("purpose") or meta.get("agentleak/purpose") or "")
@@ -189,6 +213,11 @@ class McpProxy:
         """
         with self._lock:
             pending = self._pending.pop(message.get("id"), None) if "id" in message else None
+            is_list = "id" in message and message.get("id") in self._pending_lists
+            if is_list:
+                self._pending_lists.discard(message.get("id"))
+        if is_list and isinstance(message.get("result"), dict):
+            return self._check_tools(message)
         if pending is None or "result" not in message:
             return self._restore(message)
 
@@ -220,6 +249,27 @@ class McpProxy:
                 message = {**message, "result": decision.arguments}
         return self._restore(message)
 
+    def _check_tools(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Compare a ``tools/list`` result with the pins, and act on changes."""
+        tools = [t for t in (message["result"].get("tools") or []) if isinstance(t, dict)]
+        report = self.pins.check(self.recipient, tools, repin=self.repin)
+        for name in report.changed:
+            self._note(f"TOOL CHANGED {name}: its definition differs from the pinned one")
+            if self.gateway.log is not None:
+                self.gateway.log.append(
+                    action="tool_changed", tool=f"{self.recipient}/{name}",
+                    recipient=self.recipient, agent=self.agent,
+                    reason="description or input schema changed since first seen",
+                    metadata={"direction": "response", "withheld": self.block_changed_tools},
+                )
+        if report.new:
+            self._note(f"pinned {len(report.new)} new tool(s) from {self.recipient}")
+        if self.block_changed_tools and report.changed:
+            self._withheld = set(report.changed)
+            kept = [t for t in tools if t.get("name") not in self._withheld]
+            message = {**message, "result": {**message["result"], "tools": kept}}
+        return message
+
     def _restore(self, message: dict[str, Any]) -> dict[str, Any]:
         tokenizer = self.gateway.sanitizer.tokenizer
         if tokenizer is None or len(tokenizer) == 0:
@@ -229,7 +279,11 @@ class McpProxy:
 
     @property
     def _rewrites_responses(self) -> bool:
-        return self.inspect_responses or self.gateway.sanitizer.tokenizer is not None
+        return (
+            self.inspect_responses
+            or self.gateway.sanitizer.tokenizer is not None
+            or self.pins is not None
+        )
 
     # ------------------------------------------------------------------
     def run(self, stdin: TextIO | None = None, stdout: TextIO | None = None) -> int:
@@ -318,6 +372,9 @@ def run_proxy(
     agent: str = "mcp-client",
     groups: dict[str, Any] | None = None,
     sign_key: str | None = None,
+    pins_path: str | None = None,
+    block_changed_tools: bool = False,
+    repin: bool = False,
 ) -> int:
     gateway = Gateway(
         flows=flows,
@@ -328,7 +385,13 @@ def run_proxy(
         agent=agent,
         redaction_style=style,
     )
+    pins = None
+    if pins_path:
+        from .core.toolpins import ToolPins
+
+        pins = ToolPins(pins_path)
     return McpProxy(
         command, gateway=gateway, recipient=recipient, verbose=verbose,
         inspect_responses=inspect_responses, agent=agent,
+        pins=pins, block_changed_tools=block_changed_tools, repin=repin,
     ).run()
