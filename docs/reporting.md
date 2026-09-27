@@ -56,3 +56,18 @@ agentleak schema analysis-report
 ```
 
 Pin the schema version when reports are consumed by long-lived automation.
+
+## Utility beside privacy
+
+An agent that refuses everything leaks nothing and scores 100/100. When the
+caller knows whether the task was accomplished, it can say so on the trace
+(`"task_success": true`, or `Trace(task_success=...)`), and the report gains a
+`utility` block beside the score — never inside it:
+
+```json
+"utility": {"task_success": false, "leaked": false, "quadrant": "safe_by_failing"}
+```
+
+The four quadrants are `useful_and_safe`, `useful_but_leaky`,
+`safe_by_failing` and `failed_and_leaky`. AgentLeak does not judge task
+success itself; only the harness that set the task can.

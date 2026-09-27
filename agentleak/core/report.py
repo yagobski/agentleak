@@ -193,6 +193,8 @@ class AnalysisResult:
     # genuinely leaked in this trace and AgentRisk already counts it. What this
     # adds is whose it was, which is a different claim from how severe it is.
     subject_evaluation: Any = None
+    #: The trace's own task_success, when the caller declared one.
+    task_success: bool | None = None
 
     # -- convenience accessors (used by the SDK and reporters) -----------
     @property
@@ -287,6 +289,20 @@ class AnalysisResult:
             })
         return hints
 
+    def utility(self) -> dict[str, Any]:
+        """Privacy and task outcome together: one axis alone flatters.
+
+        A run that leaked nothing because it did nothing is not the same
+        result as one that did the job and leaked nothing, and a privacy
+        score cannot tell them apart. Reported beside the score, never in it.
+        """
+        leaked = self.score.agentrisk.leaked_count > 0
+        if self.task_success:
+            quadrant = "useful_but_leaky" if leaked else "useful_and_safe"
+        else:
+            quadrant = "failed_and_leaky" if leaked else "safe_by_failing"
+        return {"task_success": bool(self.task_success), "leaked": leaked, "quadrant": quadrant}
+
     # -- serialization ---------------------------------------------------
     def to_dict(self) -> dict[str, Any]:
         agentrisk = self.score.agentrisk.to_dict()
@@ -317,6 +333,7 @@ class AnalysisResult:
             },
             "warnings": list(self.warnings),
             "privacy_policy": self.policy_evaluation.to_dict(),
+            **({"utility": self.utility()} if self.task_success is not None else {}),
             **(
                 {"cross_session": self.subject_evaluation.to_dict()}
                 if self.subject_evaluation is not None

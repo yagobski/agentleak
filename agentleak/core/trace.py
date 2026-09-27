@@ -116,6 +116,10 @@ class Trace(BaseModel):
     #: may override this via ``metadata["subject"]`` when one run legitimately
     #: touches several people's records.
     subject: str = ""
+    #: Did the agent accomplish its task? Optional, and only the caller can
+    #: know. Without it, an agent that refuses everything has a perfect privacy
+    #: score; with it, the report can tell "safe" from "safe by being useless".
+    task_success: bool | None = None
     timestamp: datetime = Field(default_factory=_utcnow)
     events: list[Event] = Field(default_factory=list)
 
