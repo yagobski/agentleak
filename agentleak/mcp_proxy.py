@@ -81,6 +81,8 @@ class McpProxy:
         gateway: Gateway,
         recipient: str = "",
         verbose: bool = False,
+        inspect_responses: bool = False,
+        agent: str = "mcp-client",
     ) -> None:
         if not command:
             raise ValueError("a proxy needs a server command to forward to")
@@ -88,9 +90,15 @@ class McpProxy:
         self.gateway = gateway
         self.recipient = recipient or _server_name(command)
         self.verbose = verbose
+        self.inspect_responses = inspect_responses
+        self.agent = agent
         self.blocked = 0
         self.redacted = 0
         self.allowed = 0
+        # tools/call ids in flight -> (tool, purpose), so a result can be judged
+        # as the flow it is: from this server, to the agent, for that purpose.
+        self._pending: dict[Any, tuple[str, str]] = {}
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     def _note(self, message: str) -> None:
@@ -147,6 +155,9 @@ class McpProxy:
             recipient=self.recipient,
             purpose=purpose,
         )
+        if decision.action != Action.BLOCK and "id" in message:
+            with self._lock:
+                self._pending[message["id"]] = (tool, purpose)
 
         if decision.action == Action.BLOCK:
             self.blocked += 1
@@ -162,6 +173,63 @@ class McpProxy:
 
         self.allowed += 1
         return message, None
+
+    # ------------------------------------------------------------------
+    def handle_response(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Judge one server message on its way back to the agent.
+
+        Only results of a ``tools/call`` this proxy forwarded are touched, and
+        only when response inspection is on: a result carries data *into* the
+        agent's context, which is where minimisation has to happen, but turning
+        it on changes what an existing policy means (an ``allow`` for ``sin`` to
+        a KYC server says nothing about the SIN it sends back), so it is opt-in.
+
+        Tokens this proxy issued are put back last. They stand for values the
+        agent itself sent, so they are not new data flowing to it.
+        """
+        with self._lock:
+            pending = self._pending.pop(message.get("id"), None) if "id" in message else None
+        if pending is None or "result" not in message:
+            return self._restore(message)
+
+        tool, purpose = pending
+        if self.inspect_responses:
+            result = message["result"]
+            decision = self.gateway.check(
+                result,
+                tool=f"{self.recipient}/{tool}" if tool else self.recipient,
+                recipient=self.agent,
+                sender=self.recipient,
+                purpose=purpose,
+                direction="response",
+            )
+            if decision.action == Action.BLOCK:
+                self.blocked += 1
+                self._note(f"WITHHOLD {tool} result: {decision.reason}")
+                message = {**message, "result": {
+                    "isError": True,
+                    "content": [{"type": "text", "text": (
+                        "The tool ran, but AgentLeak withheld its result under the "
+                        f"privacy policy: {decision.reason}"
+                    )}],
+                    "_meta": {"agentleak": decision.to_dict()},
+                }}
+            elif decision.action == Action.REDACT:
+                self.redacted += 1
+                self._note(f"REDACT {tool} result: {decision.reason}")
+                message = {**message, "result": decision.arguments}
+        return self._restore(message)
+
+    def _restore(self, message: dict[str, Any]) -> dict[str, Any]:
+        tokenizer = self.gateway.sanitizer.tokenizer
+        if tokenizer is None or len(tokenizer) == 0:
+            return message
+        restored = tokenizer.restore_obj(message)
+        return restored if isinstance(restored, dict) else message
+
+    @property
+    def _rewrites_responses(self) -> bool:
+        return self.inspect_responses or self.gateway.sanitizer.tokenizer is not None
 
     # ------------------------------------------------------------------
     def run(self, stdin: TextIO | None = None, stdout: TextIO | None = None) -> int:
@@ -181,11 +249,18 @@ class McpProxy:
         self._note(f"proxying {' '.join(self.command)} as recipient '{self.recipient}'")
 
         def pump_server_to_client() -> None:
-            # Server -> client is pure passthrough. Responses carry data coming
-            # *in*, which the analysis pipeline scores; rewriting them here
-            # would corrupt results the agent is waiting on.
+            # Server -> client passes through untouched unless responses are
+            # inspected or tokens need restoring; even then only messages that
+            # parse are rewritten, and the rest cross byte for byte.
             try:
                 for line in server.stdout:  # type: ignore[union-attr]
+                    if self._rewrites_responses and line.strip():
+                        try:
+                            message = json.loads(line)
+                        except json.JSONDecodeError:
+                            message = None
+                        if isinstance(message, dict):
+                            line = json.dumps(self.handle_response(message)) + "\n"
                     stdout.write(line)
                     stdout.flush()
             except (BrokenPipeError, ValueError):
@@ -238,13 +313,18 @@ def run_proxy(
     recipient: str = "",
     block_on_violation: bool = False,
     verbose: bool = False,
+    inspect_responses: bool = False,
+    style: str = "placeholder",
+    agent: str = "mcp-client",
 ) -> int:
     gateway = Gateway(
         flows=flows,
         evidence=evidence,
         block_on_violation=block_on_violation,
-        agent="mcp-client",
+        agent=agent,
+        redaction_style=style,
     )
     return McpProxy(
-        command, gateway=gateway, recipient=recipient, verbose=verbose
+        command, gateway=gateway, recipient=recipient, verbose=verbose,
+        inspect_responses=inspect_responses, agent=agent,
     ).run()

@@ -61,6 +61,9 @@ class GatewayDecision:
     tool: str = ""
     recipient: str = ""
     purpose: str = ""
+    # "request" for a call on its way out, "response" for its result on the way
+    # back to the agent.
+    direction: str = "request"
 
     @property
     def blocked(self) -> bool:
@@ -79,6 +82,7 @@ class GatewayDecision:
             "tool": self.tool,
             "recipient": self.recipient,
             "purpose": self.purpose,
+            "direction": self.direction,
         }
 
 
@@ -134,7 +138,9 @@ class Gateway:
         self.log = EvidenceLog(evidence) if evidence else None
 
     # ------------------------------------------------------------------
-    def _findings(self, arguments: Any, *, recipient: str, purpose: str) -> list[Finding]:
+    def _findings(
+        self, arguments: Any, *, recipient: str, purpose: str, sender: str = "",
+    ) -> list[Finding]:
         """Detector hits over the proposed arguments, shaped as findings so the
         flow rules can judge them with no special case."""
         findings: list[Finding] = []
@@ -152,7 +158,7 @@ class Gateway:
                     matched_value=value,
                     redacted_value=value,
                     detector="gateway",
-                    source=self.agent or "agent",
+                    source=sender or self.agent or "agent",
                     target=recipient,
                     metadata={"purpose": purpose} if purpose else {},
                 ))
@@ -166,16 +172,22 @@ class Gateway:
         tool: str = "",
         recipient: str = "",
         purpose: str = "",
+        sender: str = "",
+        direction: str = "request",
     ) -> GatewayDecision:
-        """Judge one proposed tool call. Emits nothing; returns the decision."""
-        findings = self._findings(arguments, recipient=recipient, purpose=purpose)
+        """Judge one proposed tool call. Emits nothing; returns the decision.
+
+        With ``direction="response"`` the same rules judge a tool's result on
+        its way back: ``sender`` is the server, ``recipient`` the agent.
+        """
+        findings = self._findings(arguments, recipient=recipient, purpose=purpose, sender=sender)
         data_types = tuple(sorted({f.data_type for f in findings}))
 
         if not findings:
             return self._record(GatewayDecision(
                 action=Action.ALLOW, arguments=arguments,
                 reason="no sensitive data detected in the arguments",
-                tool=tool, recipient=recipient, purpose=purpose,
+                tool=tool, recipient=recipient, purpose=purpose, direction=direction,
             ))
 
         evaluation = evaluate_flows(self.rules, findings)
@@ -187,7 +199,7 @@ class Gateway:
             )
             return self._record(GatewayDecision(
                 action=Action.ALLOW, arguments=arguments, reason=reason,
-                data_types=data_types, tool=tool, recipient=recipient, purpose=purpose,
+                data_types=data_types, tool=tool, recipient=recipient, purpose=purpose, direction=direction,
             ))
 
         violations = [d.to_dict() for d in breaches]
@@ -199,7 +211,7 @@ class Gateway:
             return self._record(GatewayDecision(
                 action=Action.BLOCK, arguments=None, reason=first.describe(),
                 data_types=data_types, violations=violations,
-                tool=tool, recipient=recipient, purpose=purpose,
+                tool=tool, recipient=recipient, purpose=purpose, direction=direction,
             ))
 
         offending = {d.data_type for d in breaches}
@@ -211,7 +223,7 @@ class Gateway:
                 f"{', '.join(sorted(offending))} removed before emission"
             ),
             data_types=data_types, violations=violations,
-            tool=tool, recipient=recipient, purpose=purpose,
+            tool=tool, recipient=recipient, purpose=purpose, direction=direction,
         ))
 
     # ------------------------------------------------------------------
@@ -226,9 +238,7 @@ class Gateway:
             out = value
             for start, end, matched, data_type in reversed(self.sanitizer._spans(value)):  # noqa: SLF001
                 if data_type.lower() in data_types:
-                    from .sanitizer import _redact_value  # noqa: PLC0415
-
-                    out = out[:start] + _redact_value(matched, data_type, self.sanitizer.style) + out[end:]
+                    out = out[:start] + self.sanitizer.redact_value(matched, data_type) + out[end:]
             return out
         if isinstance(value, dict):
             return {k: self._redact(v, data_types) for k, v in value.items()}
@@ -249,7 +259,7 @@ class Gateway:
                 reason=decision.reason,
                 run_id=self.run_id,
                 agent=self.agent,
-                metadata={"violations": len(decision.violations)},
+                metadata={"violations": len(decision.violations), "direction": decision.direction},
             )
         return decision
 
