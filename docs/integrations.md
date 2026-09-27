@@ -261,3 +261,60 @@ rec.final_output("All set!")
 
 result = AgentLeakRunner().analyze(rec.trace)
 ```
+
+## 5. On the traffic path: model gateways and eval harnesses
+
+The adapters above record what an agent did. These three put AgentLeak's flow
+rules where the traffic already goes.
+
+### OpenAI-compatible LLM proxy
+
+```bash
+agentleak llm-proxy --upstream https://api.openai.com --config agentleak.yaml
+export OPENAI_BASE_URL=http://127.0.0.1:8788/v1     # the agent is unchanged
+```
+
+Each request's `messages` / `input` / `prompt` is judged with the provider as
+recipient: permitted content passes, refused values are redacted (or tokenized
+with `--style token`, and restored in the answer), and a flow a `deny` rule
+names is refused with an OpenAI-shaped 403 — the official `openai` client
+raises it as `PermissionDeniedError`. `--inspect-responses` judges non-streamed
+answers too; a streamed answer is relayed unjudged (its request is still
+judged). Decisions go to the evidence log, signed with `--sign-key`. Verified
+against the official `openai` 3.19.2 client.
+
+### LiteLLM guardrail
+
+```yaml
+# LiteLLM proxy config.yaml
+guardrails:
+  - guardrail_name: agentleak
+    litellm_params:
+      guardrail: agentleak.integrations.litellm_guardrail.AgentLeakGuardrail
+      mode: pre_call
+      default_on: true
+```
+
+Configured through `AGENTLEAK_CONFIG`, `AGENTLEAK_EVIDENCE`, `AGENTLEAK_STYLE`,
+`AGENTLEAK_RECIPIENT` and `AGENTLEAK_AGENT`. A denied flow raises, which LiteLLM
+returns to the caller as an error; a refused value is redacted in the request.
+It subclasses LiteLLM's `CustomGuardrail` and is tested against it; the
+end-to-end LiteLLM proxy wiring follows LiteLLM's custom-guardrail docs.
+
+### promptfoo assertion
+
+```yaml
+tests:
+  - vars: {question: "..."}
+    assert:
+      - type: python
+        value: file://agentleak_assert.py
+        config: {max_risk_index: 0.2, fail_on_level: 3}
+```
+
+with `agentleak_assert.py` containing one line:
+`from agentleak.integrations.promptfoo_assert import get_assert`. When the
+provider returns an AgentLeak trace (JSON with `events`), the whole run is
+scored (`1 - risk_index`); otherwise the output text is checked. promptfoo asks
+whether the agent can be broken, AgentLeak where the data went — one eval, both
+answers. Verified with `npx promptfoo@0.123.1 eval`.
