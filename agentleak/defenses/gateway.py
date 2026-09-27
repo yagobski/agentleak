@@ -125,6 +125,7 @@ class Gateway:
         block_on_violation: bool = False,
         detectors: list[Any] | None = None,
         groups: dict[str, Any] | None = None,
+        sign_key: str | None = None,
         agent: str = "",
         run_id: str = "",
     ) -> None:
@@ -136,7 +137,12 @@ class Gateway:
         self.block_on_violation = block_on_violation
         self.agent = agent
         self.run_id = run_id
-        self.log = EvidenceLog(evidence) if evidence else None
+        signer = None
+        if sign_key:
+            from ..core.signing import Signer
+
+            signer = Signer(sign_key)
+        self.log = EvidenceLog(evidence, signer=signer) if evidence else None
 
     # ------------------------------------------------------------------
     def _findings(

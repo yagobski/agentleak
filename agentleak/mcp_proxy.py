@@ -317,10 +317,12 @@ def run_proxy(
     style: str = "placeholder",
     agent: str = "mcp-client",
     groups: dict[str, Any] | None = None,
+    sign_key: str | None = None,
 ) -> int:
     gateway = Gateway(
         flows=flows,
         groups=groups,
+        sign_key=sign_key,
         evidence=evidence,
         block_on_violation=block_on_violation,
         agent=agent,
