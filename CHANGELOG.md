@@ -6,6 +6,48 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-27
+
+The rest of the competitive backlog that can be built and verified here.
+
+### Added
+
+- **`agentleak llm-proxy`**, an OpenAI-compatible proxy. The model is the other
+  place data leaves an agent. Each request's `messages`, `input` or `prompt` is
+  judged under the same flow rules as `agentleak proxy`, with the provider as
+  recipient:
+  - Permitted content passes unchanged.
+  - Refused values are redacted, or tokenized and restored in the answer.
+  - A denied flow gets an OpenAI-shaped 403, which the official `openai`
+    client raises as `PermissionDeniedError`.
+
+  Non-streamed answers can be judged too. Streams are relayed with the request
+  still judged. Stdlib only, loopback by default. Verified with the `openai`
+  3.19.2 client.
+- **LiteLLM guardrail** (`agentleak.integrations.litellm_guardrail`). It
+  subclasses LiteLLM's `CustomGuardrail`: the request is judged before the call
+  (redacted in place, or refused by raising), and tokens are restored after it.
+  It is configured through `AGENTLEAK_*` environment variables and tested
+  against LiteLLM itself.
+- **promptfoo assertion** (`agentleak.integrations.promptfoo_assert`).
+  `get_assert` scores an AgentLeak trace (`1 - risk_index`) or checks the output
+  text, so one promptfoo eval answers both "can the agent be broken" and "where
+  did the data go". Verified with `npx promptfoo@0.123.1 eval`.
+- **Utility beside privacy.** `Trace.task_success` (optional) adds a `utility`
+  block to the report: `useful_and_safe`, `useful_but_leaky`,
+  `safe_by_failing` or `failed_and_leaky`. An agent that refuses everything no
+  longer reads as a plain 100/100. The block sits beside the score and never
+  changes it.
+
+### Not done, and why
+
+- **MAGPIE (MIT) and PiSAs (Apache-2.0) packs.** Both licences allow bundling,
+  but neither dataset contains a recording of an agent. They are setups for
+  live multi-agent simulation. A pack needs those runs to be made with real
+  models; building one without them would mean inventing the leaks.
+- **Portkey.** Its guardrails are webhooks. `llm-proxy` can sit in front of
+  Portkey today, but a native integration has not been built.
+
 ## [0.16.0] - 2026-09-27
 
 The first half of the backlog in the competitive analysis: the four P0 items and

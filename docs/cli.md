@@ -21,6 +21,7 @@ version's complete help output.
 | `serve` | Start the local web interface; `--local` skips sign-in (loopback only). |
 | `mcp` | Serve AgentLeak to coding agents over MCP (`pip install "agentleak[mcp]"`). |
 | `proxy -- CMD…` | Guard an MCP server: allow, redact or block each tool call before it is sent. |
+| `llm-proxy --upstream URL` | OpenAI-compatible proxy: judge what the agent sends to its model under the same flow rules. |
 | `evidence [PATH]` | Verify and summarize the gateway's hash-chained decision log. |
 | `subjects` | Inspect the cross-session subject ledger, or erase one subject with `--forget`. |
 | `admin reset-password` / `admin list-users` | Operator recovery for a self-hosted platform. |
@@ -136,6 +137,20 @@ agentleak evidence evidence.jsonl --public-key keys/evidence.key.pub
 
 Tool definitions are pinned on first use in `.agentleak/mcp-pins.json` (`--pins`
 to move it, `--pins ''` to disable, `--repin` to accept a change).
+
+## LLM proxy
+
+```bash
+agentleak llm-proxy --upstream https://api.openai.com --config agentleak.yaml
+OPENAI_BASE_URL=http://127.0.0.1:8788/v1 python my_agent.py
+```
+
+An OpenAI-compatible proxy that judges `messages` / `input` / `prompt` under
+the same flow rules as `proxy`, with the provider as recipient (`--recipient`
+to rename it). Same options as `proxy` for `--block`, `--style token`,
+`--inspect-responses` (non-streamed answers), `--sign-key` and `--evidence`.
+Listens on 127.0.0.1:8788 by default. See
+[docs/integrations.md](integrations.md#openai-compatible-llm-proxy).
 
 ## Subjects
 
