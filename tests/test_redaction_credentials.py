@@ -42,7 +42,7 @@ def test_truncated_pem_still_loses_its_body():
     "text, gone",
     [
         ("postgres://admin:supersecret@db.internal:5432/prod", ["admin", "supersecret"]),
-        ("mongodb+srv://user:pass123@cluster0.mongodb.net/db", ["user:", "pass123"]),
+        ("mongodb+srv://user:pass123@example.com/db", ["user:", "pass123"]),
         ("git clone https://bot:tok3nvalue@github.com/org/repo.git", ["bot:", "tok3nvalue"]),
     ],
 )
