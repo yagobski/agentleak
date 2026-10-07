@@ -24,4 +24,5 @@ All data is fictional.
 ```bash
 python examples/simple_agent.py          # SDK trace builder
 python examples/multiagent_pipeline.py   # generic recorder, multi-agent shape
+python examples/claude_code_transcript.py  # Claude Code sub-agent transcript (JSONL) -> trace
 ```
