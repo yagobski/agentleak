@@ -1,6 +1,6 @@
 # Pack extractors
 
-The scenario packs bundled in `agentleak/scenarios/packs/` are derived from
+The scenario packs bundled in `src/agentleak/scenarios/packs/` are derived from
 public research datasets. These scripts are how they were built — kept in the
 repo so anyone can check what we took, what we changed, and what we dropped.
 
