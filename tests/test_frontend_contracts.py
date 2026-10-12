@@ -12,7 +12,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parents[1] / "src" / "agentleak" / "web" / "frontend" / "src"
+
+# The frontend source is excluded from the sdist (only the built bundle ships).
+pytestmark = pytest.mark.skipif(not ROOT.is_dir(), reason="frontend source not present")
 
 
 def _source(relative: str) -> str:
