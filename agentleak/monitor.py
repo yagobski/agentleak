@@ -21,7 +21,14 @@ the alert compares a rolling window against a baseline.
 
 **Alerting on the change, not the level.** A service that has always sat at 78
 does not need telling every hour. What matters is a *drop*, or a severity that
-was not there before.
+was not there before. Each condition alerts once when it starts and is resolved
+when the window recovers: a drop clears when the window mean is back within the
+threshold, a new severity clears after a full window without it (and is then
+re-armed). ``healthy`` reflects the conditions active *now*, not the history.
+
+Sampling uses a private random generator; pass ``seed`` for a reproducible
+sequence (tests, replay experiments). ``reset()`` starts over, for example after
+a deliberate redeploy.
 
 Everything is local and in-process. No thread, no timer, no network unless the
 surrounding `watch()` was already configured to submit.
@@ -85,6 +92,7 @@ class Monitor:
         floor: float | None = None,
         on_alert: Callable[[Alert], None] | None = None,
         window: int = WINDOW,
+        seed: int | None = None,
     ) -> None:
         if not 0 < sample <= 1:
             raise ValueError("sample must be a fraction between 0 (exclusive) and 1")
@@ -92,20 +100,34 @@ class Monitor:
         self.drop = drop
         self.floor = floor
         self.on_alert = on_alert
-        self._scores: deque[float] = deque(maxlen=window)
+        self.window = window
+        self._random = random.Random(seed)
+        self._lock = threading.Lock()
+        self._clear()
+
+    def _clear(self) -> None:
+        self._scores: deque[float] = deque(maxlen=self.window)
         self._baseline: float | None = None
         self._seen_levels: set[int] = set()
-        self._lock = threading.Lock()
+        # Conditions currently in alert: "score_drop", "floor", "new_critical".
+        self._active: set[str] = set()
+        self._quiet_runs = 0  # consecutive samples without an L3/L4 finding
         self.alerts: list[Alert] = []
+        self.recoveries: list[dict[str, Any]] = []
         self.observed = 0
         self.sampled = 0
+
+    def reset(self) -> None:
+        """Forget the window, baseline, seen severities, alerts and counters."""
+        with self._lock:
+            self._clear()
 
     # -- sampling --------------------------------------------------------
     def should_sample(self) -> bool:
         """Whether to score this run. Counts every run, samples a fraction."""
         with self._lock:
             self.observed += 1
-            take = random.random() < self.sample
+            take = self._random.random() < self.sample
             if take:
                 self.sampled += 1
         return take
@@ -125,12 +147,40 @@ class Monitor:
             samples = len(self._scores)
             current = sum(self._scores) / samples
             baseline = self._baseline
-            # A severity this deployment had never produced before.
+            # A severity this deployment had not produced since it was last
+            # quiet for a full window.
             unseen = levels - self._seen_levels
             self._seen_levels |= levels
+            self._quiet_runs = 0 if levels else self._quiet_runs + 1
 
+            dropped = (
+                samples >= MIN_SAMPLES
+                and baseline is not None
+                and baseline - current >= self.drop
+            )
+            below_floor = (
+                samples >= MIN_SAMPLES and self.floor is not None and current < self.floor
+            )
+
+            # Resolve conditions that no longer hold.
+            resolved: list[str] = []
+            if "score_drop" in self._active and not dropped:
+                resolved.append("score_drop")
+            if "floor" in self._active and not below_floor:
+                resolved.append("floor")
+            if "new_critical" in self._active and self._quiet_runs >= self.window:
+                resolved.append("new_critical")
+                self._seen_levels = set()  # re-arm: the next L3/L4 is news again
+            for kind in resolved:
+                self._active.discard(kind)
+                self.recoveries.append(
+                    {"kind": kind, "current": round(current, 1), "samples": samples,
+                     "at": time.time()}
+                )
+
+            # Raise at most one alert per run, on a condition that just started.
             alert: Alert | None = None
-            if unseen and samples >= 1:
+            if unseen:
                 worst = max(unseen)
                 alert = Alert(
                     kind="new_critical",
@@ -142,7 +192,9 @@ class Monitor:
                     baseline=baseline if baseline is not None else score,
                     samples=samples,
                 )
-            elif samples >= MIN_SAMPLES and baseline is not None and baseline - current >= self.drop:
+                self._active.add("new_critical")
+            elif dropped and "score_drop" not in self._active:
+                assert baseline is not None
                 alert = Alert(
                     kind="score_drop",
                     message=(
@@ -153,7 +205,9 @@ class Monitor:
                     baseline=baseline,
                     samples=samples,
                 )
-            elif samples >= MIN_SAMPLES and self.floor is not None and current < self.floor:
+                self._active.add("score_drop")
+            elif below_floor and "floor" not in self._active:
+                assert self.floor is not None
                 alert = Alert(
                     kind="score_drop",
                     message=f"Privacy score {current:.0f} is below the floor of {self.floor:.0f}.",
@@ -161,6 +215,7 @@ class Monitor:
                     baseline=self.floor,
                     samples=samples,
                 )
+                self._active.add("floor")
 
             # The baseline only ever follows the window once there is a window
             # to follow. Setting it from the first sample would make that run
@@ -168,7 +223,7 @@ class Monitor:
             if samples >= MIN_SAMPLES:
                 if self._baseline is None:
                     self._baseline = current
-                elif alert is None:
+                elif not self._active:
                     # Track improvement, never decay toward a regression: a
                     # baseline that drifts down turns a slow leak invisible.
                     self._baseline = max(self._baseline, current)
@@ -200,5 +255,7 @@ class Monitor:
                 "baseline": None if self._baseline is None else round(self._baseline, 1),
                 "has_trend": samples >= MIN_SAMPLES,
                 "alerts": [a.to_dict() for a in self.alerts[-10:]],
-                "healthy": not self.alerts,
+                "active": sorted(self._active),
+                "recoveries": self.recoveries[-10:],
+                "healthy": not self._active,
             }

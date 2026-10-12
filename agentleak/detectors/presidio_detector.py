@@ -5,8 +5,9 @@
 Requires: ``pip install agentleak[presidio]`` which pulls in
 ``presidio-analyzer`` and ``spacy`` with the ``en_core_web_lg`` model.
 
-When presidio is not installed the detector silently returns no matches so the
-pipeline degrades gracefully to Tier-1 regex only.
+When presidio is not installed, or its analyzer cannot be built, the detector
+returns no matches and records why in ``error``; the runner turns that into a
+degradation warning so a STANDARD/HYBRID run is never mistaken for a full one.
 
 Domain-specific recognizers (20+):
 - PatientIDRecognizer — NAM-like identifiers (``[A-Z]{4}\\d{8}``)
@@ -15,13 +16,21 @@ Domain-specific recognizers (20+):
 - IMEIRecognizer — IMEI device identifiers
 - VINRecognizer — Vehicle Identification Numbers
 - CryptoAddressRecognizer — BTC / ETH wallet addresses
-- BICRecognizer — Bank Identifier Codes
-- CVVRecognizer — Card verification values
+- BICRecognizer — Bank Identifier Codes (case-sensitive, keyword-anchored)
+- CVVRecognizer — Card verification values (keyword-anchored)
 - PINRecognizer — 4–6 digit PINs (keyword-anchored)
 - MACAddressRecognizer — MAC hardware addresses
 - GPSCoordRecognizer — latitude/longitude pairs
 - VRMRecognizer — UK vehicle registration marks
 - CanaryRecognizer — verbatim canary-token matching
+
+Recognizers whose pattern alone matches ordinary text (any 3–6 digit number,
+any 8- or 11-letter word) set ``REQUIRE_CONTEXT``: they only fire when one of
+their context words appears within ``CONTEXT_WINDOW`` characters of the match.
+Class names carry an ``AgentLeak`` prefix because Presidio resolves its own
+predefined recognizers by class name across all ``EntityRecognizer``
+subclasses; a clash (Presidio ships ``AgentLeakMedicalLicenseRecognizer``) made the
+analyzer fail to build depending on set iteration order.
 """
 
 from __future__ import annotations
@@ -89,16 +98,34 @@ if _PRESIDIO_AVAILABLE:
         NAME: str = ""
         PATTERNS: list[tuple[str, float]] = []  # (regex, confidence)
         CONTEXT: list[str] = []
+        # Patterns too generic to stand alone fire only next to a context word.
+        REQUIRE_CONTEXT: bool = False
+        CASE_SENSITIVE: bool = False
+        CONTEXT_WINDOW: int = 40
 
         def __init__(self) -> None:
             super().__init__(
                 supported_entities=[self.NAME],
                 name=f"{self.NAME}Recognizer",
             )
-            self._compiled = [
-                (re.compile(p, re.IGNORECASE), c) for p, c in self.PATTERNS
-            ]
+            flags = 0 if self.CASE_SENSITIVE else re.IGNORECASE
+            self._compiled = [(re.compile(p, flags), c) for p, c in self.PATTERNS]
             self._ctx_words = {w.lower() for w in self.CONTEXT}
+            self._ctx_re = (
+                re.compile(
+                    r"\b(?:" + "|".join(re.escape(w) for w in self.CONTEXT) + r")\b",
+                    re.IGNORECASE,
+                )
+                if self.CONTEXT
+                else None
+            )
+
+        def _context_near(self, text: str, start: int, end: int) -> bool:
+            if self._ctx_re is None:
+                return False
+            lo = max(0, start - self.CONTEXT_WINDOW)
+            hi = min(len(text), end + self.CONTEXT_WINDOW)
+            return self._ctx_re.search(text, lo, hi) is not None
 
         def load(self) -> None:  # required by presidio ABC
             pass
@@ -112,6 +139,10 @@ if _PRESIDIO_AVAILABLE:
             ) else 0.0
             for pattern, base_conf in self._compiled:
                 for m in pattern.finditer(text):
+                    if self.REQUIRE_CONTEXT and not self._context_near(
+                        text, m.start(), m.end()
+                    ):
+                        continue
                     conf = min(1.0, base_conf + ctx_boost)
                     results.append(
                         RecognizerResult(
@@ -123,32 +154,32 @@ if _PRESIDIO_AVAILABLE:
                     )
             return results
 
-    class PatientIDRecognizer(_PatternRecognizer):
+    class AgentLeakPatientIDRecognizer(_PatternRecognizer):
         NAME = "PATIENT_ID"
         PATTERNS = [(r"\b[A-Z]{4}\d{8}\b", 0.85)]
         CONTEXT = ["patient", "mrn", "record", "chart"]
 
-    class MedicalLicenseRecognizer(_PatternRecognizer):
+    class AgentLeakMedicalLicenseRecognizer(_PatternRecognizer):
         NAME = "MEDICAL_LICENSE"
         PATTERNS = [(r"\b[A-Z]{2,3}\d{6,7}\b", 0.80)]
         CONTEXT = ["license", "licence", "physician", "doctor", "prescriber"]
 
-    class InsuranceIDRecognizer(_PatternRecognizer):
+    class AgentLeakInsuranceIDRecognizer(_PatternRecognizer):
         NAME = "INSURANCE_ID"
         PATTERNS = [(r"\b[A-Z]{2,3}\d{8,12}\b", 0.75)]
         CONTEXT = ["insurance", "policy", "member", "subscriber", "coverage"]
 
-    class IMEIRecognizer(_PatternRecognizer):
+    class AgentLeakIMEIRecognizer(_PatternRecognizer):
         NAME = "IMEI"
         PATTERNS = [(r"\b\d{15}\b", 0.70)]
         CONTEXT = ["imei", "device", "serial", "mobile", "handset"]
 
-    class VINRecognizer(_PatternRecognizer):
+    class AgentLeakVINRecognizer(_PatternRecognizer):
         NAME = "VIN"
         PATTERNS = [(r"\b[A-HJ-NPR-Z0-9]{17}\b", 0.80)]
         CONTEXT = ["vin", "vehicle", "chassis", "car", "truck"]
 
-    class CryptoAddressRecognizer(_PatternRecognizer):
+    class AgentLeakCryptoAddressRecognizer(_PatternRecognizer):
         NAME = "CRYPTO"
         PATTERNS = [
             (r"\b(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}\b", 0.85),  # BTC
@@ -156,49 +187,53 @@ if _PRESIDIO_AVAILABLE:
         ]
         CONTEXT = ["wallet", "btc", "bitcoin", "eth", "ethereum", "crypto", "address"]
 
-    class BICRecognizer(_PatternRecognizer):
+    class AgentLeakBICRecognizer(_PatternRecognizer):
         NAME = "BIC"
         PATTERNS = [(r"\b[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?\b", 0.75)]
         CONTEXT = ["bic", "swift", "bank", "transfer", "wire"]
+        REQUIRE_CONTEXT = True
+        CASE_SENSITIVE = True
 
-    class CVVRecognizer(_PatternRecognizer):
+    class AgentLeakCVVRecognizer(_PatternRecognizer):
         NAME = "CVV"
         PATTERNS = [(r"\b\d{3,4}\b", 0.60)]
         CONTEXT = ["cvv", "cvc", "cvn", "security code", "card code"]
+        REQUIRE_CONTEXT = True
 
-    class PINRecognizer(_PatternRecognizer):
+    class AgentLeakPINRecognizer(_PatternRecognizer):
         NAME = "PIN"
         PATTERNS = [(r"\b\d{4,6}\b", 0.55)]
         CONTEXT = ["pin", "passcode", "atm pin", "card pin"]
+        REQUIRE_CONTEXT = True
 
-    class MACAddressRecognizer(_PatternRecognizer):
+    class AgentLeakMACAddressRecognizer(_PatternRecognizer):
         NAME = "MAC_ADDRESS"
         PATTERNS = [(r"\b([0-9a-fA-F]{2}[:\-]){5}[0-9a-fA-F]{2}\b", 0.90)]
         CONTEXT = ["mac", "hardware", "network", "ethernet", "interface"]
 
-    class GPSCoordRecognizer(_PatternRecognizer):
+    class AgentLeakGPSCoordRecognizer(_PatternRecognizer):
         NAME = "GPS_COORD"
         PATTERNS = [(r"(-?\d{1,3}\.\d{4,}),\s*(-?\d{1,3}\.\d{4,})", 0.80)]
         CONTEXT = ["gps", "lat", "lon", "location", "coordinates", "latitude", "longitude"]
 
-    class VRMRecognizer(_PatternRecognizer):
+    class AgentLeakVRMRecognizer(_PatternRecognizer):
         NAME = "VRM"
         PATTERNS = [(r"\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b", 0.80)]
         CONTEXT = ["registration", "plate", "vehicle", "reg", "number plate"]
 
     _CUSTOM_RECOGNIZERS = [
-        PatientIDRecognizer,
-        MedicalLicenseRecognizer,
-        InsuranceIDRecognizer,
-        IMEIRecognizer,
-        VINRecognizer,
-        CryptoAddressRecognizer,
-        BICRecognizer,
-        CVVRecognizer,
-        PINRecognizer,
-        MACAddressRecognizer,
-        GPSCoordRecognizer,
-        VRMRecognizer,
+        AgentLeakPatientIDRecognizer,
+        AgentLeakMedicalLicenseRecognizer,
+        AgentLeakInsuranceIDRecognizer,
+        AgentLeakIMEIRecognizer,
+        AgentLeakVINRecognizer,
+        AgentLeakCryptoAddressRecognizer,
+        AgentLeakBICRecognizer,
+        AgentLeakCVVRecognizer,
+        AgentLeakPINRecognizer,
+        AgentLeakMACAddressRecognizer,
+        AgentLeakGPSCoordRecognizer,
+        AgentLeakVRMRecognizer,
     ]
 
 
@@ -235,11 +270,18 @@ class PresidioDetector(Detector):
         self._available = _PRESIDIO_AVAILABLE
         self._analyzer: Any = None
         self._threshold = score_threshold
+        self.error: str | None = None if _PRESIDIO_AVAILABLE else "presidio-analyzer not installed"
         if self._available:
             try:
                 self._analyzer = _build_analyzer(score_threshold)
-            except Exception:
+            except Exception as exc:
                 self._available = False
+                self.error = f"{exc.__class__.__name__}: {exc}"
+
+    @property
+    def available(self) -> bool:
+        """True when the analyzer is built and :meth:`detect` really runs."""
+        return self._available and self._analyzer is not None
 
     def detect(self, text: str) -> list[RawMatch]:
         if not self._available or self._analyzer is None or not text:

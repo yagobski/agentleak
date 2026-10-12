@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from agentleak import AgentLeakRunner
 from agentleak.integrations.autogen import trace_from_messages
 from agentleak.integrations.crewai import CrewAICallback
@@ -645,3 +647,84 @@ def test_all_adapters_produce_agentrisk_score():
         assert any(f.data_type == "ssn" for f in result.findings), name
 
 
+
+
+def test_otel_attributes_given_as_a_non_dict_mapping_are_read():
+    """Live SDK ReadableSpans expose BoundedAttributes, a Mapping but not a dict."""
+    from types import MappingProxyType
+
+    from agentleak.integrations.otel import trace_from_spans
+
+    class Span:
+        def __init__(self, name, attrs):
+            self.name = name
+            self.attributes = MappingProxyType(attrs)
+
+    trace = trace_from_spans([
+        Span("send_status", {"openinference.span.kind": "TOOL", "tool.name": "send_status",
+                             "agent.name": "researcher", "input.value": "ssn 123-45-6789",
+                             "output.value": "Accepted."}),
+        Span("summarizer", {"openinference.span.kind": "LLM", "agent.name": "summarizer",
+                            "output.value": "Task completed."}),
+    ])
+    assert [e.channel_value for e in trace.events] == ["tool_call", "tool_response", "final_output"]
+    assert trace.events[0].source == "researcher"
+
+
+def test_otel_sdk_readable_spans_produce_events():
+    pytest.importorskip("opentelemetry.sdk")
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from agentleak.integrations.otel import trace_from_spans
+
+    provider = TracerProvider()
+    exporter = InMemorySpanExporter()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    tracer = provider.get_tracer("test")
+    with tracer.start_as_current_span("lookup", attributes={
+        "openinference.span.kind": "TOOL", "tool.name": "lookup", "agent.name": "a",
+        "input.value": "q", "output.value": "r"}):
+        pass
+    trace = trace_from_spans(exporter.get_finished_spans())
+    provider.shutdown()
+    assert [e.channel_value for e in trace.events] == ["tool_call", "tool_response"]
+
+
+def test_autogen_agentchat_messages_keep_speaker_identity():
+    """AgentChat 0.4+ messages name the speaker in ``source``, not ``name``."""
+    trace = trace_from_messages([
+        {"source": "user", "content": "Return only the public status.", "type": "TextMessage"},
+        {"source": "researcher", "content": "client ssn is 123-45-6789", "type": "TextMessage"},
+        {"source": "summarizer", "content": "Task completed.", "type": "TextMessage"},
+    ])
+    assert [(e.channel_value, e.source, e.target) for e in trace.events] == [
+        ("user_input", "user", "researcher"),
+        ("inter_agent_message", "researcher", "summarizer"),
+        ("final_output", "summarizer", "user"),
+    ]
+
+
+def test_langchain_callback_attributes_events_to_graph_nodes():
+    cb = LangChainCallback(run_id="r")
+    cb.on_chain_start({}, {"question": "status?"}, run_id="root", parent_run_id=None)
+    cb.on_tool_start({"name": "lookup"}, "q", run_id="t1", parent_run_id="n1",
+                     metadata={"langgraph_node": "read"})
+    cb.on_tool_end("record ssn 123-45-6789", run_id="t1", parent_run_id="n1")
+    cb.on_chat_model_start({}, [], run_id="l1", parent_run_id="n2",
+                           metadata={"langgraph_node": "finish"})
+
+    class Gen:
+        text = "Task completed."
+
+    class Resp:
+        generations = [[Gen()]]
+
+    cb.on_llm_end(Resp(), run_id="l1", parent_run_id="n2")
+    assert [(e.channel_value, e.source, e.target) for e in cb.trace.events] == [
+        ("user_input", "user", "agent"),
+        ("tool_call", "read", "lookup"),
+        ("tool_response", "lookup", "read"),
+        ("final_output", "finish", "user"),
+    ]

@@ -23,36 +23,51 @@ from typing import Any
 from ..core.trace import Trace
 
 
+def _field(msg: Any, *names: str) -> Any:
+    for name in names:
+        val = msg.get(name) if isinstance(msg, dict) else getattr(msg, name, None)
+        if val not in (None, ""):
+            return val
+    return None
+
+
 def trace_from_messages(
     messages: list[dict[str, Any]] | list[Any],
     *,
     run_id: str = "run",
     agent_name: str = "autogen_agent",
 ) -> Trace:
+    """Map an AutoGen conversation to a trace.
+
+    The speaker is read from ``name`` (classic AutoGen), ``source`` (AgentChat
+    0.4+ messages) or ``role``. A leading message from ``user`` is the user
+    input; each later turn is addressed to the next speaker, and the last turn
+    is the final output.
+    """
     trace = Trace(run_id=run_id, agent_name=agent_name)
     msgs = list(messages)
+    speakers = [str(_field(m, "name", "source", "role") or "agent") for m in msgs]
     for i, msg in enumerate(msgs):
-        if isinstance(msg, dict):
-            name = msg.get("name") or msg.get("role") or "agent"
-            content = msg.get("content", "")
-            tool_calls = msg.get("tool_calls")
-        else:  # object with attributes
-            name = getattr(msg, "name", None) or getattr(msg, "role", "agent")
-            content = getattr(msg, "content", "")
-            tool_calls = getattr(msg, "tool_calls", None)
+        name = speakers[i]
+        content = _field(msg, "content") or ""
+        tool_calls = _field(msg, "tool_calls")
+        nxt = speakers[i + 1] if i + 1 < len(msgs) else "user"
 
         if tool_calls:
             trace.add_event(
-                channel="tool_call", content=tool_calls, source=str(name),
+                channel="tool_call", content=tool_calls, source=name,
                 target="tool", metadata={"origin": "autogen"},
             )
 
+        if i == 0 and name == "user" and len(msgs) > 1:
+            trace.add_event(channel="user_input", content=content, source="user", target=nxt)
+            continue
         is_last = i == len(msgs) - 1
         trace.add_event(
             channel="final_output" if is_last else "inter_agent_message",
-            content=content or "",
-            source=str(name),
-            target="user" if is_last else "agent",
+            content=content,
+            source=name,
+            target="user" if is_last else nxt,
         )
     return trace
 
