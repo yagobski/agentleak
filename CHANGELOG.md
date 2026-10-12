@@ -6,6 +6,10 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+Planned as 0.18.0, the version evaluated in the SoftwareX revision. Release
+date, `CITATION.cff` `date-released` and `.zenodo.json` `publication_date` are
+set when the tag is cut.
+
 ### Added
 
 - **Spanish dates of birth and street addresses** in the PII detector: the
@@ -25,6 +29,42 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   (modulo 97). Grouped forms ("28/12345678/40") match on their own; a bare run
   of twelve digits only next to its label. Part of `group:government_ids`,
   level 4 in AgentRisk. Issue #4.
+- `Monitor.reset()` and a `seed` argument for reproducible sampling.
+
+### Fixed
+
+- **Presidio tier false positives.** The CVV, PIN and BIC recognizers fired on
+  any 3-6 digit number or any 8/11-letter word, because their context words
+  only raised the score. In STANDARD mode this turned ordinary text such as
+  "room 204" or "information" into critical card and account findings and
+  blocked every benign run. They now require a context word within 40
+  characters of the match, and BIC is case-sensitive.
+- **Presidio could silently fail to load.** Presidio resolves its predefined
+  recognizers by class name and ships its own `MedicalLicenseRecognizer`;
+  depending on set order the analyzer failed to build and STANDARD/HYBRID ran
+  without entity detection and without a warning. Custom recognizers are now
+  prefixed `AgentLeak`, and an analyzer that cannot be built is reported as a
+  degradation warning with the tier dropped from `tiers`.
+- **Monitor alert lifecycle.** A score drop raised an alert on every sample of
+  a regression. Each condition now alerts once when it starts and resolves
+  when the window recovers; a new L3/L4 severity is re-armed after a quiet
+  window; `healthy` reflects active conditions instead of the alert history.
+  `status()` adds `active` and `recoveries`.
+- **OpenTelemetry readable spans.** Spans whose attributes are a non-dict
+  mapping (the SDK's `BoundedAttributes`) produced no events.
+- **AutoGen AgentChat identities.** Speakers are read from `source`; a leading
+  user turn is `user_input` and turns are addressed to the next speaker.
+- **LangChain/LangGraph attribution.** Events carry the graph node from the
+  callback metadata instead of generic `agent`/`llm`/`tool` labels, and the root
+  input is recorded as `user_input`.
+- **MCP extra.** `agentleak[mcp]` requires `mcp>=2.0,<3`; the server imports
+  `mcp.server.MCPServer`, which older SDKs do not provide.
+
+
+### Changed
+
+- The package source moved to `src/agentleak`, and `LICENSE.txt` is shipped
+  next to `LICENSE`. Installed import paths and the wheel layout are unchanged.
 
 ## [0.17.0] - 2026-09-27
 
