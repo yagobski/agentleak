@@ -58,7 +58,7 @@ def _parse_trace(payload: dict[str, Any]) -> Trace:
 
 
 MCP_MISSING = (
-    "The MCP server needs the `mcp` package. Install it with:\n"
+    "The MCP server needs the `mcp` package, version 2.0 or later. Install it with:\n"
     "    pip install 'agentleak[mcp]'"
 )
 

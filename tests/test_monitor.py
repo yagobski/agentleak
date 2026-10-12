@@ -153,3 +153,66 @@ def test_status_is_serializable_and_says_whether_it_knows_anything() -> None:
     feed(monitor, [90] * MIN_SAMPLES)
     assert monitor.status()["current"] == 90
     assert monitor.status()["has_trend"] is True
+
+
+# ------------------------------------------------------ alert lifecycle
+def test_a_sustained_regression_alerts_once_not_every_sample() -> None:
+    monitor = Monitor(drop=10)
+    feed(monitor, [95] * 10)
+    feed(monitor, [55] * 30)
+    drops = [a for a in monitor.alerts if a.kind == "score_drop"]
+    assert len(drops) == 1
+    assert monitor.status()["active"] == ["score_drop"]
+    assert monitor.status()["healthy"] is False
+
+
+def test_health_returns_once_the_window_recovers() -> None:
+    monitor = Monitor(drop=10, window=20)
+    feed(monitor, [95] * 20)
+    feed(monitor, [50] * 20)
+    assert monitor.status()["healthy"] is False
+    feed(monitor, [95] * 20)
+    status = monitor.status()
+    assert status["healthy"] is True
+    assert status["active"] == []
+    assert [r["kind"] for r in status["recoveries"]] == ["score_drop"]
+    assert status["alerts"], "history is kept after recovery"
+
+
+def test_a_recurring_regression_is_reported_again() -> None:
+    monitor = Monitor(drop=10, window=20)
+    feed(monitor, [95] * 20)
+    for _ in range(2):
+        feed(monitor, [50] * 20)
+        feed(monitor, [95] * 20)
+    assert len([a for a in monitor.alerts if a.kind == "score_drop"]) == 2
+
+
+def test_a_new_severity_is_rearmed_after_a_quiet_window() -> None:
+    monitor = Monitor(window=20)
+    monitor.record(report(90, levels=[4]))
+    feed(monitor, [100] * 19)
+    assert monitor.status()["active"] == ["new_critical"]
+    feed(monitor, [100])                   # twentieth quiet sample
+    assert monitor.status()["healthy"] is True
+    alert = monitor.record(report(90, levels=[4]))
+    assert alert is not None and alert.kind == "new_critical"
+
+
+def test_reset_starts_over() -> None:
+    monitor = Monitor(drop=10)
+    feed(monitor, [95] * 10)
+    feed(monitor, [40] * 10)
+    monitor.reset()
+    status = monitor.status()
+    assert status["healthy"] is True
+    assert status["alerts"] == [] and status["window"] == 0
+    assert status["baseline"] is None and status["observed"] == 0
+
+
+def test_a_seed_makes_sampling_reproducible() -> None:
+    first = Monitor(sample=0.3, seed=7)
+    second = Monitor(sample=0.3, seed=7)
+    assert [first.should_sample() for _ in range(200)] == [
+        second.should_sample() for _ in range(200)
+    ]

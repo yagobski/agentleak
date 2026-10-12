@@ -51,6 +51,13 @@ def _build_pipeline(
         try:
             from ..detectors.presidio_detector import PresidioDetector
             presidio = PresidioDetector(score_threshold=det_cfg.presidio.score_threshold)
+            if not presidio.available:
+                warnings.append(
+                    "Presidio tier requested but its analyzer could not be built "
+                    f"({presidio.error}). Entity detection (names, locations, etc.) "
+                    "did NOT run."
+                )
+                presidio = None
         except Exception as exc:
             warnings.append(
                 "Presidio tier requested but could not load "
