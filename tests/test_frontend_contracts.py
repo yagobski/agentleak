@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-ROOT = Path(__file__).parents[1] / "agentleak" / "web" / "frontend" / "src"
+ROOT = Path(__file__).parents[1] / "src" / "agentleak" / "web" / "frontend" / "src"
 
 
 def _source(relative: str) -> str:

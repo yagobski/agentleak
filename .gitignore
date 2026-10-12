@@ -15,9 +15,9 @@ venv/
 .coverage
 htmlcov/
 
-# Frontend toolchain (the BUILT bundle in agentleak/web/static/ IS committed)
-agentleak/web/frontend/node_modules/
-agentleak/web/frontend/*.tsbuildinfo
+# Frontend toolchain (the BUILT bundle in src/agentleak/web/static/ IS committed)
+src/agentleak/web/frontend/node_modules/
+src/agentleak/web/frontend/*.tsbuildinfo
 node_modules/
 
 # AgentLeak local output

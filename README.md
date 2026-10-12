@@ -278,7 +278,7 @@ technical evidence mappings, not legal attestations.
 ## Integrations
 
 Agent frameworks are a **pluggable registry**. Adding one is a single
-`register()` call in `agentleak/integrations/registry.py`, and it shows up in the
+`register()` call in `src/agentleak/integrations/registry.py`, and it shows up in the
 platform's project pickers and Connect snippets automatically. Built in:
 generic, LangChain, LangGraph, CrewAI, AutoGen, OpenAI Swarm / Agents SDK,
 LlamaIndex, Semantic Kernel, Pydantic AI, smolagents, Google ADK, computer-use /

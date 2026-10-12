@@ -9,8 +9,8 @@ Pick whichever of these sounds like your afternoon.
 
 | If you want to… | Start here | Effort |
 |---|---|---|
-| **Support a framework we do not cover** | `agentleak/integrations/` — an adapter is one function that turns a framework's own events into a trace. A dozen worked examples sit next to yours. | An afternoon |
-| **Add a detector** | `agentleak/core/detector.py` — a pattern, a name, a severity, a test that proves it fires and one that proves it does not over-fire. | An afternoon |
+| **Support a framework we do not cover** | `src/agentleak/integrations/` — an adapter is one function that turns a framework's own events into a trace. A dozen worked examples sit next to yours. | An afternoon |
+| **Add a detector** | `src/agentleak/core/detector.py` — a pattern, a name, a severity, a test that proves it fires and one that proves it does not over-fire. | An afternoon |
 | **Report a wrong score** | [Open an issue](https://github.com/yagobski/agentleak/issues/new/choose) with the trace. This is the single most valuable thing you can send us: the score *is* the product. | Ten minutes |
 | **Improve the corpus** | `scripts/packs/` — the extractors that build the scenario packs, and the rules that keep their ground truth honest. | A day |
 | **Improve the docs** | `docs/` in this repository is the source; the site renders it. Anything that confused you is a bug in the docs. | Any size |
@@ -37,18 +37,18 @@ adds a network call has to be opt-in and say so in the docs.
 ```bash
 pip install -e ".[dev]"
 pytest                       # run the tests
-ruff check agentleak/        # lint
-mypy agentleak/              # type-check
+ruff check src/agentleak/        # lint
+mypy src/agentleak/              # type-check
 ```
 
 ## Setup (web GUI)
 
 The GUI is a React + Vite + Tailwind + shadcn/ui app in
-`agentleak/web/frontend/`. The **built** bundle is committed to
-`agentleak/web/static/` and shipped in the wheel, so end users never need Node.
+`src/agentleak/web/frontend/`. The **built** bundle is committed to
+`src/agentleak/web/static/` and shipped in the wheel, so end users never need Node.
 
 ```bash
-cd agentleak/web/frontend
+cd src/agentleak/web/frontend
 npm install
 npm run dev          # Vite dev server; proxies /api → http://127.0.0.1:8000
                      # In another terminal: `agentleak serve`
@@ -56,7 +56,7 @@ npm run build        # type-check + build into ../static
 ```
 
 After changing the frontend, run `npm run build` and commit the updated
-`agentleak/web/static/` so the change ships. Then `pip install .` to refresh the
+`src/agentleak/web/static/` so the change ships. Then `pip install .` to refresh the
 installed bundle and restart `agentleak serve`.
 
 ## Guidelines
@@ -75,13 +75,13 @@ installed bundle and restart `agentleak serve`.
 1. Subclass `agentleak.core.detector.Detector`, set `name`, implement `detect`.
 2. Return `RawMatch` objects with a `data_type`, `severity`, `confidence`, and a
    `recommendation`.
-3. Register it in `agentleak/detectors/__init__.py` if it's a built-in toggle.
+3. Register it in `src/agentleak/detectors/__init__.py` if it's a built-in toggle.
 4. Add tests in `tests/test_detectors.py` (detection **and** a clean-text guard).
 
 ## Adding a scenario
 
-1. Define a `Scenario` under `agentleak/scenarios/`.
-2. Bundle a **synthetic** trace under `agentleak/examples/`.
+1. Define a `Scenario` under `src/agentleak/scenarios/`.
+2. Bundle a **synthetic** trace under `src/agentleak/examples/`.
 3. Add it to the registry and to `tests/test_scenarios.py`.
 
 ## Test coverage guarantees
@@ -90,7 +90,7 @@ The suite under `tests/` asserts real behavior, not just line coverage. The
 following guarantees are enforced by tests and should stay true for any
 follow-up change:
 
-- **Agent-card URL fetch is SSRF-safe** (`agentleak/core/agentcard.py`,
+- **Agent-card URL fetch is SSRF-safe** (`src/agentleak/core/agentcard.py`,
   exercised end-to-end via the API in `tests/test_agent_api.py` and directly
   in `tests/test_agentcard.py`). Only `http`/`https` are allowed; URLs with
   embedded credentials are rejected; the resolved IP (literal or via DNS) is
@@ -108,7 +108,7 @@ follow-up change:
   max-step exhaustion, non-dict/empty-name tool entries in `_normalize_tools`,
   and MCP server/tool detection in `_toolbox_for` (`tests/test_orchestrator.py`,
   `tests/test_runner.py`).
-- **Client (`agentleak/client.py`) never leaks a raw exception for a bad
+- **Client (`src/agentleak/client.py`) never leaks a raw exception for a bad
   server response.** Both a non-JSON error body and a non-JSON `200` body are
   turned into a clear `AgentLeakError` instead of an uncaught
   `json.JSONDecodeError` (`tests/test_client.py`).
@@ -135,10 +135,10 @@ follow-up change:
 These are intentionally out of scope for the guarantees above — don't assume a
 regression here will be caught by CI:
 
-- **Presidio detector** (`agentleak/detectors/presidio_detector.py`, ~17%
+- **Presidio detector** (`src/agentleak/detectors/presidio_detector.py`, ~17%
   coverage) — only exercised when the optional `presidio` extra is installed
   and its NER model downloaded; the default test run stubs/skips it.
-- **Frontend/browser rendering** (`agentleak/web/frontend/`) — no headless
+- **Frontend/browser rendering** (`src/agentleak/web/frontend/`) — no headless
   browser tests; only the built static bundle and backend API are covered.
 - **Live external LLM calls** — all LLM-backed tests (orchestrator, runner,
   `llm.py`) mock `urllib.request.urlopen`; nothing in the suite makes a real

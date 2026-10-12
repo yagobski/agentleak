@@ -31,7 +31,7 @@ from typing import Any
 # The checkout by default, like detection_quality.py; --installed measures
 # whatever version is installed, which is how the "before" column is produced.
 if "--installed" not in sys.argv:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import agentleak  # noqa: E402
 from agentleak.core.coalesce import canonical_form  # noqa: E402

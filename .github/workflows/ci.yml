@@ -36,7 +36,7 @@ jobs:
         run: python scripts/add_spdx_headers.py --check --root "$GITHUB_WORKSPACE"
 
       - name: Type check (mypy)
-        run: mypy agentleak/
+        run: mypy src/agentleak/
 
       - name: Test (pytest + coverage gate)
         run: pytest --cov=agentleak --cov-report=term-missing --cov-fail-under=85
@@ -95,10 +95,10 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: agentleak/web/frontend/package-lock.json
+          cache-dependency-path: src/agentleak/web/frontend/package-lock.json
 
       - name: Install & build (type-checks via tsc, then Vite build)
-        working-directory: agentleak/web/frontend
+        working-directory: src/agentleak/web/frontend
         run: |
           npm ci
           npm run build

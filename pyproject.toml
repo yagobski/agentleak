@@ -93,18 +93,18 @@ agentleak = "agentleak.cli:main"
 
 [tool.hatch.build]
 # Never ship the frontend toolchain or its deps.
-exclude = ["**/node_modules", "agentleak/web/frontend/**"]
+exclude = ["**/node_modules", "src/agentleak/web/frontend/**"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["agentleak"]
+packages = ["src/agentleak"]
 # Built static assets aren't tracked by .gitignore's logic, so force-include them.
 artifacts = [
-  "agentleak/skill/SKILL.md",
-  "agentleak/reporters/templates/*.j2",
-  "agentleak/examples/*.json",
-  "agentleak/scenarios/packs/*.json",
-  "agentleak/scenarios/packs/NOTICE.md",
-  "agentleak/web/static/**/*",
+  "src/agentleak/skill/SKILL.md",
+  "src/agentleak/reporters/templates/*.j2",
+  "src/agentleak/examples/*.json",
+  "src/agentleak/scenarios/packs/*.json",
+  "src/agentleak/scenarios/packs/NOTICE.md",
+  "src/agentleak/web/static/**/*",
 ]
 
 [tool.hatch.build.targets.wheel.force-include]
@@ -116,7 +116,7 @@ artifacts = [
 include = [
   ".reuse",
   ".zenodo.json",
-  "agentleak",
+  "src",
   "docs",
   "LICENSES",
   "scripts",
@@ -124,9 +124,10 @@ include = [
   "CHANGELOG.md",
   "CITATION.cff",
   "LICENSE",
+  "LICENSE.txt",
   "README.md",
 ]
-exclude = ["**/node_modules", "agentleak/web/frontend/**"]
+exclude = ["**/node_modules", "src/agentleak/web/frontend/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
