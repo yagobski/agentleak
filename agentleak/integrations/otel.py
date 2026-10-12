@@ -48,6 +48,7 @@ Or with the unified API::
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from ..core.trace import Channel, Trace
@@ -95,8 +96,9 @@ def _attrs_of(span: Any) -> dict[str, Any]:
     attrs = _get(span, "attributes", "attr", default=None)
     if attrs is None:
         return {}
-    if isinstance(attrs, dict):
-        return attrs
+    if isinstance(attrs, Mapping):
+        # dict, or the SDK's BoundedAttributes on a live ReadableSpan.
+        return dict(attrs)
     # OTLP: a list of {"key": ..., "value": {<AnyValue>}}.
     out: dict[str, Any] = {}
     for item in attrs:
