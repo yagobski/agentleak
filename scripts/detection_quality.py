@@ -56,12 +56,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from agentleak import __version__  # noqa: E402
 from agentleak.detectors import build_detectors  # noqa: E402
 
-PACK_DIR = Path(__file__).resolve().parent.parent / "agentleak" / "scenarios" / "packs"
+PACK_DIR = Path(__file__).resolve().parent.parent / "src" / "agentleak" / "scenarios" / "packs"
 
 # Vault field name -> the data type a detector is expected to assign.
 # Only fields with one unambiguous answer are labelled; everything else is

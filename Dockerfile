@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # AgentLeak Cloud — production image (web platform + API).
 #
-# Stage 1 builds the React/Vite frontend into agentleak/web/static.
+# Stage 1 builds the React/Vite frontend into src/agentleak/web/static.
 # Stage 2 is a slim Python runtime that installs the package and serves the
 # built bundle + API with uvicorn.
 #
@@ -14,12 +14,12 @@
 # ---------------------------------------------------------------------------
 
 FROM node:20-alpine AS frontend
-WORKDIR /app/agentleak/web/frontend
+WORKDIR /app/src/agentleak/web/frontend
 # Install deps first for layer caching.
-COPY agentleak/web/frontend/package*.json ./
+COPY src/agentleak/web/frontend/package*.json ./
 RUN npm ci
-# Build — Vite emits to ../static (agentleak/web/static), consumed by stage 2.
-COPY agentleak/web/frontend/ ./
+# Build — Vite emits to ../static (src/agentleak/web/static), consumed by stage 2.
+COPY src/agentleak/web/frontend/ ./
 RUN npm run build
 
 
@@ -38,9 +38,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 # Install the package. Copy metadata first for caching, then the source.
 COPY pyproject.toml README.md ./
-COPY agentleak/ ./agentleak/
+COPY src/agentleak/ ./src/agentleak/
 # Bring in the freshly-built frontend bundle from stage 1.
-COPY --from=frontend /app/agentleak/web/static/ ./agentleak/web/static/
+COPY --from=frontend /app/src/agentleak/web/static/ ./src/agentleak/web/static/
 RUN pip install ".[${EXTRAS}]"
 
 # Persisted SQLite database lives here (mount a volume).

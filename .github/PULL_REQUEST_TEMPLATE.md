@@ -10,7 +10,7 @@
 ## Checks
 
 - [ ] `pytest` passes
-- [ ] `ruff check agentleak/ tests/ scripts/` and `mypy agentleak/` are clean
+- [ ] `ruff check src/agentleak/ tests/ scripts/` and `mypy src/agentleak/` are clean
 - [ ] New behaviour has a test — one that fails without the change
 - [ ] Docs updated if the change is user-visible
 

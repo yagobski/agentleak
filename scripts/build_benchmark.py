@@ -39,7 +39,7 @@ from agentleak.scenarios.packs import expand_pack, list_packs
 
 # The public site now lives in its own repository (agentleak-site), which reads
 # this file from frontend/src/data/benchmark.json. Pass --out to write it there.
-OUT = Path(__file__).resolve().parents[1] / "agentleak/web/frontend/src/data/benchmark.json"
+OUT = Path(__file__).resolve().parents[1] / "src/agentleak/web/frontend/src/data/benchmark.json"
 
 INTERNAL_CHANNELS = (
     "tool_call",

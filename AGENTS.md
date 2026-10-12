@@ -15,7 +15,7 @@ memory, inter-agent messages, logs, generated files — not just its final answe
 Leakage is scored with **AgentRisk**, a severity-weighted, density-normalized
 **Risk Index** `RI ∈ [0,1]` grounded in GDPR Article 9 and Québec Law 25. It is
 the practical scoring layer from the AgentRisk paper; the implementation in
-[`agentleak/core/agentrisk.py`](agentleak/core/agentrisk.py) reproduces the
+[`src/agentleak/core/agentrisk.py`](src/agentleak/core/agentrisk.py) reproduces the
 paper's worked example exactly and is verified against the paper's five formal
 properties.
 
@@ -33,19 +33,19 @@ properties.
 
 ```
 Trace (events on channels)
-   │   agentleak/core/trace.py
+   │   src/agentleak/core/trace.py
    ▼
-Detectors  ── regex/dict ──▶  RawMatch        agentleak/detectors/*
+Detectors  ── regex/dict ──▶  RawMatch        src/agentleak/detectors/*
    │   (each event's searchable_text)
    ▼
 Runner: RawMatch + event context + AgentRisk level ──▶ Finding
-   │   agentleak/core/runner.py  (level via agentrisk.level_for)
+   │   src/agentleak/core/runner.py  (level via agentrisk.level_for)
    ▼
 AgentRisk scoring: WSL, ρ_S, RI, per-channel RI, level profile
-   │   agentleak/core/agentrisk.py  →  agentleak/core/scoring.py (Score)
+   │   src/agentleak/core/agentrisk.py  →  src/agentleak/core/scoring.py (Score)
    ▼
 AnalysisResult  ──▶  reporters (json/html/markdown)  +  web GUI
-       agentleak/core/report.py        agentleak/reporters/*   agentleak/web/*
+       src/agentleak/core/report.py        src/agentleak/reporters/*   src/agentleak/web/*
 ```
 
 Everything funnels through `AgentLeakRunner.analyze(trace)`. The CLI, the SDK,
@@ -56,7 +56,7 @@ the framework integrations, and the web API all call it.
 ## 3. Repository layout
 
 ```
-agentleak/
+src/agentleak/
 ├── __init__.py            Public SDK surface (Trace, AgentLeakRunner, etc.)
 ├── cli.py                 Typer CLI: init/run/report/validate/scenarios/serve/version
 ├── core/
@@ -147,8 +147,8 @@ privacy_score = round(100 × (1 − RI))
 4. **Redaction**: `Finding.to_dict(redact_values=True)` omits `matched_value`.
    Never log or persist raw values by default.
 5. **Detectors must be pure** (regex/dict only, no I/O, no network, no LLM).
-6. **The GUI is a built artifact.** Editing `agentleak/web/frontend/**` requires
-   a rebuild (`npm run build` → `agentleak/web/static/`). The committed
+6. **The GUI is a built artifact.** Editing `src/agentleak/web/frontend/**` requires
+   a rebuild (`npm run build` → `src/agentleak/web/static/`). The committed
    `static/` bundle is what `pip install` ships and what FastAPI serves. The
    `frontend/` source is excluded from the wheel.
 7. **No emoji in code; ASCII identifiers.** (`ρ_S` appears only in display
@@ -168,7 +168,7 @@ privacy_score = round(100 × (1 − RI))
     `packs/__init__.py` — never add a sibling `packs.py` (it shadows the package
     and breaks `resources.files`). Pack JSONs are force-included in the wheel via
     `pyproject.toml` `[tool.hatch.build.targets.wheel].artifacts`.
-12. **The LLM stays optional and out of the core.** `agentleak/agent/llm.py` is
+12. **The LLM stays optional and out of the core.** `src/agentleak/agent/llm.py` is
     stdlib-only and is only invoked on an explicit live run; nothing in the
     analysis path imports it implicitly. Never make the core depend on a model.
     Agent API keys are secrets: redact them in responses (`_safe_project`) and
@@ -183,9 +183,9 @@ privacy_score = round(100 × (1 − RI))
 ## 6. How to extend
 
 ### Add a detector
-1. Subclass `Detector` in `agentleak/detectors/<name>.py`; set `name`; implement
+1. Subclass `Detector` in `src/agentleak/detectors/<name>.py`; set `name`; implement
    `detect(text) -> list[RawMatch]`. Use `self._match(...)`.
-2. Register it in `agentleak/detectors/__init__.py` (`BUILTIN_DETECTORS`).
+2. Register it in `src/agentleak/detectors/__init__.py` (`BUILTIN_DETECTORS`).
 3. Map each new `data_type` to a level in `agentrisk.DATA_TYPE_LEVELS`.
 4. Add a config toggle field in `core/config.py:DetectorToggles` if it's a
    built-in.
@@ -193,21 +193,21 @@ privacy_score = round(100 × (1 − RI))
    guard (no false positives).
 
 ### Add a scenario
-1. Define a `Scenario` under `agentleak/scenarios/<domain>.py`.
-2. Bundle a **synthetic** trace in `agentleak/examples/<id>_trace.json`. Make it
+1. Define a `Scenario` under `src/agentleak/scenarios/<domain>.py`.
+2. Bundle a **synthetic** trace in `src/agentleak/examples/<id>_trace.json`. Make it
    realistic: agent *receives* a full record via `tool_response`, leaks a
    *subset* onto disclosure channels, keeps `final_output` clean.
-3. Register it in `agentleak/scenarios/__init__.py`.
+3. Register it in `src/agentleak/scenarios/__init__.py`.
 4. Add it to `tests/test_scenarios.py` (it asserts every example loads, leaks,
    and keeps the final output clean).
 
 ### Add a scenario pack
-Drop a JSON file in `agentleak/scenarios/packs/` (`{id, name, source, format,
+Drop a JSON file in `src/agentleak/scenarios/packs/` (`{id, name, source, format,
 scenarios: [...]}`). Entries may be AgentLeak specs, ai4privacy records, or raw
 traces — `normalize_upload` auto-detects each. Every bundled scenario must
 **leak** under the detectors (see `tests/test_packs.py`); filter out-of-scope
 records when generating the pack. The wheel artifacts glob already includes
-`agentleak/scenarios/packs/*.json`.
+`src/agentleak/scenarios/packs/*.json`.
 
 ### Support a new upload format
 Add a branch to `detect_format` and a converter in `scenarios/convert.py`,
@@ -215,13 +215,13 @@ wire it into `normalize_upload`, and cover it in `tests/test_convert.py`. Keep
 converters pure and deterministic.
 
 ### Add a framework integration
-Subclass `agentleak/integrations/generic.py:TraceRecorder` and translate the
+Subclass `src/agentleak/integrations/generic.py:TraceRecorder` and translate the
 framework's callbacks into `record(channel, content, ...)`. Never import the
 framework at module top-level (lazy-import inside methods) so the package always
 imports.
 
 ### Add a GUI feature
-Source: `agentleak/web/frontend/src/`. Components: `components/ui/*` (shadcn
+Source: `src/agentleak/web/frontend/src/`. Components: `components/ui/*` (shadcn
 primitives), `features/*` (app views), `lib/api.ts` (typed client), `lib/format.ts`
 (verdict/severity styling). After editing, `npm run build` then reinstall. See §7.
 
@@ -306,7 +306,7 @@ with user scenarios persisted in the store (`source: custom` for uploads,
 ## 6e. Live agent execution (run a real agent against a scenario)
 
 A *run* can now come from actually **executing an agent**, not just analyzing a
-pre-made trace. `agentleak/agent/`:
+pre-made trace. `src/agentleak/agent/`:
 
 - `context.build_run_context(scenario)` → a `RunContext` (task + private records
   + privacy instruction). Uses a stored **spec** if present, else **derives** the
@@ -363,14 +363,14 @@ Markdown export. Old stored runs created before this feature simply lack the key
 pip install -e ".[dev]"          # core + gui + test deps
 pytest                            # 203 tests
 pytest --cov=agentleak --cov-fail-under=85   # CI gate is 85% (currently ~94%)
-ruff check agentleak/ tests/      # lint (must be clean)
-mypy agentleak/                   # types (must be clean)
+ruff check src/agentleak/ tests/      # lint (must be clean)
+mypy src/agentleak/                   # types (must be clean)
 
 # CLI
 agentleak run --scenario healthcare_patient_summary
 agentleak serve                   # GUI at http://127.0.0.1:8000
 
-# Frontend (in agentleak/web/frontend/)
+# Frontend (in src/agentleak/web/frontend/)
 npm install
 npm run dev                       # Vite dev server, proxies /api → :8000
                                   #   (run `agentleak serve` alongside it)

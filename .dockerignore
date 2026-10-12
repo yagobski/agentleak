@@ -13,8 +13,8 @@ tests
 docs
 examples
 # Frontend build artifacts are regenerated inside the image.
-agentleak/web/frontend/node_modules
-agentleak/web/frontend/dist
+src/agentleak/web/frontend/node_modules
+src/agentleak/web/frontend/dist
 # Never ship local state or secrets.
 .env
 .env.*

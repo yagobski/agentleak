@@ -47,7 +47,7 @@ def candidates(root: Path) -> list[Path]:
         relative_parts = path.relative_to(root).parts
         if any(part in SKIP_DIRS for part in relative_parts):
             continue
-        if relative_parts[:3] == ("agentleak", "web", "static"):
+        if relative_parts[:4] == ("src", "agentleak", "web", "static"):
             continue
         out.append(path)
     return sorted(out)
