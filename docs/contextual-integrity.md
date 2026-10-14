@@ -113,6 +113,40 @@ this rule leaves it alone. Origin is judged on a full trace, by the CI gate and
 `senders`, `recipients`, `purposes` and `data_types` are accepted as aliases, so
 a generated config need not be written as prose.
 
+### Origin narrows the match, not the governance
+
+An allow rule governs its data types wherever they come from; `origin` is one
+more facet that narrows *which* flows the rule matches. A rule that permits
+"sensitive types, from the direct read, only to the connector" leaves every
+*other* origin of the same types unpermitted — including the connector itself,
+so the legitimate email flow still needs its own rule. The intended idiom is
+two rules:
+
+```yaml
+    - data_type: group:health        # the sensitive types, from the sensitive origin
+      origin: ehr_database
+      to: connector
+    - data_type: group:health        # the same types, from the legitimate origin
+      origin: connector
+```
+
+### The allow rule as the net, the origin rule for the path
+
+Origin is only as good as the adapter's attribution. When a sub-agent launders
+a read through a script it wrote, the adapter attributes the call to `Bash`
+and an origin rule judges nothing — while an attribution-independent allow
+rule still catches the flow. The recommended pairing:
+
+- **the allow rule as the net** — attribution-independent, the guarantee;
+- **the origin rule for the path** — attribution-dependent, the forensic story
+  (where the value entered, the full path in the violation).
+
+### Reserved metadata keys
+
+`origin` and `path` are reserved in event metadata — the runner writes them
+(`metadata.origin`, `metadata.path`) and user code must not reuse these keys
+for its own metadata, or values will collide with the provenance record.
+
 ## Declaring purpose
 
 Purpose comes from event metadata, which the SDK already passes through:
