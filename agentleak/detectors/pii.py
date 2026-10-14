@@ -19,6 +19,13 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9-.]+")
 # US SSN (xxx-xx-xxxx) and Canadian SIN (xxx-xxx-xxx) are distinct shapes.
 SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 SIN_RE = re.compile(r"\b\d{3}[- ]\d{3}[- ]\d{3}\b")
+
+# A Spanish mobile national part is also 9 digits in 3-3-3 groups
+# ("612 345 678"), which collides with the SIN shape above. A Spanish
+# country-code prefix (+34 / 0034) immediately before the match means
+# Spain, not a Canadian SIN -- suppress the SIN match in that context
+# (issue #4: false positive reported on +34 mobiles).
+_ES_PHONE_PREFIX_RE = re.compile(r"(?:^|[\s(])(?:\+34|0034)\)?[\s.\-]*$")
 # A bare run of nine digits is not a SIN on its own — it is also an order
 # number, a timestamp, or a part code. It becomes one when the text says so,
 # which is how people actually write it ("SIN 123456789"), so the unseparated
@@ -145,6 +152,9 @@ class PIIDetector(Detector):
             ))
 
         for m in SIN_RE.finditer(text):
+            # Spanish mobile (+34 ...): pattern collision, not a SIN.
+            if _ES_PHONE_PREFIX_RE.search(text[: m.start()]):
+                continue
             matches.append(self._match(
                 data_type="sin", severity=Severity.HIGH, confidence=0.8,
                 matched_value=m.group(0),
