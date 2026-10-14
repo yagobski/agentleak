@@ -10,6 +10,7 @@ That file keeps every tool result in full, whatever the sub-agent chose to say
 in its report. Run it:
 
     python examples/claude_code_transcript.py                      # bundled sample
+    python examples/claude_code_transcript.py ~/.claude/projects   # every sub-agent under it
     python examples/claude_code_transcript.py agent-x.jsonl out.json
 
 How a transcript is spread over the channels:
@@ -136,8 +137,48 @@ def trace_from_transcript(
     return trace
 
 
+def survey(
+    folder: Path,
+    make_resource_of: Callable[[], ResourceOf] | None = None,
+    store_node: str = "direct_store",
+) -> list[dict[str, Any]]:
+    """Run every sub-agent transcript under ``folder``, one row per sub-agent.
+
+    The question a folder answers is not one trace's score but how many
+    sub-agents reached the store directly, and what then went back in their
+    reports. ``make_resource_of`` builds a fresh attribution per transcript,
+    because ``store_resource`` remembers the scripts each agent wrote.
+    """
+    rows = []
+    for path in sorted(folder.rglob("agent-*.jsonl")):
+        resource_of = make_resource_of() if make_resource_of else None
+        trace = trace_from_transcript(path, resource_of)
+        calls = [e.target for e in trace.events if str(e.channel) == "tool_call"]
+        result = AgentLeakRunner().analyze(trace)
+        reported = sorted({
+            f.data_type for f in result.findings
+            if str(f.channel) == "inter_agent_message" and f.source == "subagent"
+        })
+        rows.append({
+            "transcript": path.name,
+            "store_calls": calls.count(store_node),
+            "calls": len(calls),
+            "reported_types": reported,
+        })
+    return rows
+
+
 def main() -> None:
     source = Path(sys.argv[1]) if len(sys.argv) > 1 else SAMPLE
+    if source.is_dir():
+        rows = survey(source, lambda: store_resource(r"customer_records\.csv", "direct_store"))
+        for row in rows:
+            reported = ", ".join(row["reported_types"]) or "-"
+            print(f"{row['transcript']:<40} store calls {row['store_calls']:>3} "
+                  f"of {row['calls']:>3}   in its report: {reported}")
+        direct = sum(1 for row in rows if row["store_calls"])
+        print(f"\n{len(rows)} sub-agent(s); {direct} reached the store directly.")
+        return
     trace = trace_from_transcript(source, store_resource(r"customer_records\.csv", "direct_store"))
 
     if len(sys.argv) > 2:
