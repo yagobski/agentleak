@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
 """General PII detector: emails, phones, SSN/SIN, credit cards, IPs, DOB,
-client identifiers, and keyword-anchored probable names.
+client identifiers, UK NINO, Spanish DNI/NIE, and keyword-anchored probable
+names.
 
 Patterns favor precision over recall and attach a per-pattern confidence so
 the scoring engine can weigh noisy matches (phones, names) less than crisp
@@ -21,11 +22,11 @@ SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 SIN_RE = re.compile(r"\b\d{3}[- ]\d{3}[- ]\d{3}\b")
 
 # A Spanish mobile national part is also 9 digits in 3-3-3 groups
-# ("612 345 678"), which collides with the SIN shape above. A Spanish
-# country-code prefix (+34 / 0034) immediately before the match means
-# Spain, not a Canadian SIN -- suppress the SIN match in that context
-# (issue #4: false positive reported on +34 mobiles).
-_ES_PHONE_PREFIX_RE = re.compile(r"(?:^|[\s(])(?:\+34|0034)\)?[\s.\-]*$")
+# ("612 345 678"), which collides with the SIN shape above. With its country
+# code (+34 / 0034) it is a Spanish number: nine digits, 6-7 for mobiles and
+# 8-9 for landlines, in any grouping. Reported as a phone; the SIN loop skips
+# anything inside one of these spans (issue #4).
+ES_PHONE_RE = re.compile(r"(?<![\w+])(?:\(?\+34\)?|0034)[\s.\-]*[6-9](?:[\s.\-]?\d){8}(?!\d)")
 # A bare run of nine digits is not a SIN on its own — it is also an order
 # number, a timestamp, or a part code. It becomes one when the text says so,
 # which is how people actually write it ("SIN 123456789"), so the unseparated
@@ -64,6 +65,13 @@ NINO_RE = re.compile(
     r"\b(?!BG|GB|NK|KN|TN|NT|ZZ)"
     r"[ABCEGHJ-PRSTW-Z][ABCEGHJ-NPRSTW-Z]\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b"
 )
+# Spanish DNI (12345678Z) and NIE (X1234567L). The final letter is a checksum
+# of the number, so a match is validated, not just pattern-matched: a random
+# 8-digits-and-a-letter run passes one time in 23. Uppercase letter only, and
+# not glued to a longer token ("ORD-12345678Z", "123456789Z"), for precision.
+DNI_RE = re.compile(r"(?<![\w.-])(\d{8}|\d{2}\.\d{3}\.\d{3})[- ]?([A-Z])(?![\w-])")
+NIE_RE = re.compile(r"(?<![\w.-])([XYZ])[- ]?(\d{7})[- ]?([A-Z])(?![\w-])")
+_DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
 # Street address: number + street words + a street-type suffix.
 # The suffixes are the common USPS street-type words, minus the ones that are
 # mostly surnames (Green, Mills, Ford, Brooks…); the first version knew fifteen,
@@ -131,6 +139,11 @@ def _luhn_ok(digits: str) -> bool:
     return total % 10 == 0
 
 
+def _dni_letter_ok(number: str, letter: str) -> bool:
+    """The DNI/NIE control letter is the number modulo 23 in a fixed table."""
+    return _DNI_LETTERS[int(number) % 23] == letter
+
+
 class PIIDetector(Detector):
     name = "pii_detector"
 
@@ -151,9 +164,18 @@ class PIIDetector(Detector):
                 recommendation="Never transmit full social security numbers; tokenize them.",
             ))
 
+        es_phones: list[tuple[int, int]] = []
+        for m in ES_PHONE_RE.finditer(text):
+            es_phones.append(m.span())
+            matches.append(self._match(
+                data_type="phone_number", severity=Severity.MEDIUM, confidence=0.65,
+                matched_value=m.group(0).strip(),
+                recommendation="Avoid sending full phone numbers to tools and logs.",
+            ))
+
         for m in SIN_RE.finditer(text):
-            # Spanish mobile (+34 ...): pattern collision, not a SIN.
-            if _ES_PHONE_PREFIX_RE.search(text[: m.start()]):
+            # Inside a +34 number: a phone (reported above), not a SIN.
+            if any(a <= m.start() and m.end() <= b for a, b in es_phones):
                 continue
             matches.append(self._match(
                 data_type="sin", severity=Severity.HIGH, confidence=0.8,
@@ -221,6 +243,24 @@ class PIIDetector(Detector):
                 matched_value=m.group(0),
                 recommendation="Never transmit full National Insurance numbers; tokenize them.",
             ))
+
+        for m in DNI_RE.finditer(text):
+            if _dni_letter_ok(m.group(1).replace(".", ""), m.group(2)):
+                matches.append(self._match(
+                    data_type="spanish_national_id", severity=Severity.HIGH, confidence=0.9,
+                    matched_value=m.group(0),
+                    recommendation="Never transmit full DNI/NIE numbers; tokenize them.",
+                ))
+
+        for m in NIE_RE.finditer(text):
+            # The NIE prefix stands for a leading digit: X=0, Y=1, Z=2.
+            number = str("XYZ".index(m.group(1))) + m.group(2)
+            if _dni_letter_ok(number, m.group(3)):
+                matches.append(self._match(
+                    data_type="spanish_national_id", severity=Severity.HIGH, confidence=0.9,
+                    matched_value=m.group(0),
+                    recommendation="Never transmit full DNI/NIE numbers; tokenize them.",
+                ))
 
         for name in full_names(text):
             matches.append(self._match(

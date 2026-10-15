@@ -76,6 +76,7 @@ DATA_TYPE_LEVELS: dict[str, int] = {
     "sin": 4,
     "ssn": 4,
     "national_insurance_number": 4,  # UK national identifier, identity-theft equivalent to SSN/SIN
+    "spanish_national_id": 4,  # Spanish DNI/NIE, same standing as SSN/SIN/NINO
     "credit_card": 4,
     "iban": 4,
     "account_number": 4,

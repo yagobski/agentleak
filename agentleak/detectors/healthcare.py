@@ -39,6 +39,15 @@ HEALTH_CONDITIONS = [
     "carcinoma", "colorectal", "melanoma", "lymphoma", "sarcoma", "metastatic",
     "myocardial infarction", "copd", "cirrhosis", "sclerosis", "psychosis",
     "diabète", "cancer du", "asthme", "dépression", "grossesse", "carcinome",
+    # Spanish (issue #4). Each term with and without its accent: chats and
+    # emails often drop it. Left out on purpose because they collide with
+    # ordinary words or names: "asma" (a given name), "tac" and "toc".
+    "cáncer", "hipertensión", "hipertension", "depresión", "depresion",
+    "ansiedad", "embarazo", "vih", "sida", "esquizofrenia", "epilepsia",
+    "leucemia", "ictus", "infarto de miocardio", "cirrosis", "esclerosis",
+    "psicosis", "linfoma", "metástasis", "metastasis", "migraña", "migrana",
+    "fibromialgia", "artrosis", "artritis", "anorexia", "bulimia", "tdah",
+    "trastorno bipolar", "trastorno de ansiedad", "trastorno alimentario",
 ]
 
 MEDICATIONS = [
@@ -48,6 +57,19 @@ MEDICATIONS = [
     "folfox", "folfiri", "oxaliplatin", "5-fu", "fluorouracil", "cisplatin",
     "carboplatin", "paclitaxel", "docetaxel", "rituximab", "tamoxifen",
     "insuline", "chimiothérapie",
+    # Spanish (issue #4): generic names, and the few brand names that Spanish
+    # speakers use as if they were the drug. "litio" is left out: in Spanish
+    # it is batteries and chemistry far more often than a prescription.
+    "insulina", "metformina", "quimioterapia", "morfina", "antidepresivo",
+    "antidepresivos", "ansiolítico", "ansiolíticos", "ansiolitico",
+    "ansioliticos", "antirretroviral", "warfarina", "prednisona", "tamoxifeno",
+    "paracetamol", "ibuprofeno", "omeprazol", "sertralina", "fluoxetina",
+    "escitalopram", "paroxetina", "venlafaxina", "duloxetina", "lorazepam",
+    "diazepam", "alprazolam", "clonazepam", "zolpidem", "quetiapina",
+    "risperidona", "olanzapina", "aripiprazol", "pregabalina", "gabapentina",
+    "tramadol", "fentanilo", "atorvastatina", "levotiroxina", "amoxicilina",
+    "metotrexato", "metilfenidato", "orfidal", "trankimazin", "nolotil",
+    "sintrom", "eutirox",
 ]
 
 
