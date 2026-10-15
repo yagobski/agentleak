@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
 """General PII detector: emails, phones, SSN/SIN, credit cards, IPs, DOB,
-client identifiers, and keyword-anchored probable names.
+client identifiers, UK NINO, Spanish DNI/NIE, and keyword-anchored probable
+names.
 
 Patterns favor precision over recall and attach a per-pattern confidence so
 the scoring engine can weigh noisy matches (phones, names) less than crisp
@@ -64,6 +65,13 @@ NINO_RE = re.compile(
     r"\b(?!BG|GB|NK|KN|TN|NT|ZZ)"
     r"[ABCEGHJ-PRSTW-Z][ABCEGHJ-NPRSTW-Z]\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b"
 )
+# Spanish DNI (12345678Z) and NIE (X1234567L). The final letter is a checksum
+# of the number, so a match is validated, not just pattern-matched: a random
+# 8-digits-and-a-letter run passes one time in 23. Uppercase letter only, and
+# not glued to a longer token ("ORD-12345678Z", "123456789Z"), for precision.
+DNI_RE = re.compile(r"(?<![\w.-])(\d{8}|\d{2}\.\d{3}\.\d{3})[- ]?([A-Z])(?![\w-])")
+NIE_RE = re.compile(r"(?<![\w.-])([XYZ])[- ]?(\d{7})[- ]?([A-Z])(?![\w-])")
+_DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
 # Street address: number + street words + a street-type suffix.
 # The suffixes are the common USPS street-type words, minus the ones that are
 # mostly surnames (Green, Mills, Ford, Brooks…); the first version knew fifteen,
@@ -129,6 +137,11 @@ def _luhn_ok(digits: str) -> bool:
                 n -= 9
         total += n
     return total % 10 == 0
+
+
+def _dni_letter_ok(number: str, letter: str) -> bool:
+    """The DNI/NIE control letter is the number modulo 23 in a fixed table."""
+    return _DNI_LETTERS[int(number) % 23] == letter
 
 
 class PIIDetector(Detector):
@@ -230,6 +243,24 @@ class PIIDetector(Detector):
                 matched_value=m.group(0),
                 recommendation="Never transmit full National Insurance numbers; tokenize them.",
             ))
+
+        for m in DNI_RE.finditer(text):
+            if _dni_letter_ok(m.group(1).replace(".", ""), m.group(2)):
+                matches.append(self._match(
+                    data_type="spanish_national_id", severity=Severity.HIGH, confidence=0.9,
+                    matched_value=m.group(0),
+                    recommendation="Never transmit full DNI/NIE numbers; tokenize them.",
+                ))
+
+        for m in NIE_RE.finditer(text):
+            # The NIE prefix stands for a leading digit: X=0, Y=1, Z=2.
+            number = str("XYZ".index(m.group(1))) + m.group(2)
+            if _dni_letter_ok(number, m.group(3)):
+                matches.append(self._match(
+                    data_type="spanish_national_id", severity=Severity.HIGH, confidence=0.9,
+                    matched_value=m.group(0),
+                    recommendation="Never transmit full DNI/NIE numbers; tokenize them.",
+                ))
 
         for name in full_names(text):
             matches.append(self._match(
