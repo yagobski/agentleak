@@ -21,7 +21,7 @@ def _phones(text):
 
 
 def test_spanish_mobile_with_plus34_not_sin():
-    # Exact case reported in issue #4.
+    # Exact case reported by Claudio Martins Sosa (issue #4).
     assert _sin_values("call me at +34 600 000 000") == []
 
 
