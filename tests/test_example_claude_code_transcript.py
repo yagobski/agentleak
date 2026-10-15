@@ -81,3 +81,19 @@ def test_empty_thinking_and_attachments_add_no_events():
     trace = example.trace_from_transcript(example.SAMPLE)
     assert trace.events_for_channel("log") == []
     assert len(trace.events) == 7
+
+
+def test_a_folder_gives_one_row_per_sub_agent(tmp_path):
+    example = _example()
+    for name in ("agent-a.jsonl", "agent-b.jsonl"):
+        (tmp_path / "s1" / "subagents").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "s1" / "subagents" / name).write_text(
+            example.SAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "notes.jsonl").write_text("{}", encoding="utf-8")       # not a transcript
+
+    rows = example.survey(
+        tmp_path, lambda: example.store_resource(r"customer_records\.csv", "direct_store"))
+
+    assert [r["transcript"] for r in rows] == ["agent-a.jsonl", "agent-b.jsonl"]
+    assert all(r["store_calls"] >= 1 for r in rows)          # the sample reaches the store
+    assert all(r["reported_types"] == [] for r in rows)      # and its report stays clean

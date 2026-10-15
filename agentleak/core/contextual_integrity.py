@@ -75,7 +75,9 @@ BUILTIN_TYPE_GROUPS: dict[str, tuple[str, ...]] = {
         "credit_card", "iban", "account_number", "account_balance", "income",
         "loan_amount", "credit_score",
     ),
-    "government_ids": ("ssn", "sin", "national_insurance_number", "health_identifier"),
+    "government_ids": (
+        "ssn", "sin", "national_insurance_number", "spanish_national_id", "health_identifier",
+    ),
     "contact": ("email", "phone_number", "address"),
 }
 

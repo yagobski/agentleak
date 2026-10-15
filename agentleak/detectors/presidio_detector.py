@@ -35,7 +35,7 @@ from ..core.detector import Detector, RawMatch, Severity
 # Optional import guard — graceful degradation when presidio is absent
 # ---------------------------------------------------------------------------
 try:
-    from presidio_analyzer import (  # type: ignore[import]  # type: ignore[import]
+    from presidio_analyzer import (  # type: ignore[import]
         AnalyzerEngine,
         EntityRecognizer,
         RecognizerRegistry,

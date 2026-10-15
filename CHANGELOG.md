@@ -6,6 +6,17 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Spanish health terms** in the healthcare detector: conditions and
+  medications, with and without accents, plus the few brand names used as
+  drug names in Spain. Terms that collide with ordinary Spanish words or
+  names are left out and say so in the code. Issue #4.
+- **Spanish DNI/NIE** in the PII detector (`spanish_national_id`, HIGH). The
+  control letter is checked (number modulo 23), so a match is validated rather
+  than guessed from the shape. Part of `group:government_ids`, level 4 in
+  AgentRisk like SSN/SIN/NINO. Issue #4.
+
 ## [0.17.0] - 2026-09-27
 
 The rest of the competitive backlog that can be built and verified here.
