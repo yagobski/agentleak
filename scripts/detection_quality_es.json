@@ -1,0 +1,578 @@
+{
+  "language": "es",
+  "note": "Made-up values, labelled by data type, with a Spanish field name for the structured condition. Identifiers carry valid check digits (DNI/NIE modulo 23, IBAN modulo 97 with CCC control digits, NUSS modulo 97, public test card numbers that pass Luhn), so a validating detector can find them. No value belongs to a real person.",
+  "labelled": [
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "María López Hernández"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "José Antonio García Pérez"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Carmen Rodríguez Díaz"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Lucía Fernández Gil"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Antonio Ruiz Navarro"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Ana Belén Torres Molina"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Manuel Jiménez Romero"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Pilar Moreno Castro"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Javier Ortega Rubio"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Isabel Delgado Ramos"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Juan Carlos Vega Medina"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nombre",
+      "value": "Rosa María Santana Cabrera"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "maria.lopez@example.com"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "jagarcia@example.org"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "carmen.rodriguez@example.net"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "lucia.fdez@example.com"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "a.ruiz.navarro@example.org"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "anabelen.torres@example.net"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "mjimenez@example.com"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "pilar.moreno@example.org"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "javier.ortega@example.net"
+    },
+    {
+      "data_type": "email",
+      "field": "correo",
+      "value": "isabel.delgado@example.com"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "+34 612 345 678"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "+34 699 111 222"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "0034 655 123 456"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "+34 922 12 34 56"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "(+34) 711 222 333"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "+34 91 123 45 67"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "612 34 56 78"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "922 123 456"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "655123456"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telefono",
+      "value": "628-111-222"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "12345678Z"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "87654321X"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "23456789D"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "45678912S"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "30111222J"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "54321098C"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "12.345.678-Z"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "X1234567L"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "Y7654321G"
+    },
+    {
+      "data_type": "spanish_national_id",
+      "field": "dni",
+      "value": "Z2345678M"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES80 2100 0418 4245 0200 0513"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES7000491500010512345678"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES51 0182 2370 4042 0123 4567"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES8520381010666000123456"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES07 0081 0200 2410 0065 4321"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES2214650100969912345678"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES60 3058 0700 1627 1234 5678"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "ES7120858100161234567890"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "4111 1111 1111 1111"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "5555 5555 5555 4444"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "4012 8888 8888 1881"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "3782 822463 10005"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "6011 1111 1111 1117"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "5105-1051-0510-5100"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "4000056655665556"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "tarjeta",
+      "value": "3566 0020 2036 0505"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "C/ Real, 14, 1º izda., 35001 Las Palmas de Gran Canaria"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Avenida de la Constitución 3, 41004 Sevilla"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Calle Alcalá 120, bajo, 28009 Madrid"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Pº de Gracia 21, 08007 Barcelona"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Calle Real s/n, 38390 Santa Úrsula"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Travesía del Mar 4, 15001 A Coruña"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Plaza de España 9, 4º D, 50001 Zaragoza"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Calle Doctor Fleming 33, 46010 Valencia"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Urbanización Los Pinos 18, 29600 Marbella"
+    },
+    {
+      "data_type": "address",
+      "field": "direccion",
+      "value": "Glorieta de Bilbao 6, 28004 Madrid"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "03/04/1975"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "1975-04-03"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "3-4-1975"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "15/11/1982"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "1990-01-31"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "07/09/68"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "22/02/2001"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "fecha_nacimiento",
+      "value": "30-06-1959"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "diabetes tipo 2"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "hipertensión"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "asma"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "depresión"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "epilepsia"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "cáncer de mama"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "VIH"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "esquizofrenia"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "insuficiencia renal"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostico",
+      "value": "trastorno bipolar"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "metformina"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "insulina"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "sertralina"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "omeprazol"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "levotiroxina"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "enalapril"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "lorazepam"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicacion",
+      "value": "salbutamol"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "32.000 €"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "2.150 euros al mes"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "45.000 euros brutos anuales"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "1.800 € netos"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "60000 EUR"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "28.500 €/año"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "3.200 euros mensuales"
+    },
+    {
+      "data_type": "salary",
+      "field": "salario",
+      "value": "1.134 € al mes"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "28/12345678/40"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "38 10293847 84"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "08/01234567/74"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "41-55667788-93"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "35 20304050 32"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "46/70809010/20"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "50 11223344 32"
+    },
+    {
+      "data_type": "spanish_social_security_number",
+      "field": "nuss",
+      "value": "03-09876543-37"
+    }
+  ],
+  "control_texts": [
+    "El pedido salió el martes y llegó el jueves por la tarde.",
+    "El despliegue 4821 terminó en 92 segundos sin ninguna comprobación fallida.",
+    "Confirma, por favor, si el informe trimestral está listo para revisar.",
+    "El servicio devolvió un 503 y el reintento funcionó a la segunda.",
+    "La incidencia 88213 se cerró después de que el cliente confirmara la solución.",
+    "La reunión pasa a las 15:00 en la sala B; el orden del día no cambia.",
+    "La tasa de aciertos de la caché subió de 0,71 a 0,94 tras reconstruir el índice.",
+    "La factura sumó 1420 unidades en tres líneas.",
+    "La versión 2.14.0 ya está disponible y el registro de cambios trae once entradas.",
+    "La copia de seguridad terminó a las 02:00 UTC y la suma de control coincidió.",
+    "El proceso corre cada noche y deja su resumen en el depósito compartido.",
+    "El soporte atiende de lunes a viernes y ahora mismo la cola está vacía.",
+    "La migración tocó 14 tablas y tardó menos de cuatro minutos.",
+    "Se atendieron los comentarios de la revisión y la rama está lista para fusionar.",
+    "La latencia del percentil 95 bajó de 200 milisegundos.",
+    "Sin embargo, el informe llegó sin anexos y sin firma.",
+    "La entrega se hizo sin incidencias y sin retrasos.",
+    "El equipo se reunió en la plaza del ayuntamiento antes de la presentación.",
+    "Quedan 12 tareas abiertas y 3 de ellas son de la calle de servicio.",
+    "El lote 2023 se envió a las 9:30 con 48 cajas."
+  ]
+}
