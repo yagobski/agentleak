@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
 """General PII detector: emails, phones, SSN/SIN, credit cards, IPs, DOB,
-client identifiers, UK NINO, Spanish DNI/NIE, and keyword-anchored probable
-names.
+client identifiers, UK NINO, Spanish DNI/NIE and social security number, and
+keyword-anchored probable names.
 
 Patterns favor precision over recall and attach a per-pattern confidence so
 the scoring engine can weigh noisy matches (phones, names) less than crisp
@@ -72,6 +72,17 @@ NINO_RE = re.compile(
 DNI_RE = re.compile(r"(?<![\w.-])(\d{8}|\d{2}\.\d{3}\.\d{3})[- ]?([A-Z])(?![\w-])")
 NIE_RE = re.compile(r"(?<![\w.-])([XYZ])[- ]?(\d{7})[- ]?([A-Z])(?![\w-])")
 _DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
+# Spanish social security number (NUSS / número de afiliación): two digits of
+# province, eight of number, two of control ("28/12345678/40"). The control is
+# a checksum (modulo 97), so a match is validated. Grouped with one consistent
+# separator it matches on its own; as a bare run of twelve digits it is also
+# an order or a reference, so it needs the label next to it ("NUSS
+# 281234567840").
+NUSS_RE = re.compile(r"(?<![\w/.-])(\d{2})([ /-])(\d{8})\2(\d{2})(?![\w/-])")
+NUSS_LABELLED_RE = re.compile(
+    r"\b(?i:nuss|naf|n[uú]mero de afiliaci[oó]n|seguridad social)\b"
+    r"[^\d\n]{0,25}?(?<!\d)(\d{2})(\d{8})(\d{2})(?!\d)"
+)
 # Street address: number + street words + a street-type suffix.
 # The suffixes are the common USPS street-type words, minus the ones that are
 # mostly surnames (Green, Mills, Ford, Brooks…); the first version knew fifteen,
@@ -142,6 +153,14 @@ def _luhn_ok(digits: str) -> bool:
 def _dni_letter_ok(number: str, letter: str) -> bool:
     """The DNI/NIE control letter is the number modulo 23 in a fixed table."""
     return _DNI_LETTERS[int(number) % 23] == letter
+
+
+def _nuss_ok(province: str, number: str, control: str) -> bool:
+    """The NUSS control is the province and number modulo 97; a number below
+    ten million counts with the province times ten million, not prefixed."""
+    n = int(number)
+    base = n + int(province) * 10_000_000 if n < 10_000_000 else int(province + number)
+    return base % 97 == int(control)
 
 
 class PIIDetector(Detector):
@@ -260,6 +279,22 @@ class PIIDetector(Detector):
                     data_type="spanish_national_id", severity=Severity.HIGH, confidence=0.9,
                     matched_value=m.group(0),
                     recommendation="Never transmit full DNI/NIE numbers; tokenize them.",
+                ))
+
+        for m in NUSS_RE.finditer(text):
+            if _nuss_ok(m.group(1), m.group(3), m.group(4)):
+                matches.append(self._match(
+                    data_type="spanish_social_security_number", severity=Severity.HIGH,
+                    confidence=0.9, matched_value=m.group(0),
+                    recommendation="Never transmit full social security numbers; tokenize them.",
+                ))
+
+        for m in NUSS_LABELLED_RE.finditer(text):
+            if _nuss_ok(m.group(1), m.group(2), m.group(3)):
+                matches.append(self._match(
+                    data_type="spanish_social_security_number", severity=Severity.HIGH,
+                    confidence=0.9, matched_value=m.group(1) + m.group(2) + m.group(3),
+                    recommendation="Never transmit full social security numbers; tokenize them.",
                 ))
 
         for name in full_names(text):

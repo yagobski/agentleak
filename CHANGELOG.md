@@ -16,6 +16,11 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   control letter is checked (number modulo 23), so a match is validated rather
   than guessed from the shape. Part of `group:government_ids`, level 4 in
   AgentRisk like SSN/SIN/NINO. Issue #4.
+- **Spanish social security number (NUSS)** in the PII detector
+  (`spanish_social_security_number`, HIGH). The two control digits are checked
+  (modulo 97). Grouped forms ("28/12345678/40") match on their own; a bare run
+  of twelve digits only next to its label. Part of `group:government_ids`,
+  level 4 in AgentRisk. Issue #4.
 
 ## [0.17.0] - 2026-09-27
 
