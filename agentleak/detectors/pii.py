@@ -54,7 +54,8 @@ CREDIT_CARD_RE = re.compile(r"\b(?:\d[ -]?){13,16}\b")
 # trace timestamps and arbitrary dates).
 DOB_RE = re.compile(
     r"(?i)\b(?:dob|d\.o\.b\.|date of birth|born|birth ?date"
-    r"|n[ée]e? le|date de naissance)(?!\w)[:\s]*"
+    r"|n[ée]e? le|date de naissance"
+    r"|fecha de nacimiento|fecha nac\.?|f\. ?nac\.?|nacid[oa] el|naci[óo] el)(?!\w)[:\s]*"
     r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
 )
 CLIENT_ID_RE = re.compile(r"\b(?:ACC|ACCT|CUST|CLIENT|USER|MEMBER)[-_]?\d{3,}\b", re.IGNORECASE)
@@ -112,6 +113,26 @@ ADDRESS_FR_RE = re.compile(
     r"Impasse|Mont[ée]e|Rang|Croissant|Promenade|Terrasse|Carr[ée])\.?\s+"
     r"[A-ZÀ-Ý][\wÀ-ÿ'’.-]+(?:[ -][A-ZÀ-Ý][\wÀ-ÿ'’.-]+){0,3}",
     re.IGNORECASE,
+)
+# Spanish address: street-type word, then the name, then the number
+# ("Calle Mayor 12", "Avenida de Anaga, 5", "C/ Gran Vía, nº 28"). The type
+# word may be lowercase, as it usually is in prose ("vive en la calle Mayor
+# 12"); the name must be capitalized. An optional floor/door ("3º B") and a
+# postal code with its town ("38001 Santa Cruz de Tenerife") are taken too, so
+# a redaction removes the whole address. The number has at most three digits
+# and is not followed by a unit, so "Camino de Santiago 2023" or "Paseo
+# Marítimo 5 minutos" stay out.
+_ES_CAP = r"[A-ZÁÉÍÓÚÑ][\w'’-]*"
+_ES_LINK = r"(?:(?:de|del|la|las|los|el|y)\s+)*"
+ADDRESS_ES_RE = re.compile(
+    r"\b(?i:calle|c/|avenida|avda\.?|av\.|plaza|pza\.?|paseo|camino|carretera"
+    r"|ctra\.?|ronda|traves[íi]a|glorieta|rambla|urbanizaci[óo]n|urb\.)"
+    r"\s*" + _ES_LINK + _ES_CAP + r"(?:\s+" + _ES_LINK + _ES_CAP + r"){0,4}"
+    r",?\s*(?:n[º°o]\.?\s*)?\d{1,3}[A-Za-z]?\b"
+    r"(?!\s*(?:km|kms|m|metros|min|minutos|h|horas|veces|personas|euros|€|%)(?!\w))"
+    r"(?:,?\s*\d{1,2}[º°ªo]\s*[A-Za-z]?\b)?"
+    r"(?:,?\s*(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b"
+    r"(?:\s+" + _ES_CAP + r"(?:\s+" + _ES_LINK + _ES_CAP + r"){0,4})?)?"
 )
 # Canadian postal code (A1A 1A1) — distinctive enough to match without a keyword.
 POSTAL_RE = re.compile(r"\b[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d\b")
@@ -284,6 +305,13 @@ class PIIDetector(Detector):
             ))
 
         for m in ADDRESS_FR_RE.finditer(text):
+            matches.append(self._match(
+                data_type="address", severity=Severity.HIGH, confidence=0.7,
+                matched_value=m.group(0).strip(),
+                recommendation="Home addresses are re-identifying; remove them from internal channels.",
+            ))
+
+        for m in ADDRESS_ES_RE.finditer(text):
             matches.append(self._match(
                 data_type="address", severity=Severity.HIGH, confidence=0.7,
                 matched_value=m.group(0).strip(),
