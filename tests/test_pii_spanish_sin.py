@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
 """Spanish mobile vs Canadian SIN false positive (issue #4).
 
 A Spanish mobile national part is 9 digits in 3-3-3 groups ("612 345 678"),
@@ -14,8 +16,12 @@ def _sin_values(text):
     return [m.matched_value for m in PIIDetector().detect(text) if m.data_type == "sin"]
 
 
+def _phones(text):
+    return [m.matched_value for m in PIIDetector().detect(text) if m.data_type == "phone_number"]
+
+
 def test_spanish_mobile_with_plus34_not_sin():
-    # Exact case reported by Claudio Martins Sosa (issue #4).
+    # Exact case reported in issue #4.
     assert _sin_values("call me at +34 600 000 000") == []
 
 
@@ -40,3 +46,13 @@ def test_sin_after_spanish_prefix_kept():
     # A real SIN mentioned after an unrelated +34 stays flagged.
     vals = _sin_values("call +34 then my SIN 046 454 286")
     assert "046 454 286" in vals
+
+
+def test_spanish_number_with_prefix_is_a_phone_in_any_grouping():
+    # Not a SIN, but still a phone: skipping the SIN match alone would let it
+    # through unreported.
+    for text in ["call me at +34 600 000 000", "+34 612 345 678", "+34 612345678",
+                 "+34 612 34 56 78", "+34 91 123 45 67", "0034 912 345 678",
+                 "tel (+34) 612 345 678", "+34-612-345-678"]:
+        assert len(_phones(text)) == 1, text
+        assert _sin_values(text) == [], text

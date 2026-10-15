@@ -21,11 +21,11 @@ SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 SIN_RE = re.compile(r"\b\d{3}[- ]\d{3}[- ]\d{3}\b")
 
 # A Spanish mobile national part is also 9 digits in 3-3-3 groups
-# ("612 345 678"), which collides with the SIN shape above. A Spanish
-# country-code prefix (+34 / 0034) immediately before the match means
-# Spain, not a Canadian SIN -- suppress the SIN match in that context
-# (issue #4: false positive reported on +34 mobiles).
-_ES_PHONE_PREFIX_RE = re.compile(r"(?:^|[\s(])(?:\+34|0034)\)?[\s.\-]*$")
+# ("612 345 678"), which collides with the SIN shape above. With its country
+# code (+34 / 0034) it is a Spanish number: nine digits, 6-7 for mobiles and
+# 8-9 for landlines, in any grouping. Reported as a phone; the SIN loop skips
+# anything inside one of these spans (issue #4).
+ES_PHONE_RE = re.compile(r"(?<![\w+])(?:\(?\+34\)?|0034)[\s.\-]*[6-9](?:[\s.\-]?\d){8}(?!\d)")
 # A bare run of nine digits is not a SIN on its own — it is also an order
 # number, a timestamp, or a part code. It becomes one when the text says so,
 # which is how people actually write it ("SIN 123456789"), so the unseparated
@@ -151,9 +151,18 @@ class PIIDetector(Detector):
                 recommendation="Never transmit full social security numbers; tokenize them.",
             ))
 
+        es_phones: list[tuple[int, int]] = []
+        for m in ES_PHONE_RE.finditer(text):
+            es_phones.append(m.span())
+            matches.append(self._match(
+                data_type="phone_number", severity=Severity.MEDIUM, confidence=0.65,
+                matched_value=m.group(0).strip(),
+                recommendation="Avoid sending full phone numbers to tools and logs.",
+            ))
+
         for m in SIN_RE.finditer(text):
-            # Spanish mobile (+34 ...): pattern collision, not a SIN.
-            if _ES_PHONE_PREFIX_RE.search(text[: m.start()]):
+            # Inside a +34 number: a phone (reported above), not a SIN.
+            if any(a <= m.start() and m.end() <= b for a, b in es_phones):
                 continue
             matches.append(self._match(
                 data_type="sin", severity=Severity.HIGH, confidence=0.8,
