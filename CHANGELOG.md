@@ -8,6 +8,10 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ### Added
 
+- **Spanish dates of birth and street addresses** in the PII detector: the
+  Spanish birth labels ("fecha de nacimiento", "nacido el"…) and addresses in
+  the Spanish order, street type first and number after the name ("Calle
+  Mayor 12, 3º B, 38001 Santa Cruz de Tenerife"). Issue #4.
 - **Spanish health terms** in the healthcare detector: conditions and
   medications, with and without accents, plus the few brand names used as
   drug names in Spain. Terms that collide with ordinary Spanish words or
