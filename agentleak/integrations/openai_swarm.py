@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
-"""OpenAI Swarm / Agents SDK integration.
+"""OpenAI Swarm and OpenAI Agents SDK trace adapters.
 
-Swarm and the OpenAI Agents SDK orchestrate *multiple* agents that hand control
-to one another. A run produces a list of chat messages (``role``/``content``,
-optional ``tool_calls`` and a ``sender``/agent name). This adapter maps that
-conversation onto AgentLeak channels, with agent-to-agent handoffs surfaced as
-``inter_agent_message`` — exactly the internal channel output-only audits miss.
+Swarm returns chat messages (``role``/``content``, optional ``tool_calls`` and
+``sender``); the Agents SDK returns Responses items and richer ``new_items``
+wrappers. This adapter maps both onto AgentLeak channels, including tool calls,
+tool outputs, and agent-to-agent handoffs.
 
 Works with:
 
 * **Swarm** — ``response = client.run(...)`` then ``response.messages``.
 * **Agents SDK** — ``result = await Runner.run(...)`` then
-  ``result.to_input_list()`` (or any list of message dicts).
+  ``trace_from_agents_result(result)``. Plain ``result.to_input_list()`` items
+  are also accepted by ``trace_from_messages``.
 
 Usage::
 
@@ -31,10 +31,22 @@ from typing import Any
 from ..core.trace import Trace
 
 
+def _field(item: Any, name: str, default: Any = None) -> Any:
+    return item.get(name, default) if isinstance(item, dict) else getattr(item, name, default)
+
+
+def _text(content: Any) -> Any:
+    """Extract text blocks without stringifying SDK model objects."""
+    if isinstance(content, list):
+        parts = [part if isinstance(part, str) else _field(part, "text") for part in content]
+        return "\n".join(part for part in parts if isinstance(part, str))
+    return content
+
+
 def _content_of(msg: Any) -> Any:
     if isinstance(msg, dict):
-        return msg.get("content", "")
-    return getattr(msg, "content", "")
+        return _text(msg.get("content", ""))
+    return _text(getattr(msg, "content", ""))
 
 
 def _role_of(msg: Any) -> str:
@@ -61,7 +73,7 @@ def trace_from_messages(
     run_id: str = "run",
     agent_name: str = "swarm_agent",
 ) -> Trace:
-    """Build a trace from a Swarm/Agents-SDK message list.
+    """Build a trace from Swarm messages or plain Responses input items.
 
     Assistant tool-call arguments become ``tool_call`` events; ``tool``/``function``
     role messages become ``tool_response`` events; assistant turns where the
@@ -75,13 +87,55 @@ def trace_from_messages(
     # Index of the last assistant message with textual content -> final output.
     final_idx = -1
     for i, msg in enumerate(msgs):
-        if _role_of(msg) == "assistant" and _content_of(msg):
+        raw = _field(msg, "raw_item", msg)
+        if _role_of(raw) == "assistant" and _content_of(raw):
             final_idx = i
 
     for i, msg in enumerate(msgs):
+        item_type = _field(msg, "type")
+        raw = _field(msg, "raw_item", msg)
+        raw_type = _field(raw, "type")
+        agent = _field(msg, "agent")
+        agent_sender = _field(agent, "name")
+        if item_type == "handoff_output_item":
+            source = _field(_field(msg, "source_agent"), "name", "agent")
+            target = _field(_field(msg, "target_agent"), "name", "agent")
+            trace.add_event(
+                channel="inter_agent_message", content=_field(raw, "output", "handoff"),
+                source=str(source), target=str(target), metadata={"handoff": True},
+            )
+            last_sender = str(target)
+            continue
+        if item_type == "handoff_call_item":
+            # The matching handoff_output_item records the transfer. Its call
+            # arguments are still an outbound tool invocation.
+            raw_type = "function_call"
+        if raw_type == "function_call" or item_type == "tool_call_item":
+            arguments = _field(raw, "arguments")
+            if arguments is not None:
+                trace.add_event(
+                    channel="tool_call", content=arguments,
+                    source=str(agent_sender or "assistant"),
+                    target=str(_field(raw, "name", "tool")),
+                    metadata={"origin": "agents_sdk"},
+                )
+            continue
+        if raw_type == "function_call_output" or item_type == "tool_call_output_item":
+            output = _field(msg, "output", _field(raw, "output", ""))
+            trace.add_event(
+                channel="tool_response", content=output if output is not None else "",
+                source=str(_field(raw, "call_id", "tool")), target="agent",
+                metadata={"origin": "agents_sdk"},
+            )
+            continue
+        if item_type == "message_output_item":
+            msg = raw
+        elif item_type is not None and raw_type != "message":
+            # Reasoning and other SDK items do not represent user-visible text.
+            continue
         role = _role_of(msg)
         content = _content_of(msg)
-        sender = _sender_of(msg, role)
+        sender = str(agent_sender or _sender_of(msg, role))
 
         if role in ("tool", "function"):
             trace.add_event(
@@ -122,4 +176,26 @@ def trace_from_messages(
     return trace
 
 
-__all__ = ["trace_from_messages"]
+def trace_from_agents_result(
+    result: Any, *, run_id: str = "run", agent_name: str = "agents_sdk_agent",
+) -> Trace:
+    """Convert completed ``Runner.run``/``Runner.run_sync`` results.
+
+    ``new_items`` carries the agent associations and tool outputs that a plain
+    replay list may omit. Include the run input to populate the source vault.
+    Call this after consuming a streamed run to completion.
+    """
+    run_input = _field(result, "input", [])
+    if isinstance(run_input, str):
+        inputs: list[Any] = [{"role": "user", "content": run_input}]
+    elif isinstance(run_input, list):
+        inputs = run_input
+    else:
+        inputs = []
+    return trace_from_messages(
+        inputs + list(_field(result, "new_items", []) or []),
+        run_id=run_id, agent_name=agent_name,
+    )
+
+
+__all__ = ["trace_from_messages", "trace_from_agents_result"]

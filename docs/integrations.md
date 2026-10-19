@@ -17,7 +17,8 @@ import agentleak
 with agentleak.watch("my-agent") as run:
     # --- pick whichever fits your stack ---
     chain.invoke(inputs, config={"callbacks": [run.callback]})   # LangChain / LangGraph
-    run.ingest_messages(response.messages)                       # OpenAI Swarm / Agents SDK
+    run.ingest_messages(response.messages)                       # OpenAI Swarm
+    run.ingest_messages(result.to_input_list())                  # OpenAI Agents SDK
     run.ingest_steps(agent.steps)                                # computer-use / coding agent
     run.tool_call({"ssn": "123-45-6789"}, target="db")           # direct, any framework
     run.final_output("All set!")
@@ -117,7 +118,7 @@ trace = trace_from_messages(chat_result.chat_history, run_id="run_001")
 result = AgentLeakRunner().analyze(trace)
 ```
 
-### OpenAI Swarm / Agents SDK
+### OpenAI Swarm
 
 Multi-agent handoffs are surfaced as `inter_agent_message` events.
 
@@ -129,6 +130,40 @@ response = client.run(agent=triage, messages=[...])
 trace = trace_from_messages(response.messages, run_id="run_001")
 result = AgentLeakRunner().analyze(trace)
 ```
+
+### OpenAI Agents SDK (Python)
+
+The Agents SDK returns a `RunResult`, not a Swarm `response.messages` list.
+Use `new_items` through `trace_from_agents_result` for agent associations,
+tool outputs, and handoff boundaries. Call it after `Runner.run` or
+`Runner.run_sync` completes; consume `Runner.run_streamed` fully first.
+
+```python
+from agents import Runner
+from agentleak import AgentLeakRunner
+from agentleak.integrations.openai_swarm import trace_from_agents_result
+
+result = await Runner.run(agent, "Summarize the account")
+trace = trace_from_agents_result(result, run_id="run_001")
+report = AgentLeakRunner().analyze(trace)
+```
+
+For a stored plain Responses history, `trace_from_messages(result.to_input_list())`
+also accepts `function_call.arguments`, `function_call_output.output`, and
+assistant `output_text` blocks. `function_call` arguments are disclosure events
+(`tool_call`); outputs are source events (`tool_response`). The adapter reads
+only textual content blocks and function calls. Other hosted tool types and
+multimodal payloads require separate instrumentation.
+
+Run the [offline synthetic demo](../examples/openai_agents_sdk_fixture.py) with
+`python examples/openai_agents_sdk_fixture.py --mode fixture`. It needs no
+OpenAI key or API call. The fixture first detects an address sent in tool
+arguments, then checks a corrected call with the address removed.
+
+The [official SDK results guide](https://openai.github.io/openai-agents-python/results/)
+describes `new_items` and `to_input_list()`; the
+[item reference](https://openai.github.io/openai-agents-python/ref/items/)
+defines tool call, output, and handoff wrappers.
 
 ### LlamaIndex
 

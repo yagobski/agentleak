@@ -156,6 +156,61 @@ def test_openai_swarm_trace_from_messages():
     assert any(f.data_type == "ssn" for f in result.findings)
 
 
+def test_openai_agents_responses_items_detect_tool_arguments():
+    from agentleak.integrations.openai_swarm import trace_from_messages
+
+    items = [
+        {"role": "user", "content": "Send a status update"},
+        {"type": "function_call", "name": "send_update", "call_id": "call_1",
+         "arguments": '{"recipient":"synthetic@example.com"}'},
+        {"type": "function_call_output", "call_id": "call_1", "output": "sent"},
+        {"type": "message", "role": "assistant",
+         "content": [{"type": "output_text", "text": "Done."}]},
+    ]
+    trace = trace_from_messages(items)
+    result = AgentLeakRunner().analyze(trace)
+    assert [event.channel_value for event in trace.events] == [
+        "user_input", "tool_call", "tool_response", "final_output",
+    ]
+    assert any(f.channel == "tool_call" and f.data_type == "email" for f in result.findings)
+
+
+def test_openai_agents_result_wrappers_and_handoff():
+    from types import SimpleNamespace as Obj
+
+    from agentleak.integrations.openai_swarm import trace_from_agents_result
+
+    triage = Obj(name="triage")
+    support = Obj(name="support")
+    run = Obj(
+        input="Help me with my account",
+        new_items=[
+            Obj(type="handoff_call_item", agent=triage,
+                raw_item=Obj(type="function_call", name="transfer_to_support",
+                             arguments='{"email":"synthetic@example.com"}')),
+            Obj(type="handoff_output_item", agent=support, source_agent=triage,
+                target_agent=support, raw_item={"type": "function_call_output", "output": "ok"}),
+            Obj(type="tool_call_item", agent=support,
+                raw_item={"type": "function_call", "name": "lookup",
+                          "arguments": '{"account":"42"}'}),
+            Obj(type="tool_call_output_item", agent=support, output="ssn 123-45-6789",
+                raw_item={"type": "function_call_output", "call_id": "call_2",
+                          "output": "ssn 123-45-6789"}),
+            Obj(type="message_output_item", agent=support,
+                raw_item=Obj(type="message", role="assistant",
+                             content=[Obj(type="output_text", text="Resolved.")])),
+        ],
+    )
+    trace = trace_from_agents_result(run)
+    assert [event.channel_value for event in trace.events] == [
+        "user_input", "tool_call", "inter_agent_message", "tool_call",
+        "tool_response", "final_output",
+    ]
+    result = AgentLeakRunner().analyze(trace)
+    assert any(f.channel == "tool_call" and f.data_type == "email" for f in result.findings)
+    assert any(f.channel == "tool_response" and f.data_type == "ssn" for f in result.findings)
+
+
 # -- LlamaIndex -------------------------------------------------------------
 def test_llamaindex_trace_from_response():
     from agentleak.integrations.llamaindex import trace_from_response
