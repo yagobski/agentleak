@@ -30,6 +30,8 @@ set when the tag is cut.
   of twelve digits only next to its label. Part of `group:government_ids`,
   level 4 in AgentRisk. Issue #4.
 - `Monitor.reset()` and a `seed` argument for reproducible sampling.
+- `detection.obscured_copies` (default `true`) turns off the reversed, ROT13
+  and split-copy search for very large traces.
 
 ### Fixed
 
@@ -60,6 +62,14 @@ set when the tag is cut.
 - **MCP extra.** `agentleak[mcp]` requires `mcp>=2.0,<3`; the server imports
   `mcp.server.MCPServer`, which older SDKs do not provide.
 
+- **Analysis time grew quadratically with findings.** The obscured-copy search
+  decoded each event once per known secret and re-tokenized every message for
+  every candidate, and secret clustering compared every pair of values of a
+  type. Both now use a token index and per-event caches; findings are
+  byte-identical on the packaged fixtures, the benign controls and the
+  benchmark traces. On the 1,000-event high-finding benchmark the analysis is
+  about 35 times faster. The split-message search still compares each exposed
+  identifier with each later event by design.
 
 ### Changed
 

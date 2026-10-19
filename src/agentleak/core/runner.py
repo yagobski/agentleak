@@ -130,6 +130,7 @@ class AgentLeakRunner:
         if config is None:
             raw_detectors: list[Detector] = build_detectors(None, None)
             self._channels: set[str] | None = None
+            self._obscured_copies = True
             self._redact = True
             self._block_on_critical = True
             self._fail_below = 40
@@ -145,6 +146,7 @@ class AgentLeakRunner:
                 config.detectors.as_dict(), config.custom_rules_raw()
             )
             self._channels = config.enabled_channels()
+            self._obscured_copies = config.detection.obscured_copies
             self._redact = config.privacy.redact_values
             self._block_on_critical = config.scoring.block_on_critical
             self._fail_below = config.scoring.fail_below
@@ -208,7 +210,8 @@ class AgentLeakRunner:
 
         # Copies of an exposed value that no plaintext detector can read:
         # reversed, ROT13-rotated, or split across messages to one recipient.
-        findings = _add_obscured_copies(trace, findings, self._channels, counter)
+        if self._obscured_copies:
+            findings = _add_obscured_copies(trace, findings, self._channels, counter)
 
         # One identity per secret before anything counts them. Detectors
         # disagree on where an entity ends, and AgentRisk keys a secret on the

@@ -37,7 +37,10 @@ type.
 `detection.mode` is `fast`, `standard`, `hybrid` or `llm_only`. Fast is the
 default and requires no network. Standard enables Presidio, hybrid adds the
 optional semantic judge, and `llm_only` is intended only for controlled
-experiments.
+experiments. `detection.obscured_copies` (default `true`) matches reversed,
+ROT13 and split copies of values the trace already exposed; its cost grows with
+the number of distinct secrets times the number of events, so a very large trace
+can set it to `false` and keep plaintext and decoded-text detection.
 
 `scoring` controls thresholds and weights. `vault.levels` or `vault.rho_s`
 defines the audited denominator. Without a vault, the denominator is the

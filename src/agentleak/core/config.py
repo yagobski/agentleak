@@ -141,6 +141,10 @@ class DetectionConfig(BaseModel):
     """Controls the hybrid detection pipeline (Tiers 1–3)."""
 
     mode: str = "fast"  # fast | standard | hybrid | llm_only
+    # Reversed, ROT13 and split-across-messages copies of values the trace
+    # already exposed. Its cost grows with distinct secrets x events, so very
+    # large traces can turn it off; plaintext and decoded views still run.
+    obscured_copies: bool = True
     llm_judge: LLMJudgeConfig = Field(default_factory=LLMJudgeConfig)
     presidio: PresidioConfig = Field(default_factory=PresidioConfig)
 
