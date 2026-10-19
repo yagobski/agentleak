@@ -32,9 +32,12 @@ ES_PHONE_RE = re.compile(r"(?<![\w+])(?:\(?\+34\)?|0034)[\s.\-]*[6-9](?:[\s.\-]?
 # which is how people actually write it ("SIN 123456789"), so the unseparated
 # form is matched only next to the word that names it. The capture keeps the
 # digits alone so the redactor removes the number, not the label.
+# "sin" is also the Spanish for "without" ("sin 123456789 dudas"), so the
+# short labels count in capitals, or in any case when a separator makes them
+# a label ("sin: 123456789", "sin=123456789"), never as a bare word.
 SIN_LABELLED_RE = re.compile(
-    r"\b(?:sin|nas|social[ _]?insurance(?:[ _]?number)?)\b[\s:=#]*(\d{9})\b",
-    re.IGNORECASE,
+    r"\b(?:SIN|NAS|(?i:sin|nas)(?=\s*[:=#])|(?i:social[ _]?insurance(?:[ _]?number)?))"
+    r"\b[\s:=#]*(\d{9})\b"
 )
 PHONE_RE = re.compile(
     r"(?<!\d)(?:\+?\d{1,3}[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]\d{3}[-.\s]\d{4}(?!\d)"
