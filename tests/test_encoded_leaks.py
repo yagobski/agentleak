@@ -183,3 +183,21 @@ def test_gateway_redacts_an_encoded_value_surgically():
     decision = gateway.check({"ref": _b64(SIN), "order": "ORD-7781"}, recipient="analytics")
     assert decision.action == Action.REDACT
     assert decision.arguments == {"ref": "[REDACTED_SIN]", "order": "ORD-7781"}
+
+
+def test_obscured_copy_search_can_be_disabled() -> None:
+    from agentleak import AgentLeakRunner
+    from agentleak.core.config import Config
+    from agentleak.core.trace import Trace
+
+    trace = Trace(run_id="r", agent_name="a")
+    trace.add_event(channel="tool_response", source="db", target="agent",
+                    content="SIN 046 454 286")
+    trace.add_event(channel="inter_agent_message", source="agent", target="peer",
+                    content="682 454 640")  # the SIN, reversed
+    on = AgentLeakRunner(Config()).analyze(trace)
+    off_cfg = Config()
+    off_cfg.detection.obscured_copies = False
+    off = AgentLeakRunner(off_cfg).analyze(trace)
+    assert any(f.metadata.get("transform") == "reversed" for f in on.findings)
+    assert not any(f.metadata.get("transform") == "reversed" for f in off.findings)
