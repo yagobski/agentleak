@@ -42,6 +42,7 @@ import binascii
 import codecs
 import re
 import urllib.parse
+from bisect import bisect_right
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
@@ -176,6 +177,8 @@ def decoded_views(text: str, *, depth: int = _MAX_DEPTH) -> list[DecodedView]:
 # ---------------------------------------------------------------------------
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
+# Exactly the characters ``str.isalnum`` accepts, as used by the boundary check.
+_ALNUM_RUN_RE = re.compile(r"[^\W_]+")
 _MIN_ANCHOR = 6          # canonical length of a value worth anchoring on
 _MIN_SPLIT = 8           # alphanumeric length of a value worth reassembling
 _MIN_SPLIT_DIGITS = 4
@@ -204,6 +207,39 @@ def _fragment_in(tokens: Sequence[str], target: str, pos: int) -> int:
     return best
 
 
+def _token_index(tokens: Sequence[str]) -> dict[str, list[int]]:
+    index: dict[str, list[int]] = {}
+    for i, tok in enumerate(tokens):
+        index.setdefault(tok, []).append(i)
+    return index
+
+
+def _fragment_in_indexed(
+    tokens: Sequence[str], index: dict[str, list[int]], target: str, pos: int
+) -> int:
+    """:func:`_fragment_in`, using a token index instead of scanning every start.
+
+    A run can only start at a token equal to a prefix of ``target[pos:]``, so
+    only those positions are extended; the result is identical.
+    """
+    best = 0
+    rest = len(target) - pos
+    for length in range(1, rest + 1):
+        starts = index.get(target[pos:pos + length])
+        if not starts:
+            continue
+        for i in starts:
+            acc_len = 0
+            for j in range(i, len(tokens)):
+                tok = tokens[j]
+                if not target.startswith(tok, pos + acc_len):
+                    break
+                acc_len += len(tok)
+                if acc_len > best:
+                    best = acc_len
+    return best
+
+
 def _is_identifier(target: str) -> bool:
     return len(target) >= _MIN_SPLIT and sum(ch.isdigit() for ch in target) >= _MIN_SPLIT_DIGITS
 
@@ -215,7 +251,13 @@ def _has_token_run(text: str, target: str) -> bool:
 
 def _reassembled(value: str, texts: Sequence[tuple[int, str]]) -> list[int] | None:
     """Indices of the events whose fragments spell *value*, in order, or None."""
-    target = _alnum(value)
+    tokenized = [(index, [t.casefold() for t in _TOKEN_RE.findall(text)]) for index, text in texts]
+    return _reassembled_tokens(_alnum(value), [(i, toks, _token_index(toks)) for i, toks in tokenized])
+
+
+def _reassembled_tokens(
+    target: str, texts: Sequence[tuple[int, list[str], dict[str, list[int]]]]
+) -> list[int] | None:
     # Identifiers only. Split a phrase and you get its words, and words turn up
     # in every message: "{hotel_address" reassembles from a message saying
     # "Hotel" and another saying "address". SINs, cards, keys and account
@@ -224,9 +266,8 @@ def _reassembled(value: str, texts: Sequence[tuple[int, str]]) -> list[int] | No
         return None
     for start in range(len(texts)):
         pos, used = 0, list[int]()
-        for index, text in texts[start:start + _MAX_FRAGMENTS * 2]:
-            tokens = [t.casefold() for t in _TOKEN_RE.findall(text)]
-            k = _fragment_in(tokens, target, pos)
+        for index, tokens, token_index in texts[start:start + _MAX_FRAGMENTS * 2]:
+            k = _fragment_in_indexed(tokens, token_index, target, pos)
             if k >= _MIN_FRAGMENT or (k and pos + k == len(target) and used):
                 pos += k
                 used.append(index)
@@ -287,6 +328,22 @@ def find_obscured_copies(
             first_seen[canon] = first
     ordered = [(c, o) for c, o in ordered if c in first_seen]
 
+    # Candidate index. A value found at token boundaries in a view has each of
+    # its alphanumeric runs as a whole run of that view, so its first run must
+    # be one of the view's runs; a value sharing none cannot match there. The
+    # filter only skips values whose checks below would all fail.
+    by_first_run: dict[str, list[int]] = {}
+    always: list[int] = []
+    for pos_, (canon, _original) in enumerate(ordered):
+        first_run = _ALNUM_RUN_RE.search(canon)
+        if first_run is None:
+            always.append(pos_)
+        else:
+            by_first_run.setdefault(first_run.group(0), []).append(pos_)
+    targets = {pos_: _alnum(o) for pos_, (_c, o) in enumerate(ordered)}
+    identifiers = [pos_ for pos_, target in targets.items() if _is_identifier(target)]
+    identifiers_set = set(identifiers)
+
     for index, (text, _target, _channel) in enumerate(events):
         if not text:
             continue
@@ -295,7 +352,21 @@ def find_obscured_copies(
             ("reversed", canonical_form(text[::-1])),
             ("rot13", canonical_form(codecs.encode(text, "rot13"))),
         )
-        for canon, original in ordered:
+        candidates = set(always)
+        for _name, view in views:
+            for run in set(_ALNUM_RUN_RE.findall(view)):
+                hits = by_first_run.get(run)
+                if hits:
+                    candidates.update(hits)
+        decoded = decoded_views(text) if identifiers else []
+        if decoded:
+            decoded_alnum = [_alnum(v.text) for v in decoded]
+            candidates.update(
+                pos_ for pos_ in identifiers
+                if any(targets[pos_] in alnum for alnum in decoded_alnum)
+            )
+        for pos_ in sorted(candidates):
+            canon, original = ordered[pos_]
             if index <= first_seen[canon] or (index, canon) in seen:
                 continue
             if _contains_at_boundaries(plain[index], canon):
@@ -303,12 +374,12 @@ def find_obscured_copies(
             if any(_contains_at_boundaries(longer, canon) for longer in claimed):
                 continue
             hit = next((t for t, view in views if _contains_at_boundaries(view, canon)), None)
-            if hit is None and _is_identifier(_alnum(original)):
+            if hit is None and pos_ in identifiers_set:
                 # A decoded identifier loses its formatting: "0 4 6 4 5 4 2 8 6"
                 # reads back as 046454286, which no SIN pattern accepts and
                 # which, as a string, is not the SIN the trace already holds.
                 hit = next(
-                    (v.transform for v in decoded_views(text) if _has_token_run(v.text, _alnum(original))),
+                    (v.transform for v in decoded if _has_token_run(v.text, targets[pos_])),
                     None,
                 )
             if hit is not None:
@@ -316,17 +387,21 @@ def find_obscured_copies(
                 seen.add((index, canon))
                 claimed.append(canon)
 
-    by_target: dict[str, list[tuple[int, str]]] = {}
+    by_target: dict[str, list[tuple[int, list[str], dict[str, list[int]]]]] = {}
     for index, (text, target, _channel) in enumerate(events):
         if text:
-            by_target.setdefault(target or "", []).append((index, text))
+            tokens = [t.casefold() for t in _TOKEN_RE.findall(text)]
+            by_target.setdefault(target or "", []).append((index, tokens, _token_index(tokens)))
 
     for texts in by_target.values():
         if len(texts) < 2:
             continue
-        for canon, original in ordered:
-            later = [(i, t) for i, t in texts if i > first_seen[canon]]
-            used = _reassembled(original, later)
+        positions = [i for i, _tokens, _index in texts]
+        for pos_, (canon, original) in enumerate(ordered):
+            if pos_ not in identifiers_set:
+                continue
+            later = texts[bisect_right(positions, first_seen[canon]):]
+            used = _reassembled_tokens(targets[pos_], later)
             if not used:
                 continue
             last = used[-1]

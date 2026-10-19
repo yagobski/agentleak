@@ -55,7 +55,9 @@ split copies are matched only against values the trace has already exposed in
 plaintext, and only after they appeared. A finding from either path carries
 `metadata.transform` and is attributed to the original value, so it is the same
 secret to AgentRisk. See [encoded-leaks.md](encoded-leaks.md) for the
-measurement and the limits.
+measurement and the limits. The anchored search compares each exposed value with
+each later event, so it can dominate analysis time on traces with thousands of
+distinct secrets; `detection.obscured_copies: false` turns it off.
 
 ## Tier 2b — Presidio
 
@@ -65,7 +67,10 @@ recognizers added by AgentLeak:
 `PatientIDRecognizer` · `MedicalLicenseRecognizer` · `InsuranceIDRecognizer` ·
 `IMEIRecognizer` · `VINRecognizer` · `CryptoAddressRecognizer` · `BICRecognizer` ·
 `CVVRecognizer` · `PINRecognizer` · `MACAddressRecognizer` · `GPSCoordRecognizer` ·
-`VRMRecognizer`
+`VRMRecognizer` (class names carry an `AgentLeak` prefix). `CVVRecognizer`,
+`PINRecognizer` and `BICRecognizer` only fire next to one of their context words
+(for example "cvv", "pin", "swift"), because their patterns alone match any short
+number or any eight- or eleven-letter word.
 
 **Install:**
 
