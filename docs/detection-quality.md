@@ -15,7 +15,8 @@ remove a Canadian SIN, a key-name capture that ran to the end of the sentence,
 and a code scan that reported a bracket as a leaked identifier. None of those
 needed clever analysis. They needed somebody to count.
 
-This page is the count, and it prints the misses next to the hits.
+This page is the count, and it prints the misses next to the hits. The same
+count in Spanish is in [Detection quality in Spanish](detection-quality-es.md).
 
 ## What is measured
 
