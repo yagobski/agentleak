@@ -1,16 +1,24 @@
 {
   "title": "AgentLeak: privacy-leakage testing for agentic AI systems",
-  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight channels. Version 0.11.8 bundles 266 scenarios with complete source, license and corrected publication-attribution metadata and supports deterministic, NER-assisted and semantic detection tiers.",
+  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight instrumented channels (user input, tool responses and calls, shared memory, inter-agent messages, logs, generated files, final output), scores disclosures with AgentRisk, reconstructs source-to-target provenance and enforces release policies through an SDK, CLI, web workspace, MCP server, GitHub Action and sampled monitor. Version 0.18.0 is the version described and evaluated in the revised SoftwareX article; it fixes Presidio false positives and silent degradation, the monitor alert lifecycle, framework adapter capture and analysis scaling, and moves the source to src/.",
   "creators": [
-    { "name": "El Yagoubi, Faouzi", "affiliation": "Polytechnique Montréal" },
-    { "name": "Quintero, José Alejandro", "affiliation": "Polytechnique Montréal" },
-    { "name": "Al Mallah, Ranwa", "affiliation": "Polytechnique Montréal" }
+    {
+      "name": "El Yagoubi, Faouzi",
+      "affiliation": "Polytechnique Montréal"
+    },
+    {
+      "name": "Quintero, José Alejandro",
+      "affiliation": "Polytechnique Montréal"
+    },
+    {
+      "name": "Al Mallah, Ranwa",
+      "affiliation": "Polytechnique Montréal"
+    }
   ],
   "license": "MIT",
   "upload_type": "software",
   "access_right": "open",
   "version": "0.18.0",
-  "publication_date": "2026-09-27",
   "keywords": [
     "privacy",
     "agentic AI",
@@ -31,5 +39,5 @@
       "resource_type": "publication-softwaredocumentation"
     }
   ],
-  "notes": "Release 0.11.8 restores the published IEEE Access author attribution and embeds MIT and CC-BY-4.0 license texts plus fixture provenance in the wheel. Software authorship remains El Yagoubi, Quintero and Al Mallah. Runtime behavior and the 266-scenario corpus are unchanged from v0.11.7."
+  "notes": "Release 0.18.0. Bundled PrivacyLens-derived fixtures are CC BY 4.0 and AgentDojo-derived fixtures MIT, with per-pack provenance; AgentLeak-authored code is MIT."
 }

@@ -31,7 +31,6 @@ keywords:
   - compliance
 license: MIT
 version: 0.18.0
-date-released: "2026-09-27"
 preferred-citation:
   type: article
   title: "AgentLeak: A Benchmark for Internal-Channel Privacy Leakage in Multi-Agent LLM Systems"
