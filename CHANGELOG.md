@@ -6,9 +6,9 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
-Planned as 0.18.0, the version evaluated in the SoftwareX revision. Release
-date, `CITATION.cff` `date-released` and `.zenodo.json` `publication_date` are
-set when the tag is cut.
+Planned as 0.18.0, the version evaluated in the SoftwareX revision. Rename
+this heading to `[0.18.0] - <date>` when the tag is cut; `CITATION.cff` and
+`.zenodo.json` carry no date, so GitHub and Zenodo use the release date.
 
 ### Added
 
