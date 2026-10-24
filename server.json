@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.yagobski/agentleak",
+  "title": "AgentLeak",
+  "description": "Privacy-leakage testing for AI agents: scan code and traces for PII crossing agent boundaries.",
+  "repository": {
+    "url": "https://github.com/yagobski/agentleak",
+    "source": "github"
+  },
+  "version": "0.17.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "agentleak",
+      "version": "0.17.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "agentleak[mcp]"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "agentleak"
+        },
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}
