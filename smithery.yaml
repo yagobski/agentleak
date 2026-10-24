@@ -1,0 +1,15 @@
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+startCommand:
+  type: stdio
+  configSchema:
+    # AgentLeak runs fully locally: no configuration, account or API key needed.
+    type: object
+    properties: {}
+  commandFunction:
+    |-
+    (config) => ({
+      command: 'uvx',
+      args: ['--from', 'agentleak[mcp]', 'agentleak', 'mcp'],
+      env: {}
+    })
