@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://www.agentleak.org">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-white.svg">
-      <img alt="AgentLeak" src="https://raw.githubusercontent.com/yagobski/agentleak/main/agentleak/web/static/assets/logo/agentleak-logo-dark.svg" width="340">
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/yagobski/agentleak/main/src/agentleak/web/static/assets/logo/agentleak-logo-white.svg">
+      <img alt="AgentLeak" src="https://raw.githubusercontent.com/yagobski/agentleak/main/src/agentleak/web/static/assets/logo/agentleak-logo-dark.svg" width="340">
     </picture>
   </a>
 </p>
@@ -18,6 +18,7 @@
   <a href="https://github.com/yagobski/agentleak/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/yagobski/agentleak/ci.yml?branch=main&style=flat-square&label=tests&color=1a7f37&labelColor=24292f&logo=githubactions&logoColor=white"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-57606a?style=flat-square&labelColor=24292f"></a>
   <a href="https://arxiv.org/abs/2602.11510"><img alt="Paper" src="https://img.shields.io/badge/arXiv-2602.11510-b31b1b?style=flat-square&labelColor=24292f"></a>
+  <a href="https://doi.org/10.1109/ACCESS.2026.3704541"><img alt="Published in IEEE Access" src="https://img.shields.io/badge/IEEE_Access-10.1109%2FACCESS.2026.3704541-00629b?style=flat-square&labelColor=24292f"></a>
 </p>
 
 <p align="center">
