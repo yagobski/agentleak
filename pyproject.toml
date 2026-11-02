@@ -134,6 +134,9 @@ exclude = ["**/node_modules", "src/agentleak/web/frontend/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Some tests import helpers from tests.conftest; with the src/ layout the
+# repository root is no longer on sys.path unless pytest adds it.
+pythonpath = ["."]
 addopts = "-q"
 
 [tool.ruff]
