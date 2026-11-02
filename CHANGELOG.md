@@ -6,7 +6,7 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.18.0] - 2026-10-24
+## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.
 `CITATION.cff` and `.zenodo.json` carry no date, so GitHub and Zenodo use the
