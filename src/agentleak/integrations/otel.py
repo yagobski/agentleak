@@ -49,9 +49,10 @@ Or with the unified API::
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any
 
-from ..core.trace import Channel, Trace
+from ..core.trace import Channel, Event, Trace
 
 # OpenInference / OTel GenAI attribute keys (with common aliases).
 _KIND_KEYS = ("openinference.span.kind", "span.kind", "gen_ai.operation.name")
@@ -60,6 +61,10 @@ _OUTPUT_KEYS = ("output.value", "gen_ai.completion", "traceloop.entity.output")
 _TOOL_NAME_KEYS = ("tool.name", "gen_ai.tool.name", "tool_call.function.name")
 _TOOL_ARGS_KEYS = ("tool.parameters", "tool_call.function.arguments", "input.value")
 _AGENT_KEYS = ("agent.name", "graph.node.name", "graph.node.id", "gen_ai.agent.name")
+# Flow context no tracing convention carries; read only when the application
+# sets it, never guessed.
+_RECIPIENT_KEY = "agentleak.recipient"
+_PURPOSE_KEY = "agentleak.purpose"
 
 
 def _get(obj: Any, *names: str, default: Any = None) -> Any:
@@ -149,6 +154,61 @@ def _retrieved_docs(attrs: dict[str, Any]) -> str:
     return "\n\n".join(parts)
 
 
+def _ms(value: Any) -> float | None:
+    """A span time in ms (promptfoo's ``startTime``/``endTime``), if it is one."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return None
+
+
+def _annotate(events: list[Event], span: Any, attrs: dict[str, Any],
+              start: float | None, end: float | None) -> None:
+    """Keep the span's identity, time and declared flow context on its events."""
+    meta = {key: str(value) for key, value in (
+        ("span_id", _get(span, "spanId", "span_id")),
+        ("parent_span_id", _get(span, "parentSpanId", "parent_span_id")),
+        ("purpose", attrs.get(_PURPOSE_KEY)),
+    ) if value not in (None, "")}
+    recipient = attrs.get(_RECIPIENT_KEY)
+    for ev in events:
+        ev.metadata.update(meta)
+        if ev.channel_value == "inter_agent_message":
+            if recipient not in (None, ""):
+                ev.target = str(recipient)
+            else:
+                ev.metadata["target_inferred"] = True   # "agent" is a placeholder
+        # Inputs happen when the span starts, outputs when it ends.
+        sent_at_start = ev.channel_value == "user_input" or (
+            ev.channel_value == "tool_call" and ev.metadata.get("span_kind") != "LLM")
+        at = start if sent_at_start else end
+        if at is not None:
+            ev.timestamp = datetime.fromtimestamp(at / 1000.0, tz=timezone.utc)
+
+
+def _final_output(events: list[Event], spans: list[Any]) -> Event | None:
+    """The user-facing answer: the last model/chain output that declares no
+    other recipient and is not nested (by parent span) inside another span
+    that produced output. ``None`` when no output qualifies."""
+    outputs = [e for e in events if e.channel_value == "inter_agent_message"]
+    producers = {e.metadata.get("span_id") for e in outputs}
+    parent_of = {str(_get(s, "spanId", "span_id")): str(_get(s, "parentSpanId", "parent_span_id"))
+                 for s in spans if _get(s, "parentSpanId", "parent_span_id") is not None}
+
+    def nested(span_id: str | None) -> bool:
+        seen: set[str] = set()
+        while span_id in parent_of and span_id not in seen:
+            seen.add(span_id)
+            span_id = parent_of[span_id]
+            if span_id in producers:
+                return True
+        return False
+
+    candidates = [e for e in outputs
+                  if (e.metadata.get("target_inferred") or e.target == "user")
+                  and not nested(e.metadata.get("span_id"))]
+    return candidates[-1] if candidates else None
+
+
 def trace_from_spans(
     spans: Any,
     *,
@@ -158,18 +218,31 @@ def trace_from_spans(
 ) -> Trace:
     """Build a trace from OpenInference / OTel GenAI spans.
 
-    The last LLM/CHAIN/AGENT textual output (in document order) is treated as the
-    user-facing ``final_output``; earlier model turns are ``inter_agent_message``,
-    so a clean final answer never masks an upstream leak.
+    The last LLM/CHAIN/AGENT textual output is treated as the user-facing
+    ``final_output``; earlier model turns are ``inter_agent_message``, so a clean
+    final answer never masks an upstream leak. An output whose span declares an
+    ``agentleak.recipient`` other than ``user``, or that is nested inside another
+    output-producing span, is never the final answer.
+
+    When every span has ``startTime`` and ``endTime`` (ms, as promptfoo sends
+    them), events are ordered by when they happened; otherwise document order is
+    kept. Events carry ``span_id``, ``parent_span_id``, a declared
+    ``agentleak.purpose`` and their time; an output with no declared recipient
+    keeps the placeholder target ``"agent"`` and ``metadata["target_inferred"]``.
     """
     if isinstance(spans, dict) and "resourceSpans" in spans:
         spans = _spans_from_otlp(spans)
     spans = list(spans or [])
+    times = [(_ms(_get(s, "startTime")), _ms(_get(s, "endTime"))) for s in spans]
+    timed = bool(spans) and all(start is not None and end is not None for start, end in times)
+    if timed:
+        order = sorted(range(len(spans)), key=lambda i: times[i][0] or 0.0)
+        spans, times = [spans[i] for i in order], [times[i] for i in order]
 
     trace = Trace(run_id=run_id, agent_name=agent_name)
-    last_model_event_id: str | None = None
 
-    for span in spans:
+    for span, (start, end) in zip(spans, times, strict=True):
+        first = len(trace.events)
         attrs = _attrs_of(span)
         kind = str(_get(attrs, *_KIND_KEYS, default="") or "").upper()
         name = str(_get(span, "name", default="") or "")
@@ -215,10 +288,9 @@ def trace_from_spans(
             if text is None:
                 text = _get(attrs, *_OUTPUT_KEYS)
             if text:
-                ev = trace.add_event(channel="inter_agent_message", content=str(text),
-                                     source=agent, target="agent",
-                                     metadata={"span_kind": "LLM", "origin": "otel"})
-                last_model_event_id = ev.event_id
+                trace.add_event(channel="inter_agent_message", content=str(text),
+                                source=agent, target="agent",
+                                metadata={"span_kind": "LLM", "origin": "otel"})
 
         elif kind in ("CHAIN", "AGENT") or not kind:
             inp = _get(attrs, *_INPUT_KEYS)
@@ -228,19 +300,25 @@ def trace_from_spans(
                                 metadata={"span_kind": kind or "CHAIN", "origin": "otel"})
             out = _get(attrs, *_OUTPUT_KEYS)
             if out is not None:
-                ev = trace.add_event(channel="inter_agent_message", content=str(out),
-                                     source=agent, target="agent",
-                                     metadata={"span_kind": kind or "CHAIN", "origin": "otel"})
-                last_model_event_id = ev.event_id
+                trace.add_event(channel="inter_agent_message", content=str(out),
+                                source=agent, target="agent",
+                                metadata={"span_kind": kind or "CHAIN", "origin": "otel"})
+
+        _annotate(trace.events[first:], span, attrs, start, end)
+
+    if timed:
+        # Execution order, not document order (the sort is stable); ids follow it.
+        trace.events.sort(key=lambda e: e.timestamp)
+        for number, ev in enumerate(trace.events, start=1):
+            ev.event_id = f"evt_{number:03d}"
 
     # Promote the final model/chain output to the user-facing channel.
-    if last_model_event_id is not None:
-        for ev in trace.events:
-            if ev.event_id == last_model_event_id:
-                ev.channel = Channel.FINAL_OUTPUT
-                ev.target = "user"
-                ev.metadata["promoted_to"] = "final_output"
-                break
+    final = _final_output(trace.events, spans)
+    if final is not None:
+        final.channel = Channel.FINAL_OUTPUT
+        final.target = "user"
+        final.metadata["promoted_to"] = "final_output"
+        final.metadata.pop("target_inferred", None)
 
     return trace
 

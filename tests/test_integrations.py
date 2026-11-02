@@ -728,3 +728,74 @@ def test_langchain_callback_attributes_events_to_graph_nodes():
         ("tool_response", "lookup", "read"),
         ("final_output", "finish", "user"),
     ]
+
+
+def test_otel_timed_spans_are_read_in_execution_order():
+    """promptfoo's trace store returns spans by start time, so a root agent
+    span comes before its children. Document order would then make the last
+    child's internal handoff the "final" answer; end times say otherwise."""
+    from agentleak.integrations.otel import trace_from_spans
+
+    spans = [
+        {"spanId": "s3", "parentSpanId": "s1", "name": "handoff", "startTime": 1200,
+         "endTime": 1300, "attributes": {
+             "openinference.span.kind": "LLM", "agent.name": "planner",
+             "agentleak.recipient": "billing_agent", "agentleak.purpose": "refund",
+             "llm.output_messages.0.message.content": "ssn 456-78-9012 for the refund"}},
+        {"spanId": "s1", "name": "root", "startTime": 1000, "endTime": 1800, "attributes": {
+            "openinference.span.kind": "AGENT", "agent.name": "planner",
+            "input.value": "refund my order", "output.value": "Your refund is on its way."}},
+        {"spanId": "s2", "parentSpanId": "s1", "name": "notes", "startTime": 1100,
+         "endTime": 1150, "attributes": {
+             "openinference.span.kind": "LLM", "agent.name": "planner",
+             "llm.output_messages.0.message.content": "checking the order"}},
+    ]
+    trace = trace_from_spans(spans, run_id="r")
+
+    assert [(e.event_id, e.channel_value, e.metadata["span_id"]) for e in trace.events] == [
+        ("evt_001", "user_input", "s1"),
+        ("evt_002", "inter_agent_message", "s2"),
+        ("evt_003", "inter_agent_message", "s3"),
+        ("evt_004", "final_output", "s1"),
+    ]
+    handoff = trace.events[2]
+    assert handoff.target == "billing_agent" and handoff.metadata["purpose"] == "refund"
+    assert handoff.metadata["parent_span_id"] == "s1"
+    assert handoff.timestamp.timestamp() == 1.3
+    # No recipient declared: the target is a placeholder, and says so.
+    assert trace.events[1].target == "agent" and trace.events[1].metadata["target_inferred"]
+    assert "purpose" not in trace.events[1].metadata
+
+    leaked = AgentLeakRunner().analyze(trace).leaked_findings()
+    assert {(f.channel, f.event_id) for f in leaked if f.data_type == "ssn"} == {
+        ("inter_agent_message", "evt_003")}
+
+
+@pytest.mark.parametrize("handoff_attrs", [
+    {"agentleak.recipient": "analytics_agent"},   # declared internal recipient
+    {},                                             # undeclared, but nested in the agent span
+])
+def test_otel_late_internal_handoff_is_never_the_final_output(handoff_attrs):
+    """An internal message may finish after the user-facing answer (a
+    fire-and-forget handoff). Ending last does not make it the answer, and a
+    declared recipient is never overwritten with "user"."""
+    from agentleak.integrations.otel import trace_from_spans
+
+    spans = [
+        {"spanId": "s1", "name": "root", "startTime": 1000, "endTime": 1500, "attributes": {
+            "openinference.span.kind": "AGENT", "agent.name": "planner",
+            "input.value": "refund my order", "output.value": "Your refund is on its way."}},
+        {"spanId": "s2", "parentSpanId": "s1", "name": "handoff", "startTime": 1400,
+         "endTime": 1700, "attributes": {
+             "openinference.span.kind": "LLM", "agent.name": "planner", **handoff_attrs,
+             "llm.output_messages.0.message.content": "ssn 456-78-9012 for the report"}},
+    ]
+    trace = trace_from_spans(spans, run_id="r")
+
+    finals = trace.events_for_channel("final_output")
+    assert [e.metadata["span_id"] for e in finals] == ["s1"]
+    handoff = next(e for e in trace.events if e.metadata["span_id"] == "s2")
+    assert handoff.channel_value == "inter_agent_message"
+    assert handoff.target == handoff_attrs.get("agentleak.recipient", "agent")
+    leaked = AgentLeakRunner().analyze(trace).leaked_findings()
+    assert {f.channel for f in leaked if f.data_type == "ssn"} == {"inter_agent_message"}
