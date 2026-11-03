@@ -48,6 +48,7 @@ Or with the unified API::
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
@@ -121,28 +122,59 @@ def _spans_from_otlp(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return spans
 
 
-def _unflatten_messages(attrs: dict[str, Any], prefix: str) -> list[dict[str, str]]:
-    """Rebuild ``[{role, content}]`` from flattened ``<prefix>.<i>.message.*`` keys."""
-    by_index: dict[int, dict[str, str]] = {}
-    plen = len(prefix) + 1
+_CONTENT_PART = re.compile(r"message\.contents\.(\d+)\.message_content\.(text|type)")
+_TOOL_CALL = re.compile(
+    r"(?:message\.tool_calls\.(\d+)\.)?tool_call\.(id|function\.name|function\.arguments)")
+_TOOL_CALL_FIELD = {"id": "id", "function.name": "name", "function.arguments": "arguments"}
+
+
+def _parse_messages(attrs: dict[str, Any], prefix: str) -> tuple[list[dict[str, Any]], list[str]]:
+    """Rebuild every message, and every tool call in it, from flattened
+    OpenInference keys under ``<prefix>.<i>.``: ``message.role``,
+    ``message.content``, ``message.contents.<k>.message_content.text`` and
+    ``message.tool_calls.<j>.tool_call.{id,function.name,function.arguments}``.
+
+    Returns the messages in index order and the keys it could not interpret,
+    so a caller can refuse a trace rather than drop what it cannot read.
+    """
+    by_index: dict[int, dict[str, Any]] = {}
+    unknown: list[str] = []
     for key, value in attrs.items():
         if not key.startswith(prefix + "."):
             continue
-        rest = key[plen:]
-        idx_str, _, tail = rest.partition(".")
+        idx_str, _, tail = key[len(prefix) + 1:].partition(".")
         if not idx_str.isdigit():
+            unknown.append(key)
             continue
         idx = int(idx_str)
-        msg = by_index.setdefault(idx, {})
-        if tail.endswith("message.role"):
+        msg = by_index.setdefault(idx, {"index": idx, "parts": {}, "calls": {}})
+        part, call = _CONTENT_PART.fullmatch(tail), _TOOL_CALL.fullmatch(tail)
+        if tail == "message.role":
             msg["role"] = str(value)
-        elif tail.endswith("message.content"):
+        elif tail == "message.content":
             msg["content"] = str(value)
-        elif "tool_call" in tail and tail.endswith("function.name"):
-            msg.setdefault("tool_name", str(value))
-        elif "tool_call" in tail and tail.endswith("function.arguments"):
-            msg.setdefault("tool_args", str(value))
-    return [by_index[i] for i in sorted(by_index)]
+        elif part and part[2] == "text":
+            msg["parts"][int(part[1])] = str(value)
+        elif part and value == "text":
+            pass   # the type of a text part; any other content type cannot be read
+        elif part:
+            unknown.append(key)
+        elif call:
+            j = int(call[1] or 0)
+            msg["calls"].setdefault(j, {"index": j})[_TOOL_CALL_FIELD[call[2]]] = str(value)
+        else:
+            unknown.append(key)
+    messages = []
+    for idx in sorted(by_index):
+        msg = by_index[idx]
+        texts = [msg.get("content")] + [msg["parts"][k] for k in sorted(msg["parts"])]
+        messages.append({
+            "index": idx,
+            "role": msg.get("role"),
+            "content": "\n".join(t for t in texts if t),
+            "tool_calls": [msg["calls"][j] for j in sorted(msg["calls"])],
+        })
+    return messages, unknown
 
 
 def _retrieved_docs(attrs: dict[str, Any]) -> str:
@@ -155,10 +187,15 @@ def _retrieved_docs(attrs: dict[str, Any]) -> str:
 
 
 def _ms(value: Any) -> float | None:
-    """A span time in ms (promptfoo's ``startTime``/``endTime``), if it is one."""
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return float(value)
-    return None
+    """A span time in ms (promptfoo's ``startTime``/``endTime``), if it is one:
+    a number that converts to a datetime (``1e100`` or ``nan`` does not)."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    try:
+        datetime.fromtimestamp(value / 1000.0, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return None
+    return float(value)
 
 
 def _annotate(events: list[Event], span: Any, attrs: dict[str, Any],
@@ -276,21 +313,30 @@ def trace_from_spans(
                                 metadata={"span_kind": "GUARDRAIL", "origin": "otel"})
 
         elif kind == "LLM":
-            # Tool calls the model emitted are sinks; record each.
-            for msg in _unflatten_messages(attrs, "llm.output_messages"):
-                if msg.get("tool_args") or msg.get("tool_name"):
+            # Every tool call and every output message is recorded, in index
+            # order; the last message of the span is its candidate answer.
+            messages, _ = _parse_messages(attrs, "llm.output_messages")
+            for msg in messages:
+                for call in msg["tool_calls"]:
                     trace.add_event(channel="tool_call",
-                                    content=msg.get("tool_args") or msg.get("tool_name", ""),
-                                    source=agent, target=str(msg.get("tool_name", "tool")),
-                                    metadata={"span_kind": "LLM", "origin": "otel"})
-            out_msgs = _unflatten_messages(attrs, "llm.output_messages")
-            text = next((m["content"] for m in reversed(out_msgs) if m.get("content")), None)
-            if text is None:
+                                    content=call.get("arguments") or call.get("name", ""),
+                                    source=agent, target=str(call.get("name", "tool")),
+                                    metadata={"span_kind": "LLM", "origin": "otel",
+                                              "message_index": msg["index"],
+                                              "tool_call_index": call["index"],
+                                              **({"tool_call_id": call["id"]} if "id" in call else {})})
+                if msg["content"]:
+                    trace.add_event(channel="inter_agent_message", content=msg["content"],
+                                    source=agent, target="agent",
+                                    metadata={"span_kind": "LLM", "origin": "otel",
+                                              "message_index": msg["index"],
+                                              **({"role": msg["role"]} if msg["role"] else {})})
+            if not any(m["content"] for m in messages):
                 text = _get(attrs, *_OUTPUT_KEYS)
-            if text:
-                trace.add_event(channel="inter_agent_message", content=str(text),
-                                source=agent, target="agent",
-                                metadata={"span_kind": "LLM", "origin": "otel"})
+                if text:
+                    trace.add_event(channel="inter_agent_message", content=str(text),
+                                    source=agent, target="agent",
+                                    metadata={"span_kind": "LLM", "origin": "otel"})
 
         elif kind in ("CHAIN", "AGENT") or not kind:
             inp = _get(attrs, *_INPUT_KEYS)

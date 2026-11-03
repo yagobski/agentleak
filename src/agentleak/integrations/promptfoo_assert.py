@@ -36,7 +36,6 @@ To use it without copying, a ``file://`` assertion can be two lines::
 from __future__ import annotations
 
 import json
-import math
 from typing import Any
 
 __all__ = ["get_assert"]
@@ -120,8 +119,10 @@ def _grade(trace: Any, cfg: dict[str, Any]) -> dict[str, Any]:
 
 
 def _time(value: Any) -> bool:
-    return (isinstance(value, (int, float)) and not isinstance(value, bool)
-            and math.isfinite(value) and value >= 0)
+    """A non-negative span time the normalizer can actually convert."""
+    from .otel import _ms
+
+    return _ms(value) is not None and value >= 0
 
 
 def _trace_problem(raw: dict[str, Any]) -> str | None:
@@ -152,6 +153,16 @@ def _trace_problem(raw: dict[str, Any]) -> str | None:
         status = span.get("statusCode")
         if status is not None and (not isinstance(status, int) or isinstance(status, bool)):
             return f"trace is malformed: span {sid} has a non-integer statusCode"
+    # Parent links must end at a root, not loop back: a span cannot be its own
+    # ancestor, however long the chain.
+    parent_of = {s["spanId"]: s["parentSpanId"] for s in raw["spans"] if s.get("parentSpanId")}
+    for sid in parent_of:
+        seen, node = {sid}, parent_of[sid]
+        while node in parent_of:
+            if node in seen:
+                return f"trace is malformed: span {sid}'s parents form a cycle"
+            seen.add(node)
+            node = parent_of[node]
     for span in raw["spans"]:
         sid, parent = span["spanId"], span.get("parentSpanId")
         # promptfoo's test_case root stays open while assertions run, so only
@@ -167,7 +178,7 @@ def _trace_problem(raw: dict[str, Any]) -> str | None:
 
 
 def _grade_promptfoo_trace(context: Any, cfg: dict[str, Any]) -> dict[str, Any]:
-    from .otel import trace_from_spans
+    from .otel import _parse_messages, trace_from_spans
 
     raw = context.get("trace") if isinstance(context, dict) else None
     if raw is None:
@@ -195,6 +206,13 @@ def _grade_promptfoo_trace(context: Any, cfg: dict[str, Any]) -> dict[str, Any]:
     if not app_spans:
         return _incomplete("the trace holds only promptfoo's own spans; the application "
                            "exported none")
+    for span in app_spans:
+        # An output message attribute the normalizer cannot read would be
+        # dropped, and a dropped disclosure must not become a pass.
+        unread = _parse_messages(span.get("attributes") or {}, "llm.output_messages")[1]
+        if unread:
+            return _incomplete(f"span {span['spanId']} has output message attributes that "
+                               f"cannot be normalized: {', '.join(sorted(unread)[:3])}")
     trace = trace_from_spans(app_spans, run_id=raw["traceId"], agent_name="promptfoo-agent")
     if not trace.events:
         return _incomplete("no span carries agent content; the application is not "

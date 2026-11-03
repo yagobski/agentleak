@@ -799,3 +799,45 @@ def test_otel_late_internal_handoff_is_never_the_final_output(handoff_attrs):
     assert handoff.target == handoff_attrs.get("agentleak.recipient", "agent")
     leaked = AgentLeakRunner().analyze(trace).leaked_findings()
     assert {f.channel for f in leaked if f.data_type == "ssn"} == {"inter_agent_message"}
+
+
+def test_otel_llm_span_keeps_every_tool_call_and_output_message():
+    from agentleak.integrations.otel import trace_from_spans
+
+    out = "llm.output_messages"
+    spans = [{"spanId": "s1", "name": "llm", "attributes": {
+        "openinference.span.kind": "LLM",
+        f"{out}.0.message.role": "assistant",
+        f"{out}.0.message.content": "ssn 456-78-9012 for billing",
+        f"{out}.0.message.tool_calls.0.tool_call.function.name": "lookup",
+        f"{out}.0.message.tool_calls.0.tool_call.function.arguments": '{"id": "A-17"}',
+        f"{out}.0.message.tool_calls.1.tool_call.id": "call_2",
+        f"{out}.0.message.tool_calls.1.tool_call.function.name": "notify",
+        f"{out}.0.message.tool_calls.1.tool_call.function.arguments": '{"ssn": "456-78-9012"}',
+        f"{out}.1.message.role": "assistant",
+        f"{out}.1.message.contents.0.message_content.type": "text",
+        f"{out}.1.message.contents.0.message_content.text": "Your refund is processing.",
+    }}]
+    trace = trace_from_spans(spans, run_id="r")
+
+    assert [(e.channel_value, e.target, e.metadata.get("message_index"),
+             e.metadata.get("tool_call_index")) for e in trace.events] == [
+        ("tool_call", "lookup", 0, 0),
+        ("tool_call", "notify", 0, 1),
+        ("inter_agent_message", "agent", 0, None),
+        ("final_output", "user", 1, None),       # the span's last message is its answer
+    ]
+    assert trace.events[1].metadata["tool_call_id"] == "call_2"
+    assert "Your refund is processing." == trace.events[-1].content
+    leaked = AgentLeakRunner().analyze(trace).leaked_findings()
+    assert {f.channel for f in leaked if f.data_type == "ssn"} == {
+        "tool_call", "inter_agent_message"}
+
+
+def test_otel_unconvertible_timestamps_fall_back_to_document_order():
+    from agentleak.integrations.otel import trace_from_spans
+
+    spans = [{"spanId": "s1", "startTime": 1e100, "endTime": 1e100, "attributes": {
+        "openinference.span.kind": "LLM", "output.value": "hello"}}]
+    trace = trace_from_spans(spans, run_id="r")     # no OverflowError
+    assert [e.channel_value for e in trace.events] == ["final_output"]
