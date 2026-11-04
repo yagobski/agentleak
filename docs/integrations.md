@@ -318,3 +318,48 @@ provider returns an AgentLeak trace (JSON with `events`), the whole run is
 scored (`1 - risk_index`); otherwise the output text is checked. promptfoo asks
 whether the agent can be broken, AgentLeak where the data went — one eval, both
 answers. Verified with `npx promptfoo@0.123.1 eval`.
+
+**Grading promptfoo's trace.** With `require_trace: true`, the assertion grades
+the trace promptfoo passes as `context["trace"]` when tracing is on
+(`{traceId, spans: [{spanId, parentSpanId, name, startTime, endTime, attributes,
+statusCode}]}`, times in ms; checked against promptfoo 0.125.1). A synthetic
+example is [`examples/promptfoo/trace-context.json`](../examples/promptfoo/trace-context.json).
+Tested with `pytest tests/test_promptfoo_assert.py tests/test_integrations.py`.
+
+```yaml
+tracing: {enabled: true, otlp: {http: {}}}
+defaultTest:
+  assert:
+    - type: python
+      value: file://agentleak_assert.py
+      config:
+        require_trace: true
+        privacy_policy:          # optional, same shape as in agentleak.yaml
+          flows: [{data_type: sin, to: kyc_service, for: identity_check}]
+```
+
+- **Instrumentation.** promptfoo records only its own spans. Your application
+  must export child spans of the `traceparent` promptfoo gives the provider,
+  with OpenInference attributes (`openinference.span.kind`, `input.value`,
+  `output.value`, `tool.name`, `llm.output_messages.*`, `agent.name`).
+  Anything not exported is not checked. Recipient and purpose have no
+  OpenInference attribute: set `agentleak.recipient` and `agentleak.purpose`
+  on the span. An output with no declared recipient keeps the target `agent`
+  (`metadata.target_inferred`), and a flow rule naming a recipient or purpose
+  will not match it.
+- **Final answer.** The last output (by end time when every span is timed,
+  otherwise document order) that declares no other recipient and is not nested
+  inside another output span.
+- **Result.** `metadata.agentleak` reports exposure and policy separately:
+  `risk_index`, `leaks` (`event_id`, `channel`, `target`, `purpose`) and
+  `policy`. An authorised flow keeps its risk index and passes. With a policy
+  and no `max_risk_index`, only the policy gates. `tool_response` is a source,
+  not a leak.
+- **Incomplete never passes.** A missing, empty or malformed trace, a span that
+  is still open, errored or missing its parent, no agent content, or no
+  identifiable final answer returns `pass: false` with
+  `AgentLeak INCOMPLETE: ...` and `status: "incomplete"`. The output text is
+  not graded instead. The same applies to an empty or invalid `events` in an
+  AgentLeak trace output. (promptfoo keeps its `test_case` root span open while
+  grading, so only the `target` span may lack its parent.) Late or never-created
+  spans cannot be detected, and `not-python` would invert an incomplete result.
