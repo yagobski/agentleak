@@ -338,6 +338,15 @@ defaultTest:
           flows: [{data_type: sin, to: kyc_service, for: identity_check}]
 ```
 
+A runnable version is in
+[`examples/promptfoo/require-trace/`](../examples/promptfoo/require-trace/): a
+synthetic Python provider exports its agent spans under the `traceparent`
+promptfoo passes it, and three tests show the outcomes. A clean trace passes. A
+SIN forwarded in an internal handoff fails on `inter_agent_message`, even though
+the final answer is clean. An agent that exports no spans fails as
+`AgentLeak INCOMPLETE`, because promptfoo's own spans say nothing about what the
+agent did.
+
 - **Instrumentation.** promptfoo records only its own spans. Your application
   must export child spans of the `traceparent` promptfoo gives the provider,
   with OpenInference attributes (`openinference.span.kind`, `input.value`,
