@@ -9,6 +9,7 @@ from pathlib import Path
 
 import typer
 
+from .._console import echo, secho
 from ..core.trace import CHANNELS
 from .base import ImportResult, InteropError
 
@@ -48,18 +49,18 @@ def write_traces(result: ImportResult, output: str) -> list[Path]:
 
 def _echo_summary(result: ImportResult) -> None:
     version = result.tool_version or "version not recorded"
-    typer.secho(f"Recognised {result.tool} output ({version}): {result.detected_because}.", bold=True)
+    secho(f"Recognised {result.tool} output ({version}): {result.detected_because}.", bold=True)
     events = sum(len(t.trace.events) for t in result.traces)
-    typer.echo(f"  {len(result.traces)} trace(s), {events} event(s); source sha256 "
+    echo(f"  {len(result.traces)} trace(s), {events} event(s); source sha256 "
                f"{result.source_sha256[:16]}…; verified against: {result.verification}")
     unobserved = [c for c in CHANNELS if c not in result.observable_channels]
-    typer.echo(f"  Observable channels: {', '.join(result.observable_channels)}")
+    echo(f"  Observable channels: {', '.join(result.observable_channels)}")
     if unobserved:
-        typer.secho(f"  Not observed by {result.tool}: {', '.join(unobserved)}. A clean result on "
+        secho(f"  Not observed by {result.tool}: {', '.join(unobserved)}. A clean result on "
                     "those channels is not evidence: they were never seen.",
                     fg=typer.colors.BRIGHT_YELLOW)
     for note in result.notes:
-        typer.echo(f"  note: {note}")
+        echo(f"  note: {note}")
 
 
 def register(app: typer.Typer) -> None:
@@ -88,10 +89,10 @@ def register(app: typer.Typer) -> None:
             result = import_file(file, source)
             written = write_traces(result, output)
         except (InteropError, OSError) as exc:
-            typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+            secho(f"✗ {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
         _echo_summary(result)
-        typer.secho(f"✓ wrote {len(written)} trace file(s) to "
+        secho(f"✓ wrote {len(written)} trace file(s) to "
                     f"{written[0].parent if len(written) > 1 else written[0]}", fg=typer.colors.GREEN)
         if not score:
             return
@@ -108,12 +109,12 @@ def _score(result: ImportResult, written: list[Path], config: str | None, report
         cfg = Config.load(config) if config else None
         formats = normalize_formats([f for f in fmt.split(",") if f.strip()])
     except Exception as exc:  # noqa: BLE001 - any config/format error is a usage error
-        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        secho(f"✗ {exc}", fg=typer.colors.RED)
         return 2
     runner = AgentLeakRunner(cfg)
     blocked = 0
-    typer.echo("")
-    typer.secho(f"{'record':<28} {'verdict':<17} {'score':>5}  leaked (data type @ channel)", bold=True)
+    echo("")
+    secho(f"{'record':<28} {'verdict':<17} {'score':>5}  leaked (data type @ channel)", bold=True)
     for item, path in zip(result.traces, written, strict=False):
         analysis = runner.analyze(item.trace)
         if fail_under is not None:
@@ -122,16 +123,16 @@ def _score(result: ImportResult, written: list[Path], config: str | None, report
             write_reports(analysis, report_dir, formats, basename=item.trace.run_id,
                           trace_path=str(path))
         except OSError as exc:
-            typer.secho(f"✗ could not write reports to {report_dir}: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not write reports to {report_dir}: {exc}", fg=typer.colors.RED)
             return 1
         leaked = sorted({f"{f.data_type}@{f.channel}" for f in analysis.leaked_findings()})
         blocked += bool(analysis.blocked)
         if not quiet or analysis.blocked:
-            typer.echo(f"{item.record_id[:28]:<28} {analysis.verdict:<17} "
+            echo(f"{item.record_id[:28]:<28} {analysis.verdict:<17} "
                        f"{analysis.privacy_score:>5}  {', '.join(leaked) or '-'}")
-    typer.echo("")
-    typer.echo(f"{len(result.traces)} trace(s) scored, {blocked} blocked. Reports in {report_dir}/.")
+    echo("")
+    echo(f"{len(result.traces)} trace(s) scored, {blocked} blocked. Reports in {report_dir}/.")
     if any(c not in result.observable_channels for c in CHANNELS):
-        typer.secho(f"Scored on what {result.tool} observed only; see 'observation' in each report.",
+        secho(f"Scored on what {result.tool} observed only; see 'observation' in each report.",
                     fg=typer.colors.BRIGHT_YELLOW)
     return 1 if blocked else 0

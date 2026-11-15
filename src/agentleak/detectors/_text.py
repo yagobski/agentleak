@@ -74,3 +74,57 @@ def trie_pattern(terms: list[str]) -> str:
         return body
 
     return build(root)
+
+
+class SubstringIndex:
+    """Which values already taken contain, or are contained in, a new one.
+
+    The de-duplication of the context and address rules asks, for each new
+    value, ``any(value in v or v in value for v in taken)``. Asked that way it
+    compares every new value with every earlier one, and a long event of
+    distinct values cost time quadratic in their number. This answers the
+    same question exactly from two indexes:
+
+    * ``value in v``: for each length a query has had, the set of every slice
+      of that length of every value taken. A query is one set lookup.
+    * ``v in value`` (``both_ways``): the values taken, grouped by length; a
+      query looks up each slice of the new value whose length is one of them.
+
+    Work grows with the total length of the values times the number of
+    distinct lengths among them (a few dozen for detector values), not with
+    the square of their count.
+    """
+
+    def __init__(self, values: list[str] | None = None, *, both_ways: bool = True) -> None:
+        self._both = both_ways
+        self._values: list[str] = []
+        self._slices: dict[int, set[str]] = {}  # query length -> slices of taken values
+        self._by_len: dict[int, set[str]] = {}  # taken values by length
+        for value in values or []:
+            self.add(value)
+
+    def add(self, value: str) -> None:
+        self._values.append(value)
+        n = len(value)
+        for size, bucket in self._slices.items():
+            if size <= n:
+                bucket.update(value[i:i + size] for i in range(n - size + 1))
+        if self._both:
+            self._by_len.setdefault(n, set()).add(value)
+
+    def related(self, value: str) -> bool:
+        """``any(value in v or v in value for v in taken)`` (only the first
+        test when not ``both_ways``)."""
+        n = len(value)
+        bucket = self._slices.get(n)
+        if bucket is None:
+            bucket = self._slices[n] = {
+                v[i:i + n] for v in self._values if len(v) >= n for i in range(len(v) - n + 1)
+            }
+        if value in bucket:
+            return True
+        if self._both:
+            for size, taken in self._by_len.items():
+                if size <= n and any(value[i:i + size] in taken for i in range(n - size + 1)):
+                    return True
+        return False

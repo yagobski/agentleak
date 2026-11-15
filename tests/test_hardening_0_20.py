@@ -137,3 +137,126 @@ def test_json_in_a_string_cannot_bypass_the_depth_cap(tmp_path) -> None:
     spans = [{"name": "t", "attributes": {"gen_ai.operation.name": "execute_tool",
                                           "gen_ai.tool.name": "x", "gen_ai.tool.call.arguments": nested}}]
     AgentLeakRunner().analyze(from_otel_genai(spans, run_id="deep"))
+
+
+# Long events of many distinct values: de-duplication compared each new value
+# with every earlier one (context rules, US address rules), and the sanitizer
+# scanned the whole text once per distinct value. At 400 KB the old code took
+# 3 s (US addresses) to 25 s (salaries) per detector.
+_MANY = 400_000
+_MANY_VALUES = {
+    "phone": "".join(f"call 555-{i % 10000:04d} " for i in range(_MANY // 14)),
+    "account": "".join(f"account {1000000 + i} " for i in range(_MANY // 16)),
+    "salary": "".join(f"salary {10000 + i} " for i in range(_MANY // 13)),
+    "health": "".join(f"diagnosed with osteoarthritis{i} " for i in range(_MANY // 30)),
+    "us_zip": "".join(f"{i} Kaiser Plain, Lloydside, AL {10000 + i % 89999:05d} "
+                      for i in range(_MANY // 36)),
+}
+
+
+def test_value_deduplication_is_not_quadratic() -> None:
+    from agentleak.detectors import build_detectors
+
+    detectors = build_detectors(None, None)
+    for name, text in _MANY_VALUES.items():
+        for detector in detectors:
+            start = time.perf_counter()
+            detector.detect(text)
+            elapsed = time.perf_counter() - start
+            assert elapsed < 3.0, f"{detector.name} took {elapsed:.2f}s on {name}"
+
+
+def test_sanitizer_locates_many_values_in_linear_time() -> None:
+    from agentleak.defenses.sanitizer import Sanitizer
+
+    text = _MANY_VALUES["salary"]
+    start = time.perf_counter()
+    out = Sanitizer().sanitize(text)
+    assert time.perf_counter() - start < 5.0
+    assert "10000" not in out and "salary" in out
+
+
+def test_substring_index_answers_like_the_pairwise_scan() -> None:
+    import random
+
+    from agentleak.detectors._text import SubstringIndex
+
+    rng = random.Random(5)
+    for _ in range(5000):
+        values = ["".join(rng.choice("ab1 -") for _ in range(rng.randint(0, 6)))
+                  for _ in range(rng.randint(0, 8))]
+        both = rng.random() < 0.5
+        index, taken = SubstringIndex(values[:3], both_ways=both), list(values[:3])
+        for value in values[3:]:
+            expected = any(value in v or (both and v in value) for v in taken)
+            assert index.related(value) == expected, (taken, value, both)
+            if rng.random() < 0.7:
+                index.add(value)
+                taken.append(value)
+
+
+def test_occurrences_match_repeated_find(monkeypatch) -> None:
+    import random
+
+    from agentleak.defenses import sanitizer
+
+    rng = random.Random(6)
+    for slide_from in (1, 10**9):
+        monkeypatch.setattr(sanitizer, "_SLIDE_FROM", slide_from)
+        for _ in range(2000):
+            text = "".join(rng.choice("ab1") for _ in range(rng.randint(0, 40)))
+            values = {"".join(rng.choice("ab1") for _ in range(rng.randint(1, 4))) for _ in range(20)}
+            found = sanitizer._occurrences(text, values)
+            for value in values:
+                expected, start = [], text.find(value)
+                while start >= 0:
+                    expected.append(start)
+                    start = text.find(value, start + 1)
+                assert found[value] == expected, (text, value)
+
+
+def _hostile_trace(tmp_path):
+    import json
+
+    hostile = "agent\x1b]0;pwned\x07\x1b[2J\rX\x08\x9b31m\x7f"
+    path = tmp_path / ("trace\x1b[31m.json")
+    path.write_text(json.dumps({
+        "run_id": "run\x1b]52;c;ZXZpbA==\x07", "agent_name": hostile,
+        "metadata": {"observation": {"source": "tool\x1b[8m", "observable_channels": ["final_output"],
+                                     "unobserved_channels": ["log"]}},
+        "events": [{"channel": "tool_response", "source": "db\x1b[2K", "content": "SSN 123-45-6789"},
+                   {"channel": "log", "source": "agent\r", "content": "SSN 123-45-6789"}],
+    }), encoding="utf-8")
+    return path
+
+
+def _assert_terminal_safe(output: str) -> None:
+    for ch in ("\x1b", "\x07", "\r", "\x08", "\x9b", "\x7f", "\x00"):
+        assert ch not in output, repr(ch)
+
+
+def test_cli_console_neutralises_terminal_controls_from_a_trace(tmp_path) -> None:
+    """agent_name, run_id, observation.source, finding fields and file names
+    reach the terminal; control characters in them must not act on it."""
+    from typer.testing import CliRunner
+
+    from agentleak.cli import app
+
+    trace = _hostile_trace(tmp_path)
+    result = CliRunner().invoke(app, ["run", "--trace", str(trace), "--output", str(tmp_path / "r"),
+                                      "--format", "json"])
+    assert result.exit_code in (0, 1), result.output
+    _assert_terminal_safe(result.output)
+    assert "\\u001b]0;pwned\\u0007" in result.output     # shown, inert
+    assert "Observed by tool\\u001b[8m" in result.output
+
+
+def test_console_clean_keeps_text_and_json() -> None:
+    import json
+
+    from agentleak._console import clean
+
+    assert clean("line\n\tindented é ✓") == "line\n\tindented é ✓"
+    doc = json.dumps({"v": "a\x85b\x7fc\x1bd"}, ensure_ascii=False)
+    assert json.loads(clean(doc)) == {"v": "a\x85b\x7fc\x1bd"}
+    _assert_terminal_safe(clean("".join(chr(c) for c in range(0x00, 0xA0) if chr(c) not in "\n\t")))
