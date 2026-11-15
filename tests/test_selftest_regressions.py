@@ -53,7 +53,7 @@ def test_a_redacted_record_number_label_is_not_an_mrn():
 
 
 def test_a_credential_shaped_canary_is_kept():
-    key = "AKIAQ7X3NB5PLW2KDJ4M"
+    key = "AKIA" + "Q7X3NB5PLW2KDJ4M"  # built at run time: no key-shaped literal in the repo
     trace = Trace.from_dict({"events": [{"channel": "generated_file", "content": f"KEY={key}"}]})
     result = AgentLeakRunner().analyze(trace, canary_set=CanarySet(realistic=[key]))
     types = {f.data_type for f in result.leaked_findings()}
