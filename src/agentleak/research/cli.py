@@ -50,8 +50,10 @@ def _line(record: dict[str, Any] | None, label: str) -> None:
     frac = (f"{record['numerator']}/{record['denominator']}"
             if record.get("numerator") is not None and record.get("denominator") is not None
             and float(record["numerator"]).is_integer() else f"n={record.get('n')}")
+    pct = round(float(record.get("confidence", 0.95)) * 100)
     typer.echo(
-        f"  {label:<44} {est:.3f}  {frac:>9}  CI {record['ci_low']:.3f}-{record['ci_high']:.3f}"
+        f"  {label:<44} {est:.3f}  {frac:>9}  {pct}% CI "
+        f"{record['ci_low']:.3f}-{record['ci_high']:.3f}"
     )
 
 
@@ -94,7 +96,7 @@ def init_cmd(
     m = Manifest.load(p)
     typer.secho(f"✓ wrote {p}", fg=typer.colors.GREEN)
     typer.echo(f"  sources: {', '.join(m.scenarios.sources)} · detection: {m.detection.mode} · "
-               f"seed {m.seed} · output: {m.resolved_output_dir()}")
+               f"seed {m.seed} · output: {_rel(m.resolved_output_dir())}")
     typer.echo("")
     typer.echo("Next:")
     typer.echo(f"  agentleak bench run {p}")

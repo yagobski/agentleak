@@ -109,7 +109,10 @@ def scope_ablation(
             prop(f"{name}.{rule}", f"{title} ({rule} rule)", f"{name} units", k, len(group),
                  f"{name} units {positive} under the {rule} scope rule / {name} units")
         flips = sum(1 for r in group if not r["leaked_default"] and r["leaked_ablated"])
-        prop(f"{name}.flipped_to_leak", f"{title.split(',')[0]}: flipped to leak",
+        flip_label = {"leaking": "Leaking fixtures: newly flagged",
+                      "independent": "Independent clean: flipped to leak",
+                      "derived": "Derived clean: flipped to leak"}[name]
+        prop(f"{name}.flipped_to_leak", flip_label,
              f"{name} units", flips, len(group),
              f"{name} units with no leak by default that leak once inputs count as emissions")
     paired = []

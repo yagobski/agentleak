@@ -251,7 +251,9 @@ def methods_paragraph(run: BenchRun) -> str:
     settings = s.get("settings", {})
     text = [
         f"We ran AgentLeak {s.get('software', {}).get('agentleak_version')}"
-        + (f" (commit {commit[:12]})" if commit else "")
+        + (f" (commit {commit[:12]}"
+           + (", with uncommitted changes" if (env.get("git") or {}).get("dirty") else "")
+           + ")" if commit else "")
         + f" with the {det.get('mode')} detection tier (tiers run: "
         f"{', '.join(det.get('tiers_run', []))}; {det_phrase}"
         + ("; obscured-copy matching on" if det.get("obscured_copies") else "")
