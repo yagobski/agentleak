@@ -166,3 +166,34 @@ def test_run_unwritable_output_is_a_clear_error(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
     assert "could not write reports" in result.output
+
+
+# ----------------------------------------------------------------------
+# QA-04: the HTML report did not escape trace-controlled strings (stored XSS)
+# ----------------------------------------------------------------------
+
+
+def test_html_report_escapes_trace_controlled_fields() -> None:
+    from agentleak import AgentLeakRunner, Trace
+    from agentleak.reporters import render
+
+    payload = "<script>alert(1)</script>"
+    trace = Trace.from_dict({
+        "run_id": "r" + payload,
+        "agent_name": "a" + payload,
+        "scenario_id": "s" + payload,
+        "events": [
+            {"channel": "tool_response", "source": "db", "content": "SSN 123-45-6789"},
+            {"channel": "log", "source": "x" + payload, "content": "SSN 123-45-6789"},
+        ],
+    })
+    data = AgentLeakRunner().analyze(trace).to_dict()
+    html = render(data, "html")
+    assert payload not in html
+    assert "&lt;script&gt;" in html
+    # A crafted report posted to /api/render/html reaches the insight builder.
+    data["channel_risks"] = [
+        {"channel": "log<img src=x onerror=alert(1)>", "level": "high", "ri": 0.5,
+         "level_label": "L4"},
+    ]
+    assert "<img src=x" not in render(data, "html")

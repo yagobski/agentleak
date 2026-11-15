@@ -6,6 +6,7 @@ no network calls), consistent with the local-only privacy guarantee.
 
 from __future__ import annotations
 
+from html import escape
 from importlib import resources
 from typing import Any
 
@@ -28,7 +29,11 @@ def _load_template() -> Template:
     text = resources.files("agentleak.reporters.templates").joinpath(
         "report.html.j2"
     ).read_text(encoding="utf-8")
-    return Template(text)
+    # Autoescape: run ids, agent and scenario names, event sources and custom
+    # rule names all come from the trace, i.e. from whoever wrote it. Without
+    # escaping, a trace could carry a script into a report opened in a browser
+    # (or served by `/api/render/html` on the platform's own origin).
+    return Template(text, autoescape=True)
 
 
 def _build_insight(data: dict[str, Any]) -> str | None:
@@ -41,12 +46,13 @@ def _build_insight(data: dict[str, Any]) -> str | None:
     ]
     if output_level in {"none", "low"} and internal_hits:
         worst = max(internal_hits, key=lambda c: c.get("ri", 0))
-        chans = ", ".join(f"<code>{c['channel']}</code>" for c in internal_hits)
+        chans = ", ".join(f"<code>{escape(str(c['channel']))}</code>" for c in internal_hits)
+        label = escape(str(worst.get("level_label", worst["level"])))
         return (
             "<b>Key insight:</b> the final answer looks safe, but sensitive data "
             f"leaked through internal channels ({chans}). The highest-risk channel is "
-            f"<b>{worst['channel']}</b> ({worst.get('level_label', worst['level'])}, "
-            f"RI {worst.get('ri', 0):.3f}). Output-only audits would have missed this."
+            f"<b>{escape(str(worst['channel']))}</b> ({label}, "
+            f"RI {float(worst.get('ri', 0)):.3f}). Output-only audits would have missed this."
         )
     return None
 
