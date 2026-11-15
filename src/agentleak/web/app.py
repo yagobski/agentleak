@@ -306,12 +306,16 @@ def _redteam_run_context(scenario: Any, vertical: str) -> RunContext:
 
 
 def _trace_from_payload(
-    payload: dict[str, Any], store: Store | None = None
+    payload: dict[str, Any], store: Store | None = None, *, owner_id: str = ""
 ) -> tuple[Trace, CanarySet | None]:
     """Resolve a payload to a trace plus whatever ground truth came with it.
 
     Scenarios imported from a research pack carry the exact facts that must not
     travel. Dropping them here would score a semantic leak as a clean run.
+
+    A stored scenario resolves only for its owner (``owner_id``). Another
+    account's scenario id answers exactly like an unknown one, so a caller can
+    neither run someone else's private records nor learn that the id exists.
     """
     sid = payload.get("scenario_id")
     if sid:
@@ -321,7 +325,7 @@ def _trace_from_payload(
             pass
         if store is not None:
             stored = store.get_scenario(sid)
-            if stored and stored.get("trace"):
+            if stored and stored.get("trace") and stored.get("owner_id") == owner_id:
                 raw = stored.get("canaries")
                 canaries = CanarySet.from_dict(raw) if raw else None
                 return Trace.from_dict(stored["trace"]), canaries
@@ -335,13 +339,17 @@ def _trace_from_payload(
 
 
 def _analyze(
-    payload: dict[str, Any], *, project_name: str | None = None, store: Store | None = None
+    payload: dict[str, Any],
+    *,
+    project_name: str | None = None,
+    store: Store | None = None,
+    owner_id: str = "",
 ) -> AnalysisResult:
     data = _config_data(payload)
     if project_name:
         data["project"] = {"name": project_name}
     cfg = Config.from_dict(data) if data else None
-    trace, canaries = _trace_from_payload(payload, store)
+    trace, canaries = _trace_from_payload(payload, store, owner_id=owner_id)
     return AgentLeakRunner(cfg).analyze(trace, canary_set=canaries)
 
 
@@ -1362,9 +1370,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         user: dict[str, Any] = Depends(require_user),
     ) -> dict[str, Any]:
         """Publish or unpublish a trust page. Owner-only, and always deliberate."""
-        project = db.get_project(pid)
-        if not project or project.get("owner_id") not in ("", user["id"]):
-            raise HTTPException(status_code=404, detail="Project not found")
+        # Same ownership rule as every other project route: an ownerless
+        # (legacy) project is not anyone's to publish.
+        _owned_project(pid, user)
         requested = str(payload.get("slug", "")).strip()
         slug = db.set_public_slug(pid, requested)
         return {
@@ -1379,7 +1387,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def analyze(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> JSONResponse:
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         try:
-            result = _analyze(payload, store=db)
+            result = _analyze(payload, store=db, owner_id=user["id"])
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _meter(user, "/api/analyze")
@@ -1390,7 +1398,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         if fmt not in {"json", "html", "markdown"}:
             raise HTTPException(status_code=400, detail=f"Unknown format: {fmt}")
         try:
-            data = _analyze(payload, store=db).to_dict()
+            data = _analyze(payload, store=db, owner_id=user["id"]).to_dict()
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         content = render(data, fmt)
@@ -1546,7 +1554,10 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         db.meter_usage(project.get("owner_id", ""), "/api/selftest")
 
         try:
-            result = _analyze(payload, project_name=project["name"], store=db)
+            result = _analyze(
+                payload, project_name=project["name"], store=db,
+                owner_id=str(project.get("owner_id") or ""),
+            )
         except (ValueError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -2383,7 +2394,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         settings = {**project["config"], **{k: payload[k] for k in ("detectors", "vault", "custom_detectors", "redact") if k in payload}}
         merged = {**settings, **{k: payload[k] for k in ("trace", "scenario_id") if k in payload}}
         try:
-            result = _analyze(merged, project_name=project["name"], store=db)
+            result = _analyze(merged, project_name=project["name"], store=db, owner_id=user["id"])
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _meter(user, "/api/projects/runs")
@@ -2451,13 +2462,18 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 raise HTTPException(status_code=404, detail="Run does not belong to this project.")
         return result
 
-    def _scenario_detail(sid: str) -> dict[str, Any] | None:
+    def _scenario_detail(sid: str, owner_id: str) -> dict[str, Any] | None:
         if sid in SCENARIOS:
             detail = _builtin_scenario_summary(SCENARIOS[sid])
             detail["trace"] = load_example_trace(sid).to_dict()
             detail["spec"] = None
             return detail
-        return db.get_scenario(sid)
+        stored = db.get_scenario(sid)
+        # Another account's scenario holds its private records: running it
+        # would replay them into this caller's run and to their model endpoint.
+        if not stored or stored.get("owner_id") != owner_id:
+            return None
+        return stored
 
     @app.post("/api/projects/{pid}/execute")
     def execute_agent(pid: str, payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
@@ -2465,7 +2481,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         project = _owned_project(pid, user)
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         label = str(payload.get("label", ""))
-        scenario = _scenario_detail(str(payload.get("scenario_id", "")))
+        scenario = _scenario_detail(str(payload.get("scenario_id", "")), user["id"])
         if not scenario:
             raise HTTPException(status_code=404, detail="Scenario not found")
 
