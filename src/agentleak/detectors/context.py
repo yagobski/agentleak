@@ -145,7 +145,12 @@ _DOB_CUE = _words([
 ])
 # A date of birth is often a few words away from its cue ("née à Lyon le",
 # "nació en Sevilla el"): up to five words, none holding a digit.
-_DOB_GAP = re.compile(r"[\s,:=#'’\"]*(?:[^\W\d_][\w'’.-]*[\s,:=#'’\"]*){0,5}")
+# A word takes its whole run of word characters (the look-ahead): otherwise a
+# run of letters could be split into up to five "words" in every possible way,
+# and a gap that fails at its last character ("born aaaa…a@ 1994-10-17") was
+# retried for each split, tens of milliseconds per cue. Splitting a run never
+# helped a match (it only adds words), so what matches is unchanged.
+_DOB_GAP = re.compile(r"[\s,:=#'’\"]*(?:[^\W\d_][\w'’.-]*(?![\w'’.-])[\s,:=#'’\"]*){0,5}")
 
 
 def _plausible_date(value: str, _cue: str) -> bool:
