@@ -238,3 +238,34 @@ def test_validate_refuses_json_that_is_not_a_trace(tmp_path: Path, monkeypatch) 
     monkeypatch.chdir(tmp_path)
     (tmp_path / "r.json").write_text('{"verdict": "Pass"}', "utf-8")
     assert _cli.invoke(app, ["validate", "--trace", "r.json"]).exit_code == 1
+
+
+# ----------------------------------------------------------------------
+# QA-09: quadratic regex scans in the built-in detectors
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["1-" * 25_000, "a." * 25_000, "QUFB" * 12_500],
+    ids=["dash-run", "dot-run", "base64-run"],
+)
+def test_builtin_detectors_stay_fast_on_long_runs(text: str) -> None:
+    import time
+
+    from agentleak.detectors import build_detectors
+
+    for detector in build_detectors(None, None):
+        start = time.perf_counter()
+        detector.detect(text)
+        elapsed = time.perf_counter() - start
+        # Before the fix: secrets 23 s on the dash run, pii about 3 s on each.
+        assert elapsed < 1.5, f"{detector.name} took {elapsed:.1f}s"
+
+
+def test_secret_assignment_still_matches_prefixed_keys() -> None:
+    from agentleak.detectors.secrets import SecretsDetector
+
+    text = "DB_PASSWORD=hunter2hunter OPENAI_API_KEY: zz9ab7cd aws_secret_access_key = q1w2e3r4t5"
+    values = {m.matched_value for m in SecretsDetector().detect(text)}
+    assert {"hunter2hunter", "zz9ab7cd", "q1w2e3r4t5"} <= values

@@ -54,8 +54,12 @@ URL_CREDENTIALS_RE = re.compile(
 # The key may carry a prefix — ``DB_PASSWORD``, ``OPENAI_API_KEY``,
 # ``aws_secret_access_key`` — which is how most secrets are actually named; a
 # bare ``\b`` before the key word cannot see past the underscore.
+# The lookbehind alone admits exactly the same key words as the former
+# ``(?:[A-Za-z0-9]+[_-])*`` prefix (a key word after ``_`` or ``-`` qualifies
+# either way) and only groups 1-2 are read. The prefix rescanned every
+# ``x-x-x-...`` run from each position: 23 s on 50 KB, quadratic beyond.
 SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9])(?:[A-Za-z0-9]+[_-])*"
+    r"(?i)(?<![A-Za-z0-9])"
     r"(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\b"
     r"\s*[:=]\s*[\"']?([^\"'\s,}]{6,})"
 )
@@ -177,7 +181,9 @@ class SecretsDetector(Detector):
             ))
 
         seen_urls = {m.group(0) for m in CONNECTION_STRING_RE.finditer(text)}
-        for m in URL_CREDENTIALS_RE.finditer(text):
+        # No "://", no match; skipping the scan avoids its quadratic cost on
+        # long runs of scheme characters (``a.a.a.a...``).
+        for m in (URL_CREDENTIALS_RE.finditer(text) if "://" in text else ()):
             if m.group(0) in seen_urls:
                 continue
             matches.append(self._match(
