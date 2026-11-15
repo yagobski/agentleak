@@ -171,6 +171,39 @@ def redaction_coverage() -> dict[str, Any]:
     }
 
 
+# Above this many values of one length, one pass over the text beats a
+# ``str.find`` scan per value (C-speed, but one full scan each).
+_SLIDE_FROM = 64
+
+
+def _occurrences(text: str, values: set[str]) -> dict[str, list[int]]:
+    """Every start offset of every value in ``text``, overlapping ones
+    included, ascending: what ``text.find(value, start + 1)`` in a loop
+    returns, without scanning the whole text once per value (quadratic when
+    an event holds thousands of distinct values)."""
+    by_len: dict[int, list[str]] = {}
+    for value in values:
+        by_len.setdefault(len(value), []).append(value)
+    out: dict[str, list[int]] = {}
+    for size, group in by_len.items():
+        if len(group) < _SLIDE_FROM:
+            for value in group:
+                starts: list[int] = []
+                start = text.find(value)
+                while start >= 0:
+                    starts.append(start)
+                    start = text.find(value, start + 1)
+                out[value] = starts
+            continue
+        hits: dict[str, list[int]] = {value: [] for value in group}
+        for i in range(len(text) - size + 1):
+            bucket = hits.get(text[i:i + size])
+            if bucket is not None:
+                bucket.append(i)
+        out.update(hits)
+    return out
+
+
 def _strictly_inside_any(
     outers: list[tuple[int, int, str, str]],
 ) -> Callable[[tuple[int, int, str, str]], bool]:
@@ -314,6 +347,7 @@ class Sanitizer:
         # "1.1.1.1..." gave thousands of copies) and the pairwise checks below
         # then took minutes on a few hundred bytes.
         located: set[tuple[str, str]] = set()
+        order: list[tuple[str, str]] = []
 
         for detector in self._detectors:
             for raw in detector.detect(text):
@@ -323,10 +357,11 @@ class Sanitizer:
                 if not value or (value, raw.data_type) in located:
                     continue
                 located.add((value, raw.data_type))
-                start = text.find(value)
-                while start >= 0:
-                    found.append((start, start + len(value), value, raw.data_type.upper()))
-                    start = text.find(value, start + 1)
+                order.append((value, raw.data_type))
+        positions = _occurrences(text, {value for value, _dtype in order})
+        for value, dtype in order:
+            for start in positions[value]:
+                found.append((start, start + len(value), value, dtype.upper()))
 
         for dtype, pattern in self._patterns:
             for match in pattern.finditer(text):

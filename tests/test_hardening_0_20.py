@@ -137,3 +137,79 @@ def test_json_in_a_string_cannot_bypass_the_depth_cap(tmp_path) -> None:
     spans = [{"name": "t", "attributes": {"gen_ai.operation.name": "execute_tool",
                                           "gen_ai.tool.name": "x", "gen_ai.tool.call.arguments": nested}}]
     AgentLeakRunner().analyze(from_otel_genai(spans, run_id="deep"))
+
+
+# Long events of many distinct values: de-duplication compared each new value
+# with every earlier one (context rules, US address rules), and the sanitizer
+# scanned the whole text once per distinct value. At 400 KB the old code took
+# 3 s (US addresses) to 25 s (salaries) per detector.
+_MANY = 400_000
+_MANY_VALUES = {
+    "phone": "".join(f"call 555-{i % 10000:04d} " for i in range(_MANY // 14)),
+    "account": "".join(f"account {1000000 + i} " for i in range(_MANY // 16)),
+    "salary": "".join(f"salary {10000 + i} " for i in range(_MANY // 13)),
+    "health": "".join(f"diagnosed with osteoarthritis{i} " for i in range(_MANY // 30)),
+    "us_zip": "".join(f"{i} Kaiser Plain, Lloydside, AL {10000 + i % 89999:05d} "
+                      for i in range(_MANY // 36)),
+}
+
+
+def test_value_deduplication_is_not_quadratic() -> None:
+    from agentleak.detectors import build_detectors
+
+    detectors = build_detectors(None, None)
+    for name, text in _MANY_VALUES.items():
+        for detector in detectors:
+            start = time.perf_counter()
+            detector.detect(text)
+            elapsed = time.perf_counter() - start
+            assert elapsed < 3.0, f"{detector.name} took {elapsed:.2f}s on {name}"
+
+
+def test_sanitizer_locates_many_values_in_linear_time() -> None:
+    from agentleak.defenses.sanitizer import Sanitizer
+
+    text = _MANY_VALUES["salary"]
+    start = time.perf_counter()
+    out = Sanitizer().sanitize(text)
+    assert time.perf_counter() - start < 5.0
+    assert "10000" not in out and "salary" in out
+
+
+def test_substring_index_answers_like_the_pairwise_scan() -> None:
+    import random
+
+    from agentleak.detectors._text import SubstringIndex
+
+    rng = random.Random(5)
+    for _ in range(5000):
+        values = ["".join(rng.choice("ab1 -") for _ in range(rng.randint(0, 6)))
+                  for _ in range(rng.randint(0, 8))]
+        both = rng.random() < 0.5
+        index, taken = SubstringIndex(values[:3], both_ways=both), list(values[:3])
+        for value in values[3:]:
+            expected = any(value in v or (both and v in value) for v in taken)
+            assert index.related(value) == expected, (taken, value, both)
+            if rng.random() < 0.7:
+                index.add(value)
+                taken.append(value)
+
+
+def test_occurrences_match_repeated_find(monkeypatch) -> None:
+    import random
+
+    from agentleak.defenses import sanitizer
+
+    rng = random.Random(6)
+    for slide_from in (1, 10**9):
+        monkeypatch.setattr(sanitizer, "_SLIDE_FROM", slide_from)
+        for _ in range(2000):
+            text = "".join(rng.choice("ab1") for _ in range(rng.randint(0, 40)))
+            values = {"".join(rng.choice("ab1") for _ in range(rng.randint(1, 4))) for _ in range(20)}
+            found = sanitizer._occurrences(text, values)
+            for value in values:
+                expected, start = [], text.find(value)
+                while start >= 0:
+                    expected.append(start)
+                    start = text.find(value, start + 1)
+                assert found[value] == expected, (text, value)

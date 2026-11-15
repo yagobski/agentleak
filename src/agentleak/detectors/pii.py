@@ -18,7 +18,7 @@ from bisect import bisect_right
 from ..core.detector import Detector, RawMatch, Severity
 from . import checksums
 from ._text import MONTHS as _MONTHS
-from ._text import inside_blob
+from ._text import SubstringIndex, inside_blob
 from .context import matches_for as context_matches
 from .names import full_names
 from .national_ids import scan as scan_national_ids
@@ -511,7 +511,10 @@ class PIIDetector(Detector):
                 recommendation="Home addresses are re-identifying; remove them from internal channels.",
             ))
 
-        address_values = [m.matched_value for m in matches if m.data_type == "address"]
+        # "Is this value inside one already reported?", from an index rather
+        # than a scan of every earlier address (quadratic in a long event).
+        address_values = SubstringIndex(
+            [m.matched_value for m in matches if m.data_type == "address"], both_ways=False)
         for pattern, rule, needed in (
             (ADDRESS_US_ZIP_RE, "address_us_zip", ", "),
             # APO/FPO/DPO is always followed by " A": a substring test skips
@@ -520,9 +523,9 @@ class PIIDetector(Detector):
         ):
             for m in (pattern.finditer(text) if needed in text else ()):
                 value = m.group(0).strip()
-                if any(value in v for v in address_values):
+                if address_values.related(value):
                     continue
-                address_values.append(value)
+                address_values.add(value)
                 matches.append(self._match(
                     data_type="address", severity=Severity.HIGH, confidence=0.75,
                     matched_value=value, rule=rule,

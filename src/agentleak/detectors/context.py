@@ -47,7 +47,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from ..core.detector import RawMatch, Severity
-from ._text import MONTHS, trie_pattern
+from ._text import MONTHS, SubstringIndex, trie_pattern
 
 __all__ = ["ContextRule", "RULES", "HEALTH_RULES", "scan", "matches_for"]
 
@@ -406,16 +406,25 @@ def matches_for(
 ) -> list[RawMatch]:
     """Context matches for one hosting detector, minus values it already
     reported under the same type (a shape rule outranks a context rule)."""
-    taken = [(m.data_type, m.matched_value) for m in existing]
+    # One index per data type, filled lazily: "value in v or v in value" over
+    # the values already taken, answered without comparing against each one
+    # (a pairwise scan was quadratic in the number of values in the event).
+    indexes: dict[str, SubstringIndex] = {}
+
+    def index(data_type: str) -> SubstringIndex:
+        if data_type not in indexes:
+            indexes[data_type] = SubstringIndex(
+                [m.matched_value for m in existing if m.data_type == data_type])
+        return indexes[data_type]
 
     def known(data_type: str, value: str) -> bool:
-        return any(t == data_type and (value in v or v in value) for t, v in taken)
+        return index(data_type).related(value)
 
     out: list[RawMatch] = []
     for rule, value, _span in scan(text, data_types):
         if known(rule.data_type, value):
             continue
-        taken.append((rule.data_type, value))
+        index(rule.data_type).add(value)
         out.append(RawMatch(
             data_type=rule.data_type, severity=rule.severity, confidence=rule.confidence,
             matched_value=value, recommendation=rule.recommendation, detector=detector,
@@ -425,7 +434,7 @@ def matches_for(
         for rule_name, value, _span, confidence in _health(text):
             if known("health_condition", value):
                 continue
-            taken.append(("health_condition", value))
+            index("health_condition").add(value)
             out.append(RawMatch(
                 data_type="health_condition", severity=Severity.MEDIUM, confidence=confidence,
                 matched_value=value, recommendation=_RECOMMEND["health_condition"],
