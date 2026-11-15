@@ -1,6 +1,6 @@
 {
   "title": "AgentLeak: privacy-leakage testing for agentic AI systems",
-  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight instrumented channels (user input, tool responses and calls, shared memory, inter-agent messages, logs, generated files, final output), scores disclosures with AgentRisk, reconstructs source-to-target provenance and enforces release policies through an SDK, CLI, web workspace, MCP server, GitHub Action and sampled monitor. Version 0.19.0 adds a research workflow (agentleak bench), an agent self-test (agentleak selftest), check-digit validated identifiers, provider token rules, an InjecAgent-derived scenario pack and security fixes; it changes some scores, as listed in its changelog. Version 0.18.0 (doi:10.5281/zenodo.23935443) is the version described and evaluated in the revised SoftwareX article.",
+  "description": "AgentLeak audits complete AI-agent execution traces for privacy leakage across eight instrumented channels (user input, tool responses and calls, shared memory, inter-agent messages, logs, generated files, final output), scores disclosures with AgentRisk, reconstructs source-to-target provenance and enforces release policies through an SDK, CLI, web workspace, MCP server, GitHub Action and sampled monitor. Version 0.19.1 is a security release: it stops a request from choosing which server environment variable the LLM judge reads and where it sends it, and closes the other defects found in a review of 0.19.0. Version 0.19.0 added a research workflow (agentleak bench), an agent self-test (agentleak selftest), check-digit validated identifiers, provider token rules, an InjecAgent-derived scenario pack and security fixes; it changes some scores, as listed in its changelog. Version 0.18.0 (doi:10.5281/zenodo.23935443) is the version described and evaluated in the revised SoftwareX article.",
   "creators": [
     {
       "name": "El Yagoubi, Faouzi",
@@ -18,7 +18,7 @@
   "license": "MIT",
   "upload_type": "software",
   "access_right": "open",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "keywords": [
     "privacy",
     "agentic AI",
@@ -39,5 +39,5 @@
       "resource_type": "publication-softwaredocumentation"
     }
   ],
-  "notes": "Release 0.19.0. Bundled PrivacyLens-derived fixtures are CC BY 4.0, AgentDojo-derived and InjecAgent-derived fixtures MIT, with per-pack provenance; AgentLeak-authored code is MIT."
+  "notes": "Release 0.19.1. Bundled PrivacyLens-derived fixtures are CC BY 4.0, AgentDojo-derived and InjecAgent-derived fixtures MIT, with per-pack provenance; AgentLeak-authored code is MIT."
 }

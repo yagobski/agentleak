@@ -6,7 +6,10 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
-<!-- BEGIN next2/hardening -->
+## [0.19.1] - 2026-11-15
+
+Security release. No new feature, no score change.
+
 **Upgrade now if you run the web platform.** In 0.19.0 and earlier, any
 account could make the server send one of its environment variables to a
 host of the account's choosing, and a project's model URL could receive the
@@ -56,7 +59,6 @@ its environment, rotate them. Details: `docs/reports/next/HARDENING-REPORT.md`.
 - Inputs validated: `--fail-under` (scan and selftest 0-100, run non-negative),
   `agent_type`, execute `mode`, red-team `vertical`; `agentleak validate`
   names unknown top-level keys.
-<!-- END next2/hardening -->
 
 ## [0.19.0] - 2026-11-15
 
