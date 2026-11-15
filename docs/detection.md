@@ -20,12 +20,37 @@ network calls:
 
 | Group | Data types |
 | --- | --- |
-| `pii` | email, phone (North American, international with an E.164 calling code, French national format, or any number next to the word for "phone" in EN/FR/ES/DE/PT/IT), SSN (SSA issuance rules), Canadian SIN (Luhn, or the hyphenated print format), payment card (Luhn plus a network's IIN range and length), IPv4/IPv6, date of birth (keywords in six languages, numeric and month-name dates), UK NINO, Spanish DNI/NIE and NUSS, address (USPS, French/Québec and Spanish shapes), person name, and the check-digit-validated national identifiers below |
+| `pii` | email, phone (North American, international with an E.164 calling code, French national format, or any number next to the word for "phone" in EN/FR/ES/DE/PT/IT), SSN (SSA issuance rules), Canadian SIN (Luhn, or the hyphenated print format), payment card (Luhn plus a network's IIN range and length), IPv4/IPv6, date of birth (keywords in six languages, numeric and month-name dates), UK NINO, Spanish DNI/NIE and NUSS, address (USPS, a US street with its city, state and ZIP, US military APO/FPO/DPO, French/Québec and Spanish shapes), person name, context-window rules for local phone numbers and dates of birth (below), and the check-digit-validated national identifiers below |
 | `secrets` | 42 provider token formats (below), OpenAI/Anthropic, Google, Stripe and AWS keys, GitHub tokens (classic with CRC32 check, and fine-grained `github_pat_`), Slack tokens, JWTs, bearer tokens, private-key blocks, URL and key=value connection strings with embedded passwords, assigned secrets (`DB_PASSWORD=…`, `mot_de_passe=…`, `contraseña: …`) |
-| `healthcare` | NAM (health identifier), health conditions and medications (EN, FR, ES dictionaries) |
-| `finance` | IBAN (ISO 13616: registered country, its exact length, mod-97 check), account numbers, credit scores, income, loans, balances |
-| `hr` | salary (after a keyword, or an amount that says gross or net), sick leave, performance reviews, disciplinary actions, complaints |
+| `healthcare` | NAM and medical record numbers (`MRN 12345678`, `MRN-12345678`), health conditions and medications (EN, FR, ES dictionaries), and the phrase after a clinical cue (below) |
+| `finance` | IBAN (ISO 13616: registered country, its exact length, mod-97 check), account numbers (after a keyword, or named by "account" a few words away, below), credit scores, income, loans, balances |
+| `hr` | salary (after a keyword, an amount that says gross or net, or an amount a pay word names a few words away, below), sick leave, performance reviews, disciplinary actions, complaints |
 | `keyname` | the value under a sensitive field name, in English, French, Spanish, German, Portuguese and Italian (`date_de_naissance`, `salario`, `Geburtsdatum`, `codice_fiscale`…), including snake_case prefixes (`current_salary`) |
+
+### Context-window rules
+
+Some values are ambiguous alone: `555-0152` is a phone number or a part
+number, `1994-10-17` a birth date or a release date, `128000` a salary or a row
+count. The fast tier does not claim them alone, and agents rarely write them
+alone. `detectors/context.py` reports such a value only when a cue word in
+English, French or Spanish stands a few words before it, and the words between
+cue and value are glue ("is", "at", "on", "number", "est", "de", "es", "el"…)
+that never cross a sentence break. A cue with no plausible value is nothing too.
+
+| Rule | Data type | Value | Cue (examples) | Confidence |
+| --- | --- | --- | --- | --- |
+| `ctx_phone_local` | `phone_number` | `555-0152`, a Spanish national number without +34 | call, reach, phone, text; joindre, appelez, téléphone; llámale, teléfono, móvil | 0.55 |
+| `ctx_dob` | `date_of_birth` | ISO, numeric or month-name date, plausible, not a timestamp | born, birthday, DOB; née, naissance; nació, nacimiento (up to five words between) | 0.60 |
+| `ctx_account_number` | `account_number` | 6 to 20 digits, grouped or not | account, checking, savings; compte; cuenta (not after "ticket", "job", "incident"…) | 0.60 |
+| `ctx_salary` | `salary` | an amount, optional currency and period | salary, wage, compensation, base pay; salaire, rémunération; sueldo, salario | 0.60 |
+| `ctx_salary_verb` | `salary` | an amount *with* a currency or a period | earns, makes; gagne, touche; cobra, gana | 0.55 |
+| `ctx_health_diagnosis` | `health_condition` | the noun phrase after the cue, not one opening with a determiner unless it holds a clinical word | diagnosed with; diagnostiqué; le diagnosticaron | 0.60 |
+| `ctx_health_symptom` | `health_condition` | the noun phrase after the cue, only when it holds a clinical word or suffix (-itis, -osis, -algia…) | suffers from, treated for, history of; souffre de, suivi pour; padece, tratamiento por | 0.50 |
+
+Every finding carries `metadata.rule`, and the confidence is below that of a
+shape-validated match, because the type comes from the context. The cued-prose
+measurement, with a development and a held-out half, is in
+[Detection quality in cued prose](detection-quality-cued.md).
 
 ### Identifiers validated by their check digit
 
@@ -186,6 +211,24 @@ Supported key env vars (checked in order):
 
 On any error (network, missing key, bad JSON) the LLM-judge returns `[]` — the
 pipeline continues without crashing.
+
+**Agreement with human labels is not published yet.** The 0.72 threshold
+comes from the IEEE benchmark; how often this judge agrees with a labelled set
+has not been measured. `scripts/judge_agreement.py` is the harness that will
+measure it: it sends each `sensitive_info_items` fact of the PrivacyLens pack
+(and seeded, derived negatives) to a judge endpoint you name, with the prompt
+above, and reports Cohen's kappa with a cluster-bootstrap 95% interval, the
+confusion table, the model the endpoint reported and the SHA-256 of the prompt.
+It is off by default and sends nothing without `--endpoint`:
+
+```bash
+export JUDGE_KEY=...    # your own key; never on the command line
+python scripts/judge_agreement.py --endpoint https://api.openai.com/v1 \
+    --model gpt-4o-mini --api-key-env JUDGE_KEY --json judge-agreement.json
+```
+
+Its arithmetic is tested against a fake local judge
+(`tests/test_judge_agreement.py`); no model has been run through it.
 
 ## Canary tokens
 

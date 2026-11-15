@@ -54,18 +54,25 @@ types that moved were `salary` (0.343 → 1.000) and `health_condition`
 front of a known field and treats symptom fields as health data. Both rules
 were written after looking at these misses.
 
-**Prose recall is 0.574** (217/378), unchanged. With the field name gone the
-deterministic tier finds emails, SSNs, most full names and most street
-addresses — and still no phone numbers without an area code, no dates of
-birth, no account numbers and no salaries in these carriers. The carriers carry
-no cue word on purpose ("The record shows 555-0152 for this case."), and a bare
-`555-0152`, `1985-03-12` or `125000` is indistinguishable from a serial number,
-a date or a price. The context rules added since 0.18.0 — a phone number next
-to the word for "phone" in six languages, a date after "born"/"né le"/
-"geboren am", a pay figure that says gross or net — fire on real prose that
-names what it is, and by design not on this benchmark. They are the concrete
-argument for `--mode standard` (Presidio) or `--mode hybrid` (semantic judge)
-when the channel you care about carries bare values in sentences.
+**Prose recall is 0.627** (237/378; 0.574, 217/378, in the 0.19.0 release). With the
+field name gone the deterministic tier finds emails, SSNs, most full names and
+every street address — and still no phone numbers without an area code, no
+dates of birth, no account numbers and no salaries in these carriers. The gain
+is `address` (33/52 → 52/52: a US street with its city, state and ZIP, and
+APO/FPO/DPO military mail are now read without a street-type word) and one
+`health_condition`. The carriers carry no cue word on purpose ("The record
+shows 555-0152 for this case."), and a bare `555-0152`, `1985-03-12` or
+`125000` is indistinguishable from a serial number, a date or a price. This
+condition is the honest floor and stays reported as it is.
+
+Real agent prose usually names what a value is ("you can reach her at
+555-0152", "his date of birth is 1994-10-17"). That third condition, **cued
+prose**, is measured on its own page with a development and a held-out half:
+[Detection quality in cued prose](detection-quality-cued.md). On its held-out
+half English recall goes from 0.604 (339/561) to 0.881 (494/561), with the
+context-window rules described in [the detection page](detection.md#context-window-rules).
+Paraphrase and values with no cue at all remain the argument for
+`--mode standard` (Presidio) or `--mode hybrid` (semantic judge).
 
 It also means a clean fast-tier result on prose is **not** a statement that the
 text is safe. It is "no finding from the enabled deterministic detectors", which
@@ -99,7 +106,7 @@ and [Detection quality in French](detection-quality-fr.md).
 
 ## Results
 
-AgentLeak 0.18.0 · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.19.0 · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
 Ground truth: private_vault records in the bundled scenario packs.
 
@@ -127,15 +134,15 @@ sentence, with the key gone.
 
 ## Prose
 
-**Recall 0.574** (217/378, 95% CI 0.524–0.623)
+**Recall 0.627** (237/378, 95% CI 0.577–0.674)
 
 | Data type | Recall | 95% CI | Found | Wrong type | Missed | n |
 |---|---:|---|---:|---:|---:|---:|
 | `account_number` | 0.000 | 0.000–0.242 | 0 | 0 | 12 | 12 |
-| `address` | 0.635 | 0.499–0.752 | 33 | 0 | 19 | 52 |
+| `address` | 1.000 | 0.931–1.000 | 52 | 0 | 0 | 52 |
 | `date_of_birth` | 0.000 | 0.000–0.133 | 0 | 0 | 25 | 25 |
 | `email` | 1.000 | 0.945–1.000 | 66 | 0 | 0 | 66 |
-| `health_condition` | 0.200 | 0.070–0.452 | 3 | 0 | 12 | 15 |
+| `health_condition` | 0.267 | 0.109–0.519 | 4 | 0 | 11 | 15 |
 | `person_name` | 0.844 | 0.758–0.903 | 81 | 0 | 15 | 96 |
 | `phone_number` | 0.000 | 0.000–0.082 | 0 | 0 | 43 | 43 |
 | `salary` | 0.000 | 0.000–0.099 | 0 | 0 | 35 | 35 |

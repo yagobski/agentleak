@@ -6,6 +6,76 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+<!-- BEGIN next2/prose -->
+### Detection: prose recall and Sanitizer gaps (`next2/prose`)
+
+**Scores move.** 23 of 362 bundled scenarios change risk index or leaked
+finding count, 6 of them verdict; built-in scenarios (including the
+quickstart's 0.44) do not move. The AgentRisk formula and the L1–L4 levels are
+unchanged; only what the detectors find changed. Verdict changes:
+`agentleak_bench/agentleak_leg_00744` High risk → Fail (military address
+leaked); `injecagent_ds/…googlecalendarreadevents__teladocviewprescriptions__base`
+High risk → Fail (Lisinopril leaked); `privacylens_ci/trace_main63`
+Conditional pass → High risk (Lisinopril); `trace_main121` Conditional pass →
+High risk (autism spectrum disorder after "a diagnosis of"); `trace_main483`
+High risk → Fail (a diagnosis after "diagnosed with"); `trace_main43` Fail →
+High risk (a birthday the agent received but did not disclose now counts in
+the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
+
+#### Added
+
+- **Context-window rules** (`detectors/context.py`) for values that are
+  ambiguous alone: local phone numbers (`ctx_phone_local`), dates of birth
+  (`ctx_dob`), account numbers (`ctx_account_number`), salaries (`ctx_salary`,
+  `ctx_salary_verb`) and health conditions (`ctx_health_diagnosis`,
+  `ctx_health_symptom`), in English, French and Spanish. A value is reported
+  only with a cue word a few glue words before it, never across a sentence
+  break; findings carry `metadata.rule` and a confidence of 0.50–0.60.
+- **US addresses with a city, state and ZIP tail** (`address_us_zip`) and US
+  military mail (`address_us_military`), read without a street-type word.
+- **A cued-prose condition** in the quality measurement
+  (`scripts/detection_quality_cued.py`, `docs/detection-quality-cued.md`):
+  templates frozen before any rule, a seeded development/held-out split, and
+  104 new look-alike hard negatives, half held out. English cued-prose recall
+  on the held-out half: 0.604 (339/561) → 0.881 (494/561). Uncued English prose:
+  0.574 (217/378) → 0.627 (237/378).
+- `scripts/judge_agreement.py`: agreement harness for the LLM-judge tier
+  (Cohen's kappa with a cluster-bootstrap interval, confusion table, judge
+  model, prompt hash) against the PrivacyLens pack. Bring your own key, off by
+  default; **no agreement figure is published yet.**
+- `scripts/scenario_scores.py`, `scripts/detection_stdlib_check.py`,
+  `scripts/email_regex_check.py`: the before/after measurements of this entry.
+- Medications: `enalapril`, `lisinopril`, `ramipril`, `amlodipine`/`amlodipino`,
+  `losartan`/`losartán`, `bisoprolol`, `simvastatin` and its FR/ES forms.
+
+#### Fixed
+
+- **Sanitizer left part of an email behind** (`dana.[REDACTED_ADDRESS]@example.com`):
+  a postal-code-shaped run inside the local part was reported as an address
+  and won as the inner span. It is no longer reported there, and an email span
+  is now removed whole.
+- **Sanitizer did not remove `MRN-12345678`.** The prefixed record number is
+  now one `health_identifier` token (`mrn_token`), and `MRN_RE` no longer takes
+  the lowercase words after the number with it.
+- A full name read across a possessive ("John Doe's Personal Finance") was
+  reported as "John Doe Personal", a string absent from the text that the
+  Sanitizer could not remove; it is now "John Doe".
+- **`compliance.SECRET_TYPES` lacked `llm_api_key`, `google_api_key` and
+  `bearer_token`**, so a leaked model-provider key, Google key or bearer token
+  did not put GDPR Art. 32 at risk. No bundled scenario leaks one of these
+  types, so no bundled compliance posture changes.
+- A new property test checks that every value the detectors find in the
+  bundled scenarios and the cued-prose set is gone from the Sanitizer's
+  output and not found again by a re-scan.
+
+#### Performance
+
+- Detector throughput on the 0.18.0 corpus: 2,153–2,339 → 2,084–2,223
+  events/s (best of 10, three runs each); `analyze()` 201–224 → 203–214
+  traces/s. About 5–8% slower. `EMAIL_RE` was already linear in 0.19.0
+  (0.0006 s on `"a" * 50000 + "@"`); a guard test now keeps it so.
+<!-- END next2/prose -->
+
 ## [0.19.0] - 2026-11-15
 
 Research workflow, agent self-test, wider detection, a rebuilt GUI and a round
