@@ -212,3 +212,32 @@ Frameworks live in [`agentleak/core/compliance.py`](../agentleak/core/compliance
 as data. Append a `Framework` with `Control`s — each control's `detect(ctx)`
 returns evidence tokens (empty = compliant). Add a case to
 `tests/test_compliance.py`. See [AGENTS.md](../AGENTS.md) §6c.
+
+## AI-security framework mapping
+
+Separately from the 14 privacy frameworks above, each JSON report carries a
+`security_frameworks` key, and `GET /api/meta` publishes the whole table under
+the same name. It names the entries of three AI-security catalogues that a
+finding relates to:
+
+| Catalogue | Identifiers used | Checked against |
+|---|---|---|
+| OWASP Top 10 for Agentic Applications (2026) | ASI01–ASI10 | the published PDF, 2026-11-15 |
+| MITRE ATLAS | AML.T0051.000, AML.T0051.001, AML.T0080.000, AML.T0085.002, AML.T0085.003, AML.T0086, AML.T0110.000 | `mitre-atlas/atlas-data` v6, collection 2026.10 |
+| NIST AI 100-2 E2025 | NISTAML.015, NISTAML.018, NISTAML.03, NISTAML.035, NISTAML.039 | the taxonomy index and section 3.4.3 |
+
+A finding is mapped by the channel it leaked on: `tool_call` → ASI02,
+AML.T0086, NISTAML.03; `inter_agent_message` → ASI07, NISTAML.03;
+`shared_memory` → ASI07, AML.T0085.002, NISTAML.03; `log`, `generated_file`
+and `final_output` → NISTAML.03. Attack classes have their own table
+(`attack_classes` in `/api/meta`); classes with no clear counterpart map to
+nothing rather than to a guess.
+
+**This is a mapping to support review, not a certification.** It says which
+catalogue entries a finding is about. It does not say a control is met or
+failed, it does not change the score, the verdict or the compliance posture,
+and the counts printed by the existing reports do not move. OWASP text is
+CC BY-SA, so only its identifiers are used; the one-line summaries are ours.
+The table lives in
+[`agentleak/core/security_frameworks.py`](../src/agentleak/core/security_frameworks.py),
+with the source and version of each catalogue.

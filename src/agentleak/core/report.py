@@ -12,6 +12,7 @@ from typing import Any
 
 from . import compliance as _compliance
 from . import flow as _flow
+from . import security_frameworks as _security_frameworks
 from .agentrisk import BASELINE_CHANNELS, LEVEL_LABELS
 from .detector import Finding, Severity
 from .privacy_policy import PolicyEvaluation
@@ -365,6 +366,9 @@ class AnalysisResult:
             "agentrisk": agentrisk,
         }
         data["compliance"] = _compliance.evaluate(data)
+        # Added after compliance and read-only over the findings, so no
+        # existing key or count moves (pinned in tests/test_security_frameworks.py).
+        data["security_frameworks"] = _security_frameworks.evaluate(data)
         data["flow"] = _flow.build_topology(self.events, self.findings)
         data["leak_paths"] = _flow.build_leak_paths(
             self.events, self.findings, redact=self.redact_values
