@@ -31,7 +31,7 @@ AgentDojo (MIT); see `src/agentleak/scenarios/packs/NOTICE.md`.
 
 | Source | Licence | Use |
 |---|---|---|
-| [python-stdnum](https://github.com/arthurdejong/python-stdnum) 2.x | LGPL-2.1+ | Installed in a scratch directory, outside the repository, as a differential oracle: 200,000 random inputs per format compared with `checksums.py`. Not imported, not copied, not a dependency. Disagreements that remain are deliberate and listed in `DETECTION-REPORT.md` |
+| [python-stdnum](https://github.com/arthurdejong/python-stdnum) 2.x | LGPL-2.1+ | Installed in a scratch directory, outside the repository, as a differential oracle: 200,000 random inputs per format compared with `checksums.py`. Not imported, not copied, not a dependency. Disagreements that remain are deliberate and listed in `reports/DETECTION-REPORT.md` |
 | CPython 3.12 standard library sources | PSF | Read locally as text not written for AgentLeak, to count detections before and after (false-positive check) |
 
 ## Evaluated and not used

@@ -6,7 +6,7 @@ Each validator is pinned with values that pass by construction and with the
 same value after a one-digit change, which every check digit here must catch.
 The algorithms were also compared against python-stdnum (LGPL, used only as an
 outside oracle, never imported by the package) on 200,000 random inputs per
-format; see DETECTION-REPORT.md for the disagreements that are deliberate.
+format; see docs/reports/DETECTION-REPORT.md for the disagreements that are deliberate.
 """
 
 from __future__ import annotations

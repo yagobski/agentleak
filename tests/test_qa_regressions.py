@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
-"""Regression tests for defects found in the QA pass (see QA-REPORT.md).
+"""Regression tests for defects found in the QA pass (see docs/reports/QA-REPORT.md).
 
 Each test names the defect it pins. All data is synthetic.
 """

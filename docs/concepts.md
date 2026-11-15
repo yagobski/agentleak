@@ -133,7 +133,8 @@ The `[guardrails]` module provides two complementary runtime defenses:
   forwarding. Six redaction styles: placeholder, asterisk, masked, hash,
   category, remove.
 - **InternalChannelGuard** — clearance-level access control on
-  `inter_agent_message` and `shared_memory` channels (which leak ~2.6× more than
-  external channels per the IEEE benchmark).
+  `inter_agent_message` and `shared_memory` channels (in the published
+  benchmark, inter-agent messages leaked in 68.8% of traces against 27.2% for
+  final outputs).
 
 See [Defenses](defenses.md).

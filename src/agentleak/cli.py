@@ -31,6 +31,25 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+
+
+def _print_version(value: bool) -> None:
+    if value:
+        typer.echo(f"agentleak {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: bool = typer.Option(
+        False, "--version", "-V", callback=_print_version, is_eager=True,
+        help="Print the AgentLeak version and exit.",
+    ),
+) -> None:
+    # No docstring on purpose: Typer would use it in place of the app help.
+    return None
+
+
 _VERDICT_COLORS = {
     "Pass": typer.colors.GREEN,
     "Conditional pass": typer.colors.YELLOW,

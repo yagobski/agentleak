@@ -9,9 +9,9 @@ ELR (Exact Leakage Rate)
     Measures the fraction of vault fields that appeared on any disclosure channel.
 
 CLR (Channel Leakage Rate)
-    Per-channel breakdown of leakage. The reference paper found that internal
-    channels (C2 inter_agent_message, C5 shared_memory) leak ~2.6× more than
-    the external channel C1 (final_output) — a critical gap in output-only audits.
+    Per-channel breakdown of leakage. The reference paper measured leakage in
+    68.8% of traces on C2 (inter_agent_message) against 27.2% on the external
+    channel C1 (final_output) — the gap an output-only audit does not see.
 
 ASR (Attack Success Rate)
     ``|successful_attacks| / |total_attacks|``

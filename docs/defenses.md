@@ -99,8 +99,9 @@ defense:
 `agentleak.defenses.internal_channel` — clearance-level access control on
 `inter_agent_message` and `shared_memory`.
 
-These internal channels leak ~2.6× more than external channels per the IEEE
-benchmark, yet most output-only guardrails ignore them entirely.
+In the published benchmark, inter-agent messages leaked in 68.8% of traces
+against 27.2% for final outputs, yet most output-only guardrails ignore these
+channels entirely.
 
 ### Clearance levels
 

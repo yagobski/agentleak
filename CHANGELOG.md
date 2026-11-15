@@ -6,7 +6,55 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
-<!-- research workflow (next/research) -->
+## [0.19.0] - 2026-11-15
+
+Research workflow, agent self-test, wider detection, a rebuilt GUI and a round
+of security fixes.
+
+**Upgrade if you run the web platform.** 0.18.0 and earlier let one account
+load another account's stored scenario, rendered trace content unescaped in the
+HTML report, and left a second sensitive value unmasked in code-scan snippets.
+All three are fixed here; see *Security* and *Fixed*.
+
+**Scores move in this release.** 25 `agentdojo_exfil` scenarios and 2
+`agentleak_bench` scenarios change verdict: a US account number is no longer
+counted as an IBAN, and symptom fields now count as health data. The bundled
+corpus grows from 266 to 362 scenarios with the InjecAgent-derived pack. The
+AgentRisk formula, the L1–L4 levels and every built-in scenario score are
+unchanged. If a CI threshold depends on one of the affected packs, re-baseline
+it.
+
+### Security
+
+- **Hosted deployments no longer call model endpoints on private addresses.**
+  A project's agent endpoint, an account's model key and the red-team
+  `base_url` override are fetched by the server. In public mode
+  (`AGENTLEAK_PUBLIC_MODE=1`) the URL must now be http(s), carry no embedded
+  credentials and resolve only to public addresses, and each redirect is
+  checked again; a refused endpoint is reported as an error and no request is
+  made. Self-hosted platforms, the CLI and the SDK are unchanged, so a model on
+  `localhost` keeps working (`core/netguard.py`).
+
+- **Stored scenarios are private to their owner.** `/api/analyze`,
+  `/api/report/{fmt}`, project runs and execute, `/api/selftest` and
+  `/api/agent/improve` resolved a `scenario_id` from any account. A foreign id
+  now answers like an unknown one. Publishing an ownerless legacy project is
+  refused.
+- **HTML report escapes trace content.** Agent names, run and scenario ids,
+  sources and custom rule names were inserted unescaped, so a trace could carry
+  a script into the report and into `/api/render/html`.
+- **Code-scan snippets mask every sensitive value on the line**, not only the
+  finding's own; console, JSON and SARIF output no longer show the others raw.
+- **`redact --style hash` is keyed.** It was a plain SHA-256 prefix, which can
+  be reversed for SSNs and card numbers by trying every value. It now uses the
+  same key as `token` (`AGENTLEAK_TOKEN_KEY` for a stable digest).
+- **Custom detector patterns with nested repeats (`(a+)+`) are refused** by the
+  platform; one could hold a worker for hours.
+- **Request bodies over 32 MiB get 413** (`AGENTLEAK_MAX_BODY_BYTES`).
+- **GitHub Action**: annotations are escaped like GitHub's toolkit does, so a
+  file name or data type cannot inject workflow commands; the `version` input
+  is no longer pasted into shell source.
+
 ### Added
 
 - **`agentleak bench`, a research workflow** (new package
@@ -46,9 +94,105 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   tests, sign-flip permutation test, Kendall's tau-b. Standard library only,
   seeded, tested against published values.
 - `docs/research.md` tutorial and `examples/research/`.
-<!-- /research workflow -->
 
-<!-- next/gui: platform GUI -->
+- **Check-digit validated national identifiers** (`national_id`, level 4):
+  France NIR, Italy codice fiscale, Germany Steuer-ID, Netherlands BSN, Belgium
+  national number, Poland PESEL, Sweden personnummer, Brazil CPF, India Aadhaar,
+  Australia TFN, plus the UK NHS number (`health_identifier`) and Brazil CNPJ
+  (`business_identifier`, level 1). 15 rules in `detectors/national_ids.py`,
+  algorithms in `detectors/checksums.py`; formats that are not distinctive on
+  their own also need their naming keyword.
+- **42 provider token rules** for 41 providers in `detectors/secret_rules.py`
+  (GitLab, npm, PyPI, Docker Hub, Hugging Face, DigitalOcean, Databricks,
+  Cloudflare, Shopify, Telegram, Discord, Twilio, SendGrid, Azure, GCP, AWS STS,
+  Slack webhooks and more), cross-checked against gitleaks (MIT) and
+  detect-secrets (Apache-2.0); key=value connection strings; password key names
+  in French, Spanish, Portuguese, German and Italian.
+- **Multilingual field names** in the key-name detector (FR, ES, DE, PT, IT),
+  snake_case prefixes (`current_salary`) and symptom fields; international,
+  French and labelled phone numbers; dates of birth in six languages and with
+  month names; pay figures that say gross or net; French conditions and
+  medications.
+- **Encoded leaks**: HTML entities, JSON/Python unicode escapes, zero-width
+  padding, homoglyph and fullwidth forms, gzip/zlib inside base64, and
+  leetspeak (anchored). `scripts/encoded_leaks.py` reports them in their own
+  rows: 7 of 40 cells on 0.18.0, 40 of 40 now.
+- **InjecAgent pack** (`injecagent_ds`, 96 scenarios, MIT): data stealing
+  through injected tool responses, with canaries and a verified clean
+  counterpart. Bundled scenarios: 266 → 362.
+- **Measurement**: French quality set and page, 82 hard negatives reported by
+  `scripts/detection_quality.py`, credential coverage
+  (`scripts/detection_quality_secrets.py`), scan throughput
+  (`scripts/detection_throughput.py`), `docs/detection-sources.md`, and a
+  linear-time guard test for every detector and decoder.
+- `Finding.metadata["rule"]` names the rule that produced a regex finding.
+
+### Changed
+
+- IBANs must pass ISO 13616 (registered country, exact length, mod 97). 23
+  AgentDojo banking scenarios move from "High risk" to "Conditional pass":
+  the attacker's `US13 3000 …` account had been counted as a leaked IBAN.
+- Payment cards need a network IIN range as well as Luhn; SSNs that are never
+  issued (area 000/666, group 00, serial 0000) are not reported; an
+  unlabelled space-separated SIN must pass Luhn.
+- Symptom fields (`chief_complaint`) count as health data, which grows the
+  observed vault of two `agentleak_bench` scenarios (High risk → Conditional
+  pass). Built-in scenario scores, including the quickstart 0.44, are unchanged.
+
+### Fixed
+
+- `agentleak --version` (and `-V`) now prints the version; it used to fail with
+  "No such option".
+- Docs and two module docstrings quoted figures from an earlier draft of the
+  paper ("2.6×", "45.9%"). They now give the published ones: 68.8% of traces
+  leak on inter-agent messages against 27.2% on the final output, and 41.7% of
+  traces have a clean final output with an internal leak.
+
+- `agentleak run` exits 2 with a message (no traceback) for a missing,
+  malformed, empty or non-UTF-8 trace, a directory, an unknown scenario or an
+  unknown format, and refuses JSON without an `events` list: a report passed by
+  mistake used to score 100 and pass the gate. An empty `events` list warns.
+  `report`, `redact` and `scan -o` handle bad input the same way.
+- `agentleak validate --trace` no longer needs an `agentleak.yaml`.
+- The API returns 400 instead of 500 for malformed traces, uploads, reports,
+  compare ids and red-team counts; a project config that cannot load is
+  refused instead of being saved and breaking the project.
+- Event content nested over 200 levels is refused instead of raising
+  `RecursionError`.
+- Secret-assignment, email and credential-URL detection no longer take
+  quadratic time on long runs of text (23 s on a 50 KB event before). Matches
+  are unchanged.
+- The Action gate headlines the worst run when several run, counts all their
+  findings, and shows failed compliance frameworks again.
+- `AgentLeakClient` explains a 401 (it needs `agentleak serve --local`);
+  `Run.ingest` accepts a trace dict; the trust page title is escaped once.
+- Docs: 266 bundled scenarios (not 283) in `/llms.txt` and `docs/mcp.md`;
+  `docs/install.md` no longer uses a nonexistent `--fail-on`; README no longer
+  lists a "PII Probes" pack; `redact --style token` is documented.
+
+- The keyname and secret-assignment detectors reported AgentLeak's own
+  Sanitizer placeholders (`ssn: [REDACTED_SSN]`, `TOKEN=[REDACTED_…]`) as
+  leaks, so applying the recommended fix could never pass.
+- The MRN pattern captured the word "number" from a redacted
+  `medical record number:` field.
+- A canary shaped like a credential (an AWS-format key) was dropped by the
+  "match inside a credential" filter, losing exact proof of the leak.
+- `SKILL.md`, `llms.txt`, the `privacy-preflight` skill and `docs/install.md`
+  showed commands that do not exist (`scan --trace`, `scan --scenario`,
+  `run --fail-on`, `run --redteam`, `agentleak demo`) and MCP tool names
+  without their `privacy_` prefix; a test now parses every documented command.
+- Published figures in `SKILL.md` aligned with the skill's own reference sheet
+  (4,979 validated traces; 68.8% vs 27.2%; 41.7% missed); `docs/mcp.md` no
+  longer claims an upload path that does not exist, and counts 266 bundled
+  scenarios, not 283.
+
+- False positives on phone-shaped order numbers, version strings read as IPs,
+  `2022-02-22:11:30:00` timestamps read as IPv6, placeholder keys
+  (`sk-xxxx…`, `${VAR}`), credential-less `localhost` DSNs, and matches inside
+  base64 blobs: 25 of 82 hard negatives flagged on 0.18.0, 0 now.
+- Quadratic patterns (secret assignments, URL credentials, emails, URL-encoded
+  runs) that took seconds on a long token now scan in linear time.
+
 ### Added (GUI)
 
 - **Analyze a trace** (`/app/analyze`): score a trace without creating a
@@ -115,55 +259,7 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 - About 140 kB of stylesheet rules left over from the marketing site; the
   animated gauge, the spline "risk trajectory" chart and the logo sweep
   animation.
-<!-- /next/gui -->
 
-### Security
-
-- **Stored scenarios are private to their owner.** `/api/analyze`,
-  `/api/report/{fmt}`, project runs and execute, `/api/selftest` and
-  `/api/agent/improve` resolved a `scenario_id` from any account. A foreign id
-  now answers like an unknown one. Publishing an ownerless legacy project is
-  refused.
-- **HTML report escapes trace content.** Agent names, run and scenario ids,
-  sources and custom rule names were inserted unescaped, so a trace could carry
-  a script into the report and into `/api/render/html`.
-- **Code-scan snippets mask every sensitive value on the line**, not only the
-  finding's own; console, JSON and SARIF output no longer show the others raw.
-- **`redact --style hash` is keyed.** It was a plain SHA-256 prefix, which can
-  be reversed for SSNs and card numbers by trying every value. It now uses the
-  same key as `token` (`AGENTLEAK_TOKEN_KEY` for a stable digest).
-- **Custom detector patterns with nested repeats (`(a+)+`) are refused** by the
-  platform; one could hold a worker for hours.
-- **Request bodies over 32 MiB get 413** (`AGENTLEAK_MAX_BODY_BYTES`).
-- **GitHub Action**: annotations are escaped like GitHub's toolkit does, so a
-  file name or data type cannot inject workflow commands; the `version` input
-  is no longer pasted into shell source.
-
-### Fixed
-
-- `agentleak run` exits 2 with a message (no traceback) for a missing,
-  malformed, empty or non-UTF-8 trace, a directory, an unknown scenario or an
-  unknown format, and refuses JSON without an `events` list: a report passed by
-  mistake used to score 100 and pass the gate. An empty `events` list warns.
-  `report`, `redact` and `scan -o` handle bad input the same way.
-- `agentleak validate --trace` no longer needs an `agentleak.yaml`.
-- The API returns 400 instead of 500 for malformed traces, uploads, reports,
-  compare ids and red-team counts; a project config that cannot load is
-  refused instead of being saved and breaking the project.
-- Event content nested over 200 levels is refused instead of raising
-  `RecursionError`.
-- Secret-assignment, email and credential-URL detection no longer take
-  quadratic time on long runs of text (23 s on a 50 KB event before). Matches
-  are unchanged.
-- The Action gate headlines the worst run when several run, counts all their
-  findings, and shows failed compliance frameworks again.
-- `AgentLeakClient` explains a 401 (it needs `agentleak serve --local`);
-  `Run.ingest` accepts a trace dict; the trust page title is escaped once.
-- Docs: 266 bundled scenarios (not 283) in `/llms.txt` and `docs/mcp.md`;
-  `docs/install.md` no longer uses a nonexistent `--fail-on`; README no longer
-  lists a "PII Probes" pack; `redact --style token` is documented.
-
-<!-- BEGIN next/selftest -->
 ### Added — agent self-test
 
 - **`agentleak selftest`**: one local command for an agent to test itself, no
@@ -202,82 +298,6 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 - Recipes: Claude Code `Stop` hook, git pre-commit hook, GitHub Actions
   workflow, an `AGENTS.md` snippet; a leaky toy agent and a scripted loop that
   fixes it to green (`examples/selftest/`).
-
-### Fixed
-
-- The keyname and secret-assignment detectors reported AgentLeak's own
-  Sanitizer placeholders (`ssn: [REDACTED_SSN]`, `TOKEN=[REDACTED_…]`) as
-  leaks, so applying the recommended fix could never pass.
-- The MRN pattern captured the word "number" from a redacted
-  `medical record number:` field.
-- A canary shaped like a credential (an AWS-format key) was dropped by the
-  "match inside a credential" filter, losing exact proof of the leak.
-- `SKILL.md`, `llms.txt`, the `privacy-preflight` skill and `docs/install.md`
-  showed commands that do not exist (`scan --trace`, `scan --scenario`,
-  `run --fail-on`, `run --redteam`, `agentleak demo`) and MCP tool names
-  without their `privacy_` prefix; a test now parses every documented command.
-- Published figures in `SKILL.md` aligned with the skill's own reference sheet
-  (4,979 validated traces; 68.8% vs 27.2%; 41.7% missed); `docs/mcp.md` no
-  longer claims an upload path that does not exist, and counts 266 bundled
-  scenarios, not 283.
-<!-- END next/selftest -->
-
-<!-- BEGIN next/detection (detection and sources) -->
-### Added
-
-- **Check-digit validated national identifiers** (`national_id`, level 4):
-  France NIR, Italy codice fiscale, Germany Steuer-ID, Netherlands BSN, Belgium
-  national number, Poland PESEL, Sweden personnummer, Brazil CPF, India Aadhaar,
-  Australia TFN, plus the UK NHS number (`health_identifier`) and Brazil CNPJ
-  (`business_identifier`, level 1). 15 rules in `detectors/national_ids.py`,
-  algorithms in `detectors/checksums.py`; formats that are not distinctive on
-  their own also need their naming keyword.
-- **42 provider token rules** for 41 providers in `detectors/secret_rules.py`
-  (GitLab, npm, PyPI, Docker Hub, Hugging Face, DigitalOcean, Databricks,
-  Cloudflare, Shopify, Telegram, Discord, Twilio, SendGrid, Azure, GCP, AWS STS,
-  Slack webhooks and more), cross-checked against gitleaks (MIT) and
-  detect-secrets (Apache-2.0); key=value connection strings; password key names
-  in French, Spanish, Portuguese, German and Italian.
-- **Multilingual field names** in the key-name detector (FR, ES, DE, PT, IT),
-  snake_case prefixes (`current_salary`) and symptom fields; international,
-  French and labelled phone numbers; dates of birth in six languages and with
-  month names; pay figures that say gross or net; French conditions and
-  medications.
-- **Encoded leaks**: HTML entities, JSON/Python unicode escapes, zero-width
-  padding, homoglyph and fullwidth forms, gzip/zlib inside base64, and
-  leetspeak (anchored). `scripts/encoded_leaks.py` reports them in their own
-  rows: 7 of 40 cells on 0.18.0, 40 of 40 now.
-- **InjecAgent pack** (`injecagent_ds`, 96 scenarios, MIT): data stealing
-  through injected tool responses, with canaries and a verified clean
-  counterpart. Bundled scenarios: 266 → 362.
-- **Measurement**: French quality set and page, 82 hard negatives reported by
-  `scripts/detection_quality.py`, credential coverage
-  (`scripts/detection_quality_secrets.py`), scan throughput
-  (`scripts/detection_throughput.py`), `docs/detection-sources.md`, and a
-  linear-time guard test for every detector and decoder.
-- `Finding.metadata["rule"]` names the rule that produced a regex finding.
-
-### Changed
-
-- IBANs must pass ISO 13616 (registered country, exact length, mod 97). 23
-  AgentDojo banking scenarios move from "High risk" to "Conditional pass":
-  the attacker's `US13 3000 …` account had been counted as a leaked IBAN.
-- Payment cards need a network IIN range as well as Luhn; SSNs that are never
-  issued (area 000/666, group 00, serial 0000) are not reported; an
-  unlabelled space-separated SIN must pass Luhn.
-- Symptom fields (`chief_complaint`) count as health data, which grows the
-  observed vault of two `agentleak_bench` scenarios (High risk → Conditional
-  pass). Built-in scenario scores, including the quickstart 0.44, are unchanged.
-
-### Fixed
-
-- False positives on phone-shaped order numbers, version strings read as IPs,
-  `2022-02-22:11:30:00` timestamps read as IPv6, placeholder keys
-  (`sk-xxxx…`, `${VAR}`), credential-less `localhost` DSNs, and matches inside
-  base64 blobs: 25 of 82 hard negatives flagged on 0.18.0, 0 now.
-- Quadratic patterns (secret assignments, URL credentials, emails, URL-encoded
-  runs) that took seconds on a long token now scan in linear time.
-<!-- END next/detection -->
 
 ## [0.18.0] - 2026-11-02
 

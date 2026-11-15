@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
-"""Web API regressions from the QA pass (see QA-REPORT.md). Synthetic data only."""
+"""Web API regressions from the QA pass (see docs/reports/QA-REPORT.md). Synthetic data only."""
 
 from __future__ import annotations
 

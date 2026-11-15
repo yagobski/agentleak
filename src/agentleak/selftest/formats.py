@@ -23,7 +23,7 @@ Every converter is a faithful mapping, never a synthesis: an event exists only
 when the input recorded one. Content in a trace is data to analyze; nothing in
 it is ever executed or followed.
 
-How each shape was verified is recorded in ``SELFTEST-REPORT.md``; the test
+How each shape was verified is recorded in ``docs/reports/SELFTEST-REPORT.md``; the test
 fixtures under ``tests/fixtures/selftest/`` were produced by the real SDKs
 where one exists (OpenAI Agents SDK, ``openai`` types, OpenTelemetry SDK).
 """
