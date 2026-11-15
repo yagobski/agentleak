@@ -664,6 +664,106 @@ export interface RunComparison {
   run_b: Run
   diff: RunDiff
 }
+// ----------- Finding triage ---------------------------------------------
+
+export type TriageState = "true_positive" | "false_positive" | "accepted_risk" | "needs_review"
+export type TriageStateOrNone = TriageState | "untriaged"
+
+export interface TriageDecision {
+  id: string
+  run_id: string
+  finding_id: string
+  state: TriageStateOrNone
+  rationale: string
+  expires_at: number | null
+  expires_on: string | null
+  reviewer_email: string
+  created_at: number
+}
+
+export interface TriageItem {
+  finding_id: string
+  identity: "fingerprint" | "masked"
+  /** Recorded state. */
+  state: TriageStateOrNone
+  /** State in force: an expired accepted risk is "needs_review". */
+  effective_state: TriageStateOrNone
+  expired: boolean
+  expiry_note?: string
+  carried: boolean
+  carried_from: { run_id: string; finding_id: string; run_exists: boolean; same_run: boolean } | null
+  decision: TriageDecision | null
+}
+
+export interface ScoreFigures {
+  risk_index: number
+  privacy_score: number
+  wsl: number
+  rho_s: number
+  leaked_secrets: number
+}
+
+export interface TriageView {
+  run_id: string
+  project_id: string
+  identity: { method: "fingerprint" | "masked value"; detail: string; key: string }
+  findings: TriageItem[]
+  summary: Record<TriageStateOrNone | "total" | "triaged" | "expired" | "carried", number>
+  score: {
+    measured: ScoreFigures & { verdict: Report["verdict"]; blocked: boolean }
+    triaged: ScoreFigures & {
+      label: string
+      false_positive_findings: number
+      total_findings: number
+      excluded_secrets: number
+      exact: boolean
+      method: string
+      changed: boolean
+    }
+  }
+  states: TriageState[]
+}
+
+export interface TriageHistory {
+  run_id: string
+  finding_id: string
+  decisions: (TriageDecision & { in_force: boolean; run_exists: boolean })[]
+}
+
+export interface RunQuery {
+  project?: string
+  verdict?: string
+  gate?: "blocked" | "passed" | ""
+  source?: string
+  since?: number
+  until?: number
+  q?: string
+  sort?: string
+  dir?: "asc" | "desc"
+  limit?: number
+  offset?: number
+}
+
+export interface RunPage {
+  items: (RunSummary & { project_name: string })[]
+  total: number
+  limit: number
+  offset: number
+  sort: string
+  dir: "asc" | "desc"
+  sources: string[]
+}
+
+export function runQueryString(q: RunQuery): string {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(q)) {
+    if (v === undefined || v === null || v === "") continue
+    p.set(k, String(v))
+  }
+  const s = p.toString()
+  return s ? `?${s}` : ""
+}
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -913,6 +1013,43 @@ export const api = {
       body: JSON.stringify(body),
     }),
   run: (id: string) => jsonFetch<Run>(`/api/runs/${id}`),
+  runsPage: (q: RunQuery) => jsonFetch<RunPage>(`/api/runs${runQueryString(q)}`),
+  async exportRuns(q: RunQuery, format: "csv" | "json"): Promise<{ body: string; total: number; exported: number }> {
+    const filters: Record<string, unknown> = { ...q, format }
+    delete filters.limit
+    delete filters.offset
+    const res = await fetch(`/api/runs/export${runQueryString(filters as RunQuery)}`)
+    if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+    if (!res.ok) {
+      let detail = res.statusText
+      try {
+        detail = (await res.json()).detail ?? detail
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(res.status, detail)
+    }
+    return {
+      body: await res.text(),
+      total: Number(res.headers.get("X-Total-Count") ?? 0),
+      exported: Number(res.headers.get("X-Exported-Count") ?? 0),
+    }
+  },
+  triage: (runId: string) => jsonFetch<TriageView>(`/api/runs/${encodeURIComponent(runId)}/triage`),
+  setTriage: (
+    runId: string,
+    body: { finding_ids: string[]; state: TriageStateOrNone; rationale?: string; expires_on?: string | null },
+  ) =>
+    jsonFetch<TriageView>(`/api/runs/${encodeURIComponent(runId)}/triage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  triageHistory: (runId: string, findingId: string) =>
+    jsonFetch<TriageHistory>(
+      `/api/runs/${encodeURIComponent(runId)}/triage/history?finding_id=${encodeURIComponent(findingId)}`,
+    ),
+  session: () => jsonFetch<{ authenticated: boolean; user: User | null }>("/api/auth/session"),
   deleteRun: (id: string) => jsonFetch<{ deleted: boolean }>(`/api/runs/${id}`, { method: "DELETE" }),
   leaderboard: () => jsonFetch<{ entries: LeaderboardEntry[] }>("/api/leaderboard"),
   compare: (a: string, b: string) =>

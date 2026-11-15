@@ -21,6 +21,8 @@ export interface Column<T> {
   hideBelow?: "sm" | "md" | "lg"
   sortable?: boolean
   exportable?: boolean
+  /** Exported but never displayed (for example a rationale or a timestamp). */
+  exportOnly?: boolean
 }
 
 export type SortState = { id: string; dir: "asc" | "desc" } | null
@@ -37,7 +39,7 @@ function compare(a: Cell, b: Cell): number {
 }
 
 export function DataTable<T>({
-  columns,
+  columns: allColumns,
   rows,
   rowKey,
   caption,
@@ -52,6 +54,8 @@ export function DataTable<T>({
   expanded,
   dense = true,
   footer,
+  manual,
+  exportMenu,
 }: {
   columns: Column<T>[]
   rows: T[]
@@ -69,31 +73,57 @@ export function DataTable<T>({
   expanded?: (row: T) => ReactNode | null
   dense?: boolean
   footer?: ReactNode
+  /**
+   * Server-side mode: rows are one page already sorted by the server. Sorting
+   * and paging are reported through the callbacks instead of done here.
+   */
+  manual?: {
+    sort: SortState
+    onSort: (s: SortState) => void
+    total: number
+    page: number
+    pageSize: number
+    onPage: (page: number) => void
+    busy?: boolean
+  }
+  /** Replaces the default "rows shown" export entries. */
+  exportMenu?: { label: string; onSelect: () => void }[]
 }) {
-  const [sort, setSort] = useState<SortState>(initialSort)
-  const [page, setPage] = useState(0)
+  const columns = allColumns.filter((c) => !c.exportOnly)
+  const [localSort, setLocalSort] = useState<SortState>(initialSort)
+  const [localPage, setLocalPage] = useState(0)
+  const sort = manual ? manual.sort : localSort
+  const setSort = (next: SortState | ((s: SortState) => SortState)) => {
+    const value = typeof next === "function" ? next(sort) : next
+    if (manual) manual.onSort(value)
+    else setLocalSort(value)
+  }
+  const page = manual ? manual.page : localPage
+  const setPage = (p: number) => (manual ? manual.onPage(p) : setLocalPage(p))
 
   const sorted = useMemo(() => {
-    if (!sort) return rows
+    if (manual || !sort) return rows
     const col = columns.find((c) => c.id === sort.id)
     if (!col) return rows
     const out = [...rows].sort((a, b) => compare(col.value(a), col.value(b)))
     return sort.dir === "desc" ? out.reverse() : out
-  }, [rows, columns, sort])
+  }, [rows, columns, sort, manual])
 
-  const pages = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1
+  const size = manual ? manual.pageSize : pageSize
+  const count = manual ? manual.total : sorted.length
+  const pages = size ? Math.max(1, Math.ceil(count / size)) : 1
   useEffect(() => {
-    if (page >= pages) setPage(0)
-  }, [page, pages])
+    if (!manual && page >= pages) setLocalPage(0)
+  }, [page, pages, manual])
 
   // Keep the active row on screen when it is set from outside (permalink, jump).
   useEffect(() => {
-    if (!pageSize || !activeKey) return
+    if (manual || !pageSize || !activeKey) return
     const idx = sorted.findIndex((r) => rowKey(r) === activeKey)
-    if (idx >= 0) setPage(Math.floor(idx / pageSize))
-  }, [activeKey, pageSize, sorted, rowKey])
+    if (idx >= 0) setLocalPage(Math.floor(idx / pageSize))
+  }, [activeKey, pageSize, sorted, rowKey, manual])
 
-  const visible = pageSize ? sorted.slice(page * pageSize, page * pageSize + pageSize) : sorted
+  const visible = manual ? rows : pageSize ? sorted.slice(page * pageSize, page * pageSize + pageSize) : sorted
 
   function toggleSort(id: string) {
     setSort((s) => (s?.id !== id ? { id, dir: "desc" } : s.dir === "desc" ? { id, dir: "asc" } : null))
@@ -101,7 +131,7 @@ export function DataTable<T>({
 
   function doExport(format: "csv" | "json") {
     if (!exportName) return
-    const cols = columns.filter((c) => c.exportable !== false)
+    const cols = allColumns.filter((c) => c.exportable !== false)
     const file = exportTable(
       exportName,
       format,
@@ -123,6 +153,16 @@ export function DataTable<T>({
 
   const pad = dense ? "py-2" : "py-3"
   const colCount = columns.length + (selection ? 1 : 0)
+  // Select-all applies to the rows on this page, and only when the selection is unbounded.
+  const pageKeys = visible.map(rowKey)
+  const canSelectAll = selection && !selection.max && pageKeys.length > 0
+  const allOnPage = canSelectAll && pageKeys.every((k) => sel!.has(k))
+  const someOnPage = canSelectAll && !allOnPage && pageKeys.some((k) => sel!.has(k))
+  function toggleAll() {
+    if (!selection) return
+    if (allOnPage) selection.onChange(selection.selected.filter((k) => !pageKeys.includes(k)))
+    else selection.onChange([...new Set([...selection.selected, ...pageKeys])])
+  }
 
   return (
     <div className="min-w-0">
@@ -130,18 +170,32 @@ export function DataTable<T>({
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{toolbar}</div>
           <span className="text-[11px] tnum text-muted-foreground" aria-live="polite">
-            {sorted.length === rows.length ? `${rows.length} rows` : `${sorted.length} of ${rows.length} rows`}
+            {manual
+              ? `${manual.total} row${manual.total === 1 ? "" : "s"}${manual.busy ? ", loading" : ""}`
+              : sorted.length === rows.length
+                ? `${rows.length} rows`
+                : `${sorted.length} of ${rows.length} rows`}
           </span>
           {exportName && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8" disabled={!sorted.length}>
+                <Button variant="outline" size="sm" className="h-8" disabled={!count}>
                   <Download /> Export
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => doExport("csv")}>CSV, rows shown</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => doExport("json")}>JSON, rows shown</DropdownMenuItem>
+                {exportMenu ? (
+                  exportMenu.map((m) => (
+                    <DropdownMenuItem key={m.label} onSelect={m.onSelect}>
+                      {m.label}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <>
+                    <DropdownMenuItem onSelect={() => doExport("csv")}>CSV, {sorted.length} rows shown</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => doExport("json")}>JSON, {sorted.length} rows shown</DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -154,7 +208,20 @@ export function DataTable<T>({
             <tr className="border-b border-border text-left text-[11px] text-muted-foreground">
               {selection && (
                 <th scope="col" className="w-9 px-3 py-2 font-medium">
-                  <span className="sr-only">Select</span>
+                  {canSelectAll ? (
+                    <input
+                      type="checkbox"
+                      className="size-3.5 accent-foreground"
+                      checked={!!allOnPage}
+                      ref={(el) => {
+                        if (el) el.indeterminate = !!someOnPage
+                      }}
+                      onChange={toggleAll}
+                      aria-label={allOnPage ? "Clear the selection on this page" : "Select every row on this page"}
+                    />
+                  ) : (
+                    <span className="sr-only">Select</span>
+                  )}
                 </th>
               )}
               {columns.map((c) => {
@@ -257,13 +324,13 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      {(pageSize && pages > 1) || footer ? (
+      {(size && pages > 1) || footer ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
           <div>{footer}</div>
-          {pageSize && pages > 1 && (
+          {size && pages > 1 && (
             <div className="flex items-center gap-2">
               <span className="tnum">
-                {page * pageSize + 1}–{Math.min(sorted.length, (page + 1) * pageSize)} of {sorted.length}
+                {page * size + 1}–{Math.min(count, (page + 1) * size)} of {count}
               </span>
               <Button variant="ghost" size="icon" className="size-7" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="Previous page">
                 <ChevronLeft />

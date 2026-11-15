@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ArrowLeftRight, TriangleAlert } from "lucide-react"
-import { api, type LevelLabel, type Run } from "@/lib/api"
+import { api, type LevelLabel, type Run, type TriageItem, type TriageView } from "@/lib/api"
+import { triageText } from "@/lib/triage"
 import { diffFindings, type DiffRow, type Status } from "@/lib/compare"
 import { channelSplit, useMeta } from "@/lib/meta"
 import { cn } from "@/lib/utils"
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "@/components/DataTable"
 import { DetectionBadge, LevelChip, VerdictLabel } from "@/features/Chips"
 import { formatStamp, useAllRuns, type RunRow } from "@/features/RunsTable"
+import { TriageChip } from "@/features/Triage"
 import { PageHeader } from "@/layout/AppShell"
 
 function signed(n: number, digits = 3) {
@@ -34,6 +36,7 @@ export function Compare() {
   const [data, setData] = useState<{ a: Run; b: Run; dominance: "a" | "b" | "neither"; comparable?: boolean; reason?: string } | null>(null)
   const [error, setError] = useState("")
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all")
+  const [triage, setTriage] = useState<{ a: TriageView | null; b: TriageView | null }>({ a: null, b: null })
 
   useEffect(() => {
     setData(null)
@@ -47,7 +50,21 @@ export function Compare() {
       .compare(a, b)
       .then(setData)
       .catch((e) => setError((e as Error).message))
+    setTriage({ a: null, b: null })
+    // Triage is a separate, optional view: a failure here never hides the comparison.
+    Promise.all([api.triage(a).catch(() => null), api.triage(b).catch(() => null)]).then(([ta, tb]) =>
+      setTriage({ a: ta, b: tb }),
+    )
   }, [a, b])
+
+  const triageOf = useMemo(() => {
+    const m = { a: new Map<string, TriageItem>(), b: new Map<string, TriageItem>() }
+    triage.a?.findings.forEach((t) => m.a.set(t.finding_id, t))
+    triage.b?.findings.forEach((t) => m.b.set(t.finding_id, t))
+    return m
+  }, [triage])
+  // Resolved findings exist only in A; the others are B's findings.
+  const triageFor = (d: DiffRow) => (d.status === "resolved" ? triageOf.a : triageOf.b).get(d.finding.finding_id)
 
   function pick(which: "a" | "b", id: string) {
     setParams((p) => {
@@ -99,6 +116,12 @@ export function Compare() {
     { id: "data_type", header: "Data type", value: (d) => d.finding.data_type },
     { id: "masked_value", header: "Value (masked)", value: (d) => d.finding.redacted_value, cell: (d) => <code className="break-all font-mono text-[12px]">{d.finding.redacted_value}</code> },
     { id: "run", header: "Seen in", value: (d) => (d.status === "resolved" ? "A" : d.status === "added" ? "B" : "A and B"), hideBelow: "sm" },
+    {
+      id: "triage",
+      header: "Triage",
+      value: (d) => triageText(triageFor(d)),
+      cell: (d) => <TriageChip item={triageFor(d)} />,
+    },
   ]
 
   const ra = data?.a.report
@@ -126,6 +149,10 @@ export function Compare() {
               className="mt-1 h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 font-mono text-[12px]"
             >
               <option value="">Choose a run…</option>
+              {/* A run outside the most recent 200 still shows as selected. */}
+              {(which === "a" ? a : b) && !(runs ?? []).some((r) => r.id === (which === "a" ? a : b)) && (
+                <option value={which === "a" ? a : b}>{which === "a" ? a : b}</option>
+              )}
               {(runs ?? []).map((r) => (
                 <option key={r.id} value={r.id}>
                   {runLabel(r)}
@@ -251,6 +278,28 @@ export function Compare() {
                     <td className="font-mono text-[12px] tnum">{LEVELS.map((l) => `${l}:${rb.summary.level_profile[l] ?? 0}`).join(" ")}</td>
                     <td />
                   </tr>
+                  {triage.a && triage.b && (
+                    <tr className="border-b border-border/60">
+                      <th scope="row">Triage</th>
+                      <td className="text-[12px] tnum">
+                        {triage.a.summary.triaged} of {triage.a.summary.total} triaged, {triage.a.summary.false_positive} false positive
+                      </td>
+                      <td className="text-[12px] tnum">
+                        {triage.b.summary.triaged} of {triage.b.summary.total} triaged, {triage.b.summary.false_positive} false positive
+                      </td>
+                      <td />
+                    </tr>
+                  )}
+                  {triage.a && triage.b && (triage.a.score.triaged.changed || triage.b.score.triaged.changed) && (
+                    <tr className="border-b border-border/60">
+                      <th scope="row">RI excluding false positives (triaged view)</th>
+                      <td className="font-mono tnum">{triage.a.score.triaged.risk_index.toFixed(3)}</td>
+                      <td className="font-mono tnum">{triage.b.score.triaged.risk_index.toFixed(3)}</td>
+                      <td className="text-right font-mono text-[12px] tnum">
+                        {signed(triage.b.score.triaged.risk_index - triage.a.score.triaged.risk_index)}
+                      </td>
+                    </tr>
+                  )}
                   <tr>
                     <th scope="row">Detection</th>
                     <td><DetectionBadge detection={ra.detection} /></td>
@@ -305,6 +354,7 @@ export function Compare() {
             <h2 id="cmp-findings" className="mb-1 text-sm font-medium">Findings</h2>
             <p className="mb-2 text-[12px] text-muted-foreground">
               Matched on channel, data type, level and masked value; finding ids are per run and cannot be matched.
+              Triage is A's decision for resolved findings and B's for the others.
             </p>
             <div className="rounded-lg border border-border bg-card">
               <DataTable
