@@ -252,7 +252,9 @@ later differs, on stderr and in the evidence log as `tool_changed`.
 A changed tool stays reported until you accept it with `--repin`; it is never
 re-trusted silently, because a pin that follows the server's changes pins
 nothing. `--block-changed-tools` goes further: the changed tool is removed from
-the list the agent sees, and a call to it is refused.
+the list the agent sees, and a call to it is refused. With it, a call to a tool
+that has not been through `tools/list` in the current session is refused too,
+so a client that cached the list cannot reach a tool nobody re-checked.
 
 ## Signing the log
 
