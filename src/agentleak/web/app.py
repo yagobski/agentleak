@@ -42,7 +42,7 @@ from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
 from ..core.compliance import FRAMEWORKS
 from ..core.config import Config
-from ..core.netguard import set_outbound_guard
+from ..core.netguard import guard_enabled, set_outbound_guard
 from ..core.regex_safety import check_regex
 from ..core.report import AnalysisResult
 from ..core.runner import AgentLeakRunner
@@ -154,6 +154,26 @@ def _next_steps(report: dict[str, Any], code_scan: dict[str, Any] | None) -> lis
     return steps
 
 
+def _server_detection(detection: dict[str, Any]) -> dict[str, Any]:
+    """Detection settings from a request, minus what only the operator may choose.
+
+    The LLM judge reads its key from the environment variable named by
+    ``api_key_env`` and sends it to ``base_url``. Taken from a request, those
+    two fields let any account read any variable of the server process and send
+    it to a host of its choosing. On the server they come from the operator's
+    environment only (``AGENTLEAK_LLM_URL``, ``OPENAI_API_KEY``), and a hosted
+    deployment (public mode) does not run the judge on a tenant's behalf at all.
+    """
+    out = dict(detection)
+    judge = out.get("llm_judge")
+    if isinstance(judge, dict):
+        judge = {k: v for k, v in judge.items() if k not in ("base_url", "api_key_env")}
+        if guard_enabled():
+            judge["enabled"] = False
+        out["llm_judge"] = judge
+    return out
+
+
 def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     """Translate UI/project settings into agentleak.yaml config data."""
     data: dict[str, Any] = {}
@@ -185,7 +205,7 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     # trace analysis, red-team runs, and code scans all honour them.
     detection = settings.get("detection")
     if isinstance(detection, dict):
-        data["detection"] = detection
+        data["detection"] = _server_detection(detection)
     privacy_policy = settings.get("privacy_policy")
     if isinstance(privacy_policy, dict):
         data["privacy_policy"] = privacy_policy
