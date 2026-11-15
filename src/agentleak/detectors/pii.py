@@ -71,7 +71,7 @@ _CALLING_CODES = (
 )
 INTL_PHONE_RE = re.compile(
     r"(?<![\w+])(?:\+|00)(?:" + _CALLING_CODES + r")"
-    r"(?:[\s.\-]?\(0\))?(?:[\s.\-]?\d){6,12}(?!\d)"
+    r"(?:[\s.\-]?\(0\))?(?:[\s.\-]?\d){6,12}(?!\d|[.,]\d)"
 )
 # French national format: ten digits from 01 to 09, written in pairs.
 FR_PHONE_RE = re.compile(r"(?<![\w+.-])0[1-9](?:[ .-]\d{2}){4}(?![\s\w.-]?\d)")
@@ -88,6 +88,8 @@ IPV6_RE = re.compile(
     r"\b(?:[A-Fa-f0-9]{1,4}:){3,7}[A-Fa-f0-9]{1,4}\b"
     r"|\b(?:[A-Fa-f0-9]{1,4}:){1,6}:[A-Fa-f0-9]{1,4}\b"
 )
+# "+35236450.6" is a signed decimal number, not "+352" and a phone number.
+_SIGNED_DECIMAL_RE = re.compile(r"[+-]?\d+[.,]\d+")
 _CLOCK_LIKE_RE = re.compile(r"\d{1,2}(?::\d{1,2})+")
 # IPv4 that is actually a software version ("version 1.2.3.4") is not a client
 # IP leak — used to suppress that false positive.
@@ -339,6 +341,7 @@ class PIIDetector(Detector):
                 digits = sum(ch.isdigit() for ch in value)
                 if (
                     not 7 <= digits <= 15
+                    or _SIGNED_DECIMAL_RE.fullmatch(value)
                     or _inside(span, phone_spans)
                     or _inside(span, id_spans)
                     or (group == 0 and _NOT_A_PHONE_PREFIX_RE.search(

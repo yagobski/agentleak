@@ -98,6 +98,13 @@ _SENSITIVE_KEYS: dict[str, tuple[str, Severity, str]] = {
         "date_of_birth", Severity.HIGH,
         "Date of birth is a re-identifying quasi-identifier; remove it from internal channels.",
     ),
+    # A snake_case prefix usually names whose address it is (billing_address),
+    # but these name a machine or a mailbox, not a home.
+    r"(?<!ip_)(?<!mac_)(?<!source_)(?<!server_)(?<!host_)(?<!remote_)(?<!local_)"
+    r"(?<!bind_)(?<!proxy_)(?<!peer_)(?<!socket_)(?<!sock_)(?<!email_)(?<!mail_)"
+    r"(?<!base_)(?<!return_)(?<!target_)(?<!dest_)(?<!network_)(?<!wallet_)"
+    r"(?<!contract_)(?<!memory_)(?<!url_)(?<!web_)(?<!node_)(?<!broadcast_)(?<!gateway_)"
+    r"(?<!from_)(?<!to_)(?<!reply_)(?<!sender_)(?<!recipient_)(?<!listen_)"
     r"(?:home[_ ]?|mailing[_ ]?)?address|adresse(?:[_ ]postale)?|domicile|"
     r"direcci[óo]n(?:[_ ]postal)?|domicilio|anschrift|wohnadresse|endere[çc]o|morada|"
     r"indirizzo|residenza": (
@@ -134,6 +141,12 @@ _TRIVIAL_VALUE_RE = re.compile(
     r"<[^>]*>|\{\{.*|\$\{.*)$",
     re.IGNORECASE,
 )
+
+
+# A value that is code, not data: an attribute path (``self.source_address``),
+# a call (``IPv4Address(``) or a private identifier (``_complete_bpnumber``).
+# Source files are scanned with the same detectors.
+_CODE_VALUE_RE = re.compile(r"^(?:[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+|[A-Za-z_][\w.]*\(.*|_\w+)$")
 
 
 # The longest value we will believe a sensitive key carries. Past this, the
@@ -201,7 +214,7 @@ class SensitiveKeyDetector(Detector):
             for m in pattern.finditer(text):
                 value = m.group(1).strip().strip("\"'")
                 value = _VALUE_TAIL_RE.sub("", value)
-                if len(value) < 2 or _TRIVIAL_VALUE_RE.match(value):
+                if len(value) < 2 or _TRIVIAL_VALUE_RE.match(value) or _CODE_VALUE_RE.match(value):
                     continue
                 if len(value) > _MAX_VALUE_LEN:
                     # Not a field value any more. Reporting it would put an
