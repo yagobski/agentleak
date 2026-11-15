@@ -562,12 +562,31 @@ def convert(data: Any, fmt: str, *, run_id: str) -> Trace:
     raise TraceFormatError(f"no converter for {fmt}")
 
 
+_MALFORMED = (AttributeError, TypeError, KeyError, IndexError, RecursionError)
+
+
+def _detect_and_convert(data: Any, fmt: str | None, *, jsonl: bool, run_id: str) -> tuple[str, Trace]:
+    """Detection and conversion, with malformed shapes reported as format errors.
+
+    The converters walk untrusted JSON; a field of the wrong type (a string
+    where spans were expected) raised AttributeError and the server answered
+    500. Any such shape is now a :class:`TraceFormatError` (400 / exit 2).
+    """
+    try:
+        detected = fmt or detect(data, jsonl=jsonl)
+        return detected, convert(data, detected, run_id=run_id)
+    except _MALFORMED as exc:
+        raise TraceFormatError(
+            f"the input has the wrong shape for {fmt or 'any known format'}: "
+            f"{type(exc).__name__}"
+        ) from exc
+
+
 def load_text(text: str, *, label: str, fmt: str | None = None) -> LoadedTrace:
     """Parse, detect (unless ``fmt`` is given), and convert one input."""
     data, jsonl = _parse_text(text)
-    detected = fmt or detect(data, jsonl=jsonl)
     run_id = Path(label).stem if label not in ("<stdin>", "") else "stdin"
-    trace = convert(data, detected, run_id=run_id or "run")
+    detected, trace = _detect_and_convert(data, fmt, jsonl=jsonl, run_id=run_id or "run")
     notes: list[str] = []
     if not trace.events:
         raise TraceFormatError(
@@ -583,8 +602,7 @@ def load_text(text: str, *, label: str, fmt: str | None = None) -> LoadedTrace:
 
 def load_any(data: Any, *, label: str = "<payload>", fmt: str | None = None) -> LoadedTrace:
     """Same as :func:`load_text` for an already-parsed object (MCP / HTTP)."""
-    detected = fmt or detect(data)
-    trace = convert(data, detected, run_id="payload")
+    detected, trace = _detect_and_convert(data, fmt, jsonl=False, run_id="payload")
     if not trace.events:
         raise TraceFormatError(
             f"read as {detected}, but it produced no events. An empty run cannot be scored."
