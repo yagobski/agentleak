@@ -106,3 +106,34 @@ def test_postal_codes_inside_many_emails_are_linear() -> None:
     assert not [m for m in found if m.data_type == "address"]
     # Outside an email the same shape is still a postal code.
     assert any(m.data_type == "address" for m in PIIDetector().detect("x@ex.co then H2X 1Y4 here"))
+
+
+def test_json_in_a_string_cannot_bypass_the_depth_cap(tmp_path) -> None:
+    """A tool call whose arguments are a JSON string nested 900 levels deep was
+    parsed into the trace: ``agentleak import`` then crashed writing it, and a
+    self-test of OTel spans failed in analysis."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from agentleak import AgentLeakRunner
+    from agentleak.cli import app
+    from agentleak.interop.convert import from_otel_genai, maybe_json
+
+    nested = "[" * 900 + "1" + "]" * 900
+    assert maybe_json(nested) == nested
+    assert maybe_json('{"a": [1, 2]}') == {"a": [1, 2]}
+
+    doc = [{"role": "user", "is_simulated": False, "pieces": [{"data_type": "text", "original_value": "hi"}]},
+           {"role": "assistant", "is_simulated": False,
+            "pieces": [{"data_type": "tool_call", "original_value": nested}]}]
+    src = tmp_path / "pyrit.json"
+    src.write_text(json.dumps(doc), encoding="utf-8")
+    result = CliRunner().invoke(app, ["import", str(src), "-o", str(tmp_path / "out"), "--score",
+                                      "--report-dir", str(tmp_path / "rep")])
+    assert result.exception is None or isinstance(result.exception, SystemExit), result.exception
+    assert result.exit_code == 0, result.output
+
+    spans = [{"name": "t", "attributes": {"gen_ai.operation.name": "execute_tool",
+                                          "gen_ai.tool.name": "x", "gen_ai.tool.call.arguments": nested}}]
+    AgentLeakRunner().analyze(from_otel_genai(spans, run_id="deep"))
