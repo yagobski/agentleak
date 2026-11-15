@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 AgentLeak contributors
 // SPDX-License-Identifier: MIT
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useId, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { Bot, Check, Copy, Eye, EyeOff, KeyRound, Loader2, Pencil, Play, Plug, Plus, RefreshCw, Shield, Trash2, Wrench, X } from "lucide-react"
+import { Bot, Check, Copy, Eye, EyeOff, Loader2, Pencil, Play, Plug, Plus, RefreshCw, Trash2, Wrench, X } from "lucide-react"
 import { toast } from "sonner"
 import {
   api,
@@ -24,7 +24,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,6 +33,8 @@ import { ProgressionView } from "@/features/ProgressionView"
 import { RedTeamView } from "@/features/RedTeamView"
 import { RunsTable } from "@/features/RunsTable"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { FieldRow, Section, inputSm } from "@/components/Section"
+import { channelSplit, useMeta } from "@/lib/meta"
 import { PageHeader } from "@/layout/AppShell"
 
 function scenarioLabel(scenario: Scenario) {
@@ -87,17 +88,11 @@ export function ProjectDetail() {
         <div className="overflow-x-auto">
         <TabsList className="h-auto justify-start">
           <TabsTrigger value="audit">Test</TabsTrigger>
-          <TabsTrigger value="card" className="flex items-center gap-1.5">
-            <Bot className="h-3.5 w-3.5 text-primary" />
-            Identity &amp; code
-          </TabsTrigger>
+          <TabsTrigger value="card">Identity &amp; code</TabsTrigger>
           <TabsTrigger value="agents">Test agents ({project.config.agents?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="model">System map</TabsTrigger>
-          <TabsTrigger value="runs">Runs ({runs.length})</TabsTrigger>
-          <TabsTrigger value="redteam" className="flex items-center gap-1.5">
-            <Shield className="h-3.5 w-3.5 text-red-500" />
-            Adversarial
-          </TabsTrigger>
+          <TabsTrigger value="runs">Runs ({project.run_count ?? runs.length})</TabsTrigger>
+          <TabsTrigger value="redteam">Adversarial</TabsTrigger>
           <TabsTrigger value="connect">Integrate</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -700,8 +695,38 @@ function RunsTab({ projectId, runs, onChange }: { projectId: string; runs: RunSu
 }
 
 // ------------------------------------------------------------- Connect
+function SnippetBlock({ title, snippet, note }: { title: string; snippet: string; note?: React.ReactNode }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <Section
+      title={title}
+      description={note}
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={() =>
+            navigator.clipboard
+              .writeText(snippet)
+              .then(() => {
+                setCopied(true)
+                toast.success("Copied")
+                window.setTimeout(() => setCopied(false), 1500)
+              })
+              .catch(() => toast.error("Clipboard unavailable"))
+          }
+        >
+          {copied ? <Check /> : <Copy />} Copy
+        </Button>
+      }
+    >
+      <pre className="overflow-x-auto px-4 py-3 font-mono text-[12px] leading-relaxed">{snippet}</pre>
+    </Section>
+  )
+}
+
 function ConnectTab({ project }: { project: Project }) {
-  const [copied, setCopied] = useState("")
   const [info, setInfo] = useState<ConnectInfo | null>(null)
   const [error, setError] = useState("")
 
@@ -709,52 +734,31 @@ function ConnectTab({ project }: { project: Project }) {
     api.connect(project.id).then(setInfo).catch((e) => setError((e as Error).message))
   }, [project.id, project.agent_type, project.name, project.config.agents])
 
-  function copy(key: string, text: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(key)
-      toast.success("Snippet copied")
-      setTimeout(() => setCopied(""), 1500)
-    })
-  }
-
-  if (error) return <Card className="p-6 text-sm text-sev-l4">{error}</Card>
-  if (!info) return <div className="text-sm text-muted-foreground">Loading…</div>
+  if (error)
+    return (
+      <p role="alert" className="rounded-lg border border-border p-4 text-sm text-sev-l4">
+        Could not load the integration snippets: {error}
+      </p>
+    )
+  if (!info) return <div className="h-40 rounded-lg bg-muted motion-safe:animate-pulse" aria-busy="true" aria-label="Loading snippets" />
 
   const blocks =
     info.agents.length > 0
-      ? info.agents.map((a) => ({ key: a.id, title: `${a.name} · ${a.framework_label}`, snippet: a.snippet }))
+      ? info.agents.map((a) => ({ key: a.id, title: `${a.name}, ${a.framework_label}`, snippet: a.snippet }))
       : [{ key: "single", title: `${agentLabel(project.agent_type)} agent`, snippet: info.snippet }]
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-primary/20 bg-primary/[0.03] px-4 py-3 text-sm text-muted-foreground">
-        Instrument your real application here. The SDK records execution events and submits traces to this project;
-        AgentLeak never needs to host or launch your agent.
-      </div>
-      {info.agents.length > 0 && (
-        <p className="text-sm text-muted-foreground">
-          Connect each agent of your system with its framework's SDK. Runs submitted by any agent appear under this
-          project.
-        </p>
-      )}
+      <p className="max-w-3xl text-[13px] text-muted-foreground">
+        Instrument your own application. The SDK records the agent's events and submits each trace to this project;
+        AgentLeak does not host or launch your agent. Runs appear under Runs once this server ({window.location.origin})
+        receives them.
+        {info.agents.length > 0 && " Each configured test agent has its own snippet."}
+      </p>
       {blocks.map((b) => (
-        <Card key={b.key}>
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
-            <div className="text-sm">
-              Capture <b>{b.title}</b> traces via the SDK
-            </div>
-            <Button variant="outline" size="sm" onClick={() => copy(b.key, b.snippet)}>
-              {copied === b.key ? <Check /> : <Copy />} Copy
-            </Button>
-          </div>
-          <pre className="overflow-x-auto p-5 font-mono text-[12px] leading-relaxed text-foreground/90">{b.snippet}</pre>
-        </Card>
+        <SnippetBlock key={b.key} title={`Capture traces: ${b.title}`} snippet={b.snippet} />
       ))}
       <SelfTestKeyPanel project={project} />
-      <div className="rounded-md border border-border px-5 py-3 text-xs text-muted-foreground">
-        Make sure the platform is running (<code className="rounded bg-muted px-1.5 py-0.5">agentleak serve</code>).
-        Submitted runs appear under this project.
-      </div>
     </div>
   )
 }
@@ -766,11 +770,16 @@ function SelfTestKeyPanel({ project }: { project: Project }) {
   const [reveal, setReveal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState("")
+  const [confirmRotate, setConfirmRotate] = useState(false)
+  const origin = window.location.origin
 
   useEffect(() => {
-    api.getApiKey(project.id)
-      .then((r) => { setKey(r.api_key); setHasKey(r.has_key) })
+    api
+      .getApiKey(project.id)
+      .then((r) => {
+        setKey(r.api_key)
+        setHasKey(r.has_key)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [project.id])
@@ -781,8 +790,8 @@ function SelfTestKeyPanel({ project }: { project: Project }) {
       const r = await api.generateApiKey(project.id)
       setKey(r.api_key)
       setHasKey(true)
-      setReveal(true)
-      toast.success(hasKey ? "API key rotated" : "API key generated")
+      setReveal(false)
+      toast.success(hasKey ? "Key rotated; the previous key no longer works" : "Key generated")
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
@@ -790,161 +799,131 @@ function SelfTestKeyPanel({ project }: { project: Project }) {
     }
   }
 
-  function copy(id: string, text: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(id)
-      toast.success("Copied")
-      setTimeout(() => setCopied(""), 1500)
-    })
-  }
-
-  const displayKey = key ? (reveal ? key : `${key.slice(0, 6)}${"•".repeat(20)}`) : ""
-  const curlSnippet = `curl -X POST http://127.0.0.1:8000/api/selftest \\
+  // Snippets read the key from the environment: the key itself is never pasted into code.
+  const curlSnippet = `curl -X POST ${origin}/api/selftest \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "api_key": "${key ?? "ak_…"}",
-    "trace": { /* your captured agent trace */ },
-    "scenario_id": "healthcare_patient_summary"
-  }'`
-
+  -H "X-AgentLeak-Key: $AGENTLEAK_KEY" \\
+  -d '{"trace": {"events": [...]}}'`
   const pySnippet = `import os, requests
 
-# Submit a trace captured by the application and read back fixes.
 resp = requests.post(
-    "http://127.0.0.1:8000/api/selftest",
-    json={
-        "api_key": os.environ["AGENTLEAK_KEY"],   # ${key ?? "ak_…"}
-        "trace": trace,                            # captured this run
-        "scenario_id": "healthcare_patient_summary",
-    },
+    "${origin}/api/selftest",
+    headers={"X-AgentLeak-Key": os.environ["AGENTLEAK_KEY"]},
+    json={"trace": trace},          # the trace your application captured
 ).json()
 
-# 1. Regulatory verdict — is the agent allowed to ship?
-if not resp["compliant"]:
-    print("Blocked by:", ", ".join(resp["failed_frameworks"]))  # e.g. hipaa, gdpr
-
-# 2. Pull back machine-readable code fixes and apply them.
 if not resp["passed"]:
     for hint in resp["remediation_hints"]:
-        print(f"[{hint['priority']}] {hint['channel']} leaks {hint['data_types']}")
-        print(hint["code_fix"])      # apply this patch, then re-run`
-
-  const loopSnippet = `from agentleak import AgentSelfClient
-
-me = AgentSelfClient(api_key=os.environ["AGENTLEAK_KEY"])
-
-# 1. Register identity (A2A/Nasiko AgentCard) + code source
-me.register(card={
-    "name": "${project.name}",
-    "capabilities": ["..."],
-    "source": {"type": "github", "repo": "owner/repo"},
-})
-me.scan_code()                      # static scan of the declared repo
-
-# 2. Improvement loop: test → read next_steps → fix → re-test
-step = me.improve(trace)
-while not step["passed"]:
-    for todo in step["next_steps"]:  # priority-sorted, machine-actionable
-        apply_fix(todo)
-    step = me.improve(new_trace())
-
-print(me.status()["progression"])    # score delta across all runs`
+        print(f"[{hint['priority']}] {hint['channel']}: {hint['data_types']}")
+        print(hint["code_fix"])`
 
   return (
-    <Card className="border-primary/25">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <div className="flex items-center gap-2 text-sm">
-          <KeyRound className="size-4 text-primary" />
-          <b>Let your agent submit its own traces</b>
-        </div>
-        <Button variant="outline" size="sm" onClick={generate} disabled={busy}>
-          {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+    <Section
+      title="Project API key"
+      description={
+        <>
+          Lets your application submit a trace it captured to <code className="font-mono">/api/selftest</code> without a
+          browser session, and read back the result and fixes. Send it in the <code className="font-mono">X-AgentLeak-Key</code>{" "}
+          header. Treat it as a secret.
+        </>
+      }
+      actions={
+        <Button variant="outline" size="sm" className="h-8" onClick={() => (hasKey ? setConfirmRotate(true) : generate())} disabled={busy || loading}>
+          {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}
           {hasKey ? "Rotate key" : "Generate key"}
         </Button>
-      </div>
-      <div className="space-y-4 p-5">
-        <p className="text-sm text-muted-foreground">
-          Issue a project API key so your application can POST a trace it already captured to{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-primary">/api/selftest</code>, get scored, and pull
-          back structured code fixes it may apply. AgentLeak analyzes the submitted evidence; it does not launch the agent.
-        </p>
-
+      }
+    >
+      <div className="space-y-3 px-4 py-3">
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <p className="text-[13px] text-muted-foreground">Loading…</p>
         ) : hasKey && key ? (
-          <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-md border border-border bg-muted/60 px-3 py-2 font-mono text-[12px]">
-              {displayKey}
+          <div className="flex min-w-0 items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-1.5 font-mono text-[12px]" aria-label={reveal ? "Project API key" : "Project API key, masked"}>
+              {reveal ? key : `${key.slice(0, 5)}${"•".repeat(16)}`}
             </code>
-            <Button variant="outline" size="icon" onClick={() => setReveal((v) => !v)} title={reveal ? "Hide" : "Reveal"}>
-              {reveal ? <EyeOff /> : <Eye />}
+            <Button variant="outline" size="sm" className="h-8" onClick={() => setReveal((v) => !v)} aria-pressed={reveal}>
+              {reveal ? <EyeOff /> : <Eye />} {reveal ? "Hide" : "Reveal"}
             </Button>
-            <Button variant="outline" size="icon" onClick={() => copy("key", key)} title="Copy key">
-              {copied === "key" ? <Check /> : <Copy />}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => navigator.clipboard.writeText(key).then(() => toast.success("Key copied")).catch(() => toast.error("Clipboard unavailable"))}
+            >
+              <Copy /> Copy
             </Button>
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-            No API key yet. Generate one to enable authenticated trace submission.
-          </div>
-        )}
-
-        {hasKey && key && (
-          <>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                  Python — submit, score &amp; auto-fix
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => copy("py", pySnippet)}>
-                  {copied === "py" ? <Check /> : <Copy />} Copy
-                </Button>
-              </div>
-              <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">{pySnippet}</pre>
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                  curl
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => copy("curl", curlSnippet)}>
-                  {copied === "curl" ? <Check /> : <Copy />} Copy
-                </Button>
-              </div>
-              <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">{curlSnippet}</pre>
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                  Python — autonomous improvement loop
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => copy("loop", loopSnippet)}>
-                  {copied === "loop" ? <Check /> : <Copy />} Copy
-                </Button>
-              </div>
-              <pre className="overflow-x-auto rounded-md border border-border bg-muted/60 p-4 font-mono text-[12px] leading-relaxed">{loopSnippet}</pre>
-              <div className="mt-2 grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
-                <span><code className="rounded bg-muted px-1 py-0.5">POST /api/agent/register</code> — upsert the agent card</span>
-                <span><code className="rounded bg-muted px-1 py-0.5">POST /api/agent/code</code> — static-scan its own source</span>
-                <span><code className="rounded bg-muted px-1 py-0.5">POST /api/agent/improve</code> — test + delta + next steps</span>
-                <span><code className="rounded bg-muted px-1 py-0.5">GET /api/agent/status</code> — progression &amp; compliance posture</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The key authenticates as <code className="rounded bg-muted px-1.5 py-0.5">api_key</code> in the body or the{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5">X-AgentLeak-Key</code> header. Treat it like a secret.
-            </p>
-          </>
+          <p className="text-[13px] text-muted-foreground">No key yet. Generate one to let your application submit traces.</p>
         )}
       </div>
-    </Card>
+      {hasKey && (
+        <div className="space-y-3 border-t border-border px-4 py-3">
+          <p className="text-[12px] text-muted-foreground">
+            Export the key as <code className="font-mono">AGENTLEAK_KEY</code>, then:
+          </p>
+          <SnippetBlock title="Python" snippet={pySnippet} />
+          <SnippetBlock title="curl" snippet={curlSnippet} />
+          <p className="text-[12px] text-muted-foreground">
+            The agent endpoints <code className="font-mono">/api/agent/register</code>, <code className="font-mono">/code</code>,{" "}
+            <code className="font-mono">/improve</code> and <code className="font-mono">/status</code> take the same key; see the API reference.
+          </p>
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmRotate}
+        onOpenChange={setConfirmRotate}
+        title="Rotate the project API key?"
+        description="A new key is issued and the current one stops working at once. Update every application and CI job that uses it."
+        confirmLabel="Rotate key"
+        onConfirm={generate}
+      />
+    </Section>
   )
 }
 
 // ------------------------------------------------------------ Settings
+type Gate = { enabled: boolean; maxRi: string; maxFindings: string; forbidLevels: number[]; forbidChannels: string[] }
+
+function gateFrom(p: Record<string, unknown> | undefined): Gate {
+  const policy = (p ?? {}) as { max_risk_index?: number | null; max_findings?: number | null; forbid_levels?: number[]; forbid_channels?: string[] }
+  return {
+    enabled: !!p && Object.keys(p).length > 0,
+    maxRi: policy.max_risk_index != null ? String(policy.max_risk_index) : "",
+    maxFindings: policy.max_findings != null ? String(policy.max_findings) : "",
+    forbidLevels: policy.forbid_levels ?? [],
+    forbidChannels: policy.forbid_channels ?? [],
+  }
+}
+
+/** The gate as config, or a message saying what is wrong with it. */
+export function gateToPolicy(g: Gate, existing?: Record<string, unknown>): { policy: Record<string, unknown> | null; error?: string } {
+  if (!g.enabled) return { policy: null }
+  const out: Record<string, unknown> = { ...(existing ?? {}) }
+  if (g.maxRi.trim()) {
+    const v = Number(g.maxRi)
+    if (!(v >= 0 && v <= 1)) return { policy: null, error: "Maximum RI must be between 0 and 1." }
+    out.max_risk_index = v
+  } else delete out.max_risk_index
+  if (g.maxFindings.trim()) {
+    const v = Number(g.maxFindings)
+    if (!Number.isInteger(v) || v < 0) return { policy: null, error: "Maximum findings must be a whole number, 0 or more." }
+    out.max_findings = v
+  } else delete out.max_findings
+  out.forbid_levels = g.forbidLevels
+  out.forbid_channels = g.forbidChannels
+  return { policy: out }
+}
+
 function SettingsTab({ project, onSaved, onDeleted }: { project: Project; onSaved: () => void; onDeleted: () => void }) {
   const agentTypes = useAgentTypes()
+  const meta = useMeta()
+  const emissions = channelSplit(meta).emissions
+  const uid = useId()
+  const f = (k: string) => `${uid}-${k}`
   const [name, setName] = useState(project.name)
+  const [description, setDescription] = useState(project.description ?? "")
   const [agentType, setAgentType] = useState(project.agent_type)
   const [detectors, setDetectors] = useState<Record<string, boolean>>({
     pii: true, secrets: true, healthcare: true, finance: false, hr: false,
@@ -952,210 +931,274 @@ function SettingsTab({ project, onSaved, onDeleted }: { project: Project; onSave
   })
   const [redact, setRedact] = useState(project.config.redact ?? true)
   const [vaultMode, setVaultMode] = useState<"observed" | "explicit">(project.config.vault?.mode ?? "observed")
-  const [vault, setVault] = useState<Record<string, number>>({
-    1: 0, 2: 0, 3: 0, 4: 0, ...(project.config.vault?.levels ?? {}),
-  })
+  const [vault, setVault] = useState<Record<string, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, ...(project.config.vault?.levels ?? {}) })
   const [rules, setRules] = useState<CustomRule[]>(project.config.custom_detectors ?? [])
+  const existingPolicy = (project.config as { privacy_policy?: Record<string, unknown> }).privacy_policy
+  const [gate, setGate] = useState<Gate>(gateFrom(existingPolicy))
   const [agentBaseUrl, setAgentBaseUrl] = useState(project.config.agent?.base_url ?? "")
   const [agentModel, setAgentModel] = useState(project.config.agent?.model ?? "")
   const [agentKey, setAgentKey] = useState("")
   const agentKeySet = project.config.agent?.api_key_set ?? false
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState("")
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
-  async function save() {
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    const { policy, error } = gateToPolicy(gate, existingPolicy)
+    if (error) {
+      setFormError(error)
+      return
+    }
+    setFormError("")
     setBusy(true)
     try {
-      const config = {
+      // PATCH replaces the whole config. Start from the stored config, read
+      // just now, so keys this form does not show (test agents, the project
+      // API key, detection tier) survive a save.
+      const fresh = await api.project(project.id)
+      const base: Record<string, unknown> = { ...fresh.config }
+      const config: Record<string, unknown> = {
+        ...base,
         detectors,
         redact,
         vault: vaultMode === "explicit" ? { mode: "explicit", levels: vault } : { mode: "observed" },
         custom_detectors: rules.filter((r) => r.name && r.pattern).map((r) => ({ ...r, data_type: r.name })),
-        // Blank api_key is preserved server-side (the stored key is kept).
+        // A blank key keeps the stored one (the server restores it).
         agent: { base_url: agentBaseUrl.trim(), model: agentModel.trim(), api_key: agentKey },
       }
-      await api.updateProject(project.id, { name, agent_type: agentType, config })
+      if (policy) config.privacy_policy = policy
+      else delete config.privacy_policy
+      await api.updateProject(project.id, { name, description, agent_type: agentType, config })
+      setAgentKey("")
       toast.success("Project saved")
       onSaved()
-    } catch (e) {
-      toast.error((e as Error).message)
+    } catch (err) {
+      setFormError((err as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
   async function remove() {
-    if (!confirm(`Delete project “${project.name}” and all its runs?`)) return
     try {
       await api.deleteProject(project.id)
-      toast.success("Project deleted")
+      toast.success(`Deleted ${project.name}`)
       onDeleted()
     } catch (e) {
       toast.error((e as Error).message)
     }
   }
 
+  const presets = [
+    { label: "OpenAI", url: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+    { label: "OpenRouter", url: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini" },
+    { label: "Ollama, local", url: "http://localhost:11434/v1", model: "llama3.1" },
+  ]
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="space-y-4 p-5">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Agent framework</Label>
-          <Select value={agentType} onValueChange={setAgentType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {agentTypes.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <span className="text-sm">Redact sensitive values</span>
-          <Switch checked={redact} onCheckedChange={setRedact} />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs">Vault scope (ρ_S)</Label>
-          <div className="grid grid-cols-2 gap-1.5 rounded-md bg-muted p-1">
-            {(["observed", "explicit"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setVaultMode(m)}
-                className={`rounded px-2 py-1 text-xs font-medium capitalize transition-colors ${vaultMode === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-              >
-                {m === "observed" ? "Observed (auto)" : "Explicit"}
-              </button>
+    <form onSubmit={save} className="max-w-4xl space-y-4" noValidate>
+      <Section title="Project">
+        <FieldRow label="Name" htmlFor={f("name")}>
+          <Input id={f("name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} className="h-8 text-[13px]" />
+        </FieldRow>
+        <FieldRow label="Description" htmlFor={f("desc")} help="Optional.">
+          <Input id={f("desc")} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} className="h-8 text-[13px]" />
+        </FieldRow>
+        <FieldRow label="Agent framework" htmlFor={f("fw")} help="Chooses the SDK snippet on Integrate.">
+          <select id={f("fw")} value={agentType} onChange={(e) => setAgentType(e.target.value)} className={`${inputSm} w-full sm:w-auto`}>
+            {agentTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </FieldRow>
+      </Section>
+
+      <Section title="Detection" description="Applied to every run stored in this project. Detectors are deterministic patterns and dictionaries.">
+        <FieldRow label="Detectors">
+          <div className="grid gap-x-6 gap-y-2 sm:grid-cols-3">
+            {DETECTORS.map((d) => (
+              <label key={d} className="flex items-center gap-2 text-[13px]">
+                <Switch checked={!!detectors[d]} onCheckedChange={(v) => setDetectors((s) => ({ ...s, [d]: v }))} aria-label={DETECTOR_LABEL[d]} />
+                {DETECTOR_LABEL[d]}
+                <span className="text-[11px] text-muted-foreground">{detectors[d] ? "on" : "off"}</span>
+              </label>
             ))}
           </div>
+        </FieldRow>
+        <FieldRow label="Mask values in reports" help="Off stores raw values in this project's reports. Keep it on unless you need them.">
+          <label className="flex items-center gap-2 text-[13px]">
+            <Switch checked={redact} onCheckedChange={setRedact} aria-label="Mask values in reports" />
+            {redact ? "Masked" : "Raw values stored"}
+          </label>
+        </FieldRow>
+        <FieldRow label="Custom rules" help="A name and a regular expression. Patterns with nested repetition are refused.">
+          <div className="space-y-2">
+            {rules.length === 0 && <p className="text-[13px] text-muted-foreground">No custom rule.</p>}
+            {rules.map((r, i) => (
+              <div key={i} className="flex min-w-0 gap-2">
+                <Input
+                  aria-label={`Rule ${i + 1} name`}
+                  value={r.name}
+                  placeholder="name"
+                  className="h-8 w-36 text-[13px]"
+                  onChange={(e) => setRules((s) => s.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                />
+                <Input
+                  aria-label={`Rule ${i + 1} pattern`}
+                  value={r.pattern}
+                  placeholder="regular expression"
+                  className="h-8 min-w-0 flex-1 font-mono text-[12px]"
+                  onChange={(e) => setRules((s) => s.map((x, j) => (j === i ? { ...x, pattern: e.target.value } : x)))}
+                />
+                <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" aria-label={`Remove rule ${i + 1}`} onClick={() => setRules((s) => s.filter((_, j) => j !== i))}>
+                  <Trash2 />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setRules((r) => [...r, { name: "", pattern: "", severity: "high", data_type: "" }])}>
+              <Plus /> Add rule
+            </Button>
+          </div>
+        </FieldRow>
+      </Section>
+
+      <Section title="Vault scope (ρ_S)" description="The denominator of the Risk Index.">
+        <FieldRow label="Scope">
+          <fieldset className="space-y-1.5 text-[13px]">
+            <legend className="sr-only">Vault scope</legend>
+            <label className="flex items-start gap-2">
+              <input type="radio" name={f("vault")} checked={vaultMode === "observed"} onChange={() => setVaultMode("observed")} className="mt-1 accent-foreground" />
+              <span>
+                Observed. <span className="text-muted-foreground">Every distinct value detected in the trace; the denominator can differ from run to run.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input type="radio" name={f("vault")} checked={vaultMode === "explicit"} onChange={() => setVaultMode("explicit")} className="mt-1 accent-foreground" />
+              <span>
+                Explicit. <span className="text-muted-foreground">The secrets the agent can reach, counted per level: a stable denominator for comparing releases.</span>
+              </span>
+            </label>
+          </fieldset>
           {vaultMode === "explicit" && (
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-3">
               {([4, 3, 2, 1] as const).map((l) => (
-                <div key={l}>
-                  <Label className="mb-1 block text-center text-[11px] text-muted-foreground">L{l}</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={vault[l]}
-                    className="h-8 text-center text-xs"
-                    onChange={(e) => setVault((v) => ({ ...v, [l]: Math.max(0, +e.target.value) }))}
-                  />
-                </div>
+                <label key={l} className="flex items-center gap-1.5 text-[12px]">
+                  <span className="font-mono">L{l}</span>
+                  <Input type="number" min={0} value={vault[l]} className="h-8 w-20 text-[13px] tnum" onChange={(e) => setVault((v) => ({ ...v, [l]: Math.max(0, Math.floor(+e.target.value || 0)) }))} />
+                </label>
               ))}
             </div>
           )}
-        </div>
-      </Card>
+        </FieldRow>
+      </Section>
 
-      <Card className="space-y-4 p-5">
-        <div className="space-y-3">
-          <Label className="text-xs">Detectors</Label>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {DETECTORS.map((d) => (
-              <div key={d} className="flex items-center justify-between">
-                <span className="text-sm">{DETECTOR_LABEL[d]}</span>
-                <Switch checked={detectors[d]} onCheckedChange={(v) => setDetectors((s) => ({ ...s, [d]: v }))} />
+      <Section
+        title="Evaluation gate"
+        description="Marks a run blocked when one of these limits is crossed. It applies to every run stored in this project; a gate sent with a run is used only when the project has none."
+      >
+        <FieldRow label="Gate">
+          <label className="flex items-center gap-2 text-[13px]">
+            <Switch checked={gate.enabled} onCheckedChange={(v) => setGate((g) => ({ ...g, enabled: v }))} aria-label="Evaluation gate" />
+            {gate.enabled ? "On" : "Off: runs are scored but never blocked by a project gate"}
+          </label>
+        </FieldRow>
+        {gate.enabled && (
+          <>
+            <FieldRow label="Maximum Risk Index" htmlFor={f("maxri")} help="0 to 1. Empty: no limit.">
+              <Input id={f("maxri")} inputMode="decimal" value={gate.maxRi} onChange={(e) => setGate((g) => ({ ...g, maxRi: e.target.value }))} placeholder="for example 0.2" className="h-8 w-32 font-mono text-[13px]" />
+            </FieldRow>
+            <FieldRow label="Maximum findings" htmlFor={f("maxf")} help="Leaked findings per run. Empty: no limit.">
+              <Input id={f("maxf")} inputMode="numeric" value={gate.maxFindings} onChange={(e) => setGate((g) => ({ ...g, maxFindings: e.target.value }))} placeholder="for example 0" className="h-8 w-32 font-mono text-[13px]" />
+            </FieldRow>
+            <FieldRow label="Block any finding at level">
+              <div className="flex flex-wrap gap-3 text-[13px]">
+                {[4, 3, 2, 1].map((l) => (
+                  <label key={l} className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      className="accent-foreground"
+                      checked={gate.forbidLevels.includes(l)}
+                      onChange={(e) => setGate((g) => ({ ...g, forbidLevels: e.target.checked ? [...g.forbidLevels, l].sort() : g.forbidLevels.filter((x) => x !== l) }))}
+                    />
+                    <span className="font-mono">L{l}</span>
+                  </label>
+                ))}
               </div>
+            </FieldRow>
+            <FieldRow label="Block any finding on channel">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-[13px]">
+                {emissions.map((c) => (
+                  <label key={c} className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      className="accent-foreground"
+                      checked={gate.forbidChannels.includes(c)}
+                      onChange={(e) => setGate((g) => ({ ...g, forbidChannels: e.target.checked ? [...g.forbidChannels, c] : g.forbidChannels.filter((x) => x !== c) }))}
+                    />
+                    <code className="font-mono text-[12px]">{c}</code>
+                  </label>
+                ))}
+              </div>
+            </FieldRow>
+          </>
+        )}
+      </Section>
+
+      <Section title="Scenario model endpoint" description="Any OpenAI-compatible endpoint. Used only when this project runs a scenario live; analysis itself never calls a model.">
+        <FieldRow label="Presets">
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map((p) => (
+              <Button
+                key={p.label}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-[12px]"
+                onClick={() => {
+                  setAgentBaseUrl(p.url)
+                  if (!agentModel) setAgentModel(p.model)
+                }}
+              >
+                {p.label}
+              </Button>
             ))}
           </div>
-        </div>
-        <Separator />
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Custom rules</Label>
-            <button
-              onClick={() => setRules((r) => [...r, { name: "", pattern: "", severity: "high", data_type: "" }])}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-            >
-              <Plus className="size-3" /> Add
-            </button>
-          </div>
-          {rules.map((r, i) => (
-            <div key={i} className="flex gap-1.5">
-              <Input
-                value={r.name}
-                placeholder="name"
-                className="h-7 text-xs"
-                onChange={(e) => setRules((s) => s.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-              />
-              <Input
-                value={r.pattern}
-                placeholder="regex"
-                className="h-7 flex-[2] font-mono text-xs"
-                onChange={(e) => setRules((s) => s.map((x, j) => (j === i ? { ...x, pattern: e.target.value } : x)))}
-              />
-              <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={() => setRules((s) => s.filter((_, j) => j !== i))}>
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Card>
+        </FieldRow>
+        <FieldRow label="Base URL" htmlFor={f("url")}>
+          <Input id={f("url")} value={agentBaseUrl} onChange={(e) => setAgentBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="h-8 font-mono text-[12px]" />
+        </FieldRow>
+        <FieldRow label="Model" htmlFor={f("model")}>
+          <Input id={f("model")} value={agentModel} onChange={(e) => setAgentModel(e.target.value)} placeholder="gpt-4o-mini" className="h-8 font-mono text-[12px]" />
+        </FieldRow>
+        <FieldRow label="API key" htmlFor={f("key")} help={agentKeySet ? "A key is stored. Leave empty to keep it." : "Stored on this server, never returned by the API. Empty: use OPENAI_API_KEY or OPENROUTER_API_KEY from the environment."}>
+          <Input id={f("key")} type="password" autoComplete="off" value={agentKey} onChange={(e) => setAgentKey(e.target.value)} placeholder={agentKeySet ? "stored" : "not set"} className="h-8 font-mono text-[12px]" />
+        </FieldRow>
+      </Section>
 
-      <Card className="space-y-4 p-5 lg:col-span-2">
-        <div className="flex items-center gap-2">
-          <Bot className="size-4 text-primary" />
-          <Label className="text-xs">Scenario model endpoint</Label>
-          <span className="text-[11px] text-muted-foreground">
-            OpenAI-compatible (OpenAI, OpenRouter, Ollama, vLLM…). Used only by the AgentLeak scenario harness.
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { label: "OpenAI", url: "https://api.openai.com/v1", model: "gpt-4o-mini" },
-            { label: "OpenRouter", url: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini" },
-            { label: "Ollama", url: "http://localhost:11434/v1", model: "llama3.1" },
-          ].map((p) => (
-            <button
-              key={p.label}
-              onClick={() => { setAgentBaseUrl(p.url); if (!agentModel) setAgentModel(p.model) }}
-              className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Base URL</Label>
-            <Input value={agentBaseUrl} onChange={(e) => setAgentBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="font-mono text-xs" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Model</Label>
-            <Input value={agentModel} onChange={(e) => setAgentModel(e.target.value)} placeholder="gpt-4o-mini" className="font-mono text-xs" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">API key</Label>
-            <Input
-              type="password"
-              value={agentKey}
-              onChange={(e) => setAgentKey(e.target.value)}
-              placeholder={agentKeySet ? "•••••••• (stored — leave blank to keep)" : "sk-… (or set via env var)"}
-              className="font-mono text-xs"
-            />
-          </div>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          The key is stored locally and never returned by the API. You can also leave it blank and export
-          <code className="mx-1 rounded bg-muted px-1 py-0.5">OPENAI_API_KEY</code>/
-          <code className="rounded bg-muted px-1 py-0.5">OPENROUTER_API_KEY</code> before launching.
+      {formError && (
+        <p role="alert" className="text-[13px] text-sev-l4">
+          {formError}
         </p>
-      </Card>
-
-      <div className="lg:col-span-2 flex items-center justify-between">
-        <Button variant="ghost" className="text-sev-l4" onClick={remove}>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button type="button" variant="ghost" className="text-sev-l4 hover:text-sev-l4" onClick={() => setConfirmDelete(true)}>
           <Trash2 /> Delete project
         </Button>
-        <Button onClick={save} disabled={busy}>
-          {busy && <Loader2 className="animate-spin" />} Save changes
+        <Button type="submit" disabled={busy}>
+          {busy && <Loader2 className="animate-spin motion-reduce:animate-none" />} Save changes
         </Button>
       </div>
-    </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete project ${project.name}?`}
+        description={`Its ${project.run_count ?? 0} run(s), code scans, triage decisions and API key are removed. This cannot be undone.`}
+        confirmLabel="Delete project"
+        onConfirm={remove}
+      />
+    </form>
   )
 }

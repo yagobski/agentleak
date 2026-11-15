@@ -173,7 +173,7 @@ export function DataTable<T>({
             {manual
               ? `${manual.total} row${manual.total === 1 ? "" : "s"}${manual.busy ? ", loading" : ""}`
               : sorted.length === rows.length
-                ? `${rows.length} rows`
+                ? `${rows.length} row${rows.length === 1 ? "" : "s"}`
                 : `${sorted.length} of ${rows.length} rows`}
           </span>
           {exportName && (
