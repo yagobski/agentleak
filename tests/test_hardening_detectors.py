@@ -30,3 +30,40 @@ def test_sanitizer_still_redacts_inside_and_whole() -> None:
     key = "AKIA" + "Q" * 16
     out = s.sanitize(f"aws key {key} end")
     assert key not in out and "Q" * 8 not in out
+
+
+# ----------------------------------------------------------------------
+# Code scan: any account can upload files; one file must not take minutes
+# ----------------------------------------------------------------------
+def _scan_seconds(tmp_path, text: str) -> tuple[float, object]:
+    from agentleak.core.codescan import scan_path
+
+    (tmp_path / "a.py").write_text(text)
+    start = time.perf_counter()
+    result = scan_path(tmp_path)
+    return time.perf_counter() - start, result
+
+
+def test_code_scan_long_identifier_is_linear(tmp_path) -> None:
+    """``\\w+\\s*\\(`` restarted at every position of a long word: 32 KB, 11 s."""
+    seconds, _ = _scan_seconds(tmp_path, 'x = "' + "a" * 64000 + '"\n')
+    assert seconds < 4.0
+
+
+def test_code_scan_repeated_value_is_bounded(tmp_path) -> None:
+    """One finding per occurrence, each with a whole-file line count: 64 KB of
+    "1.1.1..." took 5 s and grew quadratically."""
+    seconds, result = _scan_seconds(tmp_path, 'x = "' + "1." * 64000 + '"\n')
+    assert seconds < 6.0
+    assert all(len(f.snippet) <= 200 for f in result.findings)
+
+
+def test_code_scan_many_values_is_bounded(tmp_path) -> None:
+    from agentleak.core.codescan import MAX_FINDINGS_PER_FILE
+
+    text = "\n".join(f'x{i} = "user{i}@example.test"' for i in range(8000))
+    seconds, result = _scan_seconds(tmp_path, text)
+    assert seconds < 6.0
+    assert len(result.findings) <= MAX_FINDINGS_PER_FILE
+    assert result.score == 0
+    assert not any("@example.test" in f.snippet for f in result.findings)
