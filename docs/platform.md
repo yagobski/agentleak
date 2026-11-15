@@ -60,7 +60,10 @@ Admin API: `GET /api/admin/overview`, `GET /api/admin/users`,
 ## Connect an agent via the SDK
 
 Create a project (UI or SDK), then push traces from your agent code. Runs appear
-in the platform under that project.
+in the platform under that project. `AgentLeakClient` does not sign in, so it
+needs a single-user platform started with `agentleak serve --local`. Against a
+platform with accounts, use `AgentSelfClient` with the project's API key (see
+[agent-api.md](agent-api.md)).
 
 ```python
 from agentleak import AgentLeakClient, capture, monitor

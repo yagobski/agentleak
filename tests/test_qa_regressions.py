@@ -288,3 +288,28 @@ def test_deeply_nested_content_is_a_value_error() -> None:
     for _ in range(50):
         shallow = {"k": shallow}
     assert Trace.from_dict({"events": [{"channel": "log", "content": shallow}]}).events
+
+
+# ----------------------------------------------------------------------
+# QA-12: AgentLeakClient against a platform with accounts said only
+# "401 Not authenticated"; docs/platform.md never mentioned --local
+# ----------------------------------------------------------------------
+
+
+def test_client_401_explains_how_to_connect(monkeypatch) -> None:
+    import io
+    import urllib.error
+    import urllib.request
+
+    from agentleak.client import AgentLeakClient, AgentLeakError
+
+    def deny(req, timeout=0):  # noqa: ANN001, ANN202
+        raise urllib.error.HTTPError(
+            req.full_url, 401, "Unauthorized", {}, io.BytesIO(b'{"detail": "Not authenticated"}')
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", deny)
+    with pytest.raises(AgentLeakError, match="serve --local"):
+        AgentLeakClient("support-bot", base_url="http://127.0.0.1:1")
+    doc = (Path(__file__).parents[1] / "docs" / "platform.md").read_text("utf-8")
+    assert "serve --local" in doc
