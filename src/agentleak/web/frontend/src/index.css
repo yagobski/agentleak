@@ -47,6 +47,8 @@
      warm hairline borders), so landing → product feels like one surface.
      Default theme; Cursor-style flat near-black panels. */
   .dark {
+    /* Native controls (date pickers, select menus, scrollbars) follow the theme. */
+    color-scheme: dark;
     --background: 180 6% 3.3%;
     --foreground: 60 12% 94%;
     --card: 180 4% 5%;

@@ -43,9 +43,9 @@ exactly as before.
 | Route | What it is for |
 | --- | --- |
 | `/app/analyze` | Score one trace without a project: a bundled scenario, a JSON file (drop it on the panel) or pasted JSON. `?scenario=<id>` analyzes a bundled scenario with defaults. **Save as run** stores the report under a project. |
-| `/app/runs` | Every stored run across projects. Sort, filter, export the rows shown as CSV or JSON, tick two rows to compare. |
+| `/app/runs` | Every stored run across projects, filtered, sorted and paged by the server (`/api/runs`). The filter lives in the URL. Export takes every matching run (up to 10,000) or the current page; the menu says which. Tick two rows to compare. |
 | `/app/runs/<id>` | One result. Tabs: Findings, Trace, Leak paths, Remediation, Compliance. `?tab=`, `?finding=` and `?event=` make every view a permalink. |
-| `/app/compare?a=<id>&b=<id>` | A (baseline) against B (candidate): verdict, RI, WSL/ρ_S, per-channel RI deltas, findings resolved / added / unchanged. Warns when the vault denominators, scenarios or detector tiers differ. |
+| `/app/compare?a=<id>&b=<id>` | A (baseline) against B (candidate): verdict, RI, WSL/ρ_S, per-channel RI deltas, findings resolved / added / unchanged with their triage. Warns when the vault denominators, scenarios or detector tiers differ. |
 | `/app/projects`, `/app/projects/<id>` | Projects, their runs, agents, integration snippets and settings. |
 | `/app/scenarios` | Built-in, uploaded and imported scenarios with provenance (source, license, attribution); pack import. |
 | `/app/playground` | Red-team campaigns against a project's harness. |
@@ -68,6 +68,30 @@ exactly as before.
    press *Reveal values*. Stored runs keep the report, not the trace: load the
    original file (or the bundled scenario trace) to see payloads; it is checked
    against the report and never uploaded.
+
+### Triage
+
+On a stored run's Findings tab, mark a finding (or a selected set) true
+positive, false positive, accepted risk or needs review. Every state except
+true positive needs a short rationale; an accepted risk can carry a review
+date, after which it reads "needs review" again. Each decision records the
+reviewer and the time, and the audit trail of a finding lists every decision
+on it.
+
+A decision follows the value: it applies to the same value on the same
+channel in later runs of the project, shown as "carried over from run X". The
+match uses a keyed fingerprint of the value (HMAC-SHA256, scoped to the
+project); runs stored before fingerprints existed match on channel, data type, level and
+masked value instead.
+
+Triage never changes the measured result. The score panel shows a second,
+labelled figure: the Risk Index excluding findings triaged as false positive,
+with its numerator and denominator. The verdict and the gate are always the
+measured ones. Accepted risks still count.
+
+API: `GET /api/runs/{id}/triage` (decisions in force, counts, both scores),
+`POST /api/runs/{id}/triage` (`finding_ids`, `state`, `rationale`,
+`expires_on`), `GET /api/runs/{id}/triage/history?finding_id=`.
 
 Exports from any table contain the rows currently shown, with masked values
 only. The full report exports as JSON, Markdown or self-contained HTML.

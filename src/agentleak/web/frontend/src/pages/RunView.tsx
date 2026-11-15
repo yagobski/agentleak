@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { CopyLinkButton } from "@/features/Chips"
 import { ResultSkeleton, ResultsView } from "@/features/ResultsView"
+import { useTriage } from "@/features/Triage"
 import { useCrumbs } from "@/layout/crumbs"
 
 export function RunView() {
@@ -19,6 +20,7 @@ export function RunView() {
   const [error, setError] = useState<{ status?: number; message: string } | null>(null)
   const [trace, setTrace] = useState<TraceDoc | null>(null)
   const [confirm, setConfirm] = useState(false)
+  const triage = useTriage(run?.id)
 
   useEffect(() => {
     setRun(null)
@@ -98,6 +100,7 @@ export function RunView() {
         runId={run.id}
         trace={trace}
         onTrace={setTrace}
+        triage={{ view: triage.view, error: triage.error, decide: triage.decide }}
         actions={
           <>
             <CopyLinkButton path={`/runs/${run.id}`} />

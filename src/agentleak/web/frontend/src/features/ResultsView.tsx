@@ -12,10 +12,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DetectionBadge } from "./Chips"
 import { ComplianceView } from "./ComplianceView"
-import { FindingsTable } from "./FindingsTable"
+import { FindingsTable, type TriageBinding } from "./FindingsTable"
 import { FlowView } from "./FlowView"
 import { ChannelVerdicts, ScorePanel } from "./ResultSummary"
 import { TraceExplorer } from "./TraceExplorer"
+import { TriagedScore } from "./Triage"
 
 const TABS = ["findings", "trace", "paths", "remediation", "compliance"] as const
 type Tab = (typeof TABS)[number]
@@ -62,6 +63,7 @@ export function ResultsView({
   runId,
   actions,
   onTrace,
+  triage,
 }: {
   report: Report
   /** The analysed trace, when the browser has it (unsaved analyses). */
@@ -70,6 +72,8 @@ export function ResultsView({
   runId?: string
   actions?: ReactNode
   onTrace?: (trace: TraceDoc) => void
+  /** Triage of a stored run. */
+  triage?: TriageBinding
 }) {
   const [params, setParams] = useSearchParams()
   const tab: Tab = (TABS as readonly string[]).includes(params.get("tab") ?? "") ? (params.get("tab") as Tab) : "findings"
@@ -177,6 +181,7 @@ export function ResultsView({
         <ChannelVerdicts report={report} trace={trace} onSelectChannel={(c) => update({ tab: "trace", event: null, channel: c }, true)} />
         <div className="min-w-0 border-t border-border pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
           <ScorePanel report={report} />
+          {triage?.view && report.findings.length > 0 && <TriagedScore view={triage.view} />}
         </div>
       </div>
 
@@ -210,6 +215,7 @@ export function ResultsView({
             activeFinding={finding}
             onActivate={(id) => update({ finding: id })}
             onShowEvent={(id) => showEvent(id)}
+            triage={triage}
           />
         </TabsContent>
 

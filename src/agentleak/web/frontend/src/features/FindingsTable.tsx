@@ -2,12 +2,23 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, Search } from "lucide-react"
-import type { Finding, Report } from "@/lib/api"
+import type { Finding, Report, TriageItem, TriageStateOrNone, TriageView } from "@/lib/api"
+import { TRIAGE_META, TRIAGE_STATES, provenanceText, triageText } from "@/lib/triage"
 import { cn } from "@/lib/utils"
 import { DataTable, type Column } from "@/components/DataTable"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CopyLinkButton, LevelChip } from "./Chips"
 import { LeakPathChain } from "./TraceExplorer"
+import { TriageChip, TriageDetail, TriageDialog, type DecisionInput } from "./Triage"
+
+export interface TriageBinding {
+  view: TriageView | null
+  error?: string
+  decide: (d: DecisionInput) => Promise<void>
+}
+
+type TriageFilter = "all" | TriageStateOrNone | "expired"
 
 export function FindingsTable({
   report,
@@ -15,10 +26,13 @@ export function FindingsTable({
   activeFinding,
   onActivate,
   onShowEvent,
+  triage,
 }: {
   report: Report
   /** Stored run id: enables per-finding permalinks. */
   runId?: string
+  /** Triage of a stored run; absent for an unsaved analysis. */
+  triage?: TriageBinding
   activeFinding: string | null
   onActivate: (findingId: string | null) => void
   onShowEvent: (eventId: string) => void
@@ -26,6 +40,20 @@ export function FindingsTable({
   const [q, setQ] = useState("")
   const [levels, setLevels] = useState<Set<number>>(new Set())
   const [channel, setChannel] = useState("all")
+  const [tstate, setTstate] = useState<TriageFilter>("all")
+  const [selected, setSelected] = useState<string[]>([])
+  const [dialog, setDialog] = useState<{ ids: string[]; initial?: TriageItem } | null>(null)
+  const byId = useMemo(() => {
+    const m = new Map<string, TriageItem>()
+    triage?.view?.findings.forEach((t) => m.set(t.finding_id, t))
+    return m
+  }, [triage?.view])
+  const tcount = (s: TriageFilter) =>
+    report.findings.filter((f) => {
+      const t = byId.get(f.finding_id)
+      if (s === "expired") return !!t?.expired
+      return (t?.effective_state ?? "untriaged") === s
+    }).length
 
   // A permalink to a finding opens with that row in view.
   useEffect(() => {
@@ -47,16 +75,41 @@ export function FindingsTable({
     return report.findings.filter((f) => {
       if (levels.size && !levels.has(f.level)) return false
       if (channel !== "all" && f.channel !== channel) return false
+      if (tstate !== "all") {
+        const t = byId.get(f.finding_id)
+        if (tstate === "expired" ? !t?.expired : (t?.effective_state ?? "untriaged") !== tstate) return false
+      }
       if (needle) {
         const hay = `${f.finding_id} ${f.data_type} ${f.channel} ${f.detector} ${f.redacted_value} ${f.source} ${f.target} ${f.event_id ?? ""}`.toLowerCase()
         if (!hay.includes(needle)) return false
       }
       return true
     })
-  }, [report.findings, q, levels, channel])
+  }, [report.findings, q, levels, channel, tstate, byId])
+
+  const iso = (epoch?: number | null) => (epoch ? new Date(epoch * 1000).toISOString() : "")
+  const triageColumns: Column<Finding>[] = triage
+    ? [
+        {
+          id: "triage",
+          header: "Triage",
+          value: (f) => byId.get(f.finding_id)?.effective_state ?? "untriaged",
+          cell: (f) => <TriageChip item={byId.get(f.finding_id)} />,
+        },
+        { id: "triage_text", header: "", exportOnly: true, value: (f) => triageText(byId.get(f.finding_id)) },
+        { id: "triage_recorded_state", header: "", exportOnly: true, value: (f) => byId.get(f.finding_id)?.state ?? "untriaged" },
+        { id: "triage_rationale", header: "", exportOnly: true, value: (f) => byId.get(f.finding_id)?.decision?.rationale ?? "" },
+        { id: "triage_reviewer", header: "", exportOnly: true, value: (f) => byId.get(f.finding_id)?.decision?.reviewer_email ?? "" },
+        { id: "triage_decided_at", header: "", exportOnly: true, value: (f) => iso(byId.get(f.finding_id)?.decision?.created_at) },
+        { id: "triage_expires_on", header: "", exportOnly: true, value: (f) => byId.get(f.finding_id)?.decision?.expires_on ?? "" },
+        { id: "triage_source", header: "", exportOnly: true, value: (f) => provenanceText(byId.get(f.finding_id)) ?? "" },
+        { id: "triage_identity", header: "", exportOnly: true, value: (f) => byId.get(f.finding_id)?.identity ?? "" },
+      ]
+    : []
 
   const columns: Column<Finding>[] = [
     { id: "level", header: "Level", value: (f) => f.level, cell: (f) => <LevelChip level={f.level} /> },
+    ...triageColumns.slice(0, 1),
     { id: "channel", header: "Channel", value: (f) => f.channel, cell: (f) => <code className="font-mono text-[12px]">{f.channel}</code> },
     {
       id: "data_type",
@@ -122,6 +175,7 @@ export function FindingsTable({
     { id: "detector", header: "Detector", value: (f) => f.detector, hideBelow: "lg", cell: (f) => <span className="text-[12px] text-muted-foreground">{f.detector}</span> },
     { id: "confidence", header: "Conf.", value: (f) => f.confidence, align: "right", hideBelow: "lg", cell: (f) => <span className="font-mono text-[12px]">{f.confidence.toFixed(2)}</span> },
     { id: "finding_id", header: "Id", value: (f) => f.finding_id, hideBelow: "lg", cell: (f) => <span className="font-mono text-[11px] text-muted-foreground">{f.finding_id}</span> },
+    ...triageColumns.slice(1),
     ...(runId
       ? [
           {
@@ -154,7 +208,27 @@ export function FindingsTable({
     })
   }
 
+  const triageReady = !!(triage && triage.view && runId)
   return (
+    <>
+    {triage?.error && (
+      <p role="alert" className="border-b border-border px-4 py-2 text-[13px] text-sev-l4">
+        Triage could not be loaded: {triage.error}
+      </p>
+    )}
+    {triageReady && selected.length > 0 && (
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-[13px]" role="region" aria-label="Bulk triage">
+        <span className="tnum">
+          {selected.length} of {report.findings.length} selected
+        </span>
+        <Button size="sm" className="h-7" onClick={() => setDialog({ ids: selected })}>
+          Triage selected
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7" onClick={() => setSelected([])}>
+          Clear selection
+        </Button>
+      </div>
+    )}
     <DataTable
       caption="Leaked findings"
       columns={columns}
@@ -165,6 +239,7 @@ export function FindingsTable({
       activeKey={activeFinding}
       pageSize={100}
       onRowClick={(f) => onActivate(activeFinding === f.finding_id ? null : f.finding_id)}
+      selection={triageReady ? { selected, onChange: setSelected, label: (f) => `${f.finding_id} ${f.data_type}` } : undefined}
       expanded={(f) =>
         f.finding_id === activeFinding ? (
           <div className="space-y-2 text-[13px]">
@@ -173,6 +248,14 @@ export function FindingsTable({
               {f.recommendation}
             </p>
             <LeakPathChain report={report} finding={f} current={f.event_id} onJump={onShowEvent} />
+            {triageReady && (
+              <TriageDetail
+                runId={runId!}
+                finding={f}
+                item={byId.get(f.finding_id)}
+                onEdit={() => setDialog({ ids: [f.finding_id], initial: byId.get(f.finding_id) })}
+              />
+            )}
           </div>
         ) : null
       }
@@ -227,8 +310,42 @@ export function FindingsTable({
               )
             })}
           </div>
+          {triageReady && (
+            <>
+              <label className="sr-only" htmlFor="findings-triage">
+                Triage state
+              </label>
+              <select
+                id="findings-triage"
+                value={tstate}
+                onChange={(e) => setTstate(e.target.value as TriageFilter)}
+                className="h-8 rounded-md border border-input bg-background px-2 text-[13px]"
+              >
+                <option value="all">All triage states</option>
+                {(["untriaged", ...TRIAGE_STATES] as TriageStateOrNone[]).map((s) => (
+                  <option key={s} value={s}>
+                    {TRIAGE_META[s].label} ({tcount(s)})
+                  </option>
+                ))}
+                <option value="expired">Expired accepted risk ({tcount("expired")})</option>
+              </select>
+            </>
+          )}
         </>
       }
     />
+    {dialog && triage && (
+      <TriageDialog
+        open
+        onOpenChange={(v) => !v && setDialog(null)}
+        findingIds={dialog.ids}
+        initial={dialog.initial}
+        onSubmit={async (d) => {
+          await triage.decide(d)
+          if (dialog.ids.length > 1) setSelected([])
+        }}
+      />
+    )}
+    </>
   )
 }

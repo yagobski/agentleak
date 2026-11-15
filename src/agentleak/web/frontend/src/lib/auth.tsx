@@ -20,11 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // The session probe answers 200 whether or not anyone is signed in, so the
+    // sign-in page no longer logs a 401 on every load.
     api
-      .me()
-      .then(setUser)
+      .session()
+      .then((s) => setUser(s.user))
       .catch((e) => {
-        // 401 simply means "not signed in" — anything else is unexpected.
         if (!(e instanceof ApiError) || e.status !== 401) console.error(e)
         setUser(null)
       })
