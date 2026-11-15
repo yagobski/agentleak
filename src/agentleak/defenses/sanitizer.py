@@ -7,7 +7,7 @@ Supports 6 redaction styles:
 * ``placeholder`` — ``[REDACTED_SSN]``  (default, most readable)
 * ``asterisk``    — ``***-**-****``
 * ``masked``      — ``XXX-XX-6789``  (keeps last 4 for recognition)
-* ``hash``        — SHA-256 of the value, truncated to 16 hex chars
+* ``hash``        — keyed HMAC-SHA-256 of the value, truncated to 16 hex chars
 * ``category``    — ``[PII: SSN]``
 * ``remove``      — delete the token entirely
 * ``token``       — ``[[SSN:3f9a1c2e40]]``, the same pseudonym for the same value

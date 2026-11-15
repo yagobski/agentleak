@@ -438,7 +438,7 @@ def redact(
     path: str | None = typer.Argument(None, help="File to sanitize. Omit to read stdin."),
     style: str = typer.Option(
         "placeholder", "--style",
-        help="placeholder | asterisk | masked | hash | category | remove.",
+        help="placeholder | asterisk | masked | hash | category | remove | token.",
     ),
     output: str | None = typer.Option(None, "--output", "-o", help="Write to a file instead of stdout."),
 ) -> None:

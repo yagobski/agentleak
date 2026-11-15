@@ -91,7 +91,7 @@ echo "postgres://admin:pw@db:5432/prod" | agentleak redact
 ```
 
 Applies the same detection rules as a defense. Styles: `placeholder`
-(default), `asterisk`, `masked` (alias `mask`), `hash`, `category`, `remove`.
+(default), `asterisk`, `masked` (alias `mask`), `hash`, `category`, `remove`, `token`.
 Reads stdin when no path is given. Credentials — private-key blocks, URLs with
 a password in them — are removed whole. See [docs/defenses.md](defenses.md).
 
