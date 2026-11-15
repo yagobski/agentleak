@@ -155,3 +155,14 @@ def test_scan_output_to_directory_is_a_clear_error(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
     assert "could not write" in result.output
+
+
+def test_run_unwritable_output_is_a_clear_error(tmp_path: Path) -> None:
+    blocker = tmp_path / "file"
+    blocker.write_text("not a directory", encoding="utf-8")
+    result = _cli.invoke(
+        app, ["run", "--scenario", "hr_clean_case", "-f", "json", "-o", str(blocker / "sub")]
+    )
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "could not write reports" in result.output

@@ -939,7 +939,11 @@ def run(
         result = runner.analyze(t, canary_set=canaries)
         if fail_under is not None:
             result.fail_below = fail_under
-        written = write_reports(result, out_dir, formats, basename=result.run_id)
+        try:
+            written = write_reports(result, out_dir, formats, basename=result.run_id)
+        except OSError as exc:
+            typer.secho(f"✗ could not write reports to {out_dir}: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
         if not quiet:
             _print_result(result, written)
         elif result.warnings:
