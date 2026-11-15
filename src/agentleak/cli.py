@@ -944,7 +944,7 @@ def run(
     trace: str | None = typer.Option(None, "--trace", "-t", help="Analyze a trace JSON file."),
     output: str | None = typer.Option(None, "--output", "-o", help="Report output directory."),
     fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats."),
-    fail_under: int | None = typer.Option(None, "--fail-under", min=0, max=100, help="Exit non-zero if a score is below this (0-100)."),
+    fail_under: int | None = typer.Option(None, "--fail-under", min=0, help="Exit non-zero if a score is below this (101 always fails)."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Less console output."),
 ) -> None:
     """Analyze a trace (or scenario) and write privacy reports."""

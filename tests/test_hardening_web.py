@@ -219,7 +219,6 @@ def test_unknown_enum_inputs_are_refused(tmp_path, monkeypatch) -> None:
 
 
 @pytest.mark.parametrize("argv", [
-    ["run", "--scenario", "healthcare_patient_summary", "--fail-under", "150"],
     ["run", "--scenario", "healthcare_patient_summary", "--fail-under", "-5"],
     ["scan", ".", "--fail-under", "101"],
     ["selftest", "--fail-under", "200", "--json"],
