@@ -40,8 +40,11 @@ from __future__ import annotations
 import base64
 import binascii
 import codecs
+import html
 import re
+import unicodedata
 import urllib.parse
+import zlib
 from bisect import bisect_right
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -78,9 +81,41 @@ _B64_RE = re.compile(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{8,}={0,2}(?![A-Za-z0-
 _HEX_RE = re.compile(r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{2}){8,}(?![0-9A-Fa-f])")
 # One URL component (a path segment or a query value), not the whole URL:
 # the gateway removes only what is sensitive, and the rest of the call works.
-_PERCENT_RUN_RE = re.compile(r"[^\s\"'<>&?=/#]*%[0-9A-Fa-f]{2}[^\s\"'<>&?=/#]*")
+# Every run pattern below starts only where its run starts (the look-behind).
+# Without it, a long token with no "%" in it was rescanned from each position:
+# 13 s for a 64 KB decoded blob.
+_PERCENT_RUN_RE = re.compile(r"(?<![^\s\"'<>&?=/#])[^\s\"'<>&?=/#]*%[0-9A-Fa-f]{2}[^\s\"'<>&?=/#]*")
 # Single characters separated by single spaces: ``j e a n @ e x a m p l e``.
 _SPACED_RE = re.compile(r"(?<!\S)(?:\S ){7,}\S(?!\S)")
+# A run holding HTML character references (``&#106;&#101;``, ``&#x40;``,
+# ``&commat;``). Spaces encoded as ``&#32;`` keep the run whole.
+_HTML_RUN_RE = re.compile(r"(?<![^\s<>\"'])[^\s<>\"']*&(?:#\d{1,7}|#[xX][0-9A-Fa-f]{1,6}|[A-Za-z]{2,10});[^\s<>\"']*")
+# A run holding JSON/Python unicode escapes (``\u0040``, ``\x40``).
+_UESC_RUN_RE = re.compile(r"(?<![^\s\"'])[^\s\"']*\\(?:u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{2})[^\s\"']*")
+_UESC_RE = re.compile(r"\\u([0-9A-Fa-f]{4})|\\x([0-9A-Fa-f]{2})")
+# Invisible characters an agent (or an attacker) can slip inside a value to
+# break a pattern: zero-width space/joiners, word joiner, BOM, soft hyphen.
+_INVISIBLE = "\u200b\u200c\u200d\u2060\ufeff\u00ad"
+# A run continues across spaces while invisible characters keep appearing, so
+# "0<ZW>4<ZW>6 4<ZW>5<ZW>4" is read as one value.
+_INVISIBLE_RUN_RE = re.compile(
+    r"(?<!\S)\S*[" + _INVISIBLE + r"]\S*(?: +\S*[" + _INVISIBLE + r"]\S*)*"
+)
+_INVISIBLE_TABLE = {ord(c): None for c in _INVISIBLE}
+# Letters from other scripts that render like Latin ones (a subset of the
+# Unicode confusables data, written out here), applied only to a token that
+# also holds ASCII letters or digits, so Cyrillic or Greek prose is untouched.
+_CONFUSABLES = str.maketrans({
+    "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i",
+    "ј": "j", "ѕ": "s", "ԁ": "d", "ӏ": "l", "һ": "h", "ԛ": "q", "ԝ": "w",
+    "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H", "О": "O", "Р": "P",
+    "С": "C", "Т": "T", "Х": "X", "У": "Y", "І": "I", "Ј": "J", "Ѕ": "S",
+    "ο": "o", "α": "a", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ρ": "p", "τ": "t",
+    "υ": "u", "χ": "x", "Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z", "Η": "H", "Ι": "I",
+    "Κ": "K", "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P", "Τ": "T", "Υ": "Y", "Χ": "X",
+})
+_NON_ASCII_RUN_RE = re.compile(r"(?<!\S)\S*[^\x00-\x7f]\S*(?: +\S*[^\x00-\x7f]\S*)*")
+_MAX_INFLATE = 1 << 20  # never inflate a compressed blob past 1 MiB
 
 _MIN_DECODED = 6
 _MAX_DEPTH = 2
@@ -101,6 +136,33 @@ def _readable(raw: bytes) -> str | None:
     if not any(ch.isalnum() for ch in text):
         return None
     return text
+
+
+def _inflate(raw: bytes) -> bytes | None:
+    """gzip or zlib payloads, bounded so a decompression bomb costs nothing."""
+    if raw[:2] == b"\x1f\x8b":
+        wbits = 16 + zlib.MAX_WBITS
+    elif raw[:1] == b"\x78" and raw[1:2] in (b"\x01", b"\x5e", b"\x9c", b"\xda"):
+        wbits = zlib.MAX_WBITS
+    else:
+        return None
+    try:
+        out = zlib.decompressobj(wbits).decompress(raw, _MAX_INFLATE)
+    except zlib.error:
+        return None
+    return out or None
+
+
+def _b64_bytes(token: str) -> bytes | None:
+    body = token.rstrip("=")
+    if body.isalpha() and (body.islower() or body.isupper()):
+        return None
+    padded = body.replace("-", "+").replace("_", "/")
+    padded += "=" * (-len(padded) % 4)
+    try:
+        return base64.b64decode(padded, validate=True)
+    except (binascii.Error, ValueError):
+        return None
 
 
 def _b64(token: str) -> str | None:
@@ -142,6 +204,13 @@ def _views_once(text: str) -> list[DecodedView]:
         decoded = _b64(m.group(0))
         if decoded is not None:
             views.append(DecodedView(m.start(), m.end(), decoded, "base64"))
+            continue
+        # Compressed then base64-encoded: binary to _b64, text once inflated.
+        raw = _b64_bytes(m.group(0))
+        inflated = _inflate(raw) if raw else None
+        readable = _readable(inflated) if inflated else None
+        if readable is not None:
+            views.append(DecodedView(m.start(), m.end(), readable, "base64>gzip"))
 
     for m in _PERCENT_RUN_RE.finditer(text):
         decoded = urllib.parse.unquote(m.group(0))
@@ -150,6 +219,37 @@ def _views_once(text: str) -> list[DecodedView]:
 
     for m in _SPACED_RE.finditer(text):
         views.append(DecodedView(m.start(), m.end(), m.group(0).replace(" ", ""), "spaced"))
+
+    if "&" in text:
+        for m in _HTML_RUN_RE.finditer(text):
+            decoded = html.unescape(m.group(0))
+            # "&amp;" in a URL decodes to "&" and changes nothing a detector
+            # could not already read; only a run that hid letters counts.
+            if decoded != m.group(0) and _alnum(decoded) != _alnum(m.group(0)):
+                views.append(DecodedView(m.start(), m.end(), decoded, "html"))
+
+    if "\\" in text:
+        for m in _UESC_RUN_RE.finditer(text):
+            decoded = _UESC_RE.sub(lambda u: chr(int(u.group(1) or u.group(2), 16)), m.group(0))
+            if decoded != m.group(0):
+                views.append(DecodedView(m.start(), m.end(), decoded, "unicode-escape"))
+
+    if not text.isascii():
+        for m in _INVISIBLE_RUN_RE.finditer(text):
+            views.append(DecodedView(m.start(), m.end(),
+                                     m.group(0).translate(_INVISIBLE_TABLE), "zero-width"))
+        for m in _NON_ASCII_RUN_RE.finditer(text):
+            token = m.group(0)
+            normalized = unicodedata.normalize("NFKC", token).translate(_CONFUSABLES)
+            if normalized == token or not normalized.isascii():
+                continue
+            # Only a token that mixes in ASCII or turns ASCII once normalized
+            # (fullwidth digits) is a disguise; plain accented prose is not.
+            if not any(c.isascii() and c.isalnum() for c in token) and not any(
+                "\uff00" <= c <= "\uffef" for c in token
+            ):
+                continue
+            views.append(DecodedView(m.start(), m.end(), normalized, "homoglyph"))
 
     return views
 
@@ -188,6 +288,19 @@ _MAX_FRAGMENTS = 4
 
 def _alnum(value: str) -> str:
     return "".join(_TOKEN_RE.findall(value)).casefold()
+
+
+# Leetspeak folds digits and symbols onto the letters they stand for. It is
+# lossy (1 is "i" or "l"), so both the text and the known value are folded to
+# the same classes and compared; this is anchored matching only.
+_LEET_TABLE = str.maketrans({
+    "0": "o", "1": "l", "i": "l", "!": "l", "|": "l", "3": "e", "4": "a", "@": "a",
+    "5": "s", "$": "s", "7": "t", "+": "t", "8": "b", "9": "g",
+})
+
+
+def _leet(value: str) -> str:
+    return value.translate(_LEET_TABLE)
 
 
 def _fragment_in(tokens: Sequence[str], target: str, pos: int) -> int:
@@ -340,6 +453,16 @@ def find_obscured_copies(
             always.append(pos_)
         else:
             by_first_run.setdefault(first_run.group(0), []).append(pos_)
+    # Leetspeak only for values with letters to disguise (an email, a name,
+    # a diagnosis): folding a number onto letters matches nothing it means.
+    by_leet_run: dict[str, list[int]] = {}
+    leet_eligible: set[int] = set()
+    for pos_, (canon, _original) in enumerate(ordered):
+        if sum(ch.isalpha() for ch in canon) >= 4:
+            leet_eligible.add(pos_)
+            first_leet = _ALNUM_RUN_RE.search(_leet(canon))
+            if first_leet is not None:
+                by_leet_run.setdefault(first_leet.group(0), []).append(pos_)
     targets = {pos_: _alnum(o) for pos_, (_c, o) in enumerate(ordered)}
     identifiers = [pos_ for pos_, target in targets.items() if _is_identifier(target)]
     identifiers_set = set(identifiers)
@@ -352,12 +475,17 @@ def find_obscured_copies(
             ("reversed", canonical_form(text[::-1])),
             ("rot13", canonical_form(codecs.encode(text, "rot13"))),
         )
+        leet_view = _leet(canonical_form(text))
         candidates = set(always)
         for _name, view in views:
             for run in set(_ALNUM_RUN_RE.findall(view)):
                 hits = by_first_run.get(run)
                 if hits:
                     candidates.update(hits)
+        for run in set(_ALNUM_RUN_RE.findall(leet_view)):
+            hits = by_leet_run.get(run)
+            if hits:
+                candidates.update(hits)
         decoded = decoded_views(text) if identifiers else []
         if decoded:
             decoded_alnum = [_alnum(v.text) for v in decoded]
@@ -374,6 +502,10 @@ def find_obscured_copies(
             if any(_contains_at_boundaries(longer, canon) for longer in claimed):
                 continue
             hit = next((t for t, view in views if _contains_at_boundaries(view, canon)), None)
+            if hit is None and pos_ in leet_eligible and _contains_at_boundaries(
+                leet_view, _leet(canon)
+            ):
+                hit = "leet"
             if hit is None and pos_ in identifiers_set:
                 # A decoded identifier loses its formatting: "0 4 6 4 5 4 2 8 6"
                 # reads back as 046454286, which no SIN pattern accepts and
@@ -418,6 +550,9 @@ def describe(transform: str) -> str:
     names = {
         "base64": "base64-encoded", "hex": "hex-encoded", "percent": "URL-encoded",
         "spaced": "letter-spaced", "reversed": "reversed", "rot13": "ROT13-rotated",
-        "split": "split across messages",
+        "split": "split across messages", "gzip": "gzip-compressed",
+        "html": "HTML-entity-encoded", "unicode-escape": "unicode-escaped",
+        "zero-width": "padded with invisible characters",
+        "homoglyph": "written with look-alike characters", "leet": "leetspeak-encoded",
     }
     return " then ".join(names.get(part, part) for part in transform.split(">"))

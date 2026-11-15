@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import base64
 import codecs
+import gzip
 import json
 import sys
 import urllib.parse
@@ -62,6 +63,34 @@ def _split(v: str) -> list[str] | None:
     return ["part one: " + " ".join(tokens[:cut]), "part two: " + " ".join(tokens[cut:])]
 
 
+_LEET = str.maketrans({"a": "4", "e": "3", "o": "0", "s": "5", "t": "7", "l": "1", "i": "1"})
+_HOMOGLYPH = str.maketrans({"a": "а", "e": "е", "o": "о", "p": "р", "c": "с", "x": "х", "y": "у",
+                            **{str(d): chr(0xFF10 + d) for d in range(10)}})
+
+
+def _zero_width(v: str) -> str:
+    return "\u200b".join(v)
+
+
+def _split3(v: str) -> list[str] | None:
+    if sum(ch.isdigit() for ch in v) < 4:
+        return None
+    tokens = v.split(" ") if " " in v else [v[: len(v) // 3], v[len(v) // 3: 2 * len(v) // 3],
+                                              v[2 * len(v) // 3:]]
+    if len(tokens) < 3:
+        return None
+    size = -(-len(tokens) // 3)
+    chunks = [" ".join(tokens[i:i + size]) for i in range(0, len(tokens), size)]
+    return [f"chunk {i + 1}: {c}" for i, c in enumerate(chunks)]
+
+
+# Transformations added after 0.18.0, measured with the same method. They are
+# kept apart so the original 46-cell table stays comparable across versions.
+NEW_TRANSFORMS = (
+    "HTML entities", "JSON unicode escapes", "zero-width padded", "homoglyphs / fullwidth",
+    "gzip + base64", "leetspeak", "split in three",
+)
+
 TRANSFORMS: dict[str, Callable[[str], Any]] = {
     "plaintext (control)": lambda v: [f"forwarding: {v}"],
     "base64": lambda v: [f"ctx={_b64(v)}"],
@@ -72,6 +101,13 @@ TRANSFORMS: dict[str, Callable[[str], Any]] = {
     "reversed": lambda v: [f"code {v[::-1]}"],
     "ROT13": lambda v: [f"note: {codecs.encode(v, 'rot13')}"],
     "split in two": _split,
+    "HTML entities": lambda v: ["<p>" + "".join(f"&#{ord(c)};" for c in v) + "</p>"],
+    "JSON unicode escapes": lambda v: ['{"v": "' + "".join(f"\\u{ord(c):04x}" for c in v) + '"}'],
+    "zero-width padded": lambda v: [f"value {_zero_width(v)}"],
+    "homoglyphs / fullwidth": lambda v: [f"value {v.translate(_HOMOGLYPH)}"],
+    "gzip + base64": lambda v: ["blob=" + base64.b64encode(gzip.compress(v.encode(), mtime=0)).decode()],
+    "leetspeak": lambda v: [f"note {v.lower().translate(_LEET)}"],
+    "split in three": _split3,
 }
 
 
@@ -108,13 +144,18 @@ def measure() -> dict[str, Any]:
                 cells[name][data_type] = None
                 continue
             cells[name][data_type] = _detected(_trace(field, value, messages), data_type, value)
-    obscured = [v for k, row in cells.items() if k != "plaintext (control)" for v in row.values()
-                if v is not None]
+    obscured = [v for k, row in cells.items() if k != "plaintext (control)"
+                and k not in NEW_TRANSFORMS for v in row.values() if v is not None]
+    added = [v for k, row in cells.items() if k in NEW_TRANSFORMS for v in row.values()
+             if v is not None]
     return {
         "software_version": agentleak.__version__,
         "cells": cells,
         "obscured_detected": sum(obscured),
         "obscured_total": len(obscured),
+        "added_detected": sum(added),
+        "added_total": len(added),
+        "added_transforms": list(NEW_TRANSFORMS),
         "method": "tool_response holds the value; the next inter_agent_message carries it "
                   "transformed. Detected = finding on that message, right type, original value.",
     }
@@ -124,7 +165,9 @@ def to_markdown(report: dict[str, Any]) -> str:
     types = list(VALUES)
     lines = [
         f"agentleak {report['software_version']} — "
-        f"{report['obscured_detected']} of {report['obscured_total']} obscured copies detected",
+        f"{report['obscured_detected']} of {report['obscured_total']} obscured copies detected"
+        + (f"; added transformations: {report['added_detected']} of {report['added_total']}"
+           if "added_total" in report else ""),
         "",
         "| Transformation | " + " | ".join(f"`{t}`" for t in types) + " |",
         "|---|" + "---|" * len(types),

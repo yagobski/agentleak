@@ -61,3 +61,14 @@ def test_identifier_scan_is_linear() -> None:
         start = time.perf_counter()
         scan(text)
         assert time.perf_counter() - start < 2.0
+
+
+@pytest.mark.parametrize("name", sorted(ADVERSARIAL))
+def test_decoders_are_linear_on_adversarial_input(name) -> None:
+    from agentleak.core.transforms import decoded_views
+
+    for text in (ADVERSARIAL[name], ADVERSARIAL[name] + "%41&#65;\\u0041\u200bа"):
+        start = time.perf_counter()
+        decoded_views(text)
+        elapsed = time.perf_counter() - start
+        assert elapsed < 5.0, f"decoded_views took {elapsed:.2f}s on {name}"
