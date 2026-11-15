@@ -37,7 +37,7 @@ from ..agent import (
     run_scenario,
 )
 from ..core.agentcard import AgentCard, UnsafeURLError, fetch_agent_card, parse_agent_card
-from ..core.agentrisk import dominates
+from ..core.agentrisk import BASELINE_CHANNELS, dominates
 from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
 from ..core.compliance import FRAMEWORKS
@@ -1110,6 +1110,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         return {
             "version": __version__,
             "channels": list(CHANNELS),
+            # Which channels feed the vault (data entering the agent) and which
+            # count as disclosures. The GUI reads this split instead of
+            # restating BASELINE_CHANNELS, so the two can never drift.
+            "source_channels": [c for c in CHANNELS if c in BASELINE_CHANNELS],
+            "emission_channels": [c for c in CHANNELS if c not in BASELINE_CHANNELS],
             "detectors": list(BUILTIN_DETECTORS),
             # The counts the documentation and the marketing site quote, taken
             # from the engine rather than restated. Every number published about

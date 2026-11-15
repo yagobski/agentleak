@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 AgentLeak contributors
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState } from "react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { Bot, Check, Copy, Eye, EyeOff, KeyRound, Loader2, Pencil, Play, Plug, Plus, RefreshCw, Shield, Sparkles, Trash2, Wrench, X } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -32,7 +32,9 @@ import { ModelView } from "@/features/ModelView"
 import { AgentCardView } from "@/features/AgentCardView"
 import { ProgressionView } from "@/features/ProgressionView"
 import { RedTeamView } from "@/features/RedTeamView"
-import { RunRow } from "@/features/RunRow"
+import { RunsTable } from "@/features/RunsTable"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { PageHeader } from "@/layout/AppShell"
 
 function scenarioLabel(scenario: Scenario) {
   const raw = scenario.name && scenario.name !== scenario.id
@@ -47,6 +49,8 @@ export function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [runs, setRuns] = useState<RunSummary[]>([])
   const [notFound, setNotFound] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const tab = params.get("tab") ?? "audit"
 
   const reload = useCallback(() => {
     api.project(id).then(setProject).catch(() => setNotFound(true))
@@ -54,30 +58,34 @@ export function ProjectDetail() {
   }, [id])
   useEffect(reload, [reload])
 
-  if (notFound) return <div className="animate-fade-up text-sm text-sev-l4">Project not found.</div>
-  if (!project) return <div className="animate-fade-up text-sm text-muted-foreground">Loading…</div>
+  if (notFound)
+    return (
+      <div className="max-w-xl rounded-lg border border-border p-5">
+        <h1 className="text-base font-medium">Project not found</h1>
+        <p className="mt-1 text-sm text-muted-foreground">No project with id {id} exists in this workspace.</p>
+        <Button asChild variant="outline" size="sm" className="mt-3"><Link to="/projects">All projects</Link></Button>
+      </div>
+    )
+  if (!project) return <div className="h-40 rounded-lg bg-muted motion-safe:animate-pulse" aria-busy="true" aria-label="Loading project" />
 
   return (
-    <div className="animate-fade-up">
-      <div className="mb-5">
-        <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
-          ← Projects
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">{project.name}</h1>
-          <span className="rounded bg-muted px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-            {agentLabel(project.agent_type)}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {project.run_count ?? 0} runs
-            {project.avg_risk_index != null ? ` · avg RI ${project.avg_risk_index.toFixed(3)}` : ""}
-          </span>
-        </div>
-        {project.description && <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>}
-      </div>
+    <div className="min-w-0">
+      <PageHeader
+        title={project.name}
+        crumbs={[{ label: "Projects", to: "/projects" }, { label: project.name }]}
+        description={
+          <>
+            <span className="mr-2 rounded border border-border px-1.5 py-0.5 text-[11px]">{agentLabel(project.agent_type)}</span>
+            <span className="tnum">{project.run_count ?? runs.length} runs</span>
+            {project.avg_risk_index != null ? <span className="tnum"> · mean RI {project.avg_risk_index.toFixed(3)}</span> : null}
+            {project.description ? <span className="mt-1 block">{project.description}</span> : null}
+          </>
+        }
+      />
 
-      <Tabs defaultValue="audit">
-        <TabsList className="h-auto max-w-full justify-start overflow-x-auto">
+      <Tabs value={tab} onValueChange={(v) => setParams((p) => { const n = new URLSearchParams(p); n.set("tab", v); return n })}>
+        <div className="overflow-x-auto">
+        <TabsList className="h-auto justify-start">
           <TabsTrigger value="audit">Test</TabsTrigger>
           <TabsTrigger value="card" className="flex items-center gap-1.5">
             <Bot className="h-3.5 w-3.5 text-primary" />
@@ -85,7 +93,7 @@ export function ProjectDetail() {
           </TabsTrigger>
           <TabsTrigger value="agents">Test agents ({project.config.agents?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="model">System map</TabsTrigger>
-          <TabsTrigger value="runs">Evidence ({runs.length})</TabsTrigger>
+          <TabsTrigger value="runs">Runs ({runs.length})</TabsTrigger>
           <TabsTrigger value="redteam" className="flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5 text-red-500" />
             Adversarial
@@ -93,6 +101,7 @@ export function ProjectDetail() {
           <TabsTrigger value="connect">Integrate</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="audit">
           <AuditTab project={project} onRan={reload} />
@@ -624,52 +633,68 @@ function ModelTab({ project }: { project: Project }) {
 
 // ---------------------------------------------------------------- Runs
 function RunsTab({ projectId, runs, onChange }: { projectId: string; runs: RunSummary[]; onChange: () => void }) {
-  const nav = useNavigate()
+  const [pending, setPending] = useState<RunSummary | null>(null)
 
   if (!runs.length) {
     return (
-      <Card className="p-10 text-center text-sm text-muted-foreground">
-        No evidence yet. Analyze a captured trace, run a controlled scenario, or integrate the SDK.
+      <Card className="p-8 text-sm text-muted-foreground">
+        No runs in this project yet. Run a scenario from the <b>Test</b> tab, save an analysis from{" "}
+        <Link className="underline underline-offset-2" to="/analyze">Analyze a trace</Link>, or submit traces with the SDK (<b>Integrate</b> tab).
       </Card>
     )
   }
 
   return (
     <div className="space-y-5">
-      {/* Score progression + run-to-run comparison */}
-      <ProgressionView projectId={projectId} />
-
-      {/* Full run list */}
-      <Card>
-        <div className="border-b border-border px-5 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          All runs ({runs.length})
-        </div>
-        <div className="divide-y divide-border">
-          {runs.map((r) => (
-            <RunRow
-              key={r.id}
-              run={r}
-              onClick={() => nav(`/runs/${r.id}`)}
-              right={
+      <div className="rounded-lg border border-border bg-card">
+        <RunsTable
+          runs={runs}
+          showProject={false}
+          caption="Runs in this project"
+          exportName={`runs-${projectId}`}
+          extraColumns={[
+            {
+              id: "delete",
+              header: "",
+              value: () => "",
+              sortable: false,
+              exportable: false,
+              cell: (r) => (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 text-muted-foreground"
+                  className="size-7 text-muted-foreground hover:text-sev-l4"
+                  aria-label={`Delete run ${r.id}`}
                   onClick={(e) => {
                     e.stopPropagation()
-                    api.deleteRun(r.id).then(() => {
-                      toast.success("Run deleted")
-                      onChange()
-                    })
+                    setPending(r)
                   }}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
-              }
-            />
-          ))}
-        </div>
-      </Card>
+              ),
+            },
+          ]}
+        />
+      </div>
+      <ProgressionView projectId={projectId} />
+      <ConfirmDialog
+        open={pending !== null}
+        onOpenChange={(v) => !v && setPending(null)}
+        title={`Delete run ${pending?.id ?? ""}?`}
+        description="The stored report is removed from this workspace. This cannot be undone."
+        confirmLabel="Delete run"
+        onConfirm={async () => {
+          if (!pending) return
+          try {
+            await api.deleteRun(pending.id)
+            toast.success(`Deleted ${pending.id}`)
+            onChange()
+          } catch (e) {
+            toast.error((e as Error).message)
+          }
+        }}
+      />
     </div>
   )
 }

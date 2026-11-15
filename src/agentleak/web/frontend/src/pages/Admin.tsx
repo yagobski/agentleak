@@ -6,7 +6,7 @@ import { Activity, Bot, Clock3, FileSearch, FolderKanban, Gauge, RefreshCw, Scan
 import { toast } from "sonner"
 import { api, type AdminOverview, type AdminUsage, type AdminUser, type AuditLogEntry, type Meta, type RunSummary } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
-import { riVerdict, scoreColor, verdictColor } from "@/lib/format"
+import { scoreColor } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -80,7 +80,7 @@ export function Admin() {
       <Stat label="Accounts" value={overview?.users ?? "—"} icon={<Users className="size-4" />} sub={overview ? `${overview.admins} admin · ${overview.disabled_users} disabled` : undefined} />
       <Stat label="Projects" value={overview?.projects ?? "—"} icon={<FolderKanban className="size-4" />} sub={overview ? `${overview.active_projects_24h} active in 24h` : "all targets"} />
       <Stat label="Runs" value={overview?.runs ?? "—"} icon={<Activity className="size-4" />} sub={overview ? `${overview.runs_24h} in 24h · ${overview.redteam_runs} red-team` : "all evaluations"} />
-      <Stat label="Privacy score" value={overview?.avg_privacy_score != null ? Math.round(overview.avg_privacy_score) : "—"} icon={<Gauge className="size-4" />} sub={avg != null ? <span>avg RI <span className="font-mono" style={{ color: verdictColor(riVerdict(avg)) }}>{avg.toFixed(3)}</span></span> : "no runs yet"} />
+      <Stat label="Privacy score" value={overview?.avg_privacy_score != null ? Math.round(overview.avg_privacy_score) : "—"} icon={<Gauge className="size-4" />} sub={avg != null ? <span>mean RI <span className="font-mono">{avg.toFixed(3)}</span></span> : "no runs yet"} />
       <Stat label="Code scans" value={overview?.code_scans ?? "—"} icon={<ScanLine className="size-4" />} sub={overview ? `${overview.code_scans_24h} in the last 24h` : "static source audits"} />
       <Stat label="Agent API calls" value={overview?.api_calls_total ?? "—"} icon={<Zap className="size-4" />} sub={overview ? `${overview.api_calls_24h} in the last 24h` : "autonomous consumption"} />
     </div>

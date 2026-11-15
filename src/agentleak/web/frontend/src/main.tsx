@@ -14,11 +14,14 @@ import { Toaster } from "./components/ui/sonner"
 import { AuthProvider, useAuth } from "./lib/auth"
 import { AppShell } from "./layout/AppShell"
 import { Admin } from "./pages/Admin"
+import { Analyze } from "./pages/Analyze"
+import { Compare } from "./pages/Compare"
 import { Dashboard } from "./pages/Dashboard"
 import { Playground } from "./pages/Playground"
 import { ProjectDetail } from "./pages/ProjectDetail"
 import { Projects } from "./pages/Projects"
 import { RunView } from "./pages/RunView"
+import { Runs } from "./pages/Runs"
 import { Scenarios } from "./pages/Scenarios"
 import { Login } from "./pages/Login"
 import { Settings } from "./pages/Settings"
@@ -107,7 +110,10 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectDetail />} />
+        <Route path="analyze" element={<Analyze />} />
+        <Route path="runs" element={<Runs />} />
         <Route path="runs/:id" element={<RunView />} />
+        <Route path="compare" element={<Compare />} />
         <Route path="playground" element={<Playground />} />
         <Route path="scenarios" element={<Scenarios />} />
         <Route path="settings" element={<Settings />} />
