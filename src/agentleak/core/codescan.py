@@ -547,13 +547,28 @@ def _snippet(text: str, index: int, matched: str) -> str:
     line = text[start : end if end != -1 else len(text)].strip()
     if matched and matched in line:
         line = line.replace(matched, redact(matched))
-    return line[:200]
+    # Truncated to _SNIPPET_MAX by ``scan_text`` after every value found in the
+    # file has been scrubbed: cutting first could leave half a secret behind.
+    return line
 
 
-def _decomposed_digit_findings(path: str, text: str) -> list[CodeFinding]:
+_SNIPPET_MAX = 200
+
+
+def _scrub(snippet: str, values: Sequence[str]) -> str:
+    """Redact every sensitive value found in the file, not only the one a
+    finding is about. A line holding a name and an SSN produces two findings;
+    each snippet used to mask its own value and print the other one raw."""
+    for value in values:
+        if value and value in snippet:
+            snippet = snippet.replace(value, redact(value))
+    return snippet[:_SNIPPET_MAX]
+
+
+def _decomposed_digit_findings(path: str, text: str) -> list[tuple[CodeFinding, str]]:
     """Digit-run analysis: catches PII written with unusual separators or
     split into groups (``123 45 6789``, ``4111.1111.1111.1111``)."""
-    findings: list[CodeFinding] = []
+    findings: list[tuple[CodeFinding, str]] = []
     for m in _DIGIT_RUN_RE.finditer(text):
         run = m.group(0)
         digits = re.sub(r"\D", "", run)
@@ -571,7 +586,7 @@ def _decomposed_digit_findings(path: str, text: str) -> list[CodeFinding]:
             data_type, severity, confidence = "phone_number", Severity.MEDIUM, 0.6
         if data_type is None:
             continue
-        findings.append(CodeFinding(
+        findings.append((CodeFinding(
             file=path,
             line=_line_of(text, m.start()),
             rule="decomposed_pii",
@@ -585,7 +600,7 @@ def _decomposed_digit_findings(path: str, text: str) -> list[CodeFinding]:
             ),
             tier="deobfuscation",
             confidence=confidence,
-        ))
+        ), run.strip()))
     return findings
 
 
@@ -638,6 +653,9 @@ class CodeScanner:
         """All findings for one file: pipeline tiers + code-specific layers."""
         findings: list[CodeFinding] = []
         seen: set[tuple[str, str]] = set()
+        # Every raw sensitive value seen in this file, so each snippet can be
+        # scrubbed of all of them (see ``_scrub``).
+        sensitive: set[str] = set()
 
         def _add(f: CodeFinding, key_value: str) -> None:
             normalized = re.sub(r"\D", "", key_value)
@@ -674,6 +692,7 @@ class CodeScanner:
             ):
                 if _looks_like_code_expression(f.matched_value):
                     continue
+                sensitive.add(f.matched_value)
                 tier = str(f.metadata.get("tier", "regex"))
                 deobfuscated = variant_name == "joined" and f.matched_value not in text
                 rule = (
@@ -714,7 +733,8 @@ class CodeScanner:
                     ), f"{f.data_type}:{f.matched_value}:joined")
 
         # Layer 4 — digit-run de-obfuscation (decomposed PII).
-        for digit_finding in _decomposed_digit_findings(path, text):
+        for digit_finding, digit_run in _decomposed_digit_findings(path, text):
+            sensitive.add(digit_run)
             _add(digit_finding, digit_finding.snippet)
 
         # Layer 5 — code-flow rules on the generated lexicon.
@@ -730,6 +750,7 @@ class CodeScanner:
                 if rule_id == "hardcoded_credential_assignment":
                     if literal_value and _PLACEHOLDER_RE.search(literal_value):
                         continue
+                    sensitive.add(literal_value)
                 _add(CodeFinding(
                     file=path,
                     line=_line_of(text, m.start()),
@@ -747,6 +768,7 @@ class CodeScanner:
             value = m.group(1)
             if not _looks_like_secret(value):
                 continue
+            sensitive.add(value)
             _add(CodeFinding(
                 file=path,
                 line=_line_of(text, m.start()),
@@ -783,6 +805,10 @@ class CodeScanner:
                 confidence=0.85,
             ))
 
+        # Longest first, so a value that contains another is masked whole.
+        ordered = sorted(sensitive, key=len, reverse=True)
+        for code_finding in findings:
+            code_finding.snippet = _scrub(code_finding.snippet, ordered)
         return findings
 
     # -- collections ------------------------------------------------------

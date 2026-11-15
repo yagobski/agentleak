@@ -193,7 +193,9 @@ class PIIDetector(Detector):
     def detect(self, text: str) -> list[RawMatch]:
         matches: list[RawMatch] = []
 
-        for m in EMAIL_RE.finditer(text):
+        # No "@", no email; skipping the scan avoids EMAIL_RE's quadratic
+        # rescans of long local-part-like runs (base64, hex, dotted ids).
+        for m in (EMAIL_RE.finditer(text) if "@" in text else ()):
             matches.append(self._match(
                 data_type="email", severity=Severity.MEDIUM, confidence=0.95,
                 matched_value=m.group(0),

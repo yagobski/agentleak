@@ -68,7 +68,7 @@ event, and arguably the honest reading — the secret really is somewhere new.
 
 ## What it deliberately does not do
 
-It does not run the 283 bundled scenarios against your agent. Those are traces,
+It does not run the 266 bundled scenarios against your agent. Those are traces,
 and replaying them would mean invoking the agent under test, which MCP gives no
 way to do. They remain what they are: a corpus for the CLI and CI
 (`agentleak run --pack …`).

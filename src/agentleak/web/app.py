@@ -42,6 +42,7 @@ from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
 from ..core.compliance import FRAMEWORKS
 from ..core.config import Config
+from ..core.regex_safety import check_regex
 from ..core.report import AnalysisResult
 from ..core.runner import AgentLeakRunner
 from ..core.store import Store
@@ -155,11 +156,18 @@ def _next_steps(report: dict[str, Any], code_scan: dict[str, Any] | None) -> lis
 def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     """Translate UI/project settings into agentleak.yaml config data."""
     data: dict[str, Any] = {}
+    if not isinstance(settings, dict):
+        return data
     detectors = settings.get("detectors")
     if isinstance(detectors, dict):
         data["detectors"] = {k: bool(v) for k, v in detectors.items()}
     rules = settings.get("custom_detectors")
     if isinstance(rules, list) and rules:
+        # Custom patterns come from whoever holds the session or API key, and
+        # one nested repeat can pin a worker for hours (re has no timeout).
+        for r in rules:
+            if isinstance(r, dict) and r.get("pattern"):
+                check_regex(str(r["pattern"]))
         data["custom_detectors"] = [
             {
                 "name": str(r["name"]),
@@ -168,7 +176,7 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
                 "data_type": str(r.get("data_type", r.get("name", "custom"))),
             }
             for r in rules
-            if r.get("name") and r.get("pattern")
+            if isinstance(r, dict) and r.get("name") and r.get("pattern")
         ]
     if "redact" in settings:
         data["privacy"] = {"redact_values": bool(settings["redact"])}
@@ -181,7 +189,11 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     if isinstance(privacy_policy, dict):
         data["privacy_policy"] = privacy_policy
     vault = settings.get("vault") or {}
+    if not isinstance(vault, dict):
+        raise ValueError("'vault' must be an object.")
     if vault.get("mode") == "explicit" and vault.get("levels"):
+        if not isinstance(vault["levels"], dict):
+            raise ValueError("'vault.levels' must map levels 1-4 to counts.")
         levels = {int(k): int(v) for k, v in vault["levels"].items() if int(v) > 0}
         if levels:
             data["vault"] = {"levels": levels}
@@ -306,12 +318,16 @@ def _redteam_run_context(scenario: Any, vertical: str) -> RunContext:
 
 
 def _trace_from_payload(
-    payload: dict[str, Any], store: Store | None = None
+    payload: dict[str, Any], store: Store | None = None, *, owner_id: str = ""
 ) -> tuple[Trace, CanarySet | None]:
     """Resolve a payload to a trace plus whatever ground truth came with it.
 
     Scenarios imported from a research pack carry the exact facts that must not
     travel. Dropping them here would score a semantic leak as a clean run.
+
+    A stored scenario resolves only for its owner (``owner_id``). Another
+    account's scenario id answers exactly like an unknown one, so a caller can
+    neither run someone else's private records nor learn that the id exists.
     """
     sid = payload.get("scenario_id")
     if sid:
@@ -321,7 +337,7 @@ def _trace_from_payload(
             pass
         if store is not None:
             stored = store.get_scenario(sid)
-            if stored and stored.get("trace"):
+            if stored and stored.get("trace") and stored.get("owner_id") == owner_id:
                 raw = stored.get("canaries")
                 canaries = CanarySet.from_dict(raw) if raw else None
                 return Trace.from_dict(stored["trace"]), canaries
@@ -331,17 +347,23 @@ def _trace_from_payload(
         raise ValueError("Provide a 'trace' object or a 'scenario_id'.")
     if isinstance(trace, str):
         trace = json.loads(trace)
+    if not isinstance(trace, dict):
+        raise ValueError("'trace' must be a JSON object with an 'events' list.")
     return Trace.from_dict(trace), None
 
 
 def _analyze(
-    payload: dict[str, Any], *, project_name: str | None = None, store: Store | None = None
+    payload: dict[str, Any],
+    *,
+    project_name: str | None = None,
+    store: Store | None = None,
+    owner_id: str = "",
 ) -> AnalysisResult:
     data = _config_data(payload)
     if project_name:
         data["project"] = {"name": project_name}
     cfg = Config.from_dict(data) if data else None
-    trace, canaries = _trace_from_payload(payload, store)
+    trace, canaries = _trace_from_payload(payload, store, owner_id=owner_id)
     return AgentLeakRunner(cfg).analyze(trace, canary_set=canaries)
 
 
@@ -704,6 +726,23 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         max_attempts=limits.register_per_ip_hour or 1, window=3600.0
     )
 
+    # Request bodies were unbounded: one POST could hand the analyzer any
+    # amount of text. 32 MiB leaves room for a base64 zip upload.
+    try:
+        _max_body = int(os.environ.get("AGENTLEAK_MAX_BODY_BYTES", "") or 32 * 1024 * 1024)
+    except ValueError:
+        _max_body = 32 * 1024 * 1024
+
+    @app.middleware("http")
+    async def _body_limit(request, call_next):  # noqa: ANN001, ANN202
+        length = request.headers.get("content-length", "")
+        if _max_body > 0 and length.isdigit() and int(length) > _max_body:
+            return JSONResponse(
+                {"detail": f"Request body over the {_max_body}-byte limit (AGENTLEAK_MAX_BODY_BYTES)."},
+                status_code=413,
+            )
+        return await call_next(request)
+
     @app.middleware("http")
     async def _ip_rate_limit(request, call_next):  # noqa: ANN001, ANN202
         ip = client_ip(dict(request.headers), getattr(request.client, "host", ""))
@@ -780,6 +819,23 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             secure=_cookie_secure,
         )
         return resp
+
+    def _checked_config(config: Any) -> dict[str, Any]:
+        """Refuse a project config the analyzer cannot load.
+
+        PATCH used to store any JSON value. A string or a malformed vault was
+        saved, and from then on every request on that project (runs, scans,
+        API key, red team) failed with a 500.
+        """
+        if not isinstance(config, dict):
+            raise HTTPException(status_code=400, detail="'config' must be an object.")
+        try:
+            data = _config_data(config)
+            if data:
+                Config.from_dict(data)
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid project config: {exc}") from exc
+        return config
 
     def _owned_project(pid: str, user: dict[str, Any]) -> dict[str, Any]:
         """Fetch a project and ensure it belongs to the current user."""
@@ -1367,9 +1423,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         user: dict[str, Any] = Depends(require_user),
     ) -> dict[str, Any]:
         """Publish or unpublish a trust page. Owner-only, and always deliberate."""
-        project = db.get_project(pid)
-        if not project or project.get("owner_id") not in ("", user["id"]):
-            raise HTTPException(status_code=404, detail="Project not found")
+        # Same ownership rule as every other project route: an ownerless
+        # (legacy) project is not anyone's to publish.
+        _owned_project(pid, user)
         requested = str(payload.get("slug", "")).strip()
         slug = db.set_public_slug(pid, requested)
         return {
@@ -1384,7 +1440,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def analyze(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> JSONResponse:
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         try:
-            result = _analyze(payload, store=db)
+            result = _analyze(payload, store=db, owner_id=user["id"])
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _meter(user, "/api/analyze")
@@ -1395,7 +1451,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         if fmt not in {"json", "html", "markdown"}:
             raise HTTPException(status_code=400, detail=f"Unknown format: {fmt}")
         try:
-            data = _analyze(payload, store=db).to_dict()
+            data = _analyze(payload, store=db, owner_id=user["id"]).to_dict()
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         content = render(data, fmt)
@@ -1412,7 +1468,12 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         data = payload.get("report")
         if not isinstance(data, dict):
             raise HTTPException(status_code=400, detail="Missing 'report' object.")
-        content = render(data, fmt)
+        try:
+            content = render(data, fmt)
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400, detail=f"'report' is not an AgentLeak report: {exc!r}"
+            ) from exc
         if fmt == "html":
             return HTMLResponse(content)
         media = {"json": "application/json", "markdown": "text/markdown"}[fmt]
@@ -1439,6 +1500,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "agents": payload.get("agents"),
         }
         config.update({key: value for key, value in direct_config.items() if value is not None})
+        _checked_config(config)
         return _safe_project(db.create_project(
             name,
             agent_type=payload.get("agent_type", "generic"),
@@ -1455,6 +1517,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     def update_project(pid: str, payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any] | None:
         _owned_project(pid, user)
         config = payload.get("config")
+        if config is not None:
+            _checked_config(config)
         # Preserve previously-stored agent keys when the client sends blanks.
         if isinstance(config, dict):
             _merge_agent_keys(pid, config, db)
@@ -1551,7 +1615,10 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         db.meter_usage(project.get("owner_id", ""), "/api/selftest")
 
         try:
-            result = _analyze(payload, project_name=project["name"], store=db)
+            result = _analyze(
+                payload, project_name=project["name"], store=db,
+                owner_id=str(project.get("owner_id") or ""),
+            )
         except (ValueError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -2034,7 +2101,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
 
         vertical = str(payload.get("vertical") or "healthcare")
-        n = min(int(payload.get("n") or 5), 20)
+        try:
+            n = int(payload.get("n") or 5)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="'n' must be an integer from 1 to 20.") from exc
+        n = max(1, min(n, 20))
         adv_level_str = str(payload.get("adversary_level") or "A1")
         attack_class_id = payload.get("attack_class")
         mode = str(payload.get("mode") or "auto").lower()
@@ -2388,7 +2459,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         settings = {**project["config"], **{k: payload[k] for k in ("detectors", "vault", "custom_detectors", "redact") if k in payload}}
         merged = {**settings, **{k: payload[k] for k in ("trace", "scenario_id") if k in payload}}
         try:
-            result = _analyze(merged, project_name=project["name"], store=db)
+            result = _analyze(merged, project_name=project["name"], store=db, owner_id=user["id"])
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _meter(user, "/api/projects/runs")
@@ -2456,13 +2527,18 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 raise HTTPException(status_code=404, detail="Run does not belong to this project.")
         return result
 
-    def _scenario_detail(sid: str) -> dict[str, Any] | None:
+    def _scenario_detail(sid: str, owner_id: str) -> dict[str, Any] | None:
         if sid in SCENARIOS:
             detail = _builtin_scenario_summary(SCENARIOS[sid])
             detail["trace"] = load_example_trace(sid).to_dict()
             detail["spec"] = None
             return detail
-        return db.get_scenario(sid)
+        stored = db.get_scenario(sid)
+        # Another account's scenario holds its private records: running it
+        # would replay them into this caller's run and to their model endpoint.
+        if not stored or stored.get("owner_id") != owner_id:
+            return None
+        return stored
 
     @app.post("/api/projects/{pid}/execute")
     def execute_agent(pid: str, payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
@@ -2470,7 +2546,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         project = _owned_project(pid, user)
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
         label = str(payload.get("label", ""))
-        scenario = _scenario_detail(str(payload.get("scenario_id", "")))
+        scenario = _scenario_detail(str(payload.get("scenario_id", "")), user["id"])
         if not scenario:
             raise HTTPException(status_code=404, detail="Scenario not found")
 
@@ -2559,8 +2635,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
     @app.post("/api/compare")
     def compare(payload: dict[str, Any] = Body(...), user: dict[str, Any] = Depends(require_user)) -> dict[str, Any]:
-        a = _owned_run(payload.get("a", ""), user)
-        b = _owned_run(payload.get("b", ""), user)
+        a = _owned_run(str(payload.get("a") or ""), user)
+        b = _owned_run(str(payload.get("b") or ""), user)
         comparable, reason = _scope_compatibility(a["report"], b["report"])
         if not comparable:
             return {"a": a, "b": b, "dominance": "neither", "comparable": False, "reason": reason}

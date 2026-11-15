@@ -125,7 +125,8 @@ navigation:
 - **Scenarios** — a managed test library: search/filter built-in scenarios,
   **upload** your own (AgentLeak traces, AgentLeak specs, or ai4privacy records,
   auto-detected and converted), and **import packs** (the 36-scenario *AgentLeak
-  Bench* and *PII Probes*). One click runs any of them in the Playground.
+  Bench*, 120 *PrivacyLens* contextual-integrity cases and 100 *AgentDojo*
+  exfiltration cases). One click runs any of them in the Playground.
 
 Connect an agent in one line. `agentleak.watch()` works for **any** framework
 (LangChain, LangGraph, CrewAI, OpenAI Swarm / Agents SDK, Google ADK,

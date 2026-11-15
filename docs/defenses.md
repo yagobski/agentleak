@@ -17,7 +17,7 @@ Every example below is the real output for `SSN: 412-55-9087`:
 | `placeholder` | `[REDACTED_SSN]` (default) |
 | `asterisk` | `***********` (one `*` per character) |
 | `masked` | `XXXXXXX9087` (last 4 visible; the CLI also accepts `mask`) |
-| `hash` | `1793fe1ffccd611f` (SHA-256, first 16 hex chars) |
+| `hash` | 16 hex characters, different for each key (keyed HMAC-SHA-256, first 16 hex chars; the same value gives the same digest within a process, or across processes with `AGENTLEAK_TOKEN_KEY` set. A plain hash of an SSN or a card number can be reversed by trying every value, so it is never unkeyed) |
 | `category` | `[PII: SSN]` |
 | `remove` | *(empty — removed entirely)* |
 | `token` | `[[SSN:3f9a1c2e40]]` — the same keyed pseudonym for the same value (`AGENTLEAK_TOKEN_KEY` keeps it stable across processes) |

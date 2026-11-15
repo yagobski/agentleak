@@ -541,6 +541,23 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
 
     ``metadata`` carries ``name``/``domain``/``description``/``sensitive_data``/
     ``tags``/``difficulty`` suggestions for the scenario record. Raises
+    ``ValueError`` for unrecognized or malformed input: an upload that matches
+    a format by its keys but has the wrong shape inside (a string objective, a
+    list vault) used to escape as ``AttributeError``/``TypeError``.
+    """
+    try:
+        return _normalize_upload(data)
+    except (TypeError, AttributeError, KeyError) as exc:
+        raise ValueError(
+            f"Malformed {detect_format(data)} upload: {type(exc).__name__}: {exc}"
+        ) from exc
+
+
+def _normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
+    """Turn any supported uploaded object into ``(metadata, trace)``.
+
+    ``metadata`` carries ``name``/``domain``/``description``/``sensitive_data``/
+    ``tags``/``difficulty`` suggestions for the scenario record. Raises
     ``ValueError`` for unrecognized input.
     """
     fmt = detect_format(data)

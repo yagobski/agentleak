@@ -425,7 +425,9 @@ def trust_page_html(summary: dict[str, Any], *, site_url: str = "") -> str:
     badge_url = f"{site_url}/a/{slug}/badge.svg"
     page_url = f"{site_url}/a/{slug}"
     snippet = _esc(f"[![privacy]({badge_url})]({page_url})")
-    title = f"{name} — privacy score | AgentLeak"
+    # From the raw name: `name` is already escaped, and the title is escaped
+    # again where it is used ("R&D" was shown as "R&amp;D").
+    title = f"{summary.get('name') or 'This agent'} — privacy score | AgentLeak"
 
     return f"""<!doctype html>
 <html lang="en"><head>

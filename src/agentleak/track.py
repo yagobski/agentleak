@@ -214,9 +214,12 @@ class Run:
         self._extend(trace_from_spans(spans, run_id=self.trace.run_id))
 
     def ingest(self, trace_or_events: Any) -> None:
-        """Merge a Trace (or list of event dicts) into this run."""
+        """Merge a Trace, a trace dict (``{"events": [...]}``, as written to a
+        trace file) or a list of event dicts into this run."""
         if isinstance(trace_or_events, Trace):
             self._extend(trace_or_events)
+        elif isinstance(trace_or_events, dict):
+            self._extend(Trace.from_dict(trace_or_events))
         else:
             for ev in trace_or_events:
                 self.trace.add_event(**ev)

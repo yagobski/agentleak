@@ -107,10 +107,12 @@ result, because `.env` files and cloud keys routinely end up in tool calls and l
 If the user wants builds to fail on regressions:
 
 ```bash
-agentleak run --trace traces/*.json --fail-on L4
+agentleak run --trace traces/latest.json --fail-under 70
 ```
 
-Non-zero exit code when an L4 finding appears. See `docs/ci-gate.md`.
+Exit code 1 when the privacy score is below 70, and also whenever an L4 value leaks
+(`scoring.block_on_critical`, on by default). `--trace` takes one file; run the
+command once per trace. See `docs/ci-gate.md`.
 
 ---
 

@@ -7,7 +7,7 @@ Supports 6 redaction styles:
 * ``placeholder`` — ``[REDACTED_SSN]``  (default, most readable)
 * ``asterisk``    — ``***-**-****``
 * ``masked``      — ``XXX-XX-6789``  (keeps last 4 for recognition)
-* ``hash``        — SHA-256 of the value, truncated to 16 hex chars
+* ``hash``        — keyed HMAC-SHA-256 of the value, truncated to 16 hex chars
 * ``category``    — ``[PII: SSN]``
 * ``remove``      — delete the token entirely
 * ``token``       — ``[[SSN:3f9a1c2e40]]``, the same pseudonym for the same value
@@ -47,19 +47,28 @@ Usage::
 from __future__ import annotations
 
 import hashlib
+import hmac
+import os
 import re
 from enum import Enum
 from typing import Any
 
 from ..core.transforms import CREDENTIAL_TYPES, decoded_views
-from .tokenizer import Tokenizer
+from .tokenizer import Tokenizer, _key_from_env
+
+# The ``hash`` style was a bare SHA-256 of the value. An SSN has 10^9 possible
+# values and a card number fewer than that once the issuer prefix is known, so
+# the "redacted" digest could be reversed by trying them all. It is now keyed,
+# with the same key as ``token``: random per process, or AGENTLEAK_TOKEN_KEY
+# when a stable digest across processes is wanted.
+_HASH_KEY = _key_from_env() or os.urandom(32)
 
 
 class RedactionStyle(str, Enum):
     PLACEHOLDER = "placeholder"  # [REDACTED_<TYPE>]
     ASTERISK = "asterisk"        # ****
     MASKED = "masked"            # XXX-XX-6789 (last 4 visible)
-    HASH = "hash"                # sha256[:16]
+    HASH = "hash"                # keyed HMAC-SHA-256[:16]
     CATEGORY = "category"        # [PII: SSN]
     REMOVE = "remove"            # deleted
     TOKEN = "token"              # [[SSN:3f9a1c2e40]] — stable keyed pseudonym
@@ -169,7 +178,7 @@ def _redact_value(
         visible = min(4, len(value))
         return "X" * (len(value) - visible) + value[-visible:]
     if style == RedactionStyle.HASH:
-        h = hashlib.sha256(value.encode()).hexdigest()
+        h = hmac.new(_HASH_KEY, value.encode(), hashlib.sha256).hexdigest()
         return h[:16]
     if style == RedactionStyle.CATEGORY:
         return f"[PII: {dtype}]"

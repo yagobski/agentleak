@@ -91,7 +91,18 @@ class AgentLeakClient:
 
     # -- low level ------------------------------------------------------
     def _request(self, method: str, path: str, body: Any | None = None) -> Any:
-        return _http_request(self.base_url, method, path, body, timeout=self.timeout)
+        try:
+            return _http_request(self.base_url, method, path, body, timeout=self.timeout)
+        except AgentLeakError as exc:
+            # This client carries no session. Against a platform with accounts
+            # the bare "401 Not authenticated" left users guessing why.
+            if str(exc).startswith("401"):
+                raise AgentLeakError(
+                    f"{exc} — AgentLeakClient has no sign-in. Start the platform with "
+                    "`agentleak serve --local`, or use AgentSelfClient with a project "
+                    "API key against a platform that has accounts."
+                ) from exc
+            raise
 
     # -- projects -------------------------------------------------------
     def list_projects(self) -> list[dict[str, Any]]:
