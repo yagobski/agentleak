@@ -6,6 +6,63 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+<!-- BEGIN next/detection (detection and sources) -->
+### Added
+
+- **Check-digit validated national identifiers** (`national_id`, level 4):
+  France NIR, Italy codice fiscale, Germany Steuer-ID, Netherlands BSN, Belgium
+  national number, Poland PESEL, Sweden personnummer, Brazil CPF, India Aadhaar,
+  Australia TFN, plus the UK NHS number (`health_identifier`) and Brazil CNPJ
+  (`business_identifier`, level 1). 15 rules in `detectors/national_ids.py`,
+  algorithms in `detectors/checksums.py`; formats that are not distinctive on
+  their own also need their naming keyword.
+- **42 provider token rules** for 41 providers in `detectors/secret_rules.py`
+  (GitLab, npm, PyPI, Docker Hub, Hugging Face, DigitalOcean, Databricks,
+  Cloudflare, Shopify, Telegram, Discord, Twilio, SendGrid, Azure, GCP, AWS STS,
+  Slack webhooks and more), cross-checked against gitleaks (MIT) and
+  detect-secrets (Apache-2.0); key=value connection strings; password key names
+  in French, Spanish, Portuguese, German and Italian.
+- **Multilingual field names** in the key-name detector (FR, ES, DE, PT, IT),
+  snake_case prefixes (`current_salary`) and symptom fields; international,
+  French and labelled phone numbers; dates of birth in six languages and with
+  month names; pay figures that say gross or net; French conditions and
+  medications.
+- **Encoded leaks**: HTML entities, JSON/Python unicode escapes, zero-width
+  padding, homoglyph and fullwidth forms, gzip/zlib inside base64, and
+  leetspeak (anchored). `scripts/encoded_leaks.py` reports them in their own
+  rows: 7 of 40 cells on 0.18.0, 40 of 40 now.
+- **InjecAgent pack** (`injecagent_ds`, 96 scenarios, MIT): data stealing
+  through injected tool responses, with canaries and a verified clean
+  counterpart. Bundled scenarios: 266 → 362.
+- **Measurement**: French quality set and page, 82 hard negatives reported by
+  `scripts/detection_quality.py`, credential coverage
+  (`scripts/detection_quality_secrets.py`), scan throughput
+  (`scripts/detection_throughput.py`), `docs/detection-sources.md`, and a
+  linear-time guard test for every detector and decoder.
+- `Finding.metadata["rule"]` names the rule that produced a regex finding.
+
+### Changed
+
+- IBANs must pass ISO 13616 (registered country, exact length, mod 97). 23
+  AgentDojo banking scenarios move from "High risk" to "Conditional pass":
+  the attacker's `US13 3000 …` account had been counted as a leaked IBAN.
+- Payment cards need a network IIN range as well as Luhn; SSNs that are never
+  issued (area 000/666, group 00, serial 0000) are not reported; an
+  unlabelled space-separated SIN must pass Luhn.
+- Symptom fields (`chief_complaint`) count as health data, which grows the
+  observed vault of two `agentleak_bench` scenarios (High risk → Conditional
+  pass). Built-in scenario scores, including the quickstart 0.44, are unchanged.
+
+### Fixed
+
+- False positives on phone-shaped order numbers, version strings read as IPs,
+  `2022-02-22:11:30:00` timestamps read as IPv6, placeholder keys
+  (`sk-xxxx…`, `${VAR}`), credential-less `localhost` DSNs, and matches inside
+  base64 blobs: 25 of 82 hard negatives flagged on 0.18.0, 0 now.
+- Quadratic patterns (secret assignments, URL credentials, emails, URL-encoded
+  runs) that took seconds on a long token now scan in linear time.
+<!-- END next/detection -->
+
 ## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.
