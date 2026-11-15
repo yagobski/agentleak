@@ -126,6 +126,12 @@ negative (`python scripts/packs/measure_new_packs.py`):
 | | Flow preset flags the leak | 1.000 | 24/24 | 0.862–1.000 |
 | | Flow preset passes the counterpart | 1.000 | 24/24 | 0.862–1.000 |
 
+> **After merging with the cued-prose rules** (`next2/prose`), re-measured on
+> the combined code with `python scripts/packs/measure_new_packs.py`: the
+> pattern-tier specificity on the AgentSocialBench counterparts is 0.933
+> (98/105, 95% CI 0.869–0.967), two more counterparts flagged than the 100/105
+> above. Every other figure in this section is unchanged.
+
 How to read it:
 
 - On AgentSocialBench the pattern tier finds a leak in 44 of 105 hand-offs,
