@@ -403,3 +403,20 @@ def test_action_never_pastes_inputs_into_shell_source() -> None:
     for step in action["runs"]["steps"]:
         script = step.get("run", "")
         assert not re.search(r"\$\{\{\s*inputs\.", script), step.get("name")
+
+
+# ----------------------------------------------------------------------
+# QA-14: `redact --style hash` was an unkeyed SHA-256, reversible by brute force
+# ----------------------------------------------------------------------
+
+
+def test_hash_redaction_is_not_a_plain_sha256() -> None:
+    import hashlib
+
+    from agentleak.defenses import sanitize_text
+
+    ssn = "412-55-9087"
+    out = sanitize_text(f"SSN: {ssn}", style="hash")
+    assert hashlib.sha256(ssn.encode()).hexdigest()[:16] not in out
+    # Still stable within a process, so equal values stay linkable in one log.
+    assert out == sanitize_text(f"SSN: {ssn}", style="hash")
