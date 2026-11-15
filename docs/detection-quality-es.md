@@ -38,48 +38,40 @@ never the fixture's fault. No value belongs to a real person.
 
 ## How to read the result
 
-**Recall is 0.582 in both conditions** (64/110). The structured figure is not
-a rounding coincidence: it is the same values found and the same values
-missed. In English the field name lifts recall from 0.574 (prose) to 0.926
-(structured), because the key-name detector reads `phone`, `salary`,
-`date_of_birth`, `address`. Its stems are English, so a Spanish-language
-agent's tool call (`{"telefono": …}`, `{"salario": …}`,
-`{"fecha_nacimiento": …}`) gets none of that lift. That is the largest single
-gap on this page.
+**Structured recall is 1.000** (110/110) and **prose recall 0.746** (82/110).
+In 0.18.0 both were 0.727 (80/110): the Spanish field name gave no lift,
+because the key-name detector only read English stems. It now reads the main
+sensitive field names in French, Spanish, German, Portuguese and Italian
+(`telefono`, `salario`, `fecha_nacimiento`, `direccion`, `diagnostico`…), which
+is all of the structured gain. Those stems were written knowing this set's
+field names, so the structured figure confirms the stems are in place; it is
+not an independent estimate.
+
+**Prose moved by two values, both salaries:** "1.800 € netos" and "45.000
+euros brutos" say they are pay, which the new gross/net rule reads. Phone recall
+is unchanged at 6/10, but one fewer phone comes out as the wrong type: a
+space-separated 3-3-3 run (`922 123 456`) must now pass the SIN's Luhn check
+to be called a SIN, so it is a plain miss rather than a mislabelled finding.
+The hyphenated `628-111-222` is still reported as a SIN, because that is the
+SIN's own print format. Without the country code or the word "teléfono", a bare
+Spanish number is not found, which is the documented choice.
 
 **Types that validate themselves are language-independent:** email, card,
-IBAN and DNI/NIE are at 1.000 in both conditions.
+IBAN, DNI/NIE and NUSS are at 1.000 in both conditions.
 
-**False positives: zero** across the twenty Spanish controls.
+**False positives: zero** across the twenty Spanish controls, and zero across
+the language-neutral hard negatives on the
+[English page](detection-quality.md#hard-negatives).
 
-The misses, by cause:
+The remaining prose misses, by cause:
 
-- `address` 0/10: a Spanish address puts the street type first and the number
-  after the name ("Calle Alcalá 120"), which neither the USPS nor the Québec
-  shape covers.
-- `spanish_social_security_number` 0/8: no detector for the NUSS yet.
-- `date_of_birth` 0/8 and `salary` 0/8: the same as English prose, by design (a
-  bare date or amount is indistinguishable from any other), and here also in
-  the structured condition because the key is Spanish.
-- `phone_number` 6/10: with `+34`/`0034` every grouping is found. Without the
-  country code, `612 34 56 78` and `655123456` give nothing, and the 3-3-3
-  forms (`922 123 456`) come out as `sin`, which is the documented choice for
-  an ambiguous bare run.
-- `person_name` 8/12: two causes. The gazetteer does not fold accents, so
-  "Maria Lopez Hernandez" is found and "María López Hernández" is not, and
-  "José Antonio García Pérez" is found as "Antonio García Pérez". And some
-  common Spanish given names are not in it (Lucía, Manuel, Pilar).
-- `health_condition` 8/10 and `medication` 6/8: dictionary gaps (`asma`,
-  `insuficiencia renal`; `enalapril`, `salbutamol`).
-
-**What the open Spanish PRs would change.** With #27, #28 and #29 merged the
-same set gives **0.727** (80/110) in both conditions, still with zero false
-positives: `address` 8/10 (the two misses are `Pº de Gracia 21`, an
-abbreviation it doesn't know, and `Calle Real s/n`, which has no number) and
-`spanish_social_security_number` 8/8. #27 fixes a false positive and doesn't
-move recall. Read the 8/8 with care: the NUSS values and that detector apply
-the same published rule. The addresses were written independently of #28's
-tests, but by the same hand.
+- `date_of_birth` 0/8 and `salary` 2/8: a bare date or amount with no
+  cue is indistinguishable from any other, by design.
+- `phone_number`: national numbers with no `+34`/`0034` and no label.
+- `person_name`: the gazetteer does not fold accents, and some common Spanish
+  given names are not in it.
+- `health_condition` and `medication`: dictionary gaps (`asma` and `litio` are
+  left out on purpose, see `detectors/healthcare.py`).
 
 **Small samples.** With eight to twelve values per type the intervals are
 wide (a 1.000 on eight values has a lower bound of 0.676). The page is useful
@@ -87,36 +79,36 @@ for the shape of the result (which types, which causes), not for decimals.
 
 ## Results
 
-AgentLeak 0.17.0 · language: es · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.18.0 · language: es · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
-Ground truth: made-up labelled Spanish values in `scripts/detection_quality_es.json`.
+Ground truth: made-up labelled Spanish values in scripts/detection_quality_es.json.
 
 ### Structured
 
-**Recall 0.582** (64/110, 95% CI 0.488–0.670)
+**Recall 1.000** (110/110, 95% CI 0.966–1.000)
 
 | Data type | Recall | 95% CI | Found | Wrong type | Missed | n |
 |---|---:|---|---:|---:|---:|---:|
-| `address` | 0.000 | 0.000–0.278 | 0 | 0 | 10 | 10 |
+| `address` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
 | `credit_card` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
-| `date_of_birth` | 0.000 | 0.000–0.324 | 0 | 0 | 8 | 8 |
+| `date_of_birth` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
 | `email` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
-| `health_condition` | 0.800 | 0.490–0.943 | 8 | 0 | 2 | 10 |
+| `health_condition` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
 | `iban` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
-| `medication` | 0.750 | 0.409–0.928 | 6 | 0 | 2 | 8 |
-| `person_name` | 0.667 | 0.391–0.862 | 8 | 0 | 4 | 12 |
-| `phone_number` | 0.600 | 0.313–0.832 | 6 | 2 (`sin`) | 2 | 10 |
-| `salary` | 0.000 | 0.000–0.324 | 0 | 0 | 8 | 8 |
+| `medication` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
+| `person_name` | 1.000 | 0.757–1.000 | 12 | 0 | 0 | 12 |
+| `phone_number` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
+| `salary` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
 | `spanish_national_id` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
-| `spanish_social_security_number` | 0.000 | 0.000–0.324 | 0 | 0 | 8 | 8 |
+| `spanish_social_security_number` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
 
 ### Prose
 
-**Recall 0.582** (64/110, 95% CI 0.488–0.670)
+**Recall 0.746** (82/110, 95% CI 0.657–0.818)
 
 | Data type | Recall | 95% CI | Found | Wrong type | Missed | n |
 |---|---:|---|---:|---:|---:|---:|
-| `address` | 0.000 | 0.000–0.278 | 0 | 0 | 10 | 10 |
+| `address` | 0.800 | 0.490–0.943 | 8 | 0 | 2 | 10 |
 | `credit_card` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
 | `date_of_birth` | 0.000 | 0.000–0.324 | 0 | 0 | 8 | 8 |
 | `email` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
@@ -124,16 +116,16 @@ Ground truth: made-up labelled Spanish values in `scripts/detection_quality_es.j
 | `iban` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
 | `medication` | 0.750 | 0.409–0.928 | 6 | 0 | 2 | 8 |
 | `person_name` | 0.667 | 0.391–0.862 | 8 | 0 | 4 | 12 |
-| `phone_number` | 0.600 | 0.313–0.832 | 6 | 2 (`sin`) | 2 | 10 |
-| `salary` | 0.000 | 0.000–0.324 | 0 | 0 | 8 | 8 |
+| `phone_number` | 0.600 | 0.313–0.832 | 6 | 1 (`sin`) | 3 | 10 |
+| `salary` | 0.250 | 0.071–0.591 | 2 | 0 | 6 | 8 |
 | `spanish_national_id` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
-| `spanish_social_security_number` | 0.000 | 0.000–0.324 | 0 | 0 | 8 | 8 |
+| `spanish_social_security_number` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
 
 ### False positives
 
-0 detection(s) across 20 benign control texts (0.0 per text). Independent
-negatives: the English controls translated, plus ordinary Spanish sentences.
-Never pool them with recall.
+0 detection(s) across 20 benign control texts (0.0 per text). Independent negatives: the English controls translated, plus ordinary Spanish sentences. Never pool them with recall.
+
+Reproduce with `python scripts/detection_quality_es.py`.
 
 ## Reproducing
 

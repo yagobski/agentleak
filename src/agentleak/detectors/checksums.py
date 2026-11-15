@@ -14,7 +14,6 @@ follows. No code or data was copied from another implementation.
 
 from __future__ import annotations
 
-import datetime
 import re
 import zlib
 
@@ -279,6 +278,9 @@ def nl_bsn(value: str) -> bool:
     return total % 11 == 0
 
 
+_BE_2000_CUTOFF = 30  # two-digit years below this may be 20YY births
+
+
 def be_national_number(value: str) -> bool:
     """Belgian national register number: YYMMDD + 3-digit counter + 2-digit
     key, key = 97 - (first nine mod 97); for births from 2000 the nine digits
@@ -289,9 +291,9 @@ def be_national_number(value: str) -> bool:
     base, key = int(d[:9]), int(d[9:])
     if 97 - base % 97 == key:
         return True
-    # The "2" prefix marks a birth in 2000 or later, so the year cannot be in
-    # the future.
-    return 2000 + int(d[:2]) <= datetime.date.today().year and 97 - int("2" + d[:9]) % 97 == key
+    # The "2" prefix marks a birth in 2000 or later. A fixed cutoff, not
+    # today's date: detection must give the same answer on every day it runs.
+    return int(d[:2]) < _BE_2000_CUTOFF and 97 - int("2" + d[:9]) % 97 == key
 
 
 def pl_pesel(value: str) -> bool:
@@ -364,14 +366,6 @@ def au_tfn(value: str) -> bool:
     return sum(int(c) * w for c, w in zip(d, weights, strict=True)) % 11 == 0
 
 
-def plausible_date(year: int, month: int, day: int) -> bool:
-    try:
-        datetime.date(year, month, day)
-    except ValueError:
-        return False
-    return True
-
-
 # ---------------------------------------------------------------------------
 # Token checksums
 # ---------------------------------------------------------------------------
@@ -401,6 +395,6 @@ __all__ = [
     "IBAN_LENGTHS", "au_tfn", "base62", "be_national_number", "br_cnpj", "br_cpf",
     "ca_sin", "card_network", "compact", "crc32_token", "de_steuer_id", "fr_nir",
     "iban", "in_aadhaar", "iso7064_mod97", "it_codice_fiscale", "luhn", "nl_bsn",
-    "payment_card", "pl_pesel", "plausible_date", "se_personnummer", "uk_nhs",
+    "payment_card", "pl_pesel", "se_personnummer", "uk_nhs",
     "us_ssn", "verhoeff",
 ]
