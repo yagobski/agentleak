@@ -58,14 +58,16 @@ in findings by default.
 
 ## The tools
 
-Four MCP tools (same engine as the CLI):
+The preflight tools (same engine as the CLI; `agentleak mcp` also serves the
+self-test loop: `privacy_selftest`, `privacy_selftest_status`,
+`privacy_explain_finding`, `privacy_list_scenarios`, `privacy_get_scenario`):
 
 | Tool | What it does |
 |---|---|
 | `privacy_preflight(path=".", trace=None)` | Check a project before shipping. Reports what changed **since your last check** (the delta tells you whether your last fix held). Optional trace dict is scored across all eight channels in the same call. |
-| `scan_code(path=".")` | Static scan of source: secrets, PII in logs, unsafe sends. |
-| `check_trace(trace)` | Score one agent run across all eight channels. |
-| `redact(text, style="placeholder")` | Strip sensitive values out of text before it goes anywhere. |
+| `privacy_scan_code(path=".")` | Static scan of source: secrets, PII in logs, unsafe sends. |
+| `privacy_check_trace(trace)` | Score one agent run across all eight channels. |
+| `privacy_redact(text, style="placeholder")` | Strip sensitive values out of text before it goes anywhere. |
 
 `privacy_preflight` returns a `verdict`:
 
@@ -83,10 +85,10 @@ equivalent.
 ## The loop: check → redact → retry
 
 1. **Check.** `privacy_preflight` (MCP) or `agentleak scan .` (CLI) on the
-   working tree; `check_trace` (MCP) or `agentleak scan --trace run.json`
+   working tree; `privacy_selftest` (MCP) or `agentleak selftest --trace run.json`
    on the execution trace.
 2. **Redact.** For each finding, either remove the value at the source or
-   pass the text through `redact`. Do not just delete the finding from the
+   pass the text through `privacy_redact`. Do not just delete the finding from the
    report.
 3. **Retry.** Re-run the check. The `since_last` delta in the new
    `privacy_preflight` result must show the findings gone. Repeat until the
@@ -106,10 +108,11 @@ Severity levels: **L4** (health data, SIN/SSN, cards, credentials) >
 CI gate equivalent:
 
 ```bash
-agentleak run --trace traces/*.json --fail-on L4   # non-zero exit on L4
+agentleak selftest --trace traces/ --fail-on L4    # exit 1 on any L4 finding
 ```
 
-Detection modes (`--mode`): `fast` (regex/dictionary only — sub-second,
+Detection modes (`agentleak scan --mode`, or `detection.mode` in
+`agentleak.yaml` for traces): `fast` (regex/dictionary only — sub-second,
 good as the default reflex), `standard` (adds Presidio NER),
 `hybrid` (adds the LLM judge, BYOK, for paraphrased or contextual leaks).
 
@@ -117,9 +120,9 @@ good as the default reflex), `standard` (adds Presidio NER),
 
 ```bash
 agentleak scan .                                   # code + logs + unsafe sends
-agentleak scan --trace path/to/trace.json          # one run, eight channels
-agentleak scan --scenario healthcare_patient_summary  # smoke test, no user data
-agentleak run --trace traces/*.json --format json,html,markdown
+agentleak selftest --trace path/to/trace.json      # one run, eight channels, JSON + fixes
+agentleak selftest                                 # smoke test of the engine, no user data
+agentleak run --trace path/to/trace.json --format json,html,markdown
 ```
 
 Python:

@@ -1,5 +1,5 @@
 {
-  "software_version": "0.17.0",
+  "software_version": "0.19.0",
   "language": "es",
   "detector_tier": "fast (deterministic: regex + dictionaries)",
   "tiers_not_run": [
@@ -9,24 +9,24 @@
   "source": "made-up labelled Spanish values in scripts/detection_quality_es.json",
   "conditions": {
     "structured": {
-      "recall": 0.5818,
+      "recall": 1.0,
       "ci95": [
-        0.4884,
-        0.6697
+        0.9663,
+        1.0
       ],
-      "numerator": 64,
+      "numerator": 110,
       "denominator": 110,
       "by_data_type": [
         {
           "data_type": "address",
-          "recall": 0.0,
+          "recall": 1.0,
           "ci95": [
-            0.0,
-            0.2775
+            0.7225,
+            1.0
           ],
-          "hit": 0,
+          "hit": 10,
           "type_confused": 0,
-          "missed": 10,
+          "missed": 0,
           "labelled_values": 10,
           "confused_as": {}
         },
@@ -45,14 +45,14 @@
         },
         {
           "data_type": "date_of_birth",
-          "recall": 0.0,
+          "recall": 1.0,
           "ci95": [
-            0.0,
-            0.3244
+            0.6756,
+            1.0
           ],
-          "hit": 0,
+          "hit": 8,
           "type_confused": 0,
-          "missed": 8,
+          "missed": 0,
           "labelled_values": 8,
           "confused_as": {}
         },
@@ -71,14 +71,14 @@
         },
         {
           "data_type": "health_condition",
-          "recall": 0.8,
+          "recall": 1.0,
           "ci95": [
-            0.4902,
-            0.9433
+            0.7225,
+            1.0
           ],
-          "hit": 8,
+          "hit": 10,
           "type_confused": 0,
-          "missed": 2,
+          "missed": 0,
           "labelled_values": 10,
           "confused_as": {}
         },
@@ -97,55 +97,53 @@
         },
         {
           "data_type": "medication",
-          "recall": 0.75,
+          "recall": 1.0,
           "ci95": [
-            0.4093,
-            0.9285
+            0.6756,
+            1.0
           ],
-          "hit": 6,
+          "hit": 8,
           "type_confused": 0,
-          "missed": 2,
+          "missed": 0,
           "labelled_values": 8,
           "confused_as": {}
         },
         {
           "data_type": "person_name",
-          "recall": 0.6667,
+          "recall": 1.0,
           "ci95": [
-            0.3906,
-            0.8619
+            0.7575,
+            1.0
           ],
-          "hit": 8,
+          "hit": 12,
           "type_confused": 0,
-          "missed": 4,
+          "missed": 0,
           "labelled_values": 12,
           "confused_as": {}
         },
         {
           "data_type": "phone_number",
-          "recall": 0.6,
+          "recall": 1.0,
           "ci95": [
-            0.3127,
-            0.8318
+            0.7225,
+            1.0
           ],
-          "hit": 6,
-          "type_confused": 2,
-          "missed": 2,
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
           "labelled_values": 10,
-          "confused_as": {
-            "sin": 2
-          }
+          "confused_as": {}
         },
         {
           "data_type": "salary",
-          "recall": 0.0,
+          "recall": 1.0,
           "ci95": [
-            0.0,
-            0.3244
+            0.6756,
+            1.0
           ],
-          "hit": 0,
+          "hit": 8,
           "type_confused": 0,
-          "missed": 8,
+          "missed": 0,
           "labelled_values": 8,
           "confused_as": {}
         },
@@ -164,38 +162,38 @@
         },
         {
           "data_type": "spanish_social_security_number",
-          "recall": 0.0,
+          "recall": 1.0,
           "ci95": [
-            0.0,
-            0.3244
+            0.6756,
+            1.0
           ],
-          "hit": 0,
+          "hit": 8,
           "type_confused": 0,
-          "missed": 8,
+          "missed": 0,
           "labelled_values": 8,
           "confused_as": {}
         }
       ]
     },
     "prose": {
-      "recall": 0.5818,
+      "recall": 0.7455,
       "ci95": [
-        0.4884,
-        0.6697
+        0.6567,
+        0.8176
       ],
-      "numerator": 64,
+      "numerator": 82,
       "denominator": 110,
       "by_data_type": [
         {
           "data_type": "address",
-          "recall": 0.0,
+          "recall": 0.8,
           "ci95": [
-            0.0,
-            0.2775
+            0.4902,
+            0.9433
           ],
-          "hit": 0,
+          "hit": 8,
           "type_confused": 0,
-          "missed": 10,
+          "missed": 2,
           "labelled_values": 10,
           "confused_as": {}
         },
@@ -298,23 +296,23 @@
             0.8318
           ],
           "hit": 6,
-          "type_confused": 2,
-          "missed": 2,
+          "type_confused": 1,
+          "missed": 3,
           "labelled_values": 10,
           "confused_as": {
-            "sin": 2
+            "sin": 1
           }
         },
         {
           "data_type": "salary",
-          "recall": 0.0,
+          "recall": 0.25,
           "ci95": [
-            0.0,
-            0.3244
+            0.0715,
+            0.5907
           ],
-          "hit": 0,
+          "hit": 2,
           "type_confused": 0,
-          "missed": 8,
+          "missed": 6,
           "labelled_values": 8,
           "confused_as": {}
         },
@@ -333,14 +331,14 @@
         },
         {
           "data_type": "spanish_social_security_number",
-          "recall": 0.0,
+          "recall": 1.0,
           "ci95": [
-            0.0,
-            0.3244
+            0.6756,
+            1.0
           ],
-          "hit": 0,
+          "hit": 8,
           "type_confused": 0,
-          "missed": 8,
+          "missed": 0,
           "labelled_values": 8,
           "confused_as": {}
         }

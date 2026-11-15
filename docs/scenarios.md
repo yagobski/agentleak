@@ -158,7 +158,7 @@ realistic, leaky one (see *Conversion* below).
 
 ## Scenario packs
 
-A **pack** is a curated, importable bundle. Three ship with AgentLeak, and each
+A **pack** is a curated, importable bundle. Four ship with AgentLeak, and each
 declares its source, source URL, licence and attribution:
 
 | Pack | Source | Contents |
@@ -166,11 +166,15 @@ declares its source, source URL, licence and attribution:
 | **AgentLeak Bench** (`agentleak_bench`) | AgentLeak benchmark (El Yagoubi et al., IEEE Access 2026) — MIT | 36 scenarios — healthcare / finance / legal / corporate × adversary levels A0/A1/A2 |
 | **PrivacyLens** (`privacylens_ci`) | [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) — NeurIPS 2024 D&B, CC-BY-4.0 | 120 contextual-integrity scenarios: the agent pulls private context in through its tools, then acts toward a recipient the norm says must not receive it |
 | **AgentDojo** (`agentdojo_exfil`) | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo) — NeurIPS 2024 D&B, MIT | 100 prompt-injection exfiltrations: a planted instruction turns the agent's own tools into the leak path |
+| **InjecAgent** (`injecagent_ds`) | [uiuc-kang-lab/InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) — Findings of ACL 2024, MIT | 96 data-stealing injections: an instruction in a tool response makes the agent read private data with a second tool (32 attacker goals: payment methods, prescriptions, genetic data, saved passwords, location…) and e-mail it out, across 17 user tools |
 
 Together they cover three different ways an agent leaks: **by pattern** (a value
 a detector can recognise), **by norm** (a fact that should not have travelled to
 that recipient), and **by hijack** (an injected instruction that redirects the
 agent's tools).
+InjecAgent adds breadth to the hijack case: AgentDojo's four suites become 17
+user tools and 32 private-data tools, each in a base and an "enhanced" attack
+wording.
 
 List them from the CLI, import them from the GUI (**Import pack**) or
 `POST /api/scenario-packs/{id}/import`. Imports are **idempotent** —
@@ -194,6 +198,20 @@ To add your own pack, drop a JSON file in `agentleak/scenarios/packs/` shaped li
 Packs derived from a third-party dataset also carry `source_url`, `license` and
 `attribution`; those fields are displayed everywhere the pack appears (CLI,
 `GET /api/scenario-packs`, the Scenarios page) because the licence requires it.
+
+### InjecAgent: the attacker reads the data, then sends it
+
+Each scenario is the run where the agent complies: the user's tool call, its
+response carrying the planted instruction, the attacker's data tool and the
+private data it returns (a `tool_response`, so a source, not a leak), then the
+`GmailSendEmail` call that carries that data to the attacker (a `tool_call`,
+the leak). The stolen values ship as canaries. A canary is never a value the
+run showed before the attack, so the same trace with the two attacker steps
+removed — the agent that ignored the injection — scores no canary; the tests
+check both directions.
+
+Building this pack found a detector bug that 0.18.0 shipped: timestamps written
+`2022-02-22:11:30:00` were reported as IPv6 addresses.
 
 ### PrivacyLens: leaks a pattern cannot see
 

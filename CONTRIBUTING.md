@@ -53,6 +53,7 @@ npm install
 npm run dev          # Vite dev server; proxies /api → http://127.0.0.1:8000
                      # In another terminal: `agentleak serve`
 npm run build        # type-check + build into ../static
+npm test             # vitest: pure-logic tests of the result views
 ```
 
 After changing the frontend, run `npm run build` and commit the updated
@@ -138,8 +139,9 @@ regression here will be caught by CI:
 - **Presidio detector** (`src/agentleak/detectors/presidio_detector.py`, ~17%
   coverage) — only exercised when the optional `presidio` extra is installed
   and its NER model downloaded; the default test run stubs/skips it.
-- **Frontend/browser rendering** (`src/agentleak/web/frontend/`) — no headless
-  browser tests; only the built static bundle and backend API are covered.
+- **Frontend/browser rendering** (`src/agentleak/web/frontend/`) — `npm test`
+  covers the result-view logic (channel verdicts, score derivation, trace
+  reconstruction, run comparison); there are no headless browser tests in CI.
 - **Live external LLM calls** — all LLM-backed tests (orchestrator, runner,
   `llm.py`) mock `urllib.request.urlopen`; nothing in the suite makes a real
   network call to OpenRouter/OpenAI-compatible endpoints. Run with

@@ -28,6 +28,7 @@ import os
 from typing import Any
 
 from ..core.detector import Detector, RawMatch, Severity
+from ..core.netguard import open_model_url
 
 # The system prompt instructs the LLM to behave as a structured privacy auditor.
 _SYSTEM_PROMPT = """\
@@ -169,7 +170,7 @@ class LLMJudgeDetector(Detector):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+            with open_model_url(req, timeout=self._timeout) as resp:
                 payload = _json.loads(resp.read().decode())
         except Exception:
             return []

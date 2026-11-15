@@ -77,6 +77,9 @@ class RawMatch:
     matched_value: str
     recommendation: str = ""
     detector: str = ""
+    # Which rule inside the detector fired (``gitlab_pat``, ``fr_nir``…), so a
+    # finding can say exactly which pattern and which validator produced it.
+    rule: str = ""
 
     def __post_init__(self) -> None:
         self.severity = coerce_severity(self.severity)
@@ -152,6 +155,7 @@ class Detector:
         confidence: float,
         matched_value: str,
         recommendation: str = "",
+        rule: str = "",
     ) -> RawMatch:
         return RawMatch(
             data_type=data_type,
@@ -160,4 +164,5 @@ class Detector:
             matched_value=matched_value,
             recommendation=recommendation,
             detector=self.name,
+            rule=rule,
         )

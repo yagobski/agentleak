@@ -81,11 +81,15 @@ runs:
 
     - name: Install AgentLeak
       shell: bash
+      # Through env, not ${{ }} in the script: an expression is pasted into the
+      # shell source before it runs, so a crafted version string would execute.
+      env:
+        AL_VERSION: ${{ inputs.version }}
       run: |
-        if [ "${{ inputs.version }}" = "latest" ]; then
+        if [ "$AL_VERSION" = "latest" ]; then
           pip install --quiet --upgrade agentleak
         else
-          pip install --quiet "agentleak==${{ inputs.version }}"
+          pip install --quiet "agentleak==$AL_VERSION"
         fi
         agentleak version
 

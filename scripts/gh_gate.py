@@ -32,12 +32,30 @@ def _env(name: str, default: str = "") -> str:
     return os.environ.get(name, default).strip()
 
 
+def _escape_data(value: str) -> str:
+    """Workflow-command message escaping, as GitHub's toolkit does it.
+
+    ``%`` first, so a literal ``%0A`` in a finding stays text; ``\r`` and
+    ``\n`` would otherwise end the command and start a new one on the next
+    line, which is how a crafted file name or data type injects commands.
+    """
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _escape_property(value: str) -> str:
+    """Property values also reserve ``,`` (between properties) and ``::``
+    (end of properties). A lone ``:`` is left readable, as in titles such as
+    "AgentLeak L4: ssn in log"; the runner only splits on ``::``."""
+    return _escape_data(value).replace(",", "%2C").replace("::", "%3A%3A")
+
+
 def _emit(kind: str, message: str, **props: Any) -> None:
     """Write one GitHub workflow command (annotation)."""
-    parts = ",".join(f"{k}={v}" for k, v in props.items() if v not in (None, ""))
+    parts = ",".join(
+        f"{k}={_escape_property(str(v))}" for k, v in props.items() if v not in (None, "")
+    )
     prefix = f"::{kind} {parts}::" if parts else f"::{kind}::"
-    # Newlines would end the command early; GitHub decodes %0A back to one.
-    print(prefix + message.replace("\n", "%0A"))
+    print(prefix + _escape_data(message))
 
 
 def _set_output(name: str, value: Any) -> None:
@@ -135,7 +153,12 @@ def _summarize_trace(report: dict[str, Any], threshold: int, blocked: bool) -> s
         lines += [note, ""]
 
     compliance = report.get("compliance", {})
-    failed = compliance.get("failed_frameworks") or []
+    # The report keeps them under compliance.posture; the flat key is older.
+    failed = (
+        (compliance.get("posture") or {}).get("failed_frameworks")
+        or compliance.get("failed_frameworks")
+        or []
+    )
     if failed:
         lines.append(f"**Compliance at risk:** {', '.join(str(f) for f in failed[:6])}")
         lines.append("")
@@ -236,9 +259,19 @@ def main() -> int:
 
     exit_code = _run_cli(args)
 
+    others: list[dict[str, Any]] = []
     if not is_scan:
         produced = sorted(workdir.glob("*.json"))
         report_path = produced[0] if produced else None
+        if len(produced) > 1:
+            # `scenario: all` and `pack` write one report per run. Reading only
+            # the first (alphabetically) let a clean run speak for the batch:
+            # outputs and summary said Pass while the exit code said Fail.
+            # Headline the worst run and count every run's findings.
+            loaded = [(p, json.loads(p.read_text(encoding="utf-8"))) for p in produced]
+            loaded.sort(key=lambda pr: (int(pr[1].get("privacy_score", 0)), str(pr[0])))
+            report_path = loaded[0][0]
+            others = [r for _, r in loaded[1:]]
 
     if report_path is None or not Path(report_path).exists():
         _emit(
@@ -249,6 +282,9 @@ def main() -> int:
         return exit_code or 1
 
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+    total_findings = len(report.get("findings", [])) + sum(
+        len(r.get("findings", [])) for r in others
+    )
 
     if is_scan:
         score = int(report.get("score", 0))
@@ -265,12 +301,19 @@ def main() -> int:
         if annotate:
             _annotate_trace(report)
         if summarize:
-            _write_summary(_summarize_trace(report, threshold, bool(report.get("blocked"))))
+            text = _summarize_trace(report, threshold, bool(report.get("blocked")))
+            if others:
+                blocked_runs = sum(bool(r.get("blocked")) for r in [report, *others])
+                text = (
+                    f"{len(others) + 1} runs analyzed, {blocked_runs} blocked. "
+                    f"Showing the lowest-scoring run, `{report.get('run_id', '?')}`.\n\n" + text
+                )
+            _write_summary(text)
 
     _set_output("score", score)
     _set_output("risk-index", risk)
     _set_output("verdict", verdict)
-    _set_output("findings", len(report.get("findings", [])))
+    _set_output("findings", total_findings)
     _set_output("report", str(report_path))
 
     if exit_code != 0:

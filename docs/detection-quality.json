@@ -1,5 +1,5 @@
 {
-  "software_version": "0.17.0",
+  "software_version": "0.19.0",
   "detector_tier": "fast (deterministic: regex + dictionaries)",
   "tiers_not_run": [
     "presidio",
@@ -8,12 +8,12 @@
   "source": "private_vault records in the bundled scenario packs",
   "conditions": {
     "structured": {
-      "recall": 0.9259,
+      "recall": 1.0,
       "ci95": [
-        0.895,
-        0.9483
+        0.9899,
+        1.0
       ],
-      "numerator": 350,
+      "numerator": 378,
       "denominator": 378,
       "by_data_type": [
         {
@@ -70,14 +70,14 @@
         },
         {
           "data_type": "health_condition",
-          "recall": 0.6667,
+          "recall": 1.0,
           "ci95": [
-            0.4171,
-            0.8482
+            0.7961,
+            1.0
           ],
-          "hit": 10,
+          "hit": 15,
           "type_confused": 0,
-          "missed": 5,
+          "missed": 0,
           "labelled_values": 15,
           "confused_as": {}
         },
@@ -109,14 +109,14 @@
         },
         {
           "data_type": "salary",
-          "recall": 0.3429,
+          "recall": 1.0,
           "ci95": [
-            0.2083,
-            0.5085
+            0.9011,
+            1.0
           ],
-          "hit": 12,
+          "hit": 35,
           "type_confused": 0,
-          "missed": 23,
+          "missed": 0,
           "labelled_values": 35,
           "confused_as": {}
         },
@@ -270,6 +270,150 @@
     "rate_per_text": 0.0,
     "detail": [],
     "note": "Independent negatives \u2014 ordinary operational text, not clean counterparts derived from the leaking fixtures. Never pool the two."
+  },
+  "hard_negatives": {
+    "source": "scripts/detection_hard_negatives.json (authored for AgentLeak)",
+    "texts": 82,
+    "flagged": 0,
+    "rate": 0.0,
+    "ci95": [
+      0.0,
+      0.0448
+    ],
+    "by_category": [
+      {
+        "category": "uuid",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "git_sha",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "version",
+        "texts": 6,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3903
+        ]
+      },
+      {
+        "category": "timestamp",
+        "texts": 7,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3543
+        ]
+      },
+      {
+        "category": "order_number",
+        "texts": 9,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.2992
+        ]
+      },
+      {
+        "category": "placeholder_secret",
+        "texts": 12,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.2425
+        ]
+      },
+      {
+        "category": "ip_like_version",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "phone_like_id",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "base64_harmless",
+        "texts": 4,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      {
+        "category": "hash",
+        "texts": 4,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      {
+        "category": "places_prose",
+        "texts": 8,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      {
+        "category": "numbers_misc",
+        "texts": 8,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      {
+        "category": "test_identifiers_obviously_fake",
+        "texts": 4,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      }
+    ],
+    "detail": [],
+    "note": "Share of hard-negative texts with at least one finding from the full fast pipeline (decoding included). Written alongside the precision fixes it measures, so it shows those cases are handled, not that unseen ones are."
   },
   "fixture_integrity": {
     "excluded": 9,

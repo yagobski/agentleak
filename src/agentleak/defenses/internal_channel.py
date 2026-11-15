@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Internal-channel guard — protects inter_agent_message and shared_memory.
 
-The reference paper (IEEE benchmark) found that internal channels (C2, C5)
-leak ~2.6× more than the external channel (C1 final_output). Output-only audits
-miss 45.9% of violations. This guard enforces *clearance levels* on internal
+The reference paper (IEEE Access, 2026) measured leakage in 68.8% of traces on
+inter-agent messages (C2) against 27.2% on the final output (C1), and 41.7% of
+traces had a clean final output with an internal leak. This guard enforces *clearance levels* on internal
 channel content before it leaves an agent boundary.
 
 Model::

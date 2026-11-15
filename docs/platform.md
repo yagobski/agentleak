@@ -49,6 +49,9 @@ The platform is multi-account with an admin console:
   `{"status": "ok", "version": ...}` for load balancers and orchestrators.
 - **Hardening** — security headers on every response, HSTS + Secure cookies
   with `AGENTLEAK_COOKIE_SECURE=1`, timing-safe API-key and password checks.
+  Request bodies over 32 MiB get HTTP 413 (`AGENTLEAK_MAX_BODY_BYTES` to change
+  it, `0` to disable). Custom detector patterns with nested repeats such as
+  `(a+)+` are refused, because Python regexes cannot be timed out.
 
 Admin API: `GET /api/admin/overview`, `GET /api/admin/users`,
 `PATCH /api/admin/users/{id}` (`is_admin` / `disabled`),
@@ -57,7 +60,10 @@ Admin API: `GET /api/admin/overview`, `GET /api/admin/users`,
 ## Connect an agent via the SDK
 
 Create a project (UI or SDK), then push traces from your agent code. Runs appear
-in the platform under that project.
+in the platform under that project. `AgentLeakClient` does not sign in, so it
+needs a single-user platform started with `agentleak serve --local`. Against a
+platform with accounts, use `AgentSelfClient` with the project's API key (see
+[agent-api.md](agent-api.md)).
 
 ```python
 from agentleak import AgentLeakClient, capture, monitor

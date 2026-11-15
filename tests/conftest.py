@@ -35,3 +35,16 @@ def login():
     """Return the :func:`authenticate` helper (usable inside other fixtures)."""
     return authenticate
 
+
+
+@pytest.fixture(autouse=True)
+def _reset_outbound_guard():
+    """The model-endpoint guard is process-wide; a public-mode app turns it on.
+
+    Reset it after every test so one that builds a hosted app cannot make a
+    later test's local fake model endpoint unreachable.
+    """
+    from agentleak.core.netguard import set_outbound_guard
+
+    yield
+    set_outbound_guard(False)

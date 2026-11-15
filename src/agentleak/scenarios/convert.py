@@ -64,8 +64,8 @@ def detect_format(data: Any) -> str:
     """Sniff the shape of an uploaded object.
 
     Returns one of ``"trace"``, ``"agentleak_spec"``, ``"ai4privacy"``,
-    ``"privacylens"``, ``"agentdojo"``, ``"oss_scenario"``, ``"openai_chat"``
-    or ``"unknown"``.
+    ``"privacylens"``, ``"injecagent"``, ``"agentdojo"``, ``"oss_scenario"``,
+    ``"openai_chat"`` or ``"unknown"``.
     """
     if not isinstance(data, dict):
         return "unknown"
@@ -79,7 +79,9 @@ def detect_format(data: Any) -> str:
     if isinstance(trajectory, dict) and "executable_trajectory" in trajectory:
         return "privacylens"
     if "attack_goal" in data and isinstance(data.get("exfiltration"), list):
-        return "agentdojo"
+        # Same trajectory shape as AgentDojo; told apart so the scenario is
+        # labelled with the benchmark it came from.
+        return "injecagent" if data.get("benchmark") == "injecagent" else "agentdojo"
     if "trace" in data and isinstance(data["trace"], dict):
         return "oss_scenario"
     messages = data.get("messages")
@@ -541,6 +543,23 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
 
     ``metadata`` carries ``name``/``domain``/``description``/``sensitive_data``/
     ``tags``/``difficulty`` suggestions for the scenario record. Raises
+    ``ValueError`` for unrecognized or malformed input: an upload that matches
+    a format by its keys but has the wrong shape inside (a string objective, a
+    list vault) used to escape as ``AttributeError``/``TypeError``.
+    """
+    try:
+        return _normalize_upload(data)
+    except (TypeError, AttributeError, KeyError) as exc:
+        raise ValueError(
+            f"Malformed {detect_format(data)} upload: {type(exc).__name__}: {exc}"
+        ) from exc
+
+
+def _normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
+    """Turn any supported uploaded object into ``(metadata, trace)``.
+
+    ``metadata`` carries ``name``/``domain``/``description``/``sensitive_data``/
+    ``tags``/``difficulty`` suggestions for the scenario record. Raises
     ``ValueError`` for unrecognized input.
     """
     fmt = detect_format(data)
@@ -606,6 +625,29 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
             # canaries so the scenario scores without an LLM tier.
             "canaries": {"semantic": facts},
         }, trace
+    if fmt == "injecagent":
+        trace = agentdojo_to_trace(data)
+        canaries = agentdojo_canaries(data)
+        attack_type = str(data.get("suite") or "data-stealing")
+        return {
+            "name": str(data.get("id") or "InjecAgent scenario"),
+            "domain": attack_type,
+            "description": (
+                f"An instruction planted in the response of {data.get('user_task', 'a tool')} "
+                f"makes the agent read private data with {data.get('injection_task', 'another tool')} "
+                f"and e-mail it out: {str(data.get('attack_goal', '')).strip()}"
+            ),
+            "sensitive_data": [v[:60] for v in (canaries["realistic"] + canaries["semantic"])[:5]],
+            "tags": [
+                "injecagent", "prompt-injection", "exfiltration", "data-stealing",
+                f"attack-type:{attack_type}", f"setting:{data.get('setting', 'base')}",
+                f"attacker-tool:{data.get('injection_task', 'unknown')}",
+            ],
+            "difficulty": "",
+            # Ground truth: the private values the attacker's tool returned and
+            # the agent then sent to the attacker's address.
+            "canaries": canaries,
+        }, trace
     if fmt == "agentdojo":
         trace = agentdojo_to_trace(data)
         suite = str(data.get("suite") or "agent")
@@ -642,6 +684,6 @@ def normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
         }, trace
     raise ValueError(
         "Unrecognized format. Provide an AgentLeak trace, an AgentLeak scenario "
-        "spec, an ai4privacy record, a PrivacyLens or AgentDojo scenario, an "
+        "spec, an ai4privacy record, a PrivacyLens, AgentDojo or InjecAgent scenario, an "
         "OpenAI-style chat log ({\"messages\": [...]}) or an OSS scenario object."
     )

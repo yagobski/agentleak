@@ -91,7 +91,18 @@ class AgentLeakClient:
 
     # -- low level ------------------------------------------------------
     def _request(self, method: str, path: str, body: Any | None = None) -> Any:
-        return _http_request(self.base_url, method, path, body, timeout=self.timeout)
+        try:
+            return _http_request(self.base_url, method, path, body, timeout=self.timeout)
+        except AgentLeakError as exc:
+            # This client carries no session. Against a platform with accounts
+            # the bare "401 Not authenticated" left users guessing why.
+            if str(exc).startswith("401"):
+                raise AgentLeakError(
+                    f"{exc} — AgentLeakClient has no sign-in. Start the platform with "
+                    "`agentleak serve --local`, or use AgentSelfClient with a project "
+                    "API key against a platform that has accounts."
+                ) from exc
+            raise
 
     # -- projects -------------------------------------------------------
     def list_projects(self) -> list[dict[str, Any]]:
@@ -204,9 +215,54 @@ class AgentSelfClient:
         return self._request("POST", "/api/agent/code", payload)
 
     # -- self-test / improvement loop --------------------------------------
-    def selftest(self, trace: Any = None, *, scenario_id: str | None = None) -> dict[str, Any]:
-        """Run one self-test (report + passed/compliant, run auto-saved)."""
-        return self._request("POST", "/api/selftest-header", self._test_body(trace, scenario_id))
+    def selftest(
+        self,
+        trace: Any = None,
+        *,
+        scenario_id: str | None = None,
+        document: bool = False,
+        fail_on: str = "L3",
+    ) -> dict[str, Any]:
+        """Run one self-test (run auto-saved).
+
+        By default returns the analysis report plus ``passed``/``compliant``
+        (``POST /api/selftest-header``, unchanged). With ``document=True`` it
+        returns the self-test document that ``agentleak selftest --json`` and
+        the ``privacy_selftest`` MCP tool return (``POST /api/agent/selftest``);
+        ``trace`` may then be in any format the CLI accepts.
+        """
+        body = self._test_body(trace, scenario_id)
+        if document:
+            return self._request("POST", "/api/agent/selftest", {**body, "fail_on": fail_on})
+        return self._request("POST", "/api/selftest-header", body)
+
+    @classmethod
+    def for_local_server(
+        cls,
+        project: str = "my-agent",
+        *,
+        base_url: str = "http://127.0.0.1:8000",
+        timeout: float = 60.0,
+    ) -> AgentSelfClient:
+        """Get a key from a local ``agentleak serve --local`` without any account.
+
+        Local mode has no sign-in, so the project and its key can be created
+        directly. Gets or creates ``project`` and (re)generates its key. Refuses
+        anything but a loopback URL: on a shared server, use the key its owner
+        gives you.
+        """
+        from urllib.parse import urlparse
+
+        host = urlparse(base_url).hostname or ""
+        if host not in {"127.0.0.1", "localhost", "::1"}:
+            raise AgentLeakError("for_local_server only talks to a loopback address.")
+        base = base_url.rstrip("/")
+        projects = _http_request(base, "GET", "/api/projects", timeout=timeout) or []
+        match = next((p for p in projects if p.get("name") == project), None)
+        if match is None:
+            match = _http_request(base, "POST", "/api/projects", {"name": project}, timeout=timeout)
+        key = _http_request(base, "POST", f"/api/projects/{match['id']}/api-key", timeout=timeout)
+        return cls(key["api_key"], base_url=base, timeout=timeout)
 
     def improve(self, trace: Any = None, *, scenario_id: str | None = None) -> dict[str, Any]:
         """One self-improvement step: selftest + delta vs previous run +

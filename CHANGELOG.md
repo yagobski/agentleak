@@ -6,6 +6,299 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-15
+
+Research workflow, agent self-test, wider detection, a rebuilt GUI and a round
+of security fixes.
+
+**Upgrade if you run the web platform.** 0.18.0 and earlier let one account
+load another account's stored scenario, rendered trace content unescaped in the
+HTML report, and left a second sensitive value unmasked in code-scan snippets.
+All three are fixed here; see *Security* and *Fixed*.
+
+**Scores move in this release.** 25 `agentdojo_exfil` scenarios and 2
+`agentleak_bench` scenarios change verdict: a US account number is no longer
+counted as an IBAN, and symptom fields now count as health data. The bundled
+corpus grows from 266 to 362 scenarios with the InjecAgent-derived pack. The
+AgentRisk formula, the L1–L4 levels and every built-in scenario score are
+unchanged. If a CI threshold depends on one of the affected packs, re-baseline
+it.
+
+### Security
+
+- **Hosted deployments no longer call model endpoints on private addresses.**
+  A project's agent endpoint, an account's model key and the red-team
+  `base_url` override are fetched by the server. In public mode
+  (`AGENTLEAK_PUBLIC_MODE=1`) the URL must now be http(s), carry no embedded
+  credentials and resolve only to public addresses, and each redirect is
+  checked again; a refused endpoint is reported as an error and no request is
+  made. Self-hosted platforms, the CLI and the SDK are unchanged, so a model on
+  `localhost` keeps working (`core/netguard.py`).
+
+- **Stored scenarios are private to their owner.** `/api/analyze`,
+  `/api/report/{fmt}`, project runs and execute, `/api/selftest` and
+  `/api/agent/improve` resolved a `scenario_id` from any account. A foreign id
+  now answers like an unknown one. Publishing an ownerless legacy project is
+  refused.
+- **HTML report escapes trace content.** Agent names, run and scenario ids,
+  sources and custom rule names were inserted unescaped, so a trace could carry
+  a script into the report and into `/api/render/html`.
+- **Code-scan snippets mask every sensitive value on the line**, not only the
+  finding's own; console, JSON and SARIF output no longer show the others raw.
+- **`redact --style hash` is keyed.** It was a plain SHA-256 prefix, which can
+  be reversed for SSNs and card numbers by trying every value. It now uses the
+  same key as `token` (`AGENTLEAK_TOKEN_KEY` for a stable digest).
+- **Custom detector patterns with nested repeats (`(a+)+`) are refused** by the
+  platform; one could hold a worker for hours.
+- **Request bodies over 32 MiB get 413** (`AGENTLEAK_MAX_BODY_BYTES`).
+- **GitHub Action**: annotations are escaped like GitHub's toolkit does, so a
+  file name or data type cannot inject workflow commands; the `version` input
+  is no longer pasted into shell source.
+
+### Added
+
+- **`agentleak bench`, a research workflow** (new package
+  `agentleak.research`, no new dependency). An experiment manifest (`bench
+  init`) pins the software version and the SHA-256 of every scenario source;
+  `bench run` analyzes leaking fixtures, the five independent clean controls
+  and a derived compliant counterpart of each pack fixture, and writes
+  `rows.csv` (scenario x repetition x channel), `summary.json` (every metric
+  with numerator, denominator, interval and method), `manifest.lock.json`
+  (environment, hashes, licences) and `REPORT.md`. Runs are resumable and
+  deterministic: same manifest and seed give a byte-identical `rows.csv`.
+  Detectors never receive the ground truth; fixture-integrity checks are
+  reported apart from detection, and independent and derived negatives are
+  never pooled.
+- `bench compare`: paired comparison of two runs with paired bootstrap
+  intervals, exact McNemar and sign-flip tests, Holm-adjusted p-values,
+  Cohen's h and the list of scenarios that flipped. Refuses runs with
+  different source hashes or labels; warns on different tiers, degraded runs,
+  versions or Risk Index denominators.
+- `bench export`: booktabs LaTeX and Markdown tables whose captions state the
+  definition, denominator, interval method, version, tier and provenance; a
+  metrics CSV; a Methods paragraph; BibTeX from `CITATION.cff` (no entry is
+  invented for datasets whose citation the repository does not hold).
+- `bench capsule` / `bench verify`: a deterministic reproducibility zip
+  (outputs, exports, environment freeze, licences, README, `SHA256SUMS`, draft
+  `.zenodo.json`; nothing is uploaded) and a verifier that re-runs it and
+  compares hashes.
+- AgentRisk for researchers: `bench score-corpus` scores a JSONL/JSON/CSV
+  corpus of events or labelled secrets, prints a hand-checkable derivation and
+  a weight-sensitivity analysis; `bench properties` checks the formal
+  properties against the installed implementation; `bench ablate-scope`
+  shows what changes when `user_input` and `tool_response` count as
+  emissions. The formula is unchanged.
+- `agentleak.research.stats`: Wilson, Clopper-Pearson, BCa and percentile
+  bootstrap, paired bootstrap, McNemar (exact and chi-square), Newcombe risk
+  difference, Cohen's h, Holm-Bonferroni, Cochran-Armitage and exact trend
+  tests, sign-flip permutation test, Kendall's tau-b. Standard library only,
+  seeded, tested against published values.
+- `docs/research.md` tutorial and `examples/research/`.
+
+- **Check-digit validated national identifiers** (`national_id`, level 4):
+  France NIR, Italy codice fiscale, Germany Steuer-ID, Netherlands BSN, Belgium
+  national number, Poland PESEL, Sweden personnummer, Brazil CPF, India Aadhaar,
+  Australia TFN, plus the UK NHS number (`health_identifier`) and Brazil CNPJ
+  (`business_identifier`, level 1). 15 rules in `detectors/national_ids.py`,
+  algorithms in `detectors/checksums.py`; formats that are not distinctive on
+  their own also need their naming keyword.
+- **42 provider token rules** for 41 providers in `detectors/secret_rules.py`
+  (GitLab, npm, PyPI, Docker Hub, Hugging Face, DigitalOcean, Databricks,
+  Cloudflare, Shopify, Telegram, Discord, Twilio, SendGrid, Azure, GCP, AWS STS,
+  Slack webhooks and more), cross-checked against gitleaks (MIT) and
+  detect-secrets (Apache-2.0); key=value connection strings; password key names
+  in French, Spanish, Portuguese, German and Italian.
+- **Multilingual field names** in the key-name detector (FR, ES, DE, PT, IT),
+  snake_case prefixes (`current_salary`) and symptom fields; international,
+  French and labelled phone numbers; dates of birth in six languages and with
+  month names; pay figures that say gross or net; French conditions and
+  medications.
+- **Encoded leaks**: HTML entities, JSON/Python unicode escapes, zero-width
+  padding, homoglyph and fullwidth forms, gzip/zlib inside base64, and
+  leetspeak (anchored). `scripts/encoded_leaks.py` reports them in their own
+  rows: 7 of 40 cells on 0.18.0, 40 of 40 now.
+- **InjecAgent pack** (`injecagent_ds`, 96 scenarios, MIT): data stealing
+  through injected tool responses, with canaries and a verified clean
+  counterpart. Bundled scenarios: 266 → 362.
+- **Measurement**: French quality set and page, 82 hard negatives reported by
+  `scripts/detection_quality.py`, credential coverage
+  (`scripts/detection_quality_secrets.py`), scan throughput
+  (`scripts/detection_throughput.py`), `docs/detection-sources.md`, and a
+  linear-time guard test for every detector and decoder.
+- `Finding.metadata["rule"]` names the rule that produced a regex finding.
+
+### Changed
+
+- IBANs must pass ISO 13616 (registered country, exact length, mod 97). 23
+  AgentDojo banking scenarios move from "High risk" to "Conditional pass":
+  the attacker's `US13 3000 …` account had been counted as a leaked IBAN.
+- Payment cards need a network IIN range as well as Luhn; SSNs that are never
+  issued (area 000/666, group 00, serial 0000) are not reported; an
+  unlabelled space-separated SIN must pass Luhn.
+- Symptom fields (`chief_complaint`) count as health data, which grows the
+  observed vault of two `agentleak_bench` scenarios (High risk → Conditional
+  pass). Built-in scenario scores, including the quickstart 0.44, are unchanged.
+
+### Fixed
+
+- `agentleak --version` (and `-V`) now prints the version; it used to fail with
+  "No such option".
+- Docs and two module docstrings quoted figures from an earlier draft of the
+  paper ("2.6×", "45.9%"). They now give the published ones: 68.8% of traces
+  leak on inter-agent messages against 27.2% on the final output, and 41.7% of
+  traces have a clean final output with an internal leak.
+
+- `agentleak run` exits 2 with a message (no traceback) for a missing,
+  malformed, empty or non-UTF-8 trace, a directory, an unknown scenario or an
+  unknown format, and refuses JSON without an `events` list: a report passed by
+  mistake used to score 100 and pass the gate. An empty `events` list warns.
+  `report`, `redact` and `scan -o` handle bad input the same way.
+- `agentleak validate --trace` no longer needs an `agentleak.yaml`.
+- The API returns 400 instead of 500 for malformed traces, uploads, reports,
+  compare ids and red-team counts; a project config that cannot load is
+  refused instead of being saved and breaking the project.
+- Event content nested over 200 levels is refused instead of raising
+  `RecursionError`.
+- Secret-assignment, email and credential-URL detection no longer take
+  quadratic time on long runs of text (23 s on a 50 KB event before). Matches
+  are unchanged.
+- The Action gate headlines the worst run when several run, counts all their
+  findings, and shows failed compliance frameworks again.
+- `AgentLeakClient` explains a 401 (it needs `agentleak serve --local`);
+  `Run.ingest` accepts a trace dict; the trust page title is escaped once.
+- Docs: 266 bundled scenarios (not 283) in `/llms.txt` and `docs/mcp.md`;
+  `docs/install.md` no longer uses a nonexistent `--fail-on`; README no longer
+  lists a "PII Probes" pack; `redact --style token` is documented.
+
+- The keyname and secret-assignment detectors reported AgentLeak's own
+  Sanitizer placeholders (`ssn: [REDACTED_SSN]`, `TOKEN=[REDACTED_…]`) as
+  leaks, so applying the recommended fix could never pass.
+- The MRN pattern captured the word "number" from a redacted
+  `medical record number:` field.
+- A canary shaped like a credential (an AWS-format key) was dropped by the
+  "match inside a credential" filter, losing exact proof of the leak.
+- `SKILL.md`, `llms.txt`, the `privacy-preflight` skill and `docs/install.md`
+  showed commands that do not exist (`scan --trace`, `scan --scenario`,
+  `run --fail-on`, `run --redteam`, `agentleak demo`) and MCP tool names
+  without their `privacy_` prefix; a test now parses every documented command.
+- Published figures in `SKILL.md` aligned with the skill's own reference sheet
+  (4,979 validated traces; 68.8% vs 27.2%; 41.7% missed); `docs/mcp.md` no
+  longer claims an upload path that does not exist, and counts 266 bundled
+  scenarios, not 283.
+
+- False positives on phone-shaped order numbers, version strings read as IPs,
+  `2022-02-22:11:30:00` timestamps read as IPv6, placeholder keys
+  (`sk-xxxx…`, `${VAR}`), credential-less `localhost` DSNs, and matches inside
+  base64 blobs: 25 of 82 hard negatives flagged on 0.18.0, 0 now.
+- Quadratic patterns (secret assignments, URL credentials, emails, URL-encoded
+  runs) that took seconds on a long token now scan in linear time.
+
+### Added (GUI)
+
+- **Analyze a trace** (`/app/analyze`): score a trace without creating a
+  project. Pick a bundled scenario, choose or drop a JSON file, or paste JSON;
+  detectors, vault scope, custom rules and the evaluation gate sit behind one
+  options line. `?scenario=<id>` is a shareable link that analyzes with
+  defaults. The masked report survives a reload; the raw trace is never stored.
+  **Save as run** files the result under a project.
+- **Results lead with the verdict per channel**: final output first, then each
+  internal emission channel with its events, findings and channel RI, and a
+  sentence that states the contrast with its denominator ("the final answer has
+  no finding, but 4 of 4 internal channels in this trace disclosed sensitive
+  data"). A clean result reads "no finding from the enabled deterministic
+  detectors", never "safe".
+- **How this number is computed**: the AgentRisk derivation (weights, leaked and
+  vault counts per level, WSL, ρ_S, RI, privacy score, scope, gate) read from the
+  report's `agentrisk` block, with a consistency check against the reported
+  values.
+- **Detector tier badge** on every result and comparison (mode, tiers that ran,
+  degraded or complete).
+- **Trace explorer** (Trace tab): every event in order with source and emission
+  channels told apart in text, channel filters with counts, finding-to-event and
+  event-to-finding navigation, the leak path from entry point to sink, and a
+  payload viewer that masks values until you reveal one event. Paginated (100
+  events per page); a 2,000-event trace renders and filters without delay.
+  Stored runs keep no trace, so the explorer rebuilds the events the report
+  knows about and lets you load the original file (checked against the report,
+  read in the browser, never uploaded).
+- **Run comparison** (`/app/compare?a=&b=`): verdict, RI, WSL/ρ_S, leaked
+  secrets and gate side by side, per-channel RI deltas, findings resolved, added
+  and unchanged, the dominance statement from `/api/compare`, and warnings when
+  the vault denominators, scenarios or detector tiers differ.
+- **Runs** (`/app/runs`): every stored run across projects in one sortable,
+  filterable table; tick two rows to compare.
+- **Sortable tables with export** for runs, findings, projects, scenarios and
+  comparison diffs; Export writes exactly the rows shown, as CSV or JSON.
+- **Permalinks**: tab, finding and trace event live in the URL; copy a link to a
+  run or to one finding.
+- **Scenario provenance**: the library and the packs are tables showing source,
+  license and attribution; scenario traces open masked.
+- Breadcrumbs with real names, a distinct tab title per page, a footer with the
+  software version, an error boundary per page, skeletons shaped like the
+  final layout, `/` to focus the current table's search, and a skip link.
+- `/api/meta` reports `source_channels` and `emission_channels`, so the GUI no
+  longer restates `BASELINE_CHANNELS`.
+- Frontend unit tests (`npm test`, vitest) for the channel verdict, derivation,
+  trace reconstruction and comparison logic.
+
+### Changed (GUI)
+
+- The test lab is split: trace analysis moved to **Analyze a trace**, the
+  red-team harness stays under **Red team** (`/app/playground`;
+  `?scenario=` links redirect to Analyze).
+- Project run history is a table with compare selection; the score chart says
+  when it mixes scenarios instead of calling it a trend.
+- Deleting a run asks for confirmation.
+- Severity colors meet WCAG AA in the light theme, and L1 is blue: green now
+  only means "no finding".
+- The dashboard no longer derives a verdict from the mean RI, and every rate
+  shows its denominator.
+
+### Removed (GUI)
+
+- About 140 kB of stylesheet rules left over from the marketing site; the
+  animated gauge, the spline "risk trajectory" chart and the logo sweep
+  animation.
+
+### Added — agent self-test
+
+- **`agentleak selftest`**: one local command for an agent to test itself, no
+  account, no network. No arguments: a seconds-long engine check that ends with
+  the next command to run. `--trace FILE|DIR|-` scores recorded traces (stdin
+  included); `--cmd "AGENT"` runs the agent once per built-in scenario over a
+  documented stdin/stdout JSON protocol (`agentleak.selftest.v1`, argv without a
+  shell unless `--shell`, per-scenario timeout and process isolation);
+  `--code PATH` reuses the static scan; `--status`, `--explain FINGERPRINT`,
+  `--list-scenarios`, `--get-scenario ID`.
+- **Canary battery**: five scenarios whose records carry freshly generated,
+  format-valid synthetic canaries (email, phone, SSN-format, record number,
+  Luhn-valid card, mod-97 IBAN, AWS- and GitHub-format keys), matched exactly on
+  every disclosure channel.
+- **One versioned result document** (`schema_version` 1.0, `agentleak schema
+  selftest-result`): `passed`, `outcome`, `exit_code`, `verdict`, `risk_index`,
+  `privacy_score`, per-channel status, detection tiers actually run, redacted
+  findings with fingerprints and event indexes, ordered `next_steps` with `fix`
+  objects that use `agentleak.defenses.Sanitizer`, `delta` against the previous
+  local self-test, and `rerun`. Fields shared with `/api/agent/improve` keep
+  their names and meaning. JSON when piped, with `--json` or `AGENTLEAK_JSON=1`.
+  Exit codes: 0 pass, 1 finding at or above `--fail-on` (default L3), 2 usage,
+  3 incomplete, 4 internal error.
+- **MCP tools** `privacy_selftest`, `privacy_selftest_status`,
+  `privacy_explain_finding`, `privacy_list_scenarios`, `privacy_get_scenario`,
+  with described parameters, tool annotations and structured content; paths are
+  confined to the server root. The server now reports its version.
+- **Trace formats** auto-detected by the self-test: OpenAI Responses / Agents
+  SDK items (`to_input_list()`, handoffs as inter-agent messages), Claude Code
+  session and sub-agent transcripts, OpenTelemetry GenAI semantic-convention
+  spans, chat-completions messages as a bare list (tool names recovered from
+  `tool_call_id`), AgentLeak event JSON lines.
+- **`POST /api/agent/selftest`** returns the same document from a server;
+  `AgentSelfClient.selftest(..., document=True)` and
+  `AgentSelfClient.for_local_server()` (key from a `--local` server, no email).
+- Recipes: Claude Code `Stop` hook, git pre-commit hook, GitHub Actions
+  workflow, an `AGENTS.md` snippet; a leaky toy agent and a scripted loop that
+  fixes it to green (`examples/selftest/`).
+
 ## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.

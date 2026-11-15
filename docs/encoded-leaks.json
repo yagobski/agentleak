@@ -1,5 +1,5 @@
 {
-  "software_version": "0.17.0",
+  "software_version": "0.19.0",
   "cells": {
     "plaintext (control)": {
       "sin": true,
@@ -72,9 +72,76 @@
       "email": null,
       "llm_api_key": true,
       "health_condition": null
+    },
+    "HTML entities": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "JSON unicode escapes": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "zero-width padded": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "homoglyphs / fullwidth": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "gzip + base64": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "leetspeak": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": true,
+      "llm_api_key": true,
+      "health_condition": true
+    },
+    "split in three": {
+      "sin": true,
+      "credit_card": true,
+      "phone_number": true,
+      "email": null,
+      "llm_api_key": true,
+      "health_condition": null
     }
   },
   "obscured_detected": 46,
   "obscured_total": 46,
+  "added_detected": 40,
+  "added_total": 40,
+  "added_transforms": [
+    "HTML entities",
+    "JSON unicode escapes",
+    "zero-width padded",
+    "homoglyphs / fullwidth",
+    "gzip + base64",
+    "leetspeak",
+    "split in three"
+  ],
   "method": "tool_response holds the value; the next inter_agent_message carries it transformed. Detected = finding on that message, right type, original value."
 }

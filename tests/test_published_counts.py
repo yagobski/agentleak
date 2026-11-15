@@ -43,7 +43,9 @@ def test_the_scenario_total_is_the_sum_of_what_ships() -> None:
     assert scenarios["builtin"] == len(SCENARIOS)
     assert scenarios["packs"] == {p["id"]: p["count"] for p in list_packs()}
     assert scenarios["total"] == scenarios["builtin"] + sum(scenarios["packs"].values())
-    assert scenarios["total"] == 266, "the site and the paper both quote 266"
+    # 266 through 0.18.0 (the figure the site and the paper quote); 362 once
+    # the 96-scenario InjecAgent pack ships. Update the site with this number.
+    assert scenarios["total"] == 362, "266 in 0.18.0 + 96 InjecAgent scenarios"
 
 
 def test_the_version_is_reported_too() -> None:

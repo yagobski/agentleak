@@ -22,8 +22,9 @@ count in Spanish is in [Detection quality in Spanish](detection-quality-es.md).
 
 Every bundled pack scenario carries a `private_vault` of typed records. The
 field name is the label, the field value is the item; 378 distinct labelled
-values across the three packs survive de-duplication and the integrity check
-below.
+values across the three packs that carry vaults survive de-duplication and the
+integrity check below (the AgentDojo and InjecAgent packs carry canaries, not
+vaults, and add nothing here).
 
 Each value is run through the **deterministic tier only** — regex and
 dictionaries, the tier that runs for everyone with no API key and no extra
@@ -42,27 +43,29 @@ Collapsing them into one figure would hide the finding that matters most.
 
 ## How to read the result
 
-**Structured recall is 0.926.** That is the condition covering the internal
-channels this project exists to audit, and it is the number that supports the
-product's claim.
+**Structured recall is 1.000** (378/378; 0.926 in 0.18.0). That is the
+condition covering the internal channels this project exists to audit. Read it
+with its caveat: in this condition the value arrives under the field name that
+labels it, and the key-name detector reads field names, so a high figure here
+says the field names are known, not that the values are recognised. The two
+types that moved were `salary` (0.343 → 1.000) and `health_condition`
+(0.667 → 1.000): the fixtures name them `current_salary`, `expected_salary` and
+`chief_complaint`, and the key-name detector now reads a snake_case prefix in
+front of a known field and treats symptom fields as health data. Both rules
+were written after looking at these misses.
 
-**Prose recall is 0.574** (0.275 before 0.16.0). With the field name gone,
-the deterministic tier finds emails, SSNs, most full names and most street
-addresses — and still no phone numbers without an area code, no dates of birth,
-no account numbers and no salaries. Those four are not shape problems: a bare
-`555-0152`, `1985-03-12` or `$125,000` in a sentence is indistinguishable from a
-serial number, a date or a price, and flagging them would trade this table's
-recall for false positives in real traces. They are the concrete argument for
-running `--mode standard` (Presidio) or `--mode hybrid` (semantic judge) when
-the channel you care about carries sentences.
-
-What changed in 0.16.0, and what it does not mean: names are found by a
-gazetteer of about 425 common given names (North American and French) followed
-by one or two capitalised surnames, and addresses by the USPS street-type list.
-The fixture names here are generated, common US names, which is the gazetteer's
-best case; a name outside the list is not found. On 66,221 words of Python's
-own reference documentation — capitalised technical English with no people in
-it — the name and address detectors report nothing, before or after.
+**Prose recall is 0.574** (217/378), unchanged. With the field name gone the
+deterministic tier finds emails, SSNs, most full names and most street
+addresses — and still no phone numbers without an area code, no dates of
+birth, no account numbers and no salaries in these carriers. The carriers carry
+no cue word on purpose ("The record shows 555-0152 for this case."), and a bare
+`555-0152`, `1985-03-12` or `125000` is indistinguishable from a serial number,
+a date or a price. The context rules added since 0.18.0 — a phone number next
+to the word for "phone" in six languages, a date after "born"/"né le"/
+"geboren am", a pay figure that says gross or net — fire on real prose that
+names what it is, and by design not on this benchmark. They are the concrete
+argument for `--mode standard` (Presidio) or `--mode hybrid` (semantic judge)
+when the channel you care about carries bare values in sentences.
 
 It also means a clean fast-tier result on prose is **not** a statement that the
 text is safe. It is "no finding from the enabled deterministic detectors", which
@@ -72,12 +75,31 @@ is what the reports say.
 ordinary operational sentences, not clean counterparts derived from the leaking
 fixtures — two different denominators that must never be pooled.
 
-Two weak spots are visible even in the strong condition and are worth fixing:
-`salary` at 0.343 and `health_condition` at 0.667.
+**Hard negatives: 0 of 82 texts flagged** (25 of 82 in 0.18.0): UUIDs, git
+SHAs, version strings that look like IPs, phone-shaped order numbers,
+placeholder keys (`sk-xxxx`, `<your-api-key>`, `${VAR}`), timestamps, hashes,
+base64 of harmless text and prose full of place names, analysed as `log`
+events by the whole fast pipeline, decoding included. The set was written
+alongside the fixes it measures, so it shows those cases are handled; it says
+nothing about cases nobody wrote down. As an outside check, the same detectors
+over 194 CPython standard-library modules (5.2 MB not written for AgentLeak)
+report 366 matches against 379 for 0.18.0, and no type that 0.18.0 did not
+already report there.
+
+Documented test card numbers (`4111 1111 1111 1111`, `4242 4242 4242 4242`) and
+documentation example keys are **not** hard negatives. They are how synthetic
+test data is planted in an agent under test, and AgentLeak flags them on
+purpose. Placeholders that cannot be a value (`sk-xxxx…`, `****`) are not
+flagged.
+
+Credentials are measured on their own page,
+[Credential coverage](detection-quality-secrets.md), and the same count in
+Spanish and French is in [Detection quality in Spanish](detection-quality-es.md)
+and [Detection quality in French](detection-quality-fr.md).
 
 ## Results
 
-AgentLeak 0.17.0 · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.18.0 · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
 Ground truth: private_vault records in the bundled scenario packs.
 
@@ -89,7 +111,7 @@ sentence, with the key gone.
 
 ## Structured
 
-**Recall 0.926** (350/378, 95% CI 0.895–0.948)
+**Recall 1.000** (378/378, 95% CI 0.990–1.000)
 
 | Data type | Recall | 95% CI | Found | Wrong type | Missed | n |
 |---|---:|---|---:|---:|---:|---:|
@@ -97,10 +119,10 @@ sentence, with the key gone.
 | `address` | 1.000 | 0.931–1.000 | 52 | 0 | 0 | 52 |
 | `date_of_birth` | 1.000 | 0.867–1.000 | 25 | 0 | 0 | 25 |
 | `email` | 1.000 | 0.945–1.000 | 66 | 0 | 0 | 66 |
-| `health_condition` | 0.667 | 0.417–0.848 | 10 | 0 | 5 | 15 |
+| `health_condition` | 1.000 | 0.796–1.000 | 15 | 0 | 0 | 15 |
 | `person_name` | 1.000 | 0.962–1.000 | 96 | 0 | 0 | 96 |
 | `phone_number` | 1.000 | 0.918–1.000 | 43 | 0 | 0 | 43 |
-| `salary` | 0.343 | 0.208–0.508 | 12 | 0 | 23 | 35 |
+| `salary` | 1.000 | 0.901–1.000 | 35 | 0 | 0 | 35 |
 | `ssn` | 1.000 | 0.898–1.000 | 34 | 0 | 0 | 34 |
 
 ## Prose
@@ -122,6 +144,26 @@ sentence, with the key gone.
 ## False positives
 
 0 detection(s) across 15 benign control texts (0.0 per text). Independent negatives — ordinary operational text, not clean counterparts derived from the leaking fixtures. Never pool the two.
+
+## Hard negatives
+
+**0 of 82 texts flagged** (rate 0.000, 95% CI 0.000–0.045). Share of hard-negative texts with at least one finding from the full fast pipeline (decoding included). Written alongside the precision fixes it measures, so it shows those cases are handled, not that unseen ones are.
+
+| Category | Flagged | Texts | Rate |
+|---|---:|---:|---:|
+| uuid | 0 | 5 | 0.000 |
+| git_sha | 0 | 5 | 0.000 |
+| version | 0 | 6 | 0.000 |
+| timestamp | 0 | 7 | 0.000 |
+| order_number | 0 | 9 | 0.000 |
+| placeholder_secret | 0 | 12 | 0.000 |
+| ip_like_version | 0 | 5 | 0.000 |
+| phone_like_id | 0 | 5 | 0.000 |
+| base64_harmless | 0 | 4 | 0.000 |
+| hash | 0 | 4 | 0.000 |
+| places_prose | 0 | 8 | 0.000 |
+| numbers_misc | 0 | 8 | 0.000 |
+| test_identifiers_obviously_fake | 0 | 4 | 0.000 |
 
 ## Fixture integrity
 

@@ -125,7 +125,8 @@ navigation:
 - **Scenarios** — a managed test library: search/filter built-in scenarios,
   **upload** your own (AgentLeak traces, AgentLeak specs, or ai4privacy records,
   auto-detected and converted), and **import packs** (the 36-scenario *AgentLeak
-  Bench* and *PII Probes*). One click runs any of them in the Playground.
+  Bench*, 120 *PrivacyLens* contextual-integrity cases and 100 *AgentDojo*
+  exfiltration cases). One click runs any of them in the Playground.
 
 Connect an agent in one line. `agentleak.watch()` works for **any** framework
 (LangChain, LangGraph, CrewAI, OpenAI Swarm / Agents SDK, Google ADK,
@@ -163,6 +164,10 @@ agentleak run --scenario healthcare_patient_summary
 # or analyze your own trace file
 agentleak run --trace traces/example_trace.json --format json,html,markdown
 ```
+
+An agent testing itself uses `agentleak selftest --trace run.json` instead: one
+JSON document on stdout with fixes and the command to re-run
+([agent self-test](docs/selftest-agents.md)).
 
 You'll get a console summary plus `reports/<run_id>.{json,html,md}`.
 
@@ -322,9 +327,10 @@ there.
 
 - [Quickstart](docs/quickstart.md)
 - [Install (agent-oriented)](docs/install.md) — the walkthrough written for a coding agent to follow and report back on
+- [Agent self-test](docs/selftest-agents.md) — `agentleak selftest`: an agent tests itself locally, reads one JSON document, fixes, re-tests until green
 - [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
 - [Trust page and monitoring](docs/trust-and-monitoring.md) — publish a verifiable score, and watch it over time
-- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 266 bundled scenarios
+- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on the bundled scenarios
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — a v0.9.0 snapshot: coverage map, honest gaps, market position, roadmap
 - [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does
 - [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report
@@ -338,6 +344,7 @@ there.
 - [Cross-session leaks](docs/cross-session.md) — whose data is this, and did it end up in somebody else's session
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
+- [Research workflow](docs/research.md) — `agentleak bench`: experiment manifests, paired statistics, LaTeX exports, reproducibility capsules
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
 - [Static code scan](docs/code-scan.md) — local, ZIP and GitHub source scanning
 - [CI policy gate](docs/ci-gate.md) — fail builds on privacy regressions

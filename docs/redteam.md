@@ -60,9 +60,9 @@ What AgentLeak does that a prompt-and-response red-teamer structurally cannot:
 - **It reads the internal channels.** A probe "fails" for Promptfoo when the
   model's *answer* is bad. Here it fails when private data crossed any execution
   boundary — a tool call, shared memory, an inter-agent message, a log, a
-  generated file — even when the answer is spotless. That is the case the
-  benchmark this project comes from measured at 2.6× more frequent than
-  output-only leakage.
+  generated file — even when the answer is spotless. In the benchmark this
+  project comes from, 41.7% of traces had a clean final output and an internal
+  leak.
 - **Every probe leaves an auditable trace, scored the same way as a normal
   run.** The evidence is an AgentRisk report against the same eight channels,
   not a pass/fail on a string.

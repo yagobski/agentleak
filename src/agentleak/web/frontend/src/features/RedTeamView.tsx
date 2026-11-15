@@ -17,7 +17,6 @@ import {
   Server,
   Shield,
   ShieldCheck,
-  Sparkles,
   Target,
   Wrench,
   Zap,
@@ -480,7 +479,7 @@ export function RedTeamView({ projectId }: Props) {
       {!result && (
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-5">
-            <div><div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-sev-l3" /> Configure the attack campaign</div><p className="mt-1 text-xs text-muted-foreground">Three choices are enough to start. AgentLeak applies useful vulnerability and delivery defaults unless you customize them.</p></div>
+            <div><div className="flex items-center gap-2 text-sm font-semibold">Configure the attack campaign</div><p className="mt-1 text-xs text-muted-foreground">Three choices are enough to start. AgentLeak applies useful vulnerability and delivery defaults unless you customize them.</p></div>
             <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">results are saved to this project</span>
           </div>
           <div className="grid grid-cols-3 border-b border-border bg-muted/15 px-6 py-3" aria-label="Campaign setup steps">

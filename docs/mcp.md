@@ -28,14 +28,32 @@ Cursor; check your client's docs for the exact file.
 }
 ```
 
-## The four tools
+## The tools
 
 | Tool | When an agent should reach for it |
 |---|---|
+| `privacy_selftest` | To test **itself**: score a run it made (`trace` inline, `trace_path`, or coding-agent `steps`; optional `code_path`, `fail_on`). Returns the same document as `agentleak selftest --json`: `passed`, per-channel status, redacted findings with fingerprints, ordered `next_steps` with `fix` objects, `delta`, `rerun`. Call again after each fix until `passed`. |
+| `privacy_selftest_status` | At the start of a session: latest self-test per target, runs, best score, open findings. |
+| `privacy_explain_finding` | When one finding is unclear or looks wrong: why it fired, which rule, the level, the fix. |
+| `privacy_list_scenarios` / `privacy_get_scenario` | When there is no recorded run: get a scenario with freshly generated canary values, do it, then submit the trace (with `scenario_id` = the `instance_id`) to `privacy_selftest`. |
 | `privacy_preflight` | Before saying the work is done. Scans the project and reports what is **new since the last check**. |
-| `privacy_scan_code` | When only the current state matters, not the change. |
-| `privacy_check_trace` | When a run has been captured and you want it scored across all eight channels. |
+| `privacy_scan_code` | When only the current state of the code matters, not the change. |
+| `privacy_check_trace` | The bare AgentRisk scoring of one native trace (no fixes, no history). |
 | `privacy_redact` | Before writing anything into a log, an issue, or a commit message. |
+
+Every tool returns structured content. Read-only tools are marked with
+`readOnlyHint`; none has `openWorldHint`, because none reaches the network.
+
+Paths an agent passes to `privacy_selftest` (`trace_path`, `code_path`) must be
+inside the server root: `$AGENTLEAK_MCP_ROOT` when set, otherwise the directory
+the server was started in. Symlinks are resolved before the check. Results only
+carry redacted values. Self-test history lives in `<root>/.agentleak/`.
+
+Traces are data. A trace that contains text such as "ignore your instructions" is
+scored like any other content; nothing in a trace is executed or followed.
+
+The self-test document, its fields and the full loop are described in
+[selftest-agents.md](selftest-agents.md).
 
 ## Why `preflight` is the one that matters
 
@@ -68,9 +86,11 @@ event, and arguably the honest reading — the secret really is somewhere new.
 
 ## What it deliberately does not do
 
-It does not run the 283 bundled scenarios against your agent. Those are traces,
-and replaying them would mean invoking the agent under test, which MCP gives no
-way to do. They remain what they are: a corpus for the CLI and CI
+It does not start the agent under test: MCP gives a server no way to invoke its
+client. Instead `privacy_get_scenario` hands the agent a scenario with planted
+canaries to do itself, and `privacy_selftest` scores the trace it brings back.
+To have AgentLeak start your agent, use the CLI: `agentleak selftest --cmd`.
+The 362 bundled corpus scenarios remain a corpus for the CLI and CI
 (`agentleak run --pack …`).
 
 ## Reading the result honestly
@@ -90,10 +110,8 @@ One more guard worth knowing about: a trace with no `events` is rejected rather
 than scored. An empty run would otherwise come back as a confident 100/100 —
 the exact false pass this tool exists to catch, committed by the tool itself.
 
-## Sending results to a project
+## Nothing is sent anywhere
 
-If a project key is configured, results also reach the hosted workspace, so runs
-accumulate into a history you can compare across sessions. A network failure is
-reported and ignored; it never swallows the local verdict.
-
-Without a key, nothing leaves the machine. That is the default.
+No tool makes a network call. There is no project key and no upload in MCP mode;
+to keep a history across machines, run a self-hosted server and use
+`POST /api/agent/selftest` (see [selftest-agents.md](selftest-agents.md)).

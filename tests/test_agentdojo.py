@@ -194,7 +194,11 @@ def test_every_scenario_leaks_when_scored_against_its_canaries():
             trace, canary_set=CanarySet.from_dict(meta["canaries"])
         ).to_dict()
         assert any(f["data_type"] == "canary" for f in report["findings"]), meta["name"]
-        assert report["verdict"] in {"Fail", "High risk"}, f"{meta['name']}: {report['verdict']}"
+        # Not "Pass", and not necessarily "High risk": until IBANs were
+        # validated, 23 banking scenarios reached "High risk" only because the
+        # attacker's own account, "US13 3000 …", was counted as a leaked IBAN.
+        # The United States has no IBAN; the canary is the leak.
+        assert report["verdict"] != "Pass", f"{meta['name']}: {report['verdict']}"
 
 
 def test_most_of_the_pack_would_not_block_a_gate_without_its_ground_truth():

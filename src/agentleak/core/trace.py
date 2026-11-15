@@ -50,6 +50,29 @@ def _humanize_key(key: str) -> str:
     return str(key).replace("_", " ").replace("-", " ").strip()
 
 
+#: Deeper content would exhaust the recursion in :func:`content_to_text`
+#: (and in pydantic) with a RecursionError instead of a clear error.
+MAX_CONTENT_DEPTH = 200
+
+
+def _depth(value: Any) -> int:
+    """Nesting depth of dicts/lists, computed without recursion."""
+    deepest = 0
+    stack: list[tuple[Any, int]] = [(value, 0)]
+    while stack:
+        node, level = stack.pop()
+        if isinstance(node, dict):
+            node = list(node.values())
+        if isinstance(node, (list, tuple)):
+            level += 1
+            if level > deepest:
+                deepest = level
+                if deepest > MAX_CONTENT_DEPTH:
+                    return deepest
+            stack.extend((child, level) for child in node)
+    return deepest
+
+
 def content_to_text(content: Content) -> str:
     """Flatten any event content into a single searchable string.
 
@@ -155,10 +178,24 @@ class Trace(BaseModel):
     # ------------------------------------------------------------------
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Trace:
-        """Build a trace from a plain dict, assigning event ids when missing."""
+        """Build a trace from a plain dict, assigning event ids when missing.
+
+        Raises ``ValueError`` (pydantic's ``ValidationError`` included) for
+        anything that is not a trace, so callers can handle one error type.
+        """
+        if not isinstance(data, dict):
+            raise ValueError("A trace must be a JSON object with an 'events' list.")
         events = data.get("events", [])
+        if not isinstance(events, list):
+            raise ValueError("A trace's 'events' must be a list.")
         normalized: list[dict[str, Any]] = []
         for i, raw in enumerate(events, start=1):
+            if not isinstance(raw, dict):
+                raise ValueError(f"Event {i} must be a JSON object.")
+            if _depth(raw.get("content")) > MAX_CONTENT_DEPTH:
+                raise ValueError(
+                    f"Event {i} content is nested more than {MAX_CONTENT_DEPTH} levels deep."
+                )
             event = dict(raw)
             if not event.get("event_id"):
                 event["event_id"] = f"evt_{i:03d}"

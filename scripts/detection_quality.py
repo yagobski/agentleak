@@ -29,6 +29,13 @@ in a neutral carrier sentence and run through the deterministic detector chain
 * **False negative** — nothing detected.
 * **False positive** — a detection on the benign control corpus, which contains
   no personal data at all.
+* **Hard negatives** — ``scripts/detection_hard_negatives.json``: text built to
+  look like personal data or secrets without being any (UUIDs, git SHAs,
+  version strings, order numbers, placeholder keys, hashes, base64 of
+  harmless text, place names). Each text is analysed as one ``log`` event by
+  the full fast pipeline, decoding included, and the rate is the share of
+  texts with at least one finding. Reported per category, never pooled with
+  recall.
 
 Fixture integrity
 -----------------
@@ -62,6 +69,7 @@ from agentleak import __version__  # noqa: E402
 from agentleak.detectors import build_detectors  # noqa: E402
 
 PACK_DIR = Path(__file__).resolve().parent.parent / "src" / "agentleak" / "scenarios" / "packs"
+HARD_NEGATIVES = Path(__file__).resolve().parent / "detection_hard_negatives.json"
 
 # Vault field name -> the data type a detector is expected to assign.
 # Only fields with one unambiguous answer are labelled; everything else is
@@ -258,6 +266,50 @@ def _condition(
     }
 
 
+def hard_negatives() -> dict[str, Any]:
+    """False-positive rate on text built to look sensitive and not be."""
+    from agentleak.core.runner import analyze
+    from agentleak.core.trace import Trace
+
+    data = json.loads(HARD_NEGATIVES.read_text(encoding="utf-8"))
+    rows = []
+    detail: list[dict[str, str]] = []
+    for category, texts in data["categories"].items():
+        flagged = 0
+        for text in texts:
+            trace = Trace.model_validate({
+                "run_id": "hard-negative", "agent_name": "a",
+                "events": [{"event_id": "e1", "channel": "log", "source": "a",
+                            "target": "b", "content": text}],
+            })
+            findings = analyze(trace).findings
+            if findings:
+                flagged += 1
+                for f in findings:
+                    detail.append({"category": category, "data_type": f.data_type,
+                                   "value": f.matched_value, "text": text})
+        low, high = wilson(flagged, len(texts))
+        rows.append({"category": category, "texts": len(texts), "flagged": flagged,
+                     "rate": round(flagged / len(texts), 4), "ci95": [round(low, 4), round(high, 4)]})
+    total = sum(r["texts"] for r in rows)
+    flagged = sum(r["flagged"] for r in rows)
+    low, high = wilson(flagged, total)
+    return {
+        "source": f"scripts/{HARD_NEGATIVES.name} (authored for AgentLeak)",
+        "texts": total,
+        "flagged": flagged,
+        "rate": round(flagged / total, 4) if total else 0.0,
+        "ci95": [round(low, 4), round(high, 4)],
+        "by_category": rows,
+        "detail": detail,
+        "note": (
+            "Share of hard-negative texts with at least one finding from the full fast "
+            "pipeline (decoding included). Written alongside the precision fixes it "
+            "measures, so it shows those cases are handled, not that unseen ones are."
+        ),
+    }
+
+
 def evaluate() -> dict[str, Any]:
     detectors = build_detectors(None, None)
     labelled, anomalous = load_labelled_values()
@@ -294,6 +346,7 @@ def evaluate() -> dict[str, Any]:
                 "counterparts derived from the leaking fixtures. Never pool the two."
             ),
         },
+        "hard_negatives": hard_negatives(),
         "fixture_integrity": {
             "excluded": len(anomalous),
             "note": (
@@ -353,6 +406,21 @@ def to_markdown(report: dict[str, Any]) -> str:
         f"texts ({fp['rate_per_text']} per text). {fp['note']}",
     ]
     for item in fp["detail"][:20]:
+        out.append(f"- `{item['data_type']}` matched `{item['value']}` in: {item['text']}")
+    hn = report["hard_negatives"]
+    out += [
+        "",
+        "## Hard negatives",
+        "",
+        f"**{hn['flagged']} of {hn['texts']} texts flagged** (rate {hn['rate']:.3f}, "
+        f"95% CI {hn['ci95'][0]:.3f}–{hn['ci95'][1]:.3f}). {hn['note']}",
+        "",
+        "| Category | Flagged | Texts | Rate |",
+        "|---|---:|---:|---:|",
+    ]
+    for row in hn["by_category"]:
+        out.append(f"| {row['category']} | {row['flagged']} | {row['texts']} | {row['rate']:.3f} |")
+    for item in hn["detail"][:20]:
         out.append(f"- `{item['data_type']}` matched `{item['value']}` in: {item['text']}")
     integrity = report["fixture_integrity"]
     out += [

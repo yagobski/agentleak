@@ -22,6 +22,7 @@ from .core.report import AnalysisResult
 from .core.runner import AgentLeakRunner
 from .core.trace import Trace
 from .reporters import normalize_formats, render, write_reports
+from .research.cli import bench_app
 from .scenarios import list_scenarios, load_example_trace
 
 app = typer.Typer(
@@ -29,6 +30,25 @@ app = typer.Typer(
     help="AgentLeak OSS — local privacy-leakage testing for AI agents.",
     no_args_is_help=True,
 )
+
+
+
+def _print_version(value: bool) -> None:
+    if value:
+        typer.echo(f"agentleak {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: bool = typer.Option(
+        False, "--version", "-V", callback=_print_version, is_eager=True,
+        help="Print the AgentLeak version and exit.",
+    ),
+) -> None:
+    # No docstring on purpose: Typer would use it in place of the app help.
+    return None
+
 
 _VERDICT_COLORS = {
     "Pass": typer.colors.GREEN,
@@ -55,6 +75,12 @@ _INTERNAL_CHANNELS = {
 def version() -> None:
     """Print the AgentLeak version."""
     typer.echo(f"agentleak {__version__}")
+
+
+# selftest lives in its own package; registered here so it lists near the top.
+from .selftest.cli import register as _register_selftest  # noqa: E402
+
+_register_selftest(app)
 
 
 # ----------------------------------------------------------------------
@@ -97,17 +123,28 @@ def init(
 # ----------------------------------------------------------------------
 @app.command()
 def validate(
-    config: str = typer.Argument("agentleak.yaml", help="Path to the config file."),
+    config: str | None = typer.Argument(None, help="Path to the config file. [default: agentleak.yaml]"),
     trace: str | None = typer.Option(None, "--trace", "-t", help="Also validate a trace file."),
 ) -> None:
     """Validate a configuration (and optionally a trace) file."""
     ok = True
+    explicit = config is not None
+    config = config or "agentleak.yaml"
+    if trace and not explicit and not os.path.exists(config):
+        # `validate --trace t.json` is a trace check; a missing default config
+        # is not an error then, only a named one is.
+        typer.echo(f"· no {config} here; validating the trace only")
+        config = ""
     try:
+        if not config:
+            raise _SkipConfig
         cfg = Config.load(config)
         typer.secho(f"✓ config valid: {config}", fg=typer.colors.GREEN)
         typer.echo(f"  detectors: {', '.join(k for k, v in cfg.detectors.as_dict().items() if v) or 'none'}")
         typer.echo(f"  channels:  {len(cfg.channels)} · scenarios: {len(cfg.scenarios)}")
         normalize_formats(cfg.reports.formats)
+    except _SkipConfig:
+        pass
     except FileNotFoundError:
         typer.secho(f"✗ config not found: {config}", fg=typer.colors.RED)
         ok = False
@@ -117,7 +154,7 @@ def validate(
 
     if trace:
         try:
-            t = Trace.from_json_file(trace)
+            t = _load_trace_file(trace)
             typer.secho(f"✓ trace valid: {trace} ({len(t.events)} events)", fg=typer.colors.GREEN)
         except Exception as exc:  # noqa: BLE001
             typer.secho(f"✗ invalid trace: {exc}", fg=typer.colors.RED)
@@ -407,7 +444,11 @@ def scan(
 
     if output:
         payload = result.to_sarif() if fmt == "sarif" else result.to_dict()
-        Path(output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        try:
+            Path(output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except OSError as exc:
+            typer.secho(f"✗ could not write {output}: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
         typer.secho(f"✓ wrote {output}", fg=typer.colors.GREEN)
 
     if fail_under is not None and result.score < fail_under:
@@ -423,7 +464,7 @@ def redact(
     path: str | None = typer.Argument(None, help="File to sanitize. Omit to read stdin."),
     style: str = typer.Option(
         "placeholder", "--style",
-        help="placeholder | asterisk | masked | hash | category | remove.",
+        help="placeholder | asterisk | masked | hash | category | remove | token.",
     ),
     output: str | None = typer.Option(None, "--output", "-o", help="Write to a file instead of stdout."),
 ) -> None:
@@ -445,8 +486,8 @@ def redact(
 
     try:
         text = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
-    except OSError as exc:
-        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+    except (OSError, UnicodeDecodeError) as exc:
+        typer.secho(f"✗ could not read {path or 'stdin'} as UTF-8 text: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
     cleaned = sanitize_text(text, style=style)
@@ -462,6 +503,7 @@ def redact(
 # ----------------------------------------------------------------------
 admin_app = typer.Typer(help="Operator commands for a self-hosted platform.", no_args_is_help=True)
 app.add_typer(admin_app, name="admin")
+app.add_typer(bench_app, name="bench")
 
 
 @admin_app.command("reset-password")
@@ -895,7 +937,24 @@ def run(
             typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
 
-    traces = _resolve_traces(trace, scenario, cfg, pack=pack)
+    try:
+        formats = normalize_formats([f for f in fmt.split(",") if f.strip()])
+    except ValueError as exc:
+        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
+    # A missing file, a malformed or non-UTF-8 trace, or an unknown scenario
+    # is an unresolvable input (exit 2), not a traceback.
+    try:
+        traces = _resolve_traces(trace, scenario, cfg, pack=pack)
+    except typer.BadParameter:
+        raise
+    except KeyError as exc:
+        typer.secho(f"✗ {exc.args[0] if exc.args else exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+    except (OSError, ValueError, TypeError) as exc:
+        typer.secho(f"✗ could not load trace {trace or scenario}: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
     if not traces:
         typer.secho(
             "Nothing to run. Provide --trace, --scenario, or scenarios in --config.",
@@ -904,15 +963,25 @@ def run(
         raise typer.Exit(code=2)
 
     out_dir = output or (cfg.reports.output_dir if cfg else "reports")
-    formats = [f for f in fmt.split(",") if f.strip()]
     runner = AgentLeakRunner(cfg)
 
     worst_blocked = False
-    for _label, t, canaries in traces:
+    for label, t, canaries in traces:
+        if not t.events:
+            # An empty trace scores a perfect Pass. Say so, so a CI gate fed
+            # the wrong file is not mistaken for a clean agent.
+            typer.secho(
+                f"⚠ {label}: the trace has no events; nothing was analyzed.",
+                fg=typer.colors.BRIGHT_YELLOW, bold=True,
+            )
         result = runner.analyze(t, canary_set=canaries)
         if fail_under is not None:
             result.fail_below = fail_under
-        written = write_reports(result, out_dir, formats, basename=result.run_id)
+        try:
+            written = write_reports(result, out_dir, formats, basename=result.run_id)
+        except OSError as exc:
+            typer.secho(f"✗ could not write reports to {out_dir}: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
         if not quiet:
             _print_result(result, written)
         elif result.warnings:
@@ -947,13 +1016,29 @@ def report(
         typer.secho(f"✗ could not read report: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
 
+    if not isinstance(data, dict) or not {"privacy_score", "verdict", "findings"} <= data.keys():
+        typer.secho(
+            f"✗ {input} is not an AgentLeak report (write one with `agentleak run`).",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+    try:
+        formats = normalize_formats([x for x in fmt.split(",") if x.strip()])
+    except ValueError as exc:
+        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
     out_dir = output or os.path.dirname(os.path.abspath(input))
     basename = os.path.splitext(os.path.basename(input))[0]
     os.makedirs(out_dir, exist_ok=True)
     from .reporters import _EXTENSIONS  # local import: internal mapping
 
-    for f in normalize_formats([x for x in fmt.split(",") if x.strip()]):
-        content = render(data, f)
+    for f in formats:
+        try:
+            content = render(data, f)
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            typer.secho(f"✗ could not render {input} as {f}: {exc!r}", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
         path = os.path.join(out_dir, f"{basename}.{_EXTENSIONS[f]}")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(content)
@@ -963,6 +1048,23 @@ def report(
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+class _SkipConfig(Exception):
+    """Internal: `validate --trace` without a config file to check."""
+
+
+def _load_trace_file(path: str) -> Trace:
+    """Load a trace file, refusing JSON that is not a trace.
+
+    A report, a config or any other JSON object would otherwise load as an
+    empty trace and pass the gate.
+    """
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    if not isinstance(data, dict) or not isinstance(data.get("events"), list):
+        raise ValueError("not an AgentLeak trace: expected a JSON object with an 'events' list")
+    return Trace.from_dict(data)
+
+
 def _canaries_of(meta: dict[str, object]) -> CanarySet | None:
     """A pack entry's ground-truth canaries, when it ships any."""
     raw = meta.get("canaries")
@@ -982,7 +1084,7 @@ def _resolve_traces(
     canary set, because without it those scenarios score a false "Pass".
     """
     if trace:
-        return [(trace, Trace.from_json_file(trace), None)]
+        return [(trace, _load_trace_file(trace), None)]
     if pack:
         # A bundled research pack: the whole suite, or one scenario from it.
         # This is what makes the published benchmark one command away.

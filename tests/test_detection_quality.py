@@ -118,3 +118,13 @@ def test_fixture_anomalies_are_disclosed(report) -> None:
     assert integrity["excluded"] > 0
     assert integrity["note"]
     assert integrity["examples"]
+
+
+def test_hard_negatives_are_measured_and_quiet(report) -> None:
+    """0 of 81 when published (24 of 81 on 0.18.0). The set was written with
+    the fixes it measures, so the ceiling is loose: a regression that starts
+    flagging UUIDs, versions or placeholder keys again must fail here."""
+    hn = report["hard_negatives"]
+    assert hn["texts"] >= 80
+    assert hn["rate"] <= 0.05, [(d["category"], d["data_type"], d["value"]) for d in hn["detail"]]
+    assert all(row["texts"] > 0 for row in hn["by_category"])
