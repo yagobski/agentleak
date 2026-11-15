@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 AgentLeak contributors
 # SPDX-License-Identifier: MIT
 """General PII detector: emails, phones, SSN/SIN, credit cards, IPs, DOB,
-client identifiers, UK NINO, Spanish DNI/NIE and social security number, and
+client identifiers, UK NINO, Spanish DNI/NIE and social security number,
+check-digit-validated national identifiers (see :mod:`.national_ids`), and
 keyword-anchored probable names.
 
 Patterns favor precision over recall and attach a per-pattern confidence so
@@ -14,9 +15,16 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
+from . import checksums
+from ._text import inside_blob
 from .names import full_names
+from .national_ids import scan as scan_national_ids
 
-EMAIL_RE = re.compile(r"[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9-.]+")
+# Starts only where a run of local-part characters starts. Without the
+# look-behind a 50 KB run with no "@" was rescanned from every position
+# (quadratic: 1.7 s); the matches are the same, because the leftmost start of
+# a run always reaches the same "@" an inner start would.
+EMAIL_RE = re.compile(r"(?<![A-Za-z0-9_.+-])[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9-.]+")
 # US SSN (xxx-xx-xxxx) and Canadian SIN (xxx-xxx-xxx) are distinct shapes.
 SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 SIN_RE = re.compile(r"\b\d{3}[- ]\d{3}[- ]\d{3}\b")
@@ -36,11 +44,42 @@ ES_PHONE_RE = re.compile(r"(?<![\w+])(?:\(?\+34\)?|0034)[\s.\-]*[6-9](?:[\s.\-]?
 # short labels count in capitals, or in any case when a separator makes them
 # a label ("sin: 123456789", "sin=123456789"), never as a bare word.
 SIN_LABELLED_RE = re.compile(
-    r"\b(?:SIN|NAS|(?i:sin|nas)(?=\s*[:=#])|(?i:social[ _]?insurance(?:[ _]?number)?))"
-    r"\b[\s:=#]*(\d{9})\b"
+    r"\b(?:SIN|NAS|(?i:sin|nas)(?=[\"']?\s*[:=#])|(?i:social[ _]?insurance(?:[ _]?number)?))"
+    r"\b[\"']?[\s:=#]*[\"']?(\d{9}|\d{3}[- ]\d{3}[- ]\d{3})\b"
 )
 PHONE_RE = re.compile(
     r"(?<!\d)(?:\+?\d{1,3}[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]\d{3}[-.\s]\d{4}(?!\d)"
+)
+# A phone-shaped number right after the word that names it as something else
+# ("order 555-123-4567", "SKU 202-611-1400") is a reference, not a phone.
+_NOT_A_PHONE_PREFIX_RE = re.compile(
+    r"(?i)\b(?:order|invoice|ticket|case|ref|reference|sku|part|po|serial|tracking|isbn|"
+    r"batch|lot|build|commande|facture|pedido|factura|bestellung|rechnung|ordine|fattura)"
+    r"(?:\s*(?:no\.?|number|num|nr\.?|n[°º]|#|id))?\s*[:#]?\s*$"
+)
+# International numbers written with their country code: "+33 6 12 34 56 78",
+# "+44 20 7946 0958", "0049 30 901820". The calling codes are the ITU-T E.164
+# assignments (North America +1 and Spain +34 have their own patterns above).
+# The national part must have 6 to 12 digits, as E.164 allows at most 15 in all.
+_CALLING_CODES = (
+    "20|27|30|31|32|33|36|39|40|41|43|44|45|46|47|48|49|51|52|53|54|55|56|57|58|"
+    "60|61|62|63|64|65|66|81|82|84|86|90|91|92|93|94|95|98|"
+    "212|213|216|218|220|221|225|233|234|237|243|254|255|256|260|263|"
+    "351|352|353|354|355|356|357|358|359|370|371|372|373|374|375|376|377|378|380|381|382|"
+    "385|386|387|389|420|421|423|852|853|855|880|886|961|962|963|964|965|966|967|968|"
+    "970|971|972|973|974|975|976|977"
+)
+INTL_PHONE_RE = re.compile(
+    r"(?<![\w+])(?:\+|00)(?:" + _CALLING_CODES + r")"
+    r"(?:[\s.\-]?\(0\))?(?:[\s.\-]?\d){6,12}(?!\d)"
+)
+# French national format: ten digits from 01 to 09, written in pairs.
+FR_PHONE_RE = re.compile(r"(?<![\w+.-])0[1-9](?:[ .-]\d{2}){4}(?![\s\w.-]?\d)")
+# Any number next to the word "phone" in one of the supported languages.
+PHONE_LABELLED_RE = re.compile(
+    r"(?<!\w)(?i:tel|t[ée]l[ée]?phone|phone|mobile|cell(?:phone)?|portable|"
+    r"tel[ée]fono|m[óo]vil|celular|telefon|handy|telefone|cellulare|whatsapp)(?:\s*(?:no\.?|number|n[°º]))?"
+    r"(?!\w)[\s:=#.]{0,4}(\+?\(?\d[\d\s().\-]{5,18}\d)(?![\d-])"
 )
 IP_RE = re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b")
 # IPv6 in expanded/partly-compressed form. Requires at least four groups so we
@@ -51,15 +90,36 @@ IPV6_RE = re.compile(
 )
 # IPv4 that is actually a software version ("version 1.2.3.4") is not a client
 # IP leak — used to suppress that false positive.
-_VERSION_PREFIX_RE = re.compile(r"\b(?:version|ver|build|release|rev)\b[\s:v.]*$", re.IGNORECASE)
-CREDIT_CARD_RE = re.compile(r"\b(?:\d[ -]?){13,16}\b")
+_VERSION_PREFIX_RE = re.compile(
+    r"\b(?:version|ver|build|release|rev|firmware|fw|protocol|schema|api|package|pkg|"
+    r"(?:upgraded|updated|downgraded|bumped|pinned)(?:\s+\w+){0,3}\s+to)\b"
+    r"(?:[\s:v.]*|\s+[\w.-]+\s+v?)$",
+    re.IGNORECASE,
+)
+# 12 to 19 digits, optionally grouped. Not when the run continues with another
+# digit group ("9400 1000 0000 0000 0000 00" is a parcel number), and validated
+# by Luhn *and* a card network's published IIN range and length.
+CREDIT_CARD_RE = re.compile(r"(?<![\d-])(?<!\d )\d(?:[ -]?\d){11,18}(?![ -]?\d)")
 # Dates only flagged as DOB when anchored to a birth keyword (avoids matching
 # trace timestamps and arbitrary dates).
+_MONTHS = (
+    r"jan(?:uary|vier|eiro)?|feb(?:ruary|ruar)?|f[ée]v(?:rier)?|fevereiro|mar(?:ch|s|zo|ço)?|"
+    r"m[äa]rz|apr(?:il)?|avr(?:il)?|abr(?:il)?|aprile|may|mai|mayo|maio|maggio|"
+    r"jun[ei]?|juin|junio|junho|giugno|jul[iy]?|juillet|julio|julho|luglio|"
+    r"aug(?:ust)?|ao[uû]t|agosto|sep(?:t(?:ember)?)?|septembre|septiembre|setembro|settembre|"
+    r"oct(?:ober)?|octobre|octubre|okt(?:ober)?|outubro|ottobre|"
+    r"nov(?:ember)?|novembre|noviembre|novembro|dec(?:ember)?|d[ée]cembre|dez(?:ember)?|"
+    r"diciembre|dezembro|dicembre|ene(?:ro)?|gen(?:naio)?|janeiro"
+)
 DOB_RE = re.compile(
-    r"(?i)\b(?:dob|d\.o\.b\.|date of birth|born|birth ?date"
+    r"(?i)\b(?:dob|d\.o\.b\.|date of birth|born(?: on)?|birth ?date"
     r"|n[ée]e? le|date de naissance"
-    r"|fecha de nacimiento|fecha nac\.?|f\. ?nac\.?|nacid[oa] el|naci[óo] el)(?!\w)[:\s]*"
-    r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
+    r"|fecha de nacimiento|fecha nac\.?|f\. ?nac\.?|nacid[oa] el|naci[óo] el"
+    r"|geboren am|geburtsdatum|geb\."
+    r"|data de nascimento|nascid[oa] em|data di nascita|nat[oa] il)(?!\w)[:\s]*"
+    r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}"
+    r"|\d{1,2}(?:er|º|°)?\.?\s+(?:de\s+)?(?:" + _MONTHS + r")\.?\s+(?:de\s+)?\d{4}"
+    r"|(?:" + _MONTHS + r")\.?\s+\d{1,2},?\s+\d{4})(?!\w)"
 )
 CLIENT_ID_RE = re.compile(r"\b(?:ACC|ACCT|CUST|CLIENT|USER|MEMBER)[-_]?\d{3,}\b", re.IGNORECASE)
 # UK National Insurance Number (AB123456C). Uses the official valid-prefix rules
@@ -141,7 +201,7 @@ _ES_LINK = r"(?:(?:de|del|la|las|los|el|y)\s+)*"
 ADDRESS_ES_RE = re.compile(
     r"\b(?i:calle|c/|avenida|avda\.?|av\.|plaza|pza\.?|paseo|camino|carretera"
     r"|ctra\.?|ronda|traves[íi]a|glorieta|rambla|urbanizaci[óo]n|urb\.)"
-    r"\s*" + _ES_LINK + _ES_CAP + r"(?:\s+" + _ES_LINK + _ES_CAP + r"){0,4}"
+    r"(?:(?<=[/.])\s*|\s+)" + _ES_LINK + _ES_CAP + r"(?:\s+" + _ES_LINK + _ES_CAP + r"){0,4}"
     r",?\s*(?:n[º°o]\.?\s*)?\d{1,3}[A-Za-z]?\b"
     r"(?!\s*(?:km|kms|m|metros|min|minutos|h|horas|veces|personas|euros|€|%)(?!\w))"
     r"(?:,?\s*\d{1,2}[º°ªo]\s*[A-Za-z]?\b)?"
@@ -161,17 +221,13 @@ NAME_RE = re.compile(
 
 
 def _luhn_ok(digits: str) -> bool:
-    nums = [int(d) for d in digits if d.isdigit()]
-    if not 13 <= len(nums) <= 16:
-        return False
-    total = 0
-    for i, n in enumerate(reversed(nums)):
-        if i % 2 == 1:
-            n *= 2
-            if n > 9:
-                n -= 9
-        total += n
-    return total % 10 == 0
+    """Kept for callers outside this module: Luhn over 13 to 19 digits."""
+    nums = "".join(d for d in digits if d.isdigit())
+    return 13 <= len(nums) <= 19 and checksums.luhn(nums)
+
+
+def _inside(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
+    return any(a <= span[0] and span[1] <= b for a, b in spans)
 
 
 def _dni_letter_ok(number: str, letter: str) -> bool:
@@ -200,10 +256,24 @@ class PIIDetector(Detector):
                 recommendation="Mask email addresses before internal channels and logs.",
             ))
 
+        # Check-digit-validated identifiers first: their spans are claimed, so
+        # a NIR is not also reported as a card number or a phone.
+        id_spans: list[tuple[int, int]] = []
+        for id_rule, value, span in scan_national_ids(text):
+            id_spans.append(span)
+            matches.append(self._match(
+                data_type=id_rule.data_type, severity=id_rule.severity,
+                confidence=id_rule.confidence, matched_value=value,
+                recommendation=id_rule.recommendation, rule=id_rule.rule,
+            ))
+
         for m in SSN_RE.finditer(text):
+            # Never issued: area 000 or 666, group 00, serial 0000 (SSA rules).
+            if not checksums.us_ssn(m.group(0)) or _inside(m.span(), id_spans):
+                continue
             matches.append(self._match(
                 data_type="ssn", severity=Severity.HIGH, confidence=0.85,
-                matched_value=m.group(0),
+                matched_value=m.group(0), rule="us_ssn",
                 recommendation="Never transmit full social security numbers; tokenize them.",
             ))
 
@@ -216,42 +286,84 @@ class PIIDetector(Detector):
                 recommendation="Avoid sending full phone numbers to tools and logs.",
             ))
 
+        labelled_sins: list[tuple[int, int]] = []
+        for m in SIN_LABELLED_RE.finditer(text):
+            labelled_sins.append(m.span(1))
+            matches.append(self._match(
+                data_type="sin", severity=Severity.HIGH, confidence=0.8,
+                matched_value=m.group(1), rule="ca_sin_labelled",
+                recommendation="Never transmit full social insurance numbers; tokenize them.",
+            ))
+
         for m in SIN_RE.finditer(text):
             # Inside a +34 number: a phone (reported above), not a SIN.
-            if any(a <= m.start() and m.end() <= b for a, b in es_phones):
+            if _inside(m.span(), es_phones) or _inside(m.span(), labelled_sins):
+                continue
+            # Unlabelled and space-separated, the 3-3-3 shape is also how a
+            # Spanish phone is printed ("612 345 678"), so it must pass Luhn as
+            # every issued SIN does; nine random digits pass one time in ten.
+            # The hyphenated form ("123-456-789") is the SIN's own print format
+            # and is what synthetic test data uses, so its shape still counts,
+            # at lower confidence when the check digit fails.
+            valid = checksums.ca_sin(m.group(0))
+            if not valid and "-" not in m.group(0):
                 continue
             matches.append(self._match(
-                data_type="sin", severity=Severity.HIGH, confidence=0.8,
-                matched_value=m.group(0),
+                data_type="sin", severity=Severity.HIGH, confidence=0.9 if valid else 0.7,
+                matched_value=m.group(0), rule="ca_sin" if valid else "ca_sin_shape",
                 recommendation="Never transmit full social insurance numbers; tokenize them.",
             ))
 
-        for m in SIN_LABELLED_RE.finditer(text):
-            matches.append(self._match(
-                data_type="sin", severity=Severity.HIGH, confidence=0.8,
-                matched_value=m.group(1),
-                recommendation="Never transmit full social insurance numbers; tokenize them.",
-            ))
-
+        phone_spans: list[tuple[int, int]] = list(es_phones)
         for m in PHONE_RE.finditer(text):
+            if _inside(m.span(), id_spans) or _NOT_A_PHONE_PREFIX_RE.search(
+                text[max(0, m.start() - 40):m.start()]
+            ):
+                continue
+            phone_spans.append(m.span())
             matches.append(self._match(
                 data_type="phone_number", severity=Severity.MEDIUM, confidence=0.65,
-                matched_value=m.group(0).strip(),
+                matched_value=m.group(0).strip(), rule="phone_nanp",
                 recommendation="Avoid sending full phone numbers to tools and logs.",
             ))
 
+        for pattern, rule, group in (
+            (INTL_PHONE_RE, "phone_international", 0),
+            (FR_PHONE_RE, "phone_fr", 0),
+            (PHONE_LABELLED_RE, "phone_labelled", 1),
+        ):
+            for m in pattern.finditer(text):
+                span = m.span(group)
+                value = m.group(group).strip()
+                digits = sum(ch.isdigit() for ch in value)
+                if (
+                    not 7 <= digits <= 15
+                    or _inside(span, phone_spans)
+                    or _inside(span, id_spans)
+                    or (group == 0 and _NOT_A_PHONE_PREFIX_RE.search(
+                        text[max(0, span[0] - 40):span[0]]))
+                ):
+                    continue
+                phone_spans.append(span)
+                matches.append(self._match(
+                    data_type="phone_number", severity=Severity.MEDIUM, confidence=0.65,
+                    matched_value=value, rule=rule,
+                    recommendation="Avoid sending full phone numbers to tools and logs.",
+                ))
+
         for m in CREDIT_CARD_RE.finditer(text):
             raw = m.group(0)
-            if _luhn_ok(raw):
-                matches.append(self._match(
-                    data_type="credit_card", severity=Severity.HIGH, confidence=0.95,
-                    matched_value=raw.strip(),
-                    recommendation="Card numbers must never appear in agent channels; use a vault token.",
-                ))
+            if _inside(m.span(), id_spans) or not checksums.payment_card(raw):
+                continue
+            matches.append(self._match(
+                data_type="credit_card", severity=Severity.HIGH, confidence=0.95,
+                matched_value=raw.strip(), rule="payment_card",
+                recommendation="Card numbers must never appear in agent channels; use a vault token.",
+            ))
 
         for m in IP_RE.finditer(text):
             # Skip version strings like "version 1.2.3.4" — not a client IP.
-            if _VERSION_PREFIX_RE.search(text[max(0, m.start() - 16):m.start()]):
+            if _VERSION_PREFIX_RE.search(text[max(0, m.start() - 32):m.start()]):
                 continue
             matches.append(self._match(
                 data_type="ip_address", severity=Severity.LOW, confidence=0.6,
@@ -350,6 +462,8 @@ class PIIDetector(Detector):
             ))
 
         for m in ADDRESS_ES_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             matches.append(self._match(
                 data_type="address", severity=Severity.HIGH, confidence=0.7,
                 matched_value=m.group(0).strip(),
@@ -357,6 +471,8 @@ class PIIDetector(Detector):
             ))
 
         for m in POSTAL_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             matches.append(self._match(
                 data_type="address", severity=Severity.MEDIUM, confidence=0.6,
                 matched_value=m.group(0),

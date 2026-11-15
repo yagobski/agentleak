@@ -128,6 +128,8 @@ class HybridPipeline:
             counter += 1
             level = level_for(raw.data_type, raw.severity, self._level_overrides)
             extra_meta = {**meta, "tier": tier}
+            if raw.rule:
+                extra_meta["rule"] = raw.rule
             return Finding(
                 finding_id=f"finding_{counter:03d}",
                 run_id=run_id,

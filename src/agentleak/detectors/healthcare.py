@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
+from ._text import inside_blob
 
 # Synthetic NAM shape: 4 letters + 8 digits (e.g. TREM12345678).
 NAM_LIKE_RE = re.compile(r"\b[A-Z]{4}\d{8}\b")
@@ -90,6 +91,8 @@ class HealthcareDetector(Detector):
 
         seen_ids: set[str] = set()
         for m in NAM_LIKE_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             seen_ids.add(m.group(0))
             matches.append(self._match(
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
@@ -118,6 +121,8 @@ class HealthcareDetector(Detector):
             ))
 
         for m in _CONDITION_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             matches.append(self._match(
                 data_type="health_condition", severity=Severity.MEDIUM, confidence=0.7,
                 matched_value=m.group(1),
@@ -125,6 +130,8 @@ class HealthcareDetector(Detector):
             ))
 
         for m in _MEDICATION_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             matches.append(self._match(
                 data_type="medication", severity=Severity.MEDIUM, confidence=0.65,
                 matched_value=m.group(1),
