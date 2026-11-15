@@ -6,6 +6,67 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+<!-- BEGIN next2/gui -->
+### Added
+
+- **Finding triage.** Mark a finding true positive, false positive, accepted
+  risk (optionally until a date) or needs review, one at a time or in bulk,
+  with a rationale (required except for a true positive), the reviewer and the
+  time. Every decision is kept as an audit trail. A decision carries over to
+  the same value on the same channel in later runs of the project, and says
+  so. An expired accepted risk reads "needs review" again and says why.
+  Findings can be filtered by triage state; triage fields are in the CSV/JSON
+  export; the comparison page shows each side's triage.
+- **Triaged view of the score.** Next to the measured result, labelled, with
+  both denominators: "2 of 6 findings triaged as false positive, covering 1
+  of 4 leaked secrets. Score excluding them: RI 0.280 (WSL 7 / ρ_S 25)". The
+  measured RI, privacy score, verdict and gate never change; accepted risks
+  still count. `GET /api/runs/{id}` and every CI-facing response are
+  unchanged; the triaged figure comes only from `GET /api/runs/{id}/triage`.
+- `GET /api/runs`: every run the account owns, filtered (project, verdict,
+  gate, source, date range, text), sorted and paged on the server.
+  `GET /api/runs/export` exports every matching row (up to 10,000) as CSV or
+  JSON. The Runs page uses them, keeps the filter in the URL, and says whether
+  an export is the page or every matching row.
+- Leak paths export as SVG and JSON from the trace tab (values masked).
+- Project settings: the evaluation gate (`privacy_policy`) can be set per
+  project.
+- `GET /api/auth/session`, a sign-in probe that answers 200 when nobody is
+  signed in.
+
+### Changed
+
+- Project settings, Integrate, Identity & code and Administration use the same
+  dense sections and tables as the rest of the app. Administration shows every
+  rate and mean with its denominator and no longer shows a "healthy" badge it
+  could not back.
+- `GET /api/projects` returns `run_count`, `avg_risk_index` and `last_run`,
+  like `GET /api/projects/{id}`.
+
+### Fixed
+
+- Saving project settings replaced the whole project config, dropping the
+  project's test agents, its API key and any gate. The form now merges into
+  the stored config.
+- A rebuild of the GUI under a running server served a stale `index.html`
+  pointing at deleted assets until restart; it is re-read when it changes.
+- An evaluation gate sent with `POST /api/projects/{id}/runs` was ignored. It
+  is applied unless the project defines its own.
+- Account and project deletion, agent-card removal and API-key rotation ask
+  for confirmation in the app's dialog.
+
+### Database
+
+- Two new tables, `finding_triage` and `finding_fingerprints`, and two
+  indexes, created with `CREATE ... IF NOT EXISTS` at start-up. No existing
+  table or row is changed; a database opened by this version still opens with
+  0.19.0. Finding fingerprints are HMAC-SHA256 values under a key read from
+  `AGENTLEAK_FINGERPRINT_KEY` or created in `agentleak-fingerprint.key` next
+  to the database (mode 0600); raw values are never stored. Back that key up
+  with the database: without it, decisions still apply to old runs but only
+  by masked value.
+<!-- END next2/gui -->
+
 ## [0.19.0] - 2026-11-15
 
 Research workflow, agent self-test, wider detection, a rebuilt GUI and a round
