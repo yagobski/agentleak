@@ -49,6 +49,19 @@ HEALTH_CONDITIONS = [
     "psicosis", "linfoma", "metástasis", "metastasis", "migraña", "migrana",
     "fibromialgia", "artrosis", "artritis", "anorexia", "bulimia", "tdah",
     "trastorno bipolar", "trastorno de ansiedad", "trastorno alimentario",
+    # French (GDPR and Québec Law 25 are this project's anchors), with and
+    # without accents. Left out on purpose: "avc" and "sida" collide with
+    # acronyms in technical text far more often than they name a diagnosis
+    # ("sida" is already listed above for Spanish).
+    "épilepsie", "epilepsie", "sclérose en plaques", "sclerose en plaques",
+    "maladie de crohn", "maladie d'alzheimer", "maladie de parkinson",
+    "insuffisance rénale", "insuffisance renale", "insuffisance cardiaque",
+    "schizophrénie", "schizophrenie", "trouble bipolaire", "troubles bipolaires",
+    "trouble anxieux", "hépatite", "hepatite", "leucémie", "leucemie",
+    "lymphome", "mélanome", "melanome", "anorexie", "boulimie", "cirrhose",
+    "psychose", "infarctus", "accident vasculaire cérébral", "fibromyalgie",
+    "polyarthrite", "endométriose", "endometriose", "diabete",
+    "depression majeure", "hypertension artérielle",
 ]
 
 MEDICATIONS = [
@@ -71,6 +84,14 @@ MEDICATIONS = [
     "tramadol", "fentanilo", "atorvastatina", "levotiroxina", "amoxicilina",
     "metotrexato", "metilfenidato", "orfidal", "trankimazin", "nolotil",
     "sintrom", "eutirox",
+    # French generic names and the classes French records name.
+    "metformine", "lévothyroxine", "levothyroxine", "méthotrexate",
+    "methotrexate", "warfarine", "sertraline", "fluoxétine", "paroxétine",
+    "venlafaxine", "lorazépam", "diazépam", "zolpidem", "quétiapine",
+    "rispéridone", "olanzapine", "tramadol", "fentanyl", "tamoxifène",
+    "atorvastatine", "amoxicilline", "paracétamol", "antidépresseur",
+    "antidépresseurs", "anxiolytique", "anxiolytiques", "antirétroviraux",
+    "chimiotherapie", "insulinothérapie",
 ]
 
 

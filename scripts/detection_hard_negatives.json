@@ -1,0 +1,112 @@
+{
+  "note": "Hard negatives: text that looks like personal data or secrets and is not. Authored for AgentLeak (MIT); generated values (UUIDs, hashes, base64) come from a seeded generator and identify nothing. Documented test card numbers are deliberately NOT here: AgentLeak flags them because they are how synthetic test data is planted (see docs/detection-quality.md).",
+  "categories": {
+    "uuid": [
+      "Request bdd640fb-0667-4ad1-9c80-317fa3b1799d completed in 41 ms.",
+      "trace_id=23b8c1e9-3924-46de-beb1-3b9046685257 span_id=bd9c66b3ad3c2d6d",
+      "Created resource 972a8469-1641-4f82-8b9d-2434e465e150 in project 17fc695a-07a0-4a6e-8822-e8f36c031199.",
+      "{\"id\": \"9a1de644-815e-46d1-bb8f-aa1837f8a88b\", \"status\": \"ok\"}",
+      "Idempotency-Key: b74d0fb1-32e7-4629-8fad-c1a606cb0fb3"
+    ],
+    "git_sha": [
+      "Merged commit 86f7e437faa5a7fce15d1ddcb9eaeaea377667b8 into main.",
+      "Reverts e9d71f5ee7c9 and 84a5168.",
+      "HEAD is now at 3c36383 fix: handle empty pages",
+      "git checkout 58e6b3a414a1e090dfc6029add0f3555ccba127f",
+      "Built from 4a0a19218e082a343a1b17e5333409af9d98f0f5 on runner 14."
+    ],
+    "version": [
+      "Upgraded the agent to 1.2.3.4 last night.",
+      "Package foo 2.4.1.0 installed.",
+      "Chrome 120.0.6099.109 on Windows 10.0.19045",
+      "kernel 5.15.0-1051-azure",
+      "Node v20.11.1, npm 10.2.4, Python 3.12.7",
+      "Release 10.2.0.1 is now the default channel."
+    ],
+    "timestamp": [
+      "2026-11-14T22:11:05Z job started",
+      "epoch_ms=1731622265123 epoch=1731622265",
+      "Snapshot 20261114221105 written.",
+      "Logged at 14/11/2026 22:11:05 by the scheduler.",
+      "Next run: 2026-12-01 03:00:00 UTC",
+      "date 2026-11-14, duration 00:04:12"
+    ],
+    "order_number": [
+      "Order 555-123-4567 has shipped.",
+      "Invoice INV-2026-000184 is due on Friday.",
+      "SKU 202-611-1400 is out of stock.",
+      "Ticket #4829-1183-2207 was merged with ticket #4829-1183-2208.",
+      "PO 4500012345 approved.",
+      "Tracking 9400 1000 0000 0000 0000 00 is in transit.",
+      "ISBN 978-3-16-148410-0, second edition.",
+      "Commande n° 06 12 34 56 78 9 annulée.",
+      "Reference 1234 5678 9012 3456 attached."
+    ],
+    "placeholder_secret": [
+      "export OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+      "api_key: <your-api-key>",
+      "token = \"YOUR_API_TOKEN\"",
+      "password: ********",
+      "Authorization: Bearer <token>",
+      "GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "secret: ${VAULT_SECRET}",
+      "stripe_key = sk_live_<your-secret-key>",
+      "api_key = os.environ[\"API_KEY\"]",
+      "client_secret: {{ secrets.CLIENT_SECRET }}",
+      "DATABASE_URL=postgres://localhost:5432/app",
+      "redis://localhost:6379/0"
+    ],
+    "ip_like_version": [
+      "Firmware 1.0.0.12 flashed.",
+      "Using protocol 2.0.1.3 for the handshake.",
+      "build 4.18.0.305 passed",
+      "API v3.1.4.1 deprecated fields",
+      "schema 1.1.1.1 migration done"
+    ],
+    "phone_like_id": [
+      "Batch 202-555-0143 processed.",
+      "Case number 613-555-0199 closed.",
+      "Part 4012 555 1234 replaced.",
+      "Lot 800-555-0100 recalled by the supplier.",
+      "Serial 312-555-0123 registered."
+    ],
+    "base64_harmless": [
+      "ctx=SGVsbG8sIHdvcmxkISBUaGlzIGlzIGEgdGVzdC4=",
+      "config=cmV0cmllcz0zIHRpbWVvdXQ9MzAgcmVnaW9uPWNhLWNlbnRyYWwtMQ==",
+      "payload eyJwYWdlIjogMiwgInNvcnQiOiAiYXNjIn0=",
+      "cursor=b2Zmc2V0OjIwMDtsaW1pdDo1MA=="
+    ],
+    "hash": [
+      "sha256 845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
+      "md5 e98d2f001da5678b39482efbdf5770dc",
+      "etag \"92e200311a56800b3e475bf2d2442724535e87bf\"",
+      "integrity sha512-pKvURIxJVi2CgRXROh/M6pJ/UrTVRZKX+LQ+QtqJI4vBNibkPcs43bCCSIkn7JBPtCBXRDmD6IWFF51QVRr+Yg=="
+    ],
+    "places_prose": [
+      "We drove from Paris to Lyon via Dijon and stopped in Beaune.",
+      "The train leaves Victoria Station at noon for Brighton.",
+      "Washington Square Park was busy; we walked on to Union Square.",
+      "The conference moved from Santa Clara to San Jose this year.",
+      "Lorem ipsum dolor sit amet, near Saint Mary Hospital in Montreal.",
+      "From Sydney Harbour we sailed toward Jordan Valley Farm.",
+      "Florence and Siena are an hour apart by bus.",
+      "Avenue des Champs-Élysées is closed on Sunday mornings."
+    ],
+    "numbers_misc": [
+      "Error 0x80070005 when opening the file.",
+      "Coordinates of the depot: 45.5017, -73.5673 (public warehouse).",
+      "The batch contains 123456789 rows.",
+      "Total: 1 234 567,89 EUR for the quarter.",
+      "Port 8080, 8443 and 9090 are open.",
+      "Ratio 3/4/2026 baseline unchanged.",
+      "HTTP/1.1 200 OK in 12.3 ms",
+      "Score 98.7, percentile 99.1, n=12045"
+    ],
+    "test_identifiers_obviously_fake": [
+      "SSN 000-00-0000 is a placeholder in the form template.",
+      "Use 666-12-3456 as an invalid example.",
+      "IBAN XX00 0000 0000 0000 0000 00 shown as a format example.",
+      "Card number field: 0000 0000 0000 0000."
+    ]
+  }
+}
