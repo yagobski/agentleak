@@ -329,6 +329,8 @@ def score_corpus_cmd(
         import csv as _csv
         import io
 
+        from .rows import csv_safe
+
         o = Path(out)
         o.mkdir(parents=True, exist_ok=True)
         rows = score.rows()
@@ -336,7 +338,7 @@ def score_corpus_cmd(
         if rows:
             writer = _csv.DictWriter(buf, fieldnames=list(rows[0]), lineterminator="\n")
             writer.writeheader()
-            writer.writerows(rows)
+            writer.writerows({k: csv_safe(v) for k, v in row.items()} for row in rows)
         (o / "scores.csv").write_text(buf.getvalue(), encoding="utf-8")
         (o / "scores.json").write_text(json.dumps(
             {"traces": rows, "aggregate": agg, **({"sensitivity": sens} if sens else {})},

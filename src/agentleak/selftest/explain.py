@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any
 
 from .fixes import fix_for_channel
-from .history import SelftestHistory
+from .history import SelftestHistory, trusted_rerun
 
 LEVEL_MEANING: dict[int, str] = {
     4: "L4, special category or credential: health data, national ID (SSN/SIN), card number, IBAN, account number, secret key or token.",
@@ -94,7 +94,7 @@ def explain(fingerprint: str, *, state_dir: str | None = None) -> dict[str, Any]
             "add a custom allowlist rule in agentleak.yaml or report it; do not silence the "
             "whole channel."
         ),
-        "rerun": entry.get("rerun"),
+        "rerun": trusted_rerun(entry.get("rerun")),
     }
 
 

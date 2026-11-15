@@ -36,7 +36,9 @@ The platform is multi-account with an admin console:
 
 - **First account = admin.** The first user to register on a deployment gets
   the admin role automatically (existing single-user installs are promoted on
-  upgrade). Admins can promote other admins from the console.
+  upgrade). Admins can promote other admins from the console. On a deployment
+  reachable from the internet, register your own account before you open it
+  to traffic: until then, whoever registers first becomes admin.
 - **Admin console** (`/admin`) — platform-wide stats (accounts, projects,
   runs, code scans, average RI), account management (promote/demote admin,
   disable/enable — disabling revokes sessions immediately — and delete with
@@ -50,7 +52,11 @@ The platform is multi-account with an admin console:
 - **Hardening** — security headers on every response, HSTS + Secure cookies
   with `AGENTLEAK_COOKIE_SECURE=1`, timing-safe API-key and password checks.
   Request bodies over 32 MiB get HTTP 413 (`AGENTLEAK_MAX_BODY_BYTES` to change
-  it, `0` to disable). Custom detector patterns with nested repeats such as
+  it, `0` to disable), with or without a `Content-Length` header.
+  `/llms.txt`, `/agents.md` and the agent card build absolute links from
+  `AGENTLEAK_PUBLIC_URL` (for example `https://agents.example.org`) when it is
+  set. In public mode the request's `Host` header is never used for them;
+  without the variable they point at www.agentleak.org. Custom detector patterns with nested repeats such as
   `(a+)+` are refused, because Python regexes cannot be timed out.
 
 Admin API: `GET /api/admin/overview`, `GET /api/admin/users`,

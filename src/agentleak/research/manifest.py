@@ -420,14 +420,18 @@ def git_commit() -> dict[str, Any]:
     root = Path(__file__).resolve().parents[3]
     if not (root / ".git").exists():
         return {"commit": None, "dirty": None, "note": "not installed from a git checkout"}
+    # Config from the checkout must not run programs: core.fsmonitor (and a
+    # hook path) in .git/config execute when `git status` runs there.
+    git = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
+           "--no-optional-locks"]
     try:
-        commit = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True,
-            timeout=5, check=True,
+        commit = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            [*git, "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True,
+            timeout=5, check=True, stdin=subprocess.DEVNULL,
         ).stdout.strip()
-        status = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=no"], cwd=root,
-            capture_output=True, text=True, timeout=5, check=True,
+        status = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            [*git, "status", "--porcelain", "--untracked-files=no"], cwd=root,
+            capture_output=True, text=True, timeout=5, check=True, stdin=subprocess.DEVNULL,
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return {"commit": None, "dirty": None, "note": "git not available"}

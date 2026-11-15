@@ -42,7 +42,7 @@ from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
 from ..core.compliance import FRAMEWORKS
 from ..core.config import Config
-from ..core.netguard import set_outbound_guard
+from ..core.netguard import guard_enabled, set_outbound_guard
 from ..core.regex_safety import check_regex
 from ..core.report import AnalysisResult
 from ..core.runner import AgentLeakRunner
@@ -154,6 +154,77 @@ def _next_steps(report: dict[str, Any], code_scan: dict[str, Any] | None) -> lis
     return steps
 
 
+class _StreamBodyLimit:
+    """ASGI middleware: refuse a request body past ``limit`` bytes as it streams in."""
+
+    def __init__(self, app: Any, limit: int) -> None:
+        self.app = app
+        self.limit = limit
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope.get("type") != "http" or self.limit <= 0:
+            await self.app(scope, receive, send)
+            return
+        from fastapi import HTTPException
+
+        received = 0
+        limit = self.limit
+
+        async def limited_receive() -> Any:
+            nonlocal received
+            message = await receive()
+            if message.get("type") == "http.request":
+                received += len(message.get("body") or b"")
+                if received > limit:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Request body over the {limit}-byte limit (AGENTLEAK_MAX_BODY_BYTES).",
+                    )
+            return message
+
+        await self.app(scope, limited_receive, send)
+
+
+#: Verticals the red-team generator knows (generators/vault.py).
+_REDTEAM_VERTICALS = frozenset({"healthcare", "finance", "legal", "hr", "customer_support"})
+
+
+def _public_url_from_env() -> str:
+    """``AGENTLEAK_PUBLIC_URL`` (``https://host[:port][/prefix]``), or ``""``."""
+    from urllib.parse import urlsplit
+
+    raw = os.environ.get("AGENTLEAK_PUBLIC_URL", "").strip().rstrip("/")
+    if not raw:
+        return ""
+    parts = urlsplit(raw)
+    if parts.scheme not in ("http", "https") or not parts.hostname or parts.query or parts.fragment \
+            or parts.username or parts.password:
+        raise ValueError(
+            f"AGENTLEAK_PUBLIC_URL must be an http(s) origin such as https://agents.example.org, got {raw!r}"
+        )
+    return raw
+
+
+def _server_detection(detection: dict[str, Any]) -> dict[str, Any]:
+    """Detection settings from a request, minus what only the operator may choose.
+
+    The LLM judge reads its key from the environment variable named by
+    ``api_key_env`` and sends it to ``base_url``. Taken from a request, those
+    two fields let any account read any variable of the server process and send
+    it to a host of its choosing. On the server they come from the operator's
+    environment only (``AGENTLEAK_LLM_URL``, ``OPENAI_API_KEY``), and a hosted
+    deployment (public mode) does not run the judge on a tenant's behalf at all.
+    """
+    out = dict(detection)
+    judge = out.get("llm_judge")
+    if isinstance(judge, dict):
+        judge = {k: v for k, v in judge.items() if k not in ("base_url", "api_key_env")}
+        if guard_enabled():
+            judge["enabled"] = False
+        out["llm_judge"] = judge
+    return out
+
+
 def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     """Translate UI/project settings into agentleak.yaml config data."""
     data: dict[str, Any] = {}
@@ -185,7 +256,7 @@ def _config_data(settings: dict[str, Any]) -> dict[str, Any]:
     # trace analysis, red-team runs, and code scans all honour them.
     detection = settings.get("detection")
     if isinstance(detection, dict):
-        data["detection"] = detection
+        data["detection"] = _server_detection(detection)
     privacy_policy = settings.get("privacy_policy")
     if isinstance(privacy_policy, dict):
         data["privacy_policy"] = privacy_policy
@@ -676,6 +747,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     # own private network on a user's behalf; a self-hosted one usually has to.
     set_outbound_guard(limits.public_mode)
 
+    _configured_public_url = _public_url_from_env()
+
     def _public_base_url(request: Request) -> str:
         """Return the canonical external origin for discovery documents.
 
@@ -683,11 +756,16 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         their forwarded scheme; hosted public mode falls back to HTTPS when
         an older Apache vhost omitted that header.
         """
+        # A configured origin wins. In public mode the request's Host header
+        # is never trusted (it is reflected into llms.txt, agents.md and the
+        # agent card, which a shared cache could then serve to everyone).
+        if _configured_public_url:
+            return _configured_public_url
+        if limits.public_mode:
+            return _SITE_URL
         base = str(request.base_url).rstrip("/")
         forwarded = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().lower()
         hostname = request.url.hostname or ""
-        if limits.public_mode and hostname in {"agentleak.org", "www.agentleak.org"}:
-            return _SITE_URL
         use_https = forwarded == "https" or (
             limits.public_mode and hostname not in {"localhost", "127.0.0.1", "testserver"}
         )
@@ -702,6 +780,19 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
     # -- security headers ----------------------------------------------
     # Hardening defaults applied to every response (OWASP secure-headers).
+    # Request bodies were unbounded: one POST could hand the analyzer any
+    # amount of text. 32 MiB leaves room for a base64 zip upload.
+    try:
+        _max_body = int(os.environ.get("AGENTLEAK_MAX_BODY_BYTES", "") or 32 * 1024 * 1024)
+    except ValueError:
+        _max_body = 32 * 1024 * 1024
+
+    # Content-Length is optional: a chunked body has none, and the
+    # Content-Length check below let it through uncapped. This counts the bytes
+    # as they arrive. Registered first, so it is the innermost middleware and
+    # FastAPI sees its 413 directly.
+    app.add_middleware(_StreamBodyLimit, limit=_max_body)
+
     @app.middleware("http")
     async def _security_headers(request, call_next):  # noqa: ANN001, ANN202
         response = await call_next(request)
@@ -729,13 +820,6 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     _ip_register = _RateLimiter(
         max_attempts=limits.register_per_ip_hour or 1, window=3600.0
     )
-
-    # Request bodies were unbounded: one POST could hand the analyzer any
-    # amount of text. 32 MiB leaves room for a base64 zip upload.
-    try:
-        _max_body = int(os.environ.get("AGENTLEAK_MAX_BODY_BYTES", "") or 32 * 1024 * 1024)
-    except ValueError:
-        _max_body = 32 * 1024 * 1024
 
     @app.middleware("http")
     async def _body_limit(request, call_next):  # noqa: ANN001, ANN202
@@ -823,6 +907,16 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             secure=_cookie_secure,
         )
         return resp
+
+    def _checked_agent_type(agent_type: Any) -> None:
+        """An unknown agent_type was stored as is by PATCH (create mapped it to generic)."""
+        from ..core.store import AGENT_TYPES
+
+        if agent_type is not None and agent_type not in AGENT_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown agent_type {agent_type!r}. See /api/meta agent_types.",
+            )
 
     def _checked_config(config: Any) -> dict[str, Any]:
         """Refuse a project config the analyzer cannot load.
@@ -1505,6 +1599,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         }
         config.update({key: value for key, value in direct_config.items() if value is not None})
         _checked_config(config)
+        _checked_agent_type(payload.get("agent_type"))
         return _safe_project(db.create_project(
             name,
             agent_type=payload.get("agent_type", "generic"),
@@ -1523,6 +1618,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         config = payload.get("config")
         if config is not None:
             _checked_config(config)
+        _checked_agent_type(payload.get("agent_type"))
         # Preserve previously-stored agent keys when the client sends blanks.
         if isinstance(config, dict):
             _merge_agent_keys(pid, config, db)
@@ -2002,9 +2098,16 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         _enforce_quota(project.get("owner_id", ""))
         db.record_api_usage(project["id"], "/api/agent/selftest")
         db.meter_usage(project.get("owner_id", ""), "/api/agent/selftest")
+        # Stored scenarios resolve for the project's owner only. Without the
+        # owner, an ownerless (legacy) scenario resolved for every key, and the
+        # owner's own scenarios did not resolve at all.
+        owner = str(project.get("owner_id") or "")
         try:
-            return selftest_http(payload, project=project, store=db,
-                                 analyze=_analyze, resolve_trace=_trace_from_payload)
+            return selftest_http(
+                payload, project=project, store=db,
+                analyze=lambda p, **kw: _analyze(p, owner_id=owner, **kw),
+                resolve_trace=lambda p, st: _trace_from_payload(p, st, owner_id=owner),
+            )
         except (ValueError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -2128,6 +2231,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
 
         vertical = str(payload.get("vertical") or "healthcare")
+        if vertical not in _REDTEAM_VERTICALS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown vertical {vertical!r}. Use one of: {', '.join(sorted(_REDTEAM_VERTICALS))}.",
+            )
         try:
             n = int(payload.get("n") or 5)
         except (TypeError, ValueError) as exc:
@@ -2616,6 +2724,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
         # Single-agent project.
         mode = payload.get("mode") or ("live" if agent_cfg.get("model") else "scripted")
+        if mode not in ("live", "scripted"):
+            raise HTTPException(status_code=400, detail="'mode' must be 'live' or 'scripted'.")
         llm = None
         if mode == "live":
             if not agent_cfg.get("base_url") or not agent_cfg.get("model"):

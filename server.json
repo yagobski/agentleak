@@ -7,12 +7,12 @@
     "url": "https://github.com/yagobski/agentleak",
     "source": "github"
   },
-  "version": "0.19.0",
+  "version": "0.19.1",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "agentleak",
-      "version": "0.19.0",
+      "version": "0.19.1",
       "transport": {
         "type": "stdio"
       },

@@ -60,6 +60,14 @@ class Session:
         structured: dict[str, Any] = result["structuredContent"]
         return structured
 
+    def call_error(self, name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+        """A call that must fail: ``isError`` true, the error document as JSON text."""
+        result = self.request("tools/call", {"name": name, "arguments": arguments or {}})["result"]
+        assert result.get("isError") is True, result
+        text = result["content"][0]["text"]
+        doc: dict[str, Any] = json.loads(text[text.index("{"):])
+        return doc
+
 
 @pytest.fixture()
 def session(tmp_path: Path) -> Iterator[Session]:
@@ -128,12 +136,12 @@ def test_get_scenario_then_submit_the_trace(session: Session):
 
 
 def test_paths_outside_the_root_are_refused(session: Session, tmp_path: Path):
-    outside = session.call("privacy_selftest", {"trace_path": "/etc/hosts"})
+    outside = session.call_error("privacy_selftest", {"trace_path": "/etc/hosts"})
     assert outside["outcome"] == "usage" and "outside the server root" in outside["error"]
     (tmp_path / "run.json").write_text((ROOT / "examples" / "hr_trace.json").read_text())
     inside = session.call("privacy_selftest", {"trace_path": "run.json"})
     assert inside["kind"] == "agentleak.selftest"
-    escape = session.call("privacy_selftest", {"trace_path": "../" * 12 + "etc/hosts"})
+    escape = session.call_error("privacy_selftest", {"trace_path": "../" * 12 + "etc/hosts"})
     assert escape["outcome"] == "usage"
 
 
@@ -149,7 +157,32 @@ def test_steps_are_scored(session: Session):
 
 
 def test_errors_come_back_as_structured_usage_errors(session: Session):
-    assert session.call("privacy_selftest")["outcome"] == "usage"
-    bad = session.call("privacy_selftest", {"trace": {"events": []}})
+    # A failure is reported as one (isError true) and still carries the document.
+    assert session.call_error("privacy_selftest")["outcome"] == "usage"
+    bad = session.call_error("privacy_selftest", {"trace": {"events": []}})
     assert bad["outcome"] == "usage"
-    assert session.call("privacy_get_scenario", {"scenario_id": "nope"})["outcome"] == "usage"
+    assert session.call_error("privacy_get_scenario", {"scenario_id": "nope"})["outcome"] == "usage"
+
+
+# ----------------------------------------------------------------------
+# Hardening review: the original four tools had no path confinement, and every
+# tool reported a failure with isError false.
+# ----------------------------------------------------------------------
+@pytest.mark.parametrize("tool", ["privacy_preflight", "privacy_scan_code"])
+def test_code_tools_are_confined_to_the_root(session: Session, tmp_path: Path, tool: str):
+    outside = tmp_path.parent / (tmp_path.name + "-outside")
+    outside.mkdir()
+    (outside / "notes.py").write_text('print("patient SSN 123-45-6789")\n')
+    (tmp_path / "link").symlink_to(outside, target_is_directory=True)
+    for path in (str(outside), "../" + outside.name, "link"):
+        err = session.call_error(tool, {"path": path})
+        assert "outside the server root" in err["error"], path
+    assert not (outside / ".agentleak").exists(), "preflight wrote its memory outside the root"
+    (tmp_path / "agent.py").write_text('print("hello")\n')
+    inside = session.call(tool, {"path": "."})
+    assert inside["files_scanned"] >= 1
+
+
+def test_failures_are_reported_with_is_error(session: Session):
+    assert "error" in session.call_error("privacy_check_trace", {"trace": {"events": []}})
+    assert "error" in session.call_error("privacy_redact", {"text": "x", "style": "nope"})

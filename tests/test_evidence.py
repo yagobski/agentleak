@@ -155,3 +155,37 @@ def test_the_hash_ignores_key_order(tmp_path) -> None:
     """Otherwise a re-serialisation somewhere would look like tampering."""
     payload = {"b": 2, "a": 1}
     assert chain_hash(payload) == chain_hash({"a": 1, "b": 2})
+
+
+# ----------------------------------------------------------------------
+# Hardening review: two edits the chain did not catch
+# ----------------------------------------------------------------------
+def test_a_field_outside_the_hashed_body_fails_verification(tmp_path) -> None:
+    log = _log_with(tmp_path)
+    path = tmp_path / "evidence.jsonl"
+    lines = path.read_text().splitlines()
+    forged = {**json.loads(lines[1]), "note": "approved by the DPO"}
+    lines[1] = json.dumps(forged)
+    path.write_text("\n".join(lines) + "\n")
+    result = verify(path)
+    assert not result.ok and result.broken_at == 2
+    assert log is not None
+
+
+def test_entries_cut_off_the_end_are_caught_with_the_recorded_head(tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from agentleak.cli import app
+
+    _log_with(tmp_path)
+    path = tmp_path / "evidence.jsonl"
+    head = verify(path).head
+    assert head != GENESIS
+    lines = path.read_text().splitlines()
+    path.write_text("\n".join(lines[:-1]) + "\n")  # drop the last decision
+    assert verify(path).ok  # the chain alone cannot tell
+    result = CliRunner().invoke(app, ["evidence", str(path), "--verify", "--expect-head", head])
+    assert result.exit_code == 1, result.output
+    path.write_text("\n".join(lines) + "\n")
+    result = CliRunner().invoke(app, ["evidence", str(path), "--verify", "--expect-head", head[:12]])
+    assert result.exit_code == 0, result.output

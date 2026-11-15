@@ -161,7 +161,8 @@ def register(app: typer.Typer) -> None:
             help="Fail on a finding at or above this level: L1, L2, L3 or L4.",
         ),
         fail_under: int | None = typer.Option(
-            None, "--fail-under", help="Also fail when the privacy score is below this (default 40).",
+            None, "--fail-under", min=0, max=100,
+            help="Also fail when the privacy score is below this, 0-100 (default 40).",
         ),
         config: str | None = typer.Option(None, "--config", "-c", help="agentleak.yaml to honor."),
         state_dir: str | None = typer.Option(

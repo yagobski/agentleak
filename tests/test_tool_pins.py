@@ -68,3 +68,28 @@ def test_a_changed_tool_stays_reported_until_repinned(tmp_path):
 def test_only_fingerprints_are_stored(tmp_path):
     _list(_proxy(tmp_path), [POISONED])
     assert "ssh" not in (tmp_path / "pins.json").read_text()
+
+
+def test_block_changed_tools_refuses_a_call_made_before_any_list(tmp_path):
+    """Hardening review: a client that cached the tool list never sends
+    tools/list, so the pin check never ran and the changed tool was reachable."""
+    _list(_proxy(tmp_path), [HONEST])
+    proxy = _proxy(tmp_path, block_changed_tools=True)  # new session, no tools/list
+    forward, reply = proxy.handle_request({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                                           "params": {"name": "search", "arguments": {}}})
+    assert forward is None and reply["result"]["isError"] is True
+    _list(proxy, [HONEST], rid=2)  # unchanged: once checked, the call goes through
+    forward, reply = proxy.handle_request({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                           "params": {"name": "search", "arguments": {}}})
+    assert forward is not None and reply is None
+
+
+def test_withheld_tools_accumulate_across_list_pages(tmp_path):
+    other = {"name": "other", "description": "x"}
+    _list(_proxy(tmp_path), [HONEST, other])
+    proxy = _proxy(tmp_path, block_changed_tools=True)
+    _list(proxy, [POISONED], rid=1)
+    _list(proxy, [{**other, "description": "y"}], rid=2)  # page 2 must not forget page 1
+    forward, reply = proxy.handle_request({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                           "params": {"name": "search", "arguments": {}}})
+    assert forward is None and reply["result"]["isError"] is True
