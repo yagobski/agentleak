@@ -200,3 +200,15 @@ def test_oversized_body_is_refused_before_parsing(tmp_path, monkeypatch) -> None
     assert client.post("/api/analyze", json=big).status_code == 413
     small = {"trace": {"events": [{"channel": "log", "content": "hello"}]}}
     assert client.post("/api/analyze", json=small).status_code == 200
+
+
+def test_trust_page_title_is_escaped_once(tmp_path) -> None:
+    store = Store(str(tmp_path / "qa.db"))
+    client = TestClient(create_app(store=store))
+    client.post("/api/auth/register", json={"email": "t@example.test", "password": "t-pass-12345"})
+    pid = client.post("/api/projects", json={"name": "R&D <bot>"}).json()["id"]
+    client.post(f"/api/projects/{pid}/runs", json={"scenario_id": "hr_clean_case"})
+    slug = client.post(f"/api/projects/{pid}/publish", json={"slug": "rd-bot"}).json()["slug"]
+    html = client.get(f"/a/{slug}").text
+    assert "<title>R&amp;D &lt;bot&gt; — privacy score | AgentLeak</title>" in html
+    assert "&amp;amp;" not in html and "<bot>" not in html
