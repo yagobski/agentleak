@@ -407,7 +407,11 @@ def scan(
 
     if output:
         payload = result.to_sarif() if fmt == "sarif" else result.to_dict()
-        Path(output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        try:
+            Path(output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except OSError as exc:
+            typer.secho(f"✗ could not write {output}: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
         typer.secho(f"✓ wrote {output}", fg=typer.colors.GREEN)
 
     if fail_under is not None and result.score < fail_under:
@@ -445,8 +449,8 @@ def redact(
 
     try:
         text = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
-    except OSError as exc:
-        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+    except (OSError, UnicodeDecodeError) as exc:
+        typer.secho(f"✗ could not read {path or 'stdin'} as UTF-8 text: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
     cleaned = sanitize_text(text, style=style)
@@ -895,7 +899,24 @@ def run(
             typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
 
-    traces = _resolve_traces(trace, scenario, cfg, pack=pack)
+    try:
+        formats = normalize_formats([f for f in fmt.split(",") if f.strip()])
+    except ValueError as exc:
+        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
+    # A missing file, a malformed or non-UTF-8 trace, or an unknown scenario
+    # is an unresolvable input (exit 2), not a traceback.
+    try:
+        traces = _resolve_traces(trace, scenario, cfg, pack=pack)
+    except typer.BadParameter:
+        raise
+    except KeyError as exc:
+        typer.secho(f"✗ {exc.args[0] if exc.args else exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+    except (OSError, ValueError, TypeError) as exc:
+        typer.secho(f"✗ could not load trace {trace or scenario}: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
     if not traces:
         typer.secho(
             "Nothing to run. Provide --trace, --scenario, or scenarios in --config.",
@@ -904,11 +925,17 @@ def run(
         raise typer.Exit(code=2)
 
     out_dir = output or (cfg.reports.output_dir if cfg else "reports")
-    formats = [f for f in fmt.split(",") if f.strip()]
     runner = AgentLeakRunner(cfg)
 
     worst_blocked = False
-    for _label, t, canaries in traces:
+    for label, t, canaries in traces:
+        if not t.events:
+            # An empty trace scores a perfect Pass. Say so, so a CI gate fed
+            # the wrong file is not mistaken for a clean agent.
+            typer.secho(
+                f"⚠ {label}: the trace has no events; nothing was analyzed.",
+                fg=typer.colors.BRIGHT_YELLOW, bold=True,
+            )
         result = runner.analyze(t, canary_set=canaries)
         if fail_under is not None:
             result.fail_below = fail_under
@@ -947,13 +974,29 @@ def report(
         typer.secho(f"✗ could not read report: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
 
+    if not isinstance(data, dict) or not {"privacy_score", "verdict", "findings"} <= data.keys():
+        typer.secho(
+            f"✗ {input} is not an AgentLeak report (write one with `agentleak run`).",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+    try:
+        formats = normalize_formats([x for x in fmt.split(",") if x.strip()])
+    except ValueError as exc:
+        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
     out_dir = output or os.path.dirname(os.path.abspath(input))
     basename = os.path.splitext(os.path.basename(input))[0]
     os.makedirs(out_dir, exist_ok=True)
     from .reporters import _EXTENSIONS  # local import: internal mapping
 
-    for f in normalize_formats([x for x in fmt.split(",") if x.strip()]):
-        content = render(data, f)
+    for f in formats:
+        try:
+            content = render(data, f)
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            typer.secho(f"✗ could not render {input} as {f}: {exc!r}", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
         path = os.path.join(out_dir, f"{basename}.{_EXTENSIONS[f]}")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(content)
@@ -982,7 +1025,15 @@ def _resolve_traces(
     canary set, because without it those scenarios score a false "Pass".
     """
     if trace:
-        return [(trace, Trace.from_json_file(trace), None)]
+        with open(trace, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if not isinstance(data, dict) or not isinstance(data.get("events"), list):
+            # A report, a config or any other JSON object would otherwise load
+            # as an empty trace and pass the gate.
+            raise ValueError(
+                "not an AgentLeak trace: expected a JSON object with an 'events' list"
+            )
+        return [(trace, Trace.from_dict(data), None)]
     if pack:
         # A bundled research pack: the whole suite, or one scenario from it.
         # This is what makes the published benchmark one command away.
