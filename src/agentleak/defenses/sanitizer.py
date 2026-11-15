@@ -122,6 +122,12 @@ DETECT_ONLY: dict[str, str] = {
 # wrong label — in the "sanitised" output.
 _CREDENTIAL_TYPES = frozenset(t.upper() for t in CREDENTIAL_TYPES)
 
+# An email address is self-delimiting too. A word inside it that another
+# detector recognises ("a1b2c3" read as a postal code, "diabetes" in
+# "j.diabetes.clinic@…") used to win as the inner span, and the rest of the
+# address stayed in the output: ``dana.[REDACTED_ADDRESS]@example.com``.
+_WHOLE_TYPES = _CREDENTIAL_TYPES | {"EMAIL"}
+
 
 def _default_detectors() -> list[Any]:
     """The Tier-1 detector chain, built once and shared.
@@ -290,10 +296,11 @@ class Sanitizer:
                 and (inner[1] - inner[0]) < (outer[1] - outer[0])
             )
 
-        # A credential swallows whatever was matched inside it.
+        # A credential (or an email address) swallows whatever was matched
+        # inside it.
         credentials = [
             span for span in found
-            if span[3] in _CREDENTIAL_TYPES or (span[0], span[1]) in whole
+            if span[3] in _WHOLE_TYPES or (span[0], span[1]) in whole
         ]
         found = [
             span for span in found
@@ -304,7 +311,7 @@ class Sanitizer:
         # span is a more precise reading of the same signal.
         inner = [
             span for span in found
-            if span[3] in _CREDENTIAL_TYPES
+            if span[3] in _WHOLE_TYPES
             or (span[0], span[1]) in whole
             or not any(contains(span, other) for other in found)
         ]

@@ -273,7 +273,9 @@ class PIIDetector(Detector):
 
         # No "@", no email; skipping the scan avoids EMAIL_RE's quadratic
         # rescans of long local-part-like runs (base64, hex, dotted ids).
+        email_spans: list[tuple[int, int]] = []
         for m in (EMAIL_RE.finditer(text) if "@" in text else ()):
+            email_spans.append(m.span())
             matches.append(self._match(
                 data_type="email", severity=Severity.MEDIUM, confidence=0.95,
                 matched_value=m.group(0),
@@ -515,7 +517,10 @@ class PIIDetector(Detector):
                 ))
 
         for m in POSTAL_RE.finditer(text):
-            if inside_blob(text, m.start(), m.end()):
+            # "a1b2c3" inside "dana.a1b2c3@example.com" is part of the address,
+            # not a Canadian postal code; reporting it made the sanitizer
+            # redact the inner span and leave the rest of the email behind.
+            if inside_blob(text, m.start(), m.end()) or _inside(m.span(), email_spans):
                 continue
             matches.append(self._match(
                 data_type="address", severity=Severity.MEDIUM, confidence=0.6,

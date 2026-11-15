@@ -29,12 +29,18 @@ NAM_SPACED_RE = re.compile(r"\b(?:NAM\s+)?[A-Z]{4}(?:[\s-]\d{2,4}){2,4}\b")
 # US-style MRN / medical record number anchored on a keyword. Allows a leading
 # ``NAM`` label and internal spaces/hyphens in the identifier body.
 MRN_RE = re.compile(
-    r"(?i)\b(?:mrn|medical record(?: number)?|health[_ ]?id)\b[:\s#]*"
+    r"\b(?i:mrn|medical record(?: number)?|health[_ ]?id)\b[:\s#]*"
     # The identifier must hold a digit: without that guard the label of a
     # redacted field ("medical record number: [REDACTED_…]") captured the
-    # word "number" as an MRN.
-    r"((?:NAM\s*)?(?=[A-Z \-]*\d)[A-Z0-9][A-Z0-9 \-]{4,})"
+    # word "number" as an MRN. It is upper case and ends on a letter or digit:
+    # case-insensitive, "MRN 12345678 attached" took " attached" with it.
+    r"((?:NAM\s*)?(?=[A-Z \-]*\d)[A-Z0-9][A-Z0-9 \-]{3,}[A-Z0-9])"
 )
+# A record number written as one token with its prefix ("MRN-12345678",
+# "MRN12345678"). The prefix is part of the identifier as printed, so it is
+# matched and removed with the digits: redacting the digits alone left
+# "MRN-[REDACTED_…]", which still reads as a record number to the next scan.
+MRN_TOKEN_RE = re.compile(r"(?<![\w-])((?i:mrn)-?\d{4,12})(?![\w-])")
 
 HEALTH_CONDITIONS = [
     "diabetes", "cancer", "hypertension", "asthma", "depression", "anxiety",
@@ -140,6 +146,13 @@ class HealthcareDetector(Detector):
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.8,
                 matched_value=value,
                 recommendation="Remove or mask health identifiers before calling external tools.",
+            ))
+
+        for m in MRN_TOKEN_RE.finditer(text):
+            matches.append(self._match(
+                data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
+                matched_value=m.group(1), rule="mrn_token",
+                recommendation="Remove or mask medical record numbers before internal channels.",
             ))
 
         for m in MRN_RE.finditer(text):
