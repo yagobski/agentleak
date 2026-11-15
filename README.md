@@ -338,6 +338,7 @@ there.
 - [Cross-session leaks](docs/cross-session.md) — whose data is this, and did it end up in somebody else's session
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds
 - [Scoring (AgentRisk)](docs/scoring.md) — RI formula, metrics, red team ASR/ELR/CLR
+- [Research workflow](docs/research.md) — `agentleak bench`: experiment manifests, paired statistics, LaTeX exports, reproducibility capsules
 - [Red Team](docs/redteam.md) — adversarial testing, attack taxonomy, metrics
 - [Static code scan](docs/code-scan.md) — local, ZIP and GitHub source scanning
 - [CI policy gate](docs/ci-gate.md) — fail builds on privacy regressions

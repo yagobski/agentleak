@@ -22,6 +22,7 @@ from .core.report import AnalysisResult
 from .core.runner import AgentLeakRunner
 from .core.trace import Trace
 from .reporters import normalize_formats, render, write_reports
+from .research.cli import bench_app
 from .scenarios import list_scenarios, load_example_trace
 
 app = typer.Typer(
@@ -462,6 +463,7 @@ def redact(
 # ----------------------------------------------------------------------
 admin_app = typer.Typer(help="Operator commands for a self-hosted platform.", no_args_is_help=True)
 app.add_typer(admin_app, name="admin")
+app.add_typer(bench_app, name="bench")
 
 
 @admin_app.command("reset-password")
