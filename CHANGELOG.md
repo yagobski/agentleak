@@ -6,6 +6,40 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+<!-- BEGIN next2/packs -->
+### Added
+
+- **AgentSocialBench pack** (`agentsocialbench_ma`, 105 scenarios, MIT). One
+  agent hands two facts that must not cross to another agent: 50 on
+  `inter_agent_message` (another user's agent, or the same user's agent in
+  another domain) and 55 on `shared_memory` (a group chat or a shared plan).
+  The facts ship as canaries, and every record converts to a clean counterpart
+  that carries the source's abstraction instead (`"variant": "clean"`). Built
+  by `scripts/packs/build_agentsocialbench_pack.py` from commit `6d8497c`.
+- **MCPTox pack** (`mcptox_recipient_hijack`, 24 scenarios, CC-BY-4.0). A
+  poisoned MCP tool description makes a model send the user's data to the
+  attacker's recipient through a legitimate tool. The calls, and the clean
+  counterparts, are the models' own recorded calls. The pack ships a flow-rule
+  preset (`flow_preset`) that flags all 24 leaks and none of the counterparts;
+  in 7 pairs presence alone cannot tell them apart. Built by
+  `scripts/packs/build_mcptox_pack.py` from commit `630121b`.
+- **AI-security framework mapping.** Reports gain a `security_frameworks` key
+  and `/api/meta` publishes the table: OWASP Top 10 for Agentic Applications
+  (ASI01-ASI10, identifiers only), MITRE ATLAS techniques (2026.10) and NIST
+  AI 100-2 E2025 terms, by leak channel and by attack class. A review aid, not
+  a certification; the 14 privacy frameworks and every existing report key and
+  count are unchanged (pinned by `tests/test_security_frameworks.py`).
+- `scripts/packs/measure_new_packs.py`: recall and specificity of the pattern
+  tier on the two packs against their shipped counterparts.
+
+### Changed
+
+- Bundled scenarios: 362 → 491. `/llms.txt`, `docs/mcp.md` and the MCP server
+  text quote the new total.
+- `scripts/build_benchmark.py` and `research.corpus.FAILURE_MODES` classify
+  the AgentSocialBench pack as `norm` and the MCPTox pack as `hijack`.
+<!-- END next2/packs -->
+
 ## [0.19.0] - 2026-11-15
 
 Research workflow, agent self-test, wider detection, a rebuilt GUI and a round
