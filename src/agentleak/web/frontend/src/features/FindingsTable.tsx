@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 AgentLeak contributors
 // SPDX-License-Identifier: MIT
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, Search } from "lucide-react"
 import type { Finding, Report } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,14 @@ export function FindingsTable({
   const [levels, setLevels] = useState<Set<number>>(new Set())
   const [channel, setChannel] = useState("all")
 
+  // A permalink to a finding opens with that row in view.
+  useEffect(() => {
+    if (!activeFinding) return
+    const t = window.setTimeout(() => document.getElementById(`row-${activeFinding}`)?.scrollIntoView({ block: "center" }), 60)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const channels = useMemo(() => Array.from(new Set(report.findings.map((f) => f.channel))).sort(), [report.findings])
   const levelCounts = useMemo(() => {
     const m: Record<number, number> = {}
@@ -50,7 +58,26 @@ export function FindingsTable({
   const columns: Column<Finding>[] = [
     { id: "level", header: "Level", value: (f) => f.level, cell: (f) => <LevelChip level={f.level} /> },
     { id: "channel", header: "Channel", value: (f) => f.channel, cell: (f) => <code className="font-mono text-[12px]">{f.channel}</code> },
-    { id: "data_type", header: "Data type", value: (f) => f.data_type, className: "break-words" },
+    {
+      id: "data_type",
+      header: "Data type",
+      value: (f) => f.data_type,
+      className: "break-words",
+      cell: (f) => (
+        <button
+          type="button"
+          aria-expanded={activeFinding === f.finding_id}
+          title="Show recommendation and leak path"
+          onClick={(e) => {
+            e.stopPropagation()
+            onActivate(activeFinding === f.finding_id ? null : f.finding_id)
+          }}
+          className="rounded-sm text-left underline decoration-border underline-offset-2 hover:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {f.data_type}
+        </button>
+      ),
+    },
     {
       id: "masked_value",
       header: "Value (masked)",

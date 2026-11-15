@@ -6,6 +6,7 @@ import {
   Check,
   Download,
   Eye,
+  EyeOff,
   Loader2,
   Play,
   Plus,
@@ -32,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { PageHeader } from "@/layout/AppShell"
 import { DataTable, type Column } from "@/components/DataTable"
+import { maskContent } from "@/features/TraceExplorer"
 
 type SourceFilter = "all" | "builtin" | "custom" | "imported"
 
@@ -658,7 +660,15 @@ function TraceDialog({
   onRun: (id: string) => void
 }) {
   if (!detail) return null
-  const events = (detail.trace?.events as unknown[]) ?? []
+  return <TraceDialogBody detail={detail} onClose={onClose} onRun={onRun} />
+}
+
+function TraceDialogBody({ detail, onClose, onRun }: { detail: ScenarioDetail; onClose: () => void; onRun: (id: string) => void }) {
+  const [reveal, setReveal] = useState(false)
+  const events = (detail.trace?.events as Record<string, unknown>[] | undefined) ?? []
+  const shown = reveal
+    ? detail.trace
+    : { ...detail.trace, events: events.map((e) => ({ ...e, content: maskContent(e.content) })) }
   return (
     <Dialog open={!!detail} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl">
@@ -684,9 +694,15 @@ function TraceDialog({
             ))}
           </div>
         )}
+        <div className="flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
+          <span>{reveal ? "Raw synthetic values shown." : "Event payloads are masked; structure and sizes stay visible."}</span>
+          <Button variant="outline" size="sm" className="h-7 text-[12px]" aria-pressed={reveal} onClick={() => setReveal((r) => !r)}>
+            {reveal ? <EyeOff /> : <Eye />} {reveal ? "Mask values" : "Reveal values"}
+          </Button>
+        </div>
         <ScrollArea className="max-h-[40vh] rounded-md border border-border bg-muted/40">
-          <pre className="p-3 font-mono text-[11px] leading-relaxed text-foreground/90">
-            {JSON.stringify(detail.trace, null, 2)}
+          <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground/90">
+            {JSON.stringify(shown, null, 2)}
           </pre>
         </ScrollArea>
         <div className="flex justify-end gap-2">

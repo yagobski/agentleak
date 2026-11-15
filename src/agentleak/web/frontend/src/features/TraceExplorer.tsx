@@ -58,7 +58,7 @@ function dedupeSteps(steps: LeakStep[]): LeakStep[] {
 }
 
 /** Masked view: structure and sizes stay visible, values do not. */
-function maskContent(content: unknown, depth = 0): unknown {
+export function maskContent(content: unknown, depth = 0): unknown {
   if (content === null || content === undefined) return content
   if (typeof content === "string") return `‹hidden · ${content.length} chars›`
   if (typeof content === "number" || typeof content === "boolean") return "‹hidden›"

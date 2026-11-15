@@ -64,7 +64,7 @@ function ScoreTrend({ runs }: { runs: RunHistoryEntry[] }) {
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Privacy score over runs">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-3xl" role="img" aria-label="Privacy score over runs">
         {[0, 40, 70, 90, 100].map((g) => (
           <g key={g}>
             <line

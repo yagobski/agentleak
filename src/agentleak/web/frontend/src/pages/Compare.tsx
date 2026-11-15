@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ArrowLeftRight, TriangleAlert } from "lucide-react"
-import { api, type Finding, type LevelLabel, type Run } from "@/lib/api"
+import { api, type LevelLabel, type Run } from "@/lib/api"
+import { diffFindings, type DiffRow, type Status } from "@/lib/compare"
 import { channelSplit, useMeta } from "@/lib/meta"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -11,42 +12,6 @@ import { DataTable, type Column } from "@/components/DataTable"
 import { DetectionBadge, LevelChip, VerdictLabel } from "@/features/Chips"
 import { formatStamp, useAllRuns, type RunRow } from "@/features/RunsTable"
 import { PageHeader } from "@/layout/AppShell"
-
-type Status = "resolved" | "added" | "unchanged"
-interface DiffRow {
-  key: string
-  status: Status
-  finding: Finding
-}
-
-/**
- * Reports carry no stable finding fingerprint (finding ids are per run), so a
- * finding is matched on what identifies the disclosure: channel, data type,
- * level and masked value.
- */
-function fingerprint(f: Finding) {
-  return `${f.channel}|${f.data_type}|${f.level}|${f.redacted_value}`
-}
-
-function diffFindings(a: Finding[], b: Finding[]): DiffRow[] {
-  const bucket = (fs: Finding[]) => {
-    const m = new Map<string, Finding[]>()
-    fs.forEach((f) => m.set(fingerprint(f), [...(m.get(fingerprint(f)) ?? []), f]))
-    return m
-  }
-  const ma = bucket(a)
-  const mb = bucket(b)
-  const out: DiffRow[] = []
-  for (const key of new Set([...ma.keys(), ...mb.keys()])) {
-    const xa = ma.get(key) ?? []
-    const xb = mb.get(key) ?? []
-    const shared = Math.min(xa.length, xb.length)
-    for (let i = 0; i < shared; i++) out.push({ key: `${key}#u${i}`, status: "unchanged", finding: xb[i] })
-    for (let i = shared; i < xa.length; i++) out.push({ key: `${key}#r${i}`, status: "resolved", finding: xa[i] })
-    for (let i = shared; i < xb.length; i++) out.push({ key: `${key}#a${i}`, status: "added", finding: xb[i] })
-  }
-  return out
-}
 
 function signed(n: number, digits = 3) {
   if (Math.abs(n) < 10 ** -(digits + 1)) return (0).toFixed(digits)
@@ -217,6 +182,15 @@ export function Compare() {
                 Same vault scope (ρ_S {ra.rho_s}).
               </p>
             )}
+            {ra.scenario_id !== rb.scenario_id && (
+              <p className="mt-2 flex gap-2 text-[13px] text-sev-l2">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span>
+                  A and B analysed different scenarios ({ra.scenario_id ?? "none"} and {rb.scenario_id ?? "none"}). A finding
+                  marked resolved may simply not exist in B's input; this is not evidence that a mitigation worked.
+                </span>
+              </p>
+            )}
             {tiersDiffer && (
               <p className="mt-2 flex gap-2 text-[13px] text-sev-l2">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -268,7 +242,7 @@ export function Compare() {
                       <th scope="row">{label}</th>
                       <td className="font-mono tnum">{va}</td>
                       <td className="font-mono tnum">{vb}</td>
-                      <td className="text-right font-mono tnum">{d}</td>
+                      <td className="text-right font-mono text-[12px] tnum">{d}</td>
                     </tr>
                   ))}
                   <tr className="border-b border-border/60">

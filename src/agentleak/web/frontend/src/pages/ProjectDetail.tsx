@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { Bot, Check, Copy, Eye, EyeOff, KeyRound, Loader2, Pencil, Play, Plug, Plus, RefreshCw, Shield, Sparkles, Trash2, Wrench, X } from "lucide-react"
+import { Bot, Check, Copy, Eye, EyeOff, KeyRound, Loader2, Pencil, Play, Plug, Plus, RefreshCw, Shield, Trash2, Wrench, X } from "lucide-react"
 import { toast } from "sonner"
 import {
   api,
@@ -264,7 +264,7 @@ function AuditTab({ project, onRan }: { project: Project; onRan: () => void }) {
               </>
             ) : live ? (
               <>
-                <Sparkles className="size-3.5 text-primary" />
+                <Bot className="size-3.5 text-primary" />
                 <span>
                   Model harness — <code className="font-mono">{agent?.model}</code>. AgentLeak sends the selected
                   scenario to this endpoint and captures its behavior; it does not discover your production app.

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 AgentLeak contributors
 // SPDX-License-Identifier: MIT
-import { ArrowRight, Bot, Database, HardDrive, Plug, Sparkles, User, Wrench } from "lucide-react"
+import { ArrowRight, Bot, Database, HardDrive, Plug, Info, User, Wrench } from "lucide-react"
 import type { Badge as Sev } from "@/lib/api"
 import { type LeakPath, type ModelEdge, type ModelNode, type ProjectModel } from "@/lib/api"
 import { badgeChipClass, badgeColor } from "@/lib/format"
@@ -224,7 +224,7 @@ export function ModelView({ model }: { model: ProjectModel }) {
             <span className="inline-block h-0.5 w-5 animate-pulse" style={{ background: badgeColor("high") }} /> leaked path
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <Sparkles className="size-3" /> live = real LLM · scripted = offline
+            <Info className="size-3" /> live = real LLM · scripted = offline
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="text-muted-foreground/70">severity</span>

@@ -91,9 +91,11 @@ src/agentleak/
         └── src/
             ├── lib/        api.ts (typed client), format.ts, agents.ts (SDK snippets)
             ├── components/ui/  shadcn primitives
-            ├── features/   RiGauge, ResultsView, ConfigPanel, RunRow, ThemeToggle
-            ├── layout/     AppShell (sidebar nav)
-            └── pages/      Dashboard, Projects, ProjectDetail, RunView, Playground, ...
+            ├── components/ DataTable (sort/filter/export), ConfirmDialog, ErrorBoundary
+            ├── features/   ResultsView, ResultSummary, TraceExplorer, FindingsTable, RunsTable
+            ├── layout/     AppShell (sidebar nav, breadcrumbs via crumbs.tsx)
+            ├── test/       vitest specs + synthetic report/trace fixtures
+            └── pages/      Dashboard, Analyze, Runs, RunView, Compare, Projects, ...
 tests/                     pytest; conftest isolates $AGENTLEAK_HOME; test_agentrisk conformance
 docs/                      quickstart, concepts, scoring, scenarios, integrations, gui, platform
 ```
@@ -375,6 +377,7 @@ npm install
 npm run dev                       # Vite dev server, proxies /api → :8000
                                   #   (run `agentleak serve` alongside it)
 npm run build                     # type-check + build → ../static
+npm test                          # vitest (frontend logic)
 ```
 
 **Round-trip when changing the GUI:** `npm run build` (in `frontend/`) → `pip
@@ -394,8 +397,13 @@ once the package is reinstalled.
   five conformance properties; the worked example (RI 0.238) is the golden test.
 - The frontend uses shadcn/ui components (`components/ui/`), Tailwind tokens
   (`src/index.css`), self-hosted fonts (Hanken Grotesk + JetBrains Mono), and
-  CSS-based enter animations that degrade safely (the rendered value is always
-  the final value — see `RiGauge` / the `arc-draw`/`bar-grow` keyframes).
+  no decorative animation; anything that moves respects `prefers-reduced-motion`.
+- GUI guardrails: a result with no finding says "no finding from the enabled
+  deterministic detectors", never "safe"; every rate shows numerator and
+  denominator; the detector tier is shown on every result; values are masked
+  unless the user reveals them; numbers and verdicts come from the API, the
+  GUI never recomputes them. The source/emission channel split comes from
+  `/api/meta` (`source_channels`).
 - The app shell follows the shadcn **blocks** dashboard pattern: `layout/AppShell.tsx`
   wraps everything in `SidebarProvider` → collapsible `Sidebar` (variant `inset`)
   + `SidebarInset` with a sticky `SiteHeader` (sidebar trigger + breadcrumb +

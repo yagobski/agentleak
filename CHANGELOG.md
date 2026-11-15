@@ -6,6 +6,75 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+<!-- next/gui: platform GUI -->
+### Added (GUI)
+
+- **Analyze a trace** (`/app/analyze`): score a trace without creating a
+  project. Pick a bundled scenario, choose or drop a JSON file, or paste JSON;
+  detectors, vault scope, custom rules and the evaluation gate sit behind one
+  options line. `?scenario=<id>` is a shareable link that analyzes with
+  defaults. The masked report survives a reload; the raw trace is never stored.
+  **Save as run** files the result under a project.
+- **Results lead with the verdict per channel**: final output first, then each
+  internal emission channel with its events, findings and channel RI, and a
+  sentence that states the contrast with its denominator ("the final answer has
+  no finding, but 4 of 4 internal channels in this trace disclosed sensitive
+  data"). A clean result reads "no finding from the enabled deterministic
+  detectors", never "safe".
+- **How this number is computed**: the AgentRisk derivation (weights, leaked and
+  vault counts per level, WSL, ρ_S, RI, privacy score, scope, gate) read from the
+  report's `agentrisk` block, with a consistency check against the reported
+  values.
+- **Detector tier badge** on every result and comparison (mode, tiers that ran,
+  degraded or complete).
+- **Trace explorer** (Trace tab): every event in order with source and emission
+  channels told apart in text, channel filters with counts, finding-to-event and
+  event-to-finding navigation, the leak path from entry point to sink, and a
+  payload viewer that masks values until you reveal one event. Paginated (100
+  events per page); a 2,000-event trace renders and filters without delay.
+  Stored runs keep no trace, so the explorer rebuilds the events the report
+  knows about and lets you load the original file (checked against the report,
+  read in the browser, never uploaded).
+- **Run comparison** (`/app/compare?a=&b=`): verdict, RI, WSL/ρ_S, leaked
+  secrets and gate side by side, per-channel RI deltas, findings resolved, added
+  and unchanged, the dominance statement from `/api/compare`, and warnings when
+  the vault denominators, scenarios or detector tiers differ.
+- **Runs** (`/app/runs`): every stored run across projects in one sortable,
+  filterable table; tick two rows to compare.
+- **Sortable tables with export** for runs, findings, projects, scenarios and
+  comparison diffs; Export writes exactly the rows shown, as CSV or JSON.
+- **Permalinks**: tab, finding and trace event live in the URL; copy a link to a
+  run or to one finding.
+- **Scenario provenance**: the library and the packs are tables showing source,
+  license and attribution; scenario traces open masked.
+- Breadcrumbs with real names, a distinct tab title per page, a footer with the
+  software version, an error boundary per page, skeletons shaped like the
+  final layout, `/` to focus the current table's search, and a skip link.
+- `/api/meta` reports `source_channels` and `emission_channels`, so the GUI no
+  longer restates `BASELINE_CHANNELS`.
+- Frontend unit tests (`npm test`, vitest) for the channel verdict, derivation,
+  trace reconstruction and comparison logic.
+
+### Changed (GUI)
+
+- The test lab is split: trace analysis moved to **Analyze a trace**, the
+  red-team harness stays under **Red team** (`/app/playground`;
+  `?scenario=` links redirect to Analyze).
+- Project run history is a table with compare selection; the score chart says
+  when it mixes scenarios instead of calling it a trend.
+- Deleting a run asks for confirmation.
+- Severity colors meet WCAG AA in the light theme, and L1 is blue: green now
+  only means "no finding".
+- The dashboard no longer derives a verdict from the mean RI, and every rate
+  shows its denominator.
+
+### Removed (GUI)
+
+- About 140 kB of stylesheet rules left over from the marketing site; the
+  animated gauge, the spline "risk trajectory" chart and the logo sweep
+  animation.
+<!-- /next/gui -->
+
 ## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.
