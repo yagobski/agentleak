@@ -19,7 +19,7 @@ Quick start::
 
 from __future__ import annotations
 
-__version__ = "0.19.1"
+__version__ = "0.20.0"
 
 from .client import AgentLeakClient, AgentSelfClient, connect
 from .core.agentcard import AgentCard, fetch_agent_card, parse_agent_card

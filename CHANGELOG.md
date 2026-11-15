@@ -6,7 +6,25 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
-<!-- BEGIN next2/packs -->
+## [0.20.0] - 2026-11-15
+
+Feature release: two new scenario packs, an AI-security framework mapping,
+finding triage, imports from other testing tools and better recall on
+personal data written in prose. Includes every fix of 0.19.1.
+
+**Scores move.** 23 of 362 bundled scenarios change risk index or leaked
+finding count, 6 of them verdict; built-in scenarios (including the
+quickstart's 0.44) do not move. The AgentRisk formula and the L1–L4 levels are
+unchanged; only what the detectors find changed. Verdict changes:
+`agentleak_bench/agentleak_leg_00744` High risk → Fail (military address
+leaked); `injecagent_ds/…googlecalendarreadevents__teladocviewprescriptions__base`
+High risk → Fail (Lisinopril leaked); `privacylens_ci/trace_main63`
+Conditional pass → High risk (Lisinopril); `trace_main121` Conditional pass →
+High risk (autism spectrum disorder after "a diagnosis of"); `trace_main483`
+High risk → Fail (a diagnosis after "diagnosed with"); `trace_main43` Fail →
+High risk (a birthday the agent received but did not disclose now counts in
+the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
+
 ### Added
 
 - **AgentSocialBench pack** (`agentsocialbench_ma`, 105 scenarios, MIT). One
@@ -31,18 +49,6 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   count are unchanged (pinned by `tests/test_security_frameworks.py`).
 - `scripts/packs/measure_new_packs.py`: recall and specificity of the pattern
   tier on the two packs against their shipped counterparts.
-
-### Changed
-
-- Bundled scenarios: 362 → 491. `/llms.txt`, `docs/mcp.md` and the MCP server
-  text quote the new total.
-- `scripts/build_benchmark.py` and `research.corpus.FAILURE_MODES` classify
-  the AgentSocialBench pack as `norm` and the MCPTox pack as `hijack`.
-<!-- END next2/packs -->
-
-<!-- BEGIN next2/gui -->
-### Added
-
 - **Finding triage.** Mark a finding true positive, false positive, accepted
   risk (optionally until a date) or needs review, one at a time or in bulk,
   with a rationale (required except for a true positive), the reviewer and the
@@ -67,43 +73,6 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   project.
 - `GET /api/auth/session`, a sign-in probe that answers 200 when nobody is
   signed in.
-
-### Changed
-
-- Project settings, Integrate, Identity & code and Administration use the same
-  dense sections and tables as the rest of the app. Administration shows every
-  rate and mean with its denominator and no longer shows a "healthy" badge it
-  could not back.
-- `GET /api/projects` returns `run_count`, `avg_risk_index` and `last_run`,
-  like `GET /api/projects/{id}`.
-
-### Fixed
-
-- Saving project settings replaced the whole project config, dropping the
-  project's test agents, its API key and any gate. The form now merges into
-  the stored config.
-- A rebuild of the GUI under a running server served a stale `index.html`
-  pointing at deleted assets until restart; it is re-read when it changes.
-- An evaluation gate sent with `POST /api/projects/{id}/runs` was ignored. It
-  is applied unless the project defines its own.
-- Account and project deletion, agent-card removal and API-key rotation ask
-  for confirmation in the app's dialog.
-
-### Database
-
-- Two new tables, `finding_triage` and `finding_fingerprints`, and two
-  indexes, created with `CREATE ... IF NOT EXISTS` at start-up. No existing
-  table or row is changed; a database opened by this version still opens with
-  0.19.0. Finding fingerprints are HMAC-SHA256 values under a key read from
-  `AGENTLEAK_FINGERPRINT_KEY` or created in `agentleak-fingerprint.key` next
-  to the database (mode 0600); raw values are never stored. Back that key up
-  with the database: without it, decisions still apply to old runs but only
-  by masked value.
-<!-- END next2/gui -->
-
-<!-- BEGIN next2/interop -->
-### Added
-
 - `agentleak import FILE [--from auto|promptfoo|inspect|garak|pyrit] [-o OUT] [--score]`
   turns the output of promptfoo (eval results, with OpenTelemetry traces when
   present), Inspect AI (`.eval` and `.json` logs), garak (`report.jsonl`) and
@@ -125,42 +94,6 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   (`security-events: write`) and an optional sticky pull-request comment
   (`pr-comment`, `pull-requests: write`) with the verdict, the per-channel
   table and, given a `baseline` report, new and resolved findings.
-
-### Fixed
-
-- `integrations.openai_swarm.trace_from_messages` dropped every
-  `function_call`, `function_call_output`, `reasoning` and handoff item of an
-  OpenAI Agents SDK `to_input_list()`; a leak passed to a tool scored as a
-  clean Pass. It now reads them with the converter the self-test uses. It also
-  records `system`/`developer` messages as `user_input`.
-- `integrations.otel.trace_from_spans` produced no event for OpenTelemetry
-  GenAI semantic-convention spans (`execute_tool`, `chat`, `invoke_agent` …).
-  It now reads them, alone or mixed with OpenInference spans. The promptfoo
-  assertion with `require_trace: true` therefore grades such traces instead of
-  reporting INCOMPLETE.
-- The Action's job summary and step outputs now escape report values (data
-  types, channels, file names) and run the CLI between `stop-commands`
-  markers.
-<!-- END next2/interop -->
-
-<!-- BEGIN next2/prose -->
-### Detection: prose recall and Sanitizer gaps (`next2/prose`)
-
-**Scores move.** 23 of 362 bundled scenarios change risk index or leaked
-finding count, 6 of them verdict; built-in scenarios (including the
-quickstart's 0.44) do not move. The AgentRisk formula and the L1–L4 levels are
-unchanged; only what the detectors find changed. Verdict changes:
-`agentleak_bench/agentleak_leg_00744` High risk → Fail (military address
-leaked); `injecagent_ds/…googlecalendarreadevents__teladocviewprescriptions__base`
-High risk → Fail (Lisinopril leaked); `privacylens_ci/trace_main63`
-Conditional pass → High risk (Lisinopril); `trace_main121` Conditional pass →
-High risk (autism spectrum disorder after "a diagnosis of"); `trace_main483`
-High risk → Fail (a diagnosis after "diagnosed with"); `trace_main43` Fail →
-High risk (a birthday the agent received but did not disclose now counts in
-the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
-
-#### Added
-
 - **Context-window rules** (`detectors/context.py`) for values that are
   ambiguous alone: local phone numbers (`ctx_phone_local`), dates of birth
   (`ctx_dob`), account numbers (`ctx_account_number`), salaries (`ctx_salary`,
@@ -185,8 +118,43 @@ the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
 - Medications: `enalapril`, `lisinopril`, `ramipril`, `amlodipine`/`amlodipino`,
   `losartan`/`losartán`, `bisoprolol`, `simvastatin` and its FR/ES forms.
 
-#### Fixed
+### Changed
 
+- Bundled scenarios: 362 → 491. `/llms.txt`, `docs/mcp.md` and the MCP server
+  text quote the new total.
+- `scripts/build_benchmark.py` and `research.corpus.FAILURE_MODES` classify
+  the AgentSocialBench pack as `norm` and the MCPTox pack as `hijack`.
+- Project settings, Integrate, Identity & code and Administration use the same
+  dense sections and tables as the rest of the app. Administration shows every
+  rate and mean with its denominator and no longer shows a "healthy" badge it
+  could not back.
+- `GET /api/projects` returns `run_count`, `avg_risk_index` and `last_run`,
+  like `GET /api/projects/{id}`.
+
+### Fixed
+
+- Saving project settings replaced the whole project config, dropping the
+  project's test agents, its API key and any gate. The form now merges into
+  the stored config.
+- A rebuild of the GUI under a running server served a stale `index.html`
+  pointing at deleted assets until restart; it is re-read when it changes.
+- An evaluation gate sent with `POST /api/projects/{id}/runs` was ignored. It
+  is applied unless the project defines its own.
+- Account and project deletion, agent-card removal and API-key rotation ask
+  for confirmation in the app's dialog.
+- `integrations.openai_swarm.trace_from_messages` dropped every
+  `function_call`, `function_call_output`, `reasoning` and handoff item of an
+  OpenAI Agents SDK `to_input_list()`; a leak passed to a tool scored as a
+  clean Pass. It now reads them with the converter the self-test uses. It also
+  records `system`/`developer` messages as `user_input`.
+- `integrations.otel.trace_from_spans` produced no event for OpenTelemetry
+  GenAI semantic-convention spans (`execute_tool`, `chat`, `invoke_agent` …).
+  It now reads them, alone or mixed with OpenInference spans. The promptfoo
+  assertion with `require_trace: true` therefore grades such traces instead of
+  reporting INCOMPLETE.
+- The Action's job summary and step outputs now escape report values (data
+  types, channels, file names) and run the CLI between `stop-commands`
+  markers.
 - **Sanitizer left part of an email behind** (`dana.[REDACTED_ADDRESS]@example.com`):
   a postal-code-shaped run inside the local part was reported as an address
   and won as the inner span. It is no longer reported there, and an email span
@@ -205,13 +173,23 @@ the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
   bundled scenarios and the cued-prose set is gone from the Sanitizer's
   output and not found again by a re-scan.
 
-#### Performance
+### Performance
 
 - Detector throughput on the 0.18.0 corpus: 2,153–2,339 → 2,084–2,223
   events/s (best of 10, three runs each); `analyze()` 201–224 → 203–214
   traces/s. About 5–8% slower. `EMAIL_RE` was already linear in 0.19.0
   (0.0006 s on `"a" * 50000 + "@"`); a guard test now keeps it so.
-<!-- END next2/prose -->
+
+### Database
+
+- Two new tables, `finding_triage` and `finding_fingerprints`, and two
+  indexes, created with `CREATE ... IF NOT EXISTS` at start-up. No existing
+  table or row is changed; a database opened by this version still opens with
+  0.19.0. Finding fingerprints are HMAC-SHA256 values under a key read from
+  `AGENTLEAK_FINGERPRINT_KEY` or created in `agentleak-fingerprint.key` next
+  to the database (mode 0600); raw values are never stored. Back that key up
+  with the database: without it, decisions still apply to old runs but only
+  by masked value.
 
 ## [0.19.1] - 2026-11-15
 
