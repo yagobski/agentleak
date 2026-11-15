@@ -330,7 +330,7 @@ there.
 - [Agent self-test](docs/selftest-agents.md) — `agentleak selftest`: an agent tests itself locally, reads one JSON document, fixes, re-tests until green
 - [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
 - [Trust page and monitoring](docs/trust-and-monitoring.md) — publish a verifiable score, and watch it over time
-- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 266 bundled scenarios
+- [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on the bundled scenarios
 - [Product audit 2026-08](docs/PRODUCT-AUDIT.md) — a v0.9.0 snapshot: coverage map, honest gaps, market position, roadmap
 - [Releasing](docs/releasing.md) — how a version reaches PyPI, and what CI verifies before it does
 - [Trace analysis](docs/trace-analysis.md) — capture, normalize, detect, report

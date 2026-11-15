@@ -90,7 +90,7 @@ It does not start the agent under test: MCP gives a server no way to invoke its
 client. Instead `privacy_get_scenario` hands the agent a scenario with planted
 canaries to do itself, and `privacy_selftest` scores the trace it brings back.
 To have AgentLeak start your agent, use the CLI: `agentleak selftest --cmd`.
-The 266 bundled corpus scenarios remain a corpus for the CLI and CI
+The 362 bundled corpus scenarios remain a corpus for the CLI and CI
 (`agentleak run --pack …`).
 
 ## Reading the result honestly
