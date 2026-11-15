@@ -82,8 +82,8 @@ def to_sarif(report: dict[str, Any], *, trace_path: str | None = None) -> dict[s
             "name": data_type.replace("_", " ").title().replace(" ", ""),
             "shortDescription": {"text": f"{data_type} disclosed by the agent"},
             "fullDescription": {"text": (
-                f"A {data_type.replace('_', ' ')} value left the agent through a disclosure "
-                "channel (a tool call, memory, a log, another agent, a file or the final answer).")},
+                f"A value of type {data_type} left the agent through a disclosure channel "
+                "(a tool call, memory, a log, another agent, a file or the final answer).")},
             "help": {"text": str(finding.get("recommendation") or
                                  "Keep this value out of the channel it was written to.")},
             "defaultConfiguration": {"level": _LEVEL.get(level, "warning")},
