@@ -72,3 +72,26 @@ def test_publish_refuses_an_ownerless_project(tmp_path) -> None:
     r = client.post(f"/api/projects/{legacy['id']}/publish", json={"slug": "taken-over"})
     assert r.status_code == 404
     assert store.project_by_slug("taken-over") is None
+
+
+# ----------------------------------------------------------------------
+# QA-05: /llms.txt and docs/mcp.md quoted 283 bundled scenarios; 266 ship
+# ----------------------------------------------------------------------
+
+
+def test_served_docs_quote_the_scenario_count_that_ships(tmp_path) -> None:
+    import re
+    from pathlib import Path
+
+    client = TestClient(create_app(store=Store(str(tmp_path / "qa.db"))))
+    total = client.get("/api/meta").json()["scenarios"]["total"]
+    texts = {
+        "/llms.txt": client.get("/llms.txt").text,
+        "/llms-full.txt": client.get("/llms-full.txt").text,
+        "/agents.md": client.get("/agents.md").text,
+        "docs/mcp.md": (Path(__file__).parents[1] / "docs" / "mcp.md").read_text("utf-8"),
+    }
+    for where, text in texts.items():
+        for n in re.findall(r"(\d+) (?:bundled )?scenarios bundled|(\d+) bundled scenarios", text):
+            quoted = int(n[0] or n[1])
+            assert quoted == total, f"{where} quotes {quoted} bundled scenarios, {total} ship"
