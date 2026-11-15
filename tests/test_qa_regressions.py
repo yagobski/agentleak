@@ -313,3 +313,12 @@ def test_client_401_explains_how_to_connect(monkeypatch) -> None:
         AgentLeakClient("support-bot", base_url="http://127.0.0.1:1")
     doc = (Path(__file__).parents[1] / "docs" / "platform.md").read_text("utf-8")
     assert "serve --local" in doc
+
+
+def test_run_ingest_accepts_a_trace_dict() -> None:
+    import agentleak
+
+    with agentleak.watch(print_summary=False) as run:
+        run.ingest({"events": [{"channel": "log", "content": "SSN 123-45-6789"}]})
+    assert len(run.trace.events) == 1
+    assert run.report is not None and run.report.findings
