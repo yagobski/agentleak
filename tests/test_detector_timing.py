@@ -72,3 +72,15 @@ def test_decoders_are_linear_on_adversarial_input(name) -> None:
         decoded_views(text)
         elapsed = time.perf_counter() - start
         assert elapsed < 5.0, f"decoded_views took {elapsed:.2f}s on {name}"
+
+
+def test_trie_pattern_matches_like_a_longest_first_alternation() -> None:
+    import re
+
+    from agentleak.detectors._text import trie_pattern
+
+    terms = ["diabetes", "diabète", "diab", "type 2 diabetes", "cancer", "cancer du", "a", "ab"]
+    old = re.compile(r"\b(" + "|".join(sorted(map(re.escape, terms), key=len, reverse=True)) + r")\b")
+    new = re.compile(r"\b(" + trie_pattern(terms) + r")\b")
+    for text in ("type 2 diabetes and diabète, cancer du sein, diab ab a", "cancer dub", "abc ab"):
+        assert [m.group(0) for m in old.finditer(text)] == [m.group(0) for m in new.finditer(text)]

@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import re
 
+from ._text import trie_pattern
+
 __all__ = ["FULL_NAME_RE"]
 
 _GIVEN_NAMES = """
@@ -99,7 +101,9 @@ Suite Ste Apt Apartment Unit Floor Building
 )
 
 FULL_NAME_RE = re.compile(
-    r"(?<![\w@.-])(" + "|".join(re.escape(n) for n in _GIVEN) + r")"
+    # The given names as a trie: the same matches as the longest-first
+    # alternation, without trying ~425 alternatives at every position.
+    r"(?<![\w@.-])(" + trie_pattern(_GIVEN) + r")"
     r"(?:[ \t]+(" + _SURNAME + r")){1,2}(?![\w@])"
 )
 

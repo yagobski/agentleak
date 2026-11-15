@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
-from ._text import inside_blob
+from ._text import inside_blob, trie_pattern
 
 # Synthetic NAM shape: 4 letters + 8 digits (e.g. TREM12345678).
 NAM_LIKE_RE = re.compile(r"\b[A-Z]{4}\d{8}\b")
@@ -96,8 +96,9 @@ MEDICATIONS = [
 
 
 def _dictionary_regex(terms: list[str]) -> re.Pattern[str]:
-    escaped = sorted({re.escape(t) for t in terms}, key=len, reverse=True)
-    return re.compile(r"(?i)\b(" + "|".join(escaped) + r")\b")
+    # Factored as a trie (see trie_pattern): the same matches as a
+    # longest-first alternation, at a fraction of the cost per word.
+    return re.compile(r"(?i)\b(" + trie_pattern(sorted({t.lower() for t in terms})) + r")\b")
 
 
 _CONDITION_RE = _dictionary_regex(HEALTH_CONDITIONS)

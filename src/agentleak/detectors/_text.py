@@ -33,3 +33,32 @@ def inside_blob(text: str, start: int, end: int) -> bool:
         and any(c.isupper() for c in token)
         and any(c.islower() for c in token)
     )
+
+
+def trie_pattern(terms: list[str]) -> str:
+    """One regex alternation for many literal terms, factored as a trie.
+
+    Python's ``re`` tries every alternative of ``a|b|c…`` at each position, so
+    a 200-word dictionary costs 200 attempts per word boundary. Sharing
+    prefixes (``diab(?:ète|ete|etes)``) makes it one walk down the trie. A
+    terminal node's children are optional and greedy, so the longest term
+    still wins, as it did with the longest-first alternation.
+    """
+    root: dict[str, dict] = {}
+    for term in terms:
+        node = root
+        for ch in term:
+            node = node.setdefault(ch, {})
+        node[""] = {}
+
+    def build(node: dict[str, dict]) -> str:
+        terminal = "" in node
+        branches = [re.escape(ch) + build(child) for ch, child in sorted(node.items()) if ch]
+        if not branches:
+            return ""
+        body = branches[0] if len(branches) == 1 else "(?:" + "|".join(branches) + ")"
+        if terminal:
+            return "(?:" + body + ")?"
+        return body
+
+    return build(root)

@@ -98,13 +98,6 @@ _SENSITIVE_KEYS: dict[str, tuple[str, Severity, str]] = {
         "date_of_birth", Severity.HIGH,
         "Date of birth is a re-identifying quasi-identifier; remove it from internal channels.",
     ),
-    # A snake_case prefix usually names whose address it is (billing_address),
-    # but these name a machine or a mailbox, not a home.
-    r"(?<!ip_)(?<!mac_)(?<!source_)(?<!server_)(?<!host_)(?<!remote_)(?<!local_)"
-    r"(?<!bind_)(?<!proxy_)(?<!peer_)(?<!socket_)(?<!sock_)(?<!email_)(?<!mail_)"
-    r"(?<!base_)(?<!return_)(?<!target_)(?<!dest_)(?<!network_)(?<!wallet_)"
-    r"(?<!contract_)(?<!memory_)(?<!url_)(?<!web_)(?<!node_)(?<!broadcast_)(?<!gateway_)"
-    r"(?<!from_)(?<!to_)(?<!reply_)(?<!sender_)(?<!recipient_)(?<!listen_)"
     r"(?:home[_ ]?|mailing[_ ]?)?address|adresse(?:[_ ]postale)?|domicile|"
     r"direcci[óo]n(?:[_ ]postal)?|domicilio|anschrift|wohnadresse|endere[çc]o|morada|"
     r"indirizzo|residenza": (
@@ -140,6 +133,16 @@ _TRIVIAL_VALUE_RE = re.compile(
     r"^(?:none|null|n/?a|true|false|redacted|unknown|\?+|-+|x{3,}|\*{2,}|"
     r"<[^>]*>|\{\{.*|\$\{.*)$",
     re.IGNORECASE,
+)
+
+
+# A snake_case prefix usually names whose address it is (billing_address), but
+# these name a machine or a mailbox, not a home. Checked on the match, not in
+# the pattern, so the exclusions cost nothing on text without an address key.
+_NOT_A_HOME_PREFIX_RE = re.compile(
+    r"(?i)(?:ip|mac|source|server|host|remote|local|bind|proxy|peer|socket|sock|email|mail|"
+    r"base|return|target|dest|network|wallet|contract|memory|url|web|node|broadcast|gateway|"
+    r"from|to|reply|sender|recipient|listen)_$"
 )
 
 
@@ -215,6 +218,10 @@ class SensitiveKeyDetector(Detector):
                 value = m.group(1).strip().strip("\"'")
                 value = _VALUE_TAIL_RE.sub("", value)
                 if len(value) < 2 or _TRIVIAL_VALUE_RE.match(value) or _CODE_VALUE_RE.match(value):
+                    continue
+                if data_type == "address" and _NOT_A_HOME_PREFIX_RE.search(
+                    text[max(0, m.start() - 12):m.start()]
+                ):
                     continue
                 if len(value) > _MAX_VALUE_LEN:
                     # Not a field value any more. Reporting it would put an
