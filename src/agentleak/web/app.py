@@ -2022,9 +2022,16 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         _enforce_quota(project.get("owner_id", ""))
         db.record_api_usage(project["id"], "/api/agent/selftest")
         db.meter_usage(project.get("owner_id", ""), "/api/agent/selftest")
+        # Stored scenarios resolve for the project's owner only. Without the
+        # owner, an ownerless (legacy) scenario resolved for every key, and the
+        # owner's own scenarios did not resolve at all.
+        owner = str(project.get("owner_id") or "")
         try:
-            return selftest_http(payload, project=project, store=db,
-                                 analyze=_analyze, resolve_trace=_trace_from_payload)
+            return selftest_http(
+                payload, project=project, store=db,
+                analyze=lambda p, **kw: _analyze(p, owner_id=owner, **kw),
+                resolve_trace=lambda p, st: _trace_from_payload(p, st, owner_id=owner),
+            )
         except (ValueError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

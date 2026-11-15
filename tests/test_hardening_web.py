@@ -113,3 +113,39 @@ def test_hosted_execute_never_sends_operator_key_to_tenant_url(tmp_path, monkeyp
     client.post(f"/api/projects/{pid}/execute", json={"scenario_id": sid, "mode": "live"})
     assert seen, "the live run should have tried the tenant endpoint"
     assert all(operator_key not in h for h in seen), seen
+
+
+# ----------------------------------------------------------------------
+# /api/agent/selftest resolved stored scenarios without an owner
+# ----------------------------------------------------------------------
+_SCENARIO_TRACE = {
+    "events": [
+        {"channel": "tool_response", "content": {"patient": "Ada Quill", "ssn": "123-45-6789"}},
+        {"channel": "log", "content": "Patient Ada Quill SSN 123-45-6789"},
+    ]
+}
+
+
+def test_agent_selftest_scopes_stored_scenarios_to_the_key_owner(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("AGENTLEAK_PUBLIC_MODE", raising=False)
+    store = Store(str(tmp_path / "s.db"))
+    legacy = store.create_scenario("legacy", _SCENARIO_TRACE)  # ownerless, pre-accounts row
+    client = TestClient(create_app(store=store))
+    client.post("/api/auth/register", json={"email": "a@example.test", "password": "a-pass-12345"})
+    own = client.post("/api/scenarios", json={"data": _SCENARIO_TRACE, "name": "mine"}).json()["id"]
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    key = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+    headers = {"x-agentleak-key": key}
+    r = client.post("/api/agent/selftest", json={"scenario_id": legacy["id"]}, headers=headers)
+    assert r.status_code == 400, r.text[:200]
+    r = client.post("/api/agent/selftest", json={"scenario_id": own}, headers=headers)
+    assert r.status_code == 200, r.text[:200]
+
+
+def test_agent_selftest_malformed_spans_are_a_400(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    key = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+    for body in ({"trace": {"resourceSpans": "x"}}, {"trace": {"resourceSpans": [1]}}):
+        r = client.post("/api/agent/selftest", json=body, headers={"x-agentleak-key": key})
+        assert r.status_code == 400, r.text[:200]
