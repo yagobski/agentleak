@@ -13,7 +13,10 @@ from agentleak.scenarios.packs import expand_pack, list_packs, load_pack
 
 def test_builtin_packs_present():
     ids = {p["id"] for p in list_packs()}
-    assert {"agentleak_bench", "privacylens_ci", "agentdojo_exfil", "injecagent_ds"} == ids
+    assert {
+        "agentleak_bench", "privacylens_ci", "agentdojo_exfil", "injecagent_ds",
+        "agentsocialbench_ma", "mcptox_recipient_hijack",
+    } == ids
     for pack in list_packs():
         assert pack["count"] > 0
         assert pack["name"] and pack["source"]

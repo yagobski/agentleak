@@ -158,7 +158,7 @@ realistic, leaky one (see *Conversion* below).
 
 ## Scenario packs
 
-A **pack** is a curated, importable bundle. Four ship with AgentLeak, and each
+A **pack** is a curated, importable bundle. Six ship with AgentLeak, and each
 declares its source, source URL, licence and attribution:
 
 | Pack | Source | Contents |
@@ -167,6 +167,8 @@ declares its source, source URL, licence and attribution:
 | **PrivacyLens** (`privacylens_ci`) | [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) — NeurIPS 2024 D&B, CC-BY-4.0 | 120 contextual-integrity scenarios: the agent pulls private context in through its tools, then acts toward a recipient the norm says must not receive it |
 | **AgentDojo** (`agentdojo_exfil`) | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo) — NeurIPS 2024 D&B, MIT | 100 prompt-injection exfiltrations: a planted instruction turns the agent's own tools into the leak path |
 | **InjecAgent** (`injecagent_ds`) | [uiuc-kang-lab/InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) — Findings of ACL 2024, MIT | 96 data-stealing injections: an instruction in a tool response makes the agent read private data with a second tool (32 attacker goals: payment methods, prescriptions, genetic data, saved passwords, location…) and e-mail it out, across 17 user tools |
+| **AgentSocialBench** (`agentsocialbench_ma`) | [kingofspace0wzz/agentsocialbench](https://github.com/kingofspace0wzz/agentsocialbench) — 2026, MIT | 105 multi-agent hand-offs: an agent passes two facts its user's norms forbid to another agent (50, `inter_agent_message`) or into a group chat or shared plan (55, `shared_memory`); each has a clean counterpart that uses the source's abstraction |
+| **MCPTox** (`mcptox_recipient_hijack`) | [zhiqiangwang4/MCPTox-Benchmark](https://github.com/zhiqiangwang4/MCPTox-Benchmark) — AAAI 2026, CC-BY-4.0 | 24 MCP tool-poisoning cases: a planted tool description makes a model send the user's data to the attacker's recipient through a legitimate tool; the calls are the models' own, and so is the clean counterpart |
 
 Together they cover three different ways an agent leaks: **by pattern** (a value
 a detector can recognise), **by norm** (a fact that should not have travelled to
@@ -212,6 +214,64 @@ check both directions.
 
 Building this pack found a detector bug that 0.18.0 shipped: timestamps written
 `2022-02-22:11:30:00` were reported as IPv6 addresses.
+
+### AgentSocialBench: a fact that must not cross to that agent
+
+Each person in these scenarios has their own agent, and the agents work
+together: two users' agents arrange a shared event (A2A), one user's finance
+agent briefs the same user's work agent, a coordinator posts a team plan, four
+agents plan a panel in a group chat. The source says, for each agent, which
+facts it holds and which of them must not cross to the others, and gives an
+acceptable abstraction for each.
+
+| Category | n | Channel | Recipient |
+| --- | ---: | --- | --- |
+| `cross_user` | 25 | `inter_agent_message` | the other user's agent |
+| `cross_domain` | 25 | `inter_agent_message` | the same user's agent in another domain |
+| `multi_party_group` | 20 | `shared_memory` | the group chat every member agent reads |
+| `hub_and_spoke` | 15 | `shared_memory` | the shared plan the coordinator posts |
+| `affinity_modulated` | 20 | `shared_memory` | the group chat, where the fact is allowed for a close contact but not for the least-close member present |
+
+The private context enters on `tool_response`; the hand-off carries two
+must-not-cross statements verbatim, and those are the canaries. Each record
+also carries the sender, the recipient (and audience), the data subject and
+the source's privacy criterion as `transmission_principle`. Import a record
+with `"variant": "clean"` and the hand-off carries the abstractions instead;
+it scores no canary. The hand-off wording is modelled: AgentSocialBench
+publishes norms, not transcripts. `mediated_comm` (an agent talking to a
+human) and `competitive` (self-disclosure, mostly without abstractions) are
+not included.
+
+### MCPTox: same data, wrong recipient
+
+The attacker never gets the agent to call the poisoned tool. Its *description*
+says, for instance, that every e-mail must go through a "transit" address, and
+the model calls the legitimate `send-email` with that address. The traces use
+the tool calls the models actually made in MCPTox; the clean counterpart is a
+model that ignored the instruction.
+
+In 7 of the 24 pairs the clean call carries the same data (the e-mail body,
+the private repository name) to the recipient the user named, so presence
+alone cannot tell them apart. The pack ships a flow preset that can:
+
+```python
+from agentleak.core.config import Config
+from agentleak.scenarios.packs import load_pack
+
+preset = load_pack("mcptox_recipient_hijack")["flow_preset"]   # {"privacy_policy": {"flows": [...]}}
+config = Config.from_dict({"project": {"name": "mcp"}, **preset})
+```
+
+It denies canary data to the five recipients the poisoned descriptions name,
+and flags all 24 leaks and none of the 24 counterparts
+(`tests/test_multiagent_packs.py`). The tool call's `target` is the recipient
+it addresses, which is what the rule reads.
+
+Most of MCPTox is not here, by design: MCPTox runs no tool, so in the large
+majority of cases (read `~/.ssh/id_rsa`, list Slack users, overwrite a file)
+no private value ever appears in the recorded call. Only cases MCPTox labels
+as privacy or credential leakage or message hijacking, where the recorded call
+carries the user's own data to a recipient the description named, were kept.
 
 ### PrivacyLens: leaks a pattern cannot see
 

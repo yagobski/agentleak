@@ -38,6 +38,12 @@ import re
 from typing import Any
 
 from ..core.trace import Trace
+from .convert_packs import (
+    agentsocialbench_metadata,
+    agentsocialbench_to_trace,
+    mcptox_metadata,
+    mcptox_to_trace,
+)
 
 # Field-name hints that mark a vault field as worth leaking (kept broad so new
 # verticals work without edits; canary values are always treated as sensitive).
@@ -64,8 +70,8 @@ def detect_format(data: Any) -> str:
     """Sniff the shape of an uploaded object.
 
     Returns one of ``"trace"``, ``"agentleak_spec"``, ``"ai4privacy"``,
-    ``"privacylens"``, ``"injecagent"``, ``"agentdojo"``, ``"oss_scenario"``,
-    ``"openai_chat"`` or ``"unknown"``.
+    ``"privacylens"``, ``"injecagent"``, ``"agentdojo"``, ``"agentsocialbench"``,
+    ``"mcptox"``, ``"oss_scenario"``, ``"openai_chat"`` or ``"unknown"``.
     """
     if not isinstance(data, dict):
         return "unknown"
@@ -82,6 +88,10 @@ def detect_format(data: Any) -> str:
         # Same trajectory shape as AgentDojo; told apart so the scenario is
         # labelled with the benchmark it came from.
         return "injecagent" if data.get("benchmark") == "injecagent" else "agentdojo"
+    if data.get("benchmark") == "agentsocialbench" and "leaked_values" in data:
+        return "agentsocialbench"
+    if data.get("benchmark") == "mcptox" and isinstance(data.get("hijacked_call"), dict):
+        return "mcptox"
     if "trace" in data and isinstance(data["trace"], dict):
         return "oss_scenario"
     messages = data.get("messages")
@@ -672,6 +682,10 @@ def _normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
             # each verified to be data it actually read from the environment.
             "canaries": canaries,
         }, trace
+    if fmt == "agentsocialbench":
+        return agentsocialbench_metadata(data), agentsocialbench_to_trace(data)
+    if fmt == "mcptox":
+        return mcptox_metadata(data), mcptox_to_trace(data)
     if fmt == "openai_chat":
         trace = openai_chat_to_trace(data)
         return {
@@ -684,6 +698,7 @@ def _normalize_upload(data: Any) -> tuple[dict[str, Any], Trace]:
         }, trace
     raise ValueError(
         "Unrecognized format. Provide an AgentLeak trace, an AgentLeak scenario "
-        "spec, an ai4privacy record, a PrivacyLens, AgentDojo or InjecAgent scenario, an "
+        "spec, an ai4privacy record, a PrivacyLens, AgentDojo, InjecAgent, AgentSocialBench "
+        "or MCPTox scenario, an "
         "OpenAI-style chat log ({\"messages\": [...]}) or an OSS scenario object."
     )
