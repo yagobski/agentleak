@@ -40,30 +40,53 @@ exactly as before.
 
 ## What you can do
 
-- **Pick a scenario** or paste your own trace JSON (with a Format button and
-  validation).
-- **Toggle detectors** (PII, secrets, healthcare, finance, HR).
-- **Add custom rules** — name + regex + severity level — for your own internal
-  identifiers.
-- **Set the vault scope** — *Observed* (auto, the denominator is what was
-  detected) or *Explicit* per-level counts for a deployment-accurate ρ_S.
-- **Read the AgentRisk report** — an animated Risk Index gauge, WSL/ρ_S, the
-  L1–L4 leaked-vs-vault profile, the key insight, per-channel RI bars, the
-  findings table (hover a row for its recommendation), and recommendations.
-- **Export** the report as JSON, Markdown, or a self-contained HTML file.
-- **Light / dark theme** (the toggle is in the header; preference is persisted).
+| Route | What it is for |
+| --- | --- |
+| `/app/analyze` | Score one trace without a project: a bundled scenario, a JSON file (drop it on the panel) or pasted JSON. `?scenario=<id>` analyzes a bundled scenario with defaults. **Save as run** stores the report under a project. |
+| `/app/runs` | Every stored run across projects. Sort, filter, export the rows shown as CSV or JSON, tick two rows to compare. |
+| `/app/runs/<id>` | One result. Tabs: Findings, Trace, Leak paths, Remediation, Compliance. `?tab=`, `?finding=` and `?event=` make every view a permalink. |
+| `/app/compare?a=<id>&b=<id>` | A (baseline) against B (candidate): verdict, RI, WSL/ρ_S, per-channel RI deltas, findings resolved / added / unchanged. Warns when the vault denominators, scenarios or detector tiers differ. |
+| `/app/projects`, `/app/projects/<id>` | Projects, their runs, agents, integration snippets and settings. |
+| `/app/scenarios` | Built-in, uploaded and imported scenarios with provenance (source, license, attribution); pack import. |
+| `/app/playground` | Red-team campaigns against a project's harness. |
+
+### Reading a result
+
+1. **Verdict per channel first.** Final output, then every internal emission
+   channel, each with events, findings and channel RI. The sentence above the
+   table states the contrast and its denominator. A result with no finding
+   reads "no finding from the enabled deterministic detectors"; the detectors
+   are patterns and dictionaries, so that is not proof that nothing leaked.
+2. **Detector tier.** The badge under the agent name shows the detection mode,
+   the tiers that ran and whether detection was degraded.
+3. **Score.** RI, leaked/vault secrets, WSL/ρ_S and privacy score.
+   *How this number is computed* expands the AgentRisk derivation from the
+   report's own `agentrisk` block (weights, per-level counts, sums).
+4. **Trace.** Every event, sources (`user_input`, `tool_response`) marked apart
+   from emissions. Selecting an event shows its findings, the leak path from
+   where each value entered to where it left, and the payload, masked until you
+   press *Reveal values*. Stored runs keep the report, not the trace: load the
+   original file (or the bundled scenario trace) to see payloads; it is checked
+   against the report and never uploaded.
+
+Exports from any table contain the rows currently shown, with masked values
+only. The full report exports as JSON, Markdown or self-contained HTML.
+
+Press `/` to focus the search field of the current table.
 
 ## How it's built
 
 - Source: `agentleak/web/frontend/` (React + Vite + Tailwind + shadcn/ui).
 - Built bundle: `agentleak/web/static/` (committed, shipped in the wheel).
+  Rebuild with `npm run build` in the frontend directory; `npm test` runs the
+  frontend unit tests.
 - Server: `agentleak/web/app.py` (FastAPI) serves the SPA and the JSON API.
 
 ### API (all local)
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/meta` | version, channels, detector names |
+| GET | `/api/meta` | version, channels (with the `source_channels` / `emission_channels` split), detector names |
 | GET | `/api/scenarios` | built-in scenarios |
 | GET | `/api/example/{id}` | a scenario's bundled trace |
 | POST | `/api/analyze` | analyze a trace/scenario → report JSON |

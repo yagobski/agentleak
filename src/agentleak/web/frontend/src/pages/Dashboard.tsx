@@ -1,227 +1,161 @@
 // SPDX-FileCopyrightText: 2026 AgentLeak contributors
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { Activity, ArrowRight, FlaskConical, FolderKanban, Gauge, ShieldAlert, ShieldCheck, Trophy } from "lucide-react"
-import { api, type Stats } from "@/lib/api"
-import { riVerdict, verdictColor } from "@/lib/format"
-import { Badge } from "@/components/ui/badge"
+import { Link } from "react-router-dom"
+import { Rows3, ScanSearch } from "lucide-react"
+import { api, type LeaderboardEntry, type Stats } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataTable, type Column } from "@/components/DataTable"
+import { VerdictLabel } from "@/features/Chips"
+import { formatStamp, RunsTable, type RunRow } from "@/features/RunsTable"
 import { PageHeader } from "@/layout/AppShell"
-import { DashboardCharts } from "@/features/Charts"
-import { RunRow } from "@/features/RunRow"
 
-type LeaderboardItem = {
-  project_id: string
-  rank: number
-  name: string
-  privacy_score: number
-  risk_index: number
-  verdict: "Pass" | "Conditional pass" | "High risk" | "Fail"
-}
+const FIRST_SCENARIO = "healthcare_patient_summary"
 
-function SectionCard({
-  label,
-  value,
-  icon,
-  footer,
-  sub,
-}: {
-  label: string
-  value: React.ReactNode
-  icon: React.ReactNode
-  footer: React.ReactNode
-  sub?: string
-}) {
+function Stat({ label, value, note }: { label: string; value: React.ReactNode; note?: string }) {
   return (
-    <Card className="platform-stat-card">
-      <CardHeader className="relative space-y-0 p-4 pb-2">
-        <CardDescription className="text-[11px] font-medium uppercase tracking-wide">{label}</CardDescription>
-        <CardTitle className="font-mono text-3xl tabular-nums tnum">{value}</CardTitle>
-        <div className="absolute right-4 top-4 text-muted-foreground/70">{icon}</div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="text-sm font-medium">{footer}</div>
-        {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
-      </CardContent>
-    </Card>
+    <div className="min-w-0 border-border py-1 sm:border-l sm:pl-4 sm:first:border-l-0 sm:first:pl-0">
+      <dt className="text-[12px] text-muted-foreground">{label}</dt>
+      <dd className="mt-1 font-mono text-2xl leading-none tnum">{value}</dd>
+      {note && <dd className="mt-1 text-[11px] text-muted-foreground">{note}</dd>}
+    </div>
   )
 }
 
 export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
-  const [board, setBoard] = useState<LeaderboardItem[]>([])
-  const nav = useNavigate()
+  const [board, setBoard] = useState<LeaderboardEntry[] | null>(null)
+  const [names, setNames] = useState<Record<string, string>>({})
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    api.stats().then(setStats).catch(() => {})
+    api.stats().then(setStats).catch((e) => setError((e as Error).message))
+    api.leaderboard().then((r) => setBoard(r.entries)).catch(() => setBoard([]))
     api
       .projects()
-      .then((projects) =>
-        projects
-          .filter((project) => project.avg_risk_index != null)
-          .sort((a, b) => (a.avg_risk_index ?? 1) - (b.avg_risk_index ?? 1))
-          .map((project, index) => {
-            const riskIndex = project.avg_risk_index ?? 1
-            return {
-              project_id: project.id,
-              rank: index + 1,
-              name: project.name,
-              risk_index: riskIndex,
-              privacy_score: Math.max(0, Math.min(100, Math.round((1 - riskIndex) * 100))),
-              verdict: riVerdict(riskIndex),
-            }
-          }),
-      )
-      .then(setBoard)
+      .then((ps) => setNames(Object.fromEntries(ps.map((p) => [p.id, p.name]))))
       .catch(() => {})
   }, [])
 
-  const avg = stats?.avg_risk_index
-  const avgVerdict = avg != null ? riVerdict(avg) : null
-  const avgScore = stats?.avg_privacy_score
+  const recent: RunRow[] = (stats?.recent_runs ?? []).map((r) => ({ ...r, project_name: names[r.project_id] }))
+  const empty = stats !== null && stats.runs === 0
+
+  const boardColumns: Column<LeaderboardEntry>[] = [
+    {
+      id: "project",
+      header: "Project",
+      value: (e) => e.name,
+      cell: (e) => (
+        <Link to={`/projects/${e.project_id}`} className="block max-w-[22rem] truncate underline decoration-border underline-offset-2 hover:decoration-foreground" title={e.name} onClick={(ev) => ev.stopPropagation()}>
+          {e.name}
+        </Link>
+      ),
+    },
+    { id: "verdict", header: "Latest verdict", value: (e) => e.verdict, cell: (e) => <VerdictLabel verdict={e.verdict} /> },
+    { id: "risk_index", header: "Latest RI", value: (e) => e.risk_index, align: "right", cell: (e) => <span className="font-mono text-[12px]">{e.risk_index.toFixed(3)}</span> },
+    { id: "privacy_score", header: "Score", value: (e) => e.privacy_score, align: "right", hideBelow: "sm", cell: (e) => <span className="font-mono text-[12px]">{e.privacy_score}</span> },
+    { id: "runs", header: "Runs", value: (e) => e.runs, align: "right", cell: (e) => <span className="font-mono text-[12px]">{e.runs}</span> },
+    { id: "last_run_at", header: "Last run", value: (e) => e.last_run_at ?? 0, hideBelow: "md", cell: (e) => <span className="font-mono text-[11px] text-muted-foreground">{e.last_run_at ? formatStamp(e.last_run_at) : "–"}</span> },
+  ]
 
   return (
-    <div className="platform-page animate-fade-up">
+    <div className="min-w-0">
       <PageHeader
         title="Dashboard"
-        description="Privacy posture across your agents, scored with AgentRisk."
+        description="Latest AgentRisk results across the projects in this workspace."
         actions={
-          <Button asChild>
-            <Link to="/projects">
-              <FolderKanban /> Projects
-            </Link>
-          </Button>
+          <>
+            <Button variant="outline" asChild>
+              <Link to="/runs">
+                <Rows3 /> All runs
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to="/analyze">
+                <ScanSearch /> Analyze a trace
+              </Link>
+            </Button>
+          </>
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SectionCard
-          label="Projects"
-          value={stats?.projects ?? "—"}
-          icon={<FolderKanban className="size-4" />}
-          footer="Agents under test"
-          sub="each scored independently"
-        />
-        <SectionCard
-          label="Runs"
-          value={stats?.runs ?? "—"}
-          icon={<Activity className="size-4" />}
-          footer="Analyses stored"
-          sub="locally, in SQLite"
-        />
-        <SectionCard
-          label="Avg Risk Index"
-          value={avg != null ? avg.toFixed(3) : "—"}
-          icon={<Gauge className="size-4" />}
-          footer={
-            avgVerdict ? <span style={{ color: verdictColor(avgVerdict) }}>{avgVerdict}</span> : "No runs yet"
-          }
-          sub={avgScore != null ? `avg privacy score ${avgScore}/100` : "across all runs"}
-        />
-        <SectionCard
-          label="Blocked runs"
-          value={stats?.blocked_runs ?? "—"}
-          icon={
-            stats && stats.blocked_runs > 0 ? (
-              <ShieldAlert className="size-4 text-sev-l4" />
-            ) : (
-              <ShieldCheck className="size-4 text-sev-ok" />
-            )
-          }
-          footer="Would fail a CI gate"
-          sub="blocked = critical leak"
-        />
-      </div>
+      {error && <p role="alert" className="mb-4 text-sm text-sev-l4">Could not load workspace statistics: {error}</p>}
 
-      {stats && stats.recent_runs.length > 0 && (
-        <div className="mt-4">
-          <DashboardCharts runs={stats.recent_runs} />
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
-        <Card>
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Recent runs
-            </span>
-            {stats && stats.recent_runs.length > 0 && <Badge variant="muted">{stats.recent_runs.length}</Badge>}
-          </div>
-          <div className="divide-y divide-border">
-            {!stats?.recent_runs.length && (
-              <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                No runs yet. Create a project and run an agent, or try the{" "}
-                <Link to="/playground" className="text-primary underline-offset-2 hover:underline">
-                  test lab
-                </Link>
-                .
-              </div>
-            )}
-            {stats?.recent_runs.map((r) => (
-              <RunRow key={r.id} run={r} onClick={() => nav(`/runs/${r.id}`)} />
-            ))}
-          </div>
-        </Card>
-
-        <div className="space-y-4">
-          <Card className="p-5">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <FlaskConical className="size-4 text-primary" /> Quick audit
-            </div>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Score a trace instantly without creating a project.
-            </p>
-            <Button variant="outline" size="sm" className="mt-3 w-full" asChild>
-              <Link to="/playground">
-                Open test lab <ArrowRight />
+      {empty ? (
+        <section className="max-w-2xl rounded-lg border border-border bg-card p-5">
+          <h2 className="text-base font-medium">No runs yet</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The fastest first result: score a bundled healthcare trace whose final answer is clean while its shared memory,
+            inter-agent messages and logs are not.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to={`/analyze?scenario=${FIRST_SCENARIO}`}>
+                <ScanSearch /> Analyze <code className="font-mono text-[12px]">{FIRST_SCENARIO}</code>
               </Link>
             </Button>
-          </Card>
+            <Button variant="outline" asChild>
+              <Link to="/analyze">Use your own trace file</Link>
+            </Button>
+          </div>
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            From code: <code className="font-mono">agentleak run --scenario {FIRST_SCENARIO}</code>
+          </p>
+        </section>
+      ) : (
+        <>
+          <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-4">
+            <Stat label="Projects" value={stats?.projects ?? "–"} />
+            <Stat label="Stored runs" value={stats?.runs ?? "–"} />
+            <Stat
+              label="Blocked runs"
+              value={
+                stats ? (
+                  <>
+                    {stats.blocked_runs}
+                    <span className="text-base text-muted-foreground"> / {stats.runs}</span>
+                  </>
+                ) : (
+                  "–"
+                )
+              }
+              note="runs a CI gate would fail"
+            />
+            <Stat
+              label="Mean Risk Index"
+              value={stats?.avg_risk_index != null ? stats.avg_risk_index.toFixed(3) : "–"}
+              note={stats ? `over ${stats.runs} runs, all scenarios mixed` : undefined}
+            />
+          </dl>
 
-          <Card className="p-5">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Trophy className="size-4 text-sev-l3" /> Agent leaderboard
+          <section aria-labelledby="dash-projects" className="mb-6">
+            <h2 id="dash-projects" className="mb-2 text-sm font-medium">Latest result per project</h2>
+            <div className="rounded-lg border border-border bg-card">
+              <DataTable
+                caption="Latest result per project"
+                columns={boardColumns}
+                rows={board ?? []}
+                rowKey={(e) => e.project_id}
+                initialSort={{ id: "risk_index", dir: "desc" }}
+                exportName="projects-latest"
+                empty={board === null ? "Loading…" : "No project has a run yet."}
+              />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Latest AgentRisk result per agent — lower RI wins.
-            </p>
-            <div className="mt-3 space-y-1.5">
-              {board.slice(0, 6).map((e) => (
-                <Link
-                  key={e.project_id}
-                  to={`/projects/${e.project_id}`}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-                >
-                  <span
-                    className={`w-5 shrink-0 text-center font-mono text-xs tnum ${
-                      e.rank === 1 ? "text-sev-ok" : "text-muted-foreground"
-                    }`}
-                  >
-                    {e.rank}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{e.name}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground tnum">
-                    {e.privacy_score}/100
-                  </span>
-                  <span
-                    className="w-12 text-right font-mono text-xs tnum"
-                    style={{ color: verdictColor(e.verdict) }}
-                  >
-                    {e.risk_index.toFixed(2)}
-                  </span>
-                </Link>
-              ))}
-              {!board.length && (
-                <p className="text-sm text-muted-foreground">
-                  No scored agents yet — run a project to enter the ranking.
-                </p>
-              )}
+          </section>
+
+          <section aria-labelledby="dash-recent">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <h2 id="dash-recent" className="text-sm font-medium">Recent runs</h2>
+              <Link to="/runs" className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                {stats ? `All ${stats.runs} runs` : "All runs"}
+              </Link>
             </div>
-          </Card>
-        </div>
-      </div>
+            <div className="rounded-lg border border-border bg-card">
+              <RunsTable runs={recent} exportName="recent-runs" caption="Recent runs" pageSize={0} />
+            </div>
+          </section>
+        </>
+      )}
     </div>
   )
 }

@@ -37,7 +37,7 @@ function FrameworkTab({ framework, active, onSelect }: { framework: FrameworkRes
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: clear ? "hsl(var(--sev-ok))" : "hsl(var(--sev-l4))" }} />
             </div>
-            <span className="font-mono text-[10px] text-muted-foreground tnum">{pct}%</span>
+            <span className="font-mono text-[10px] text-muted-foreground tnum" title={`${defended} of ${framework.controls.length} controls clear`}>{defended}/{framework.controls.length}</span>
           </div>
           <div className="mt-1.5 text-[10px] text-muted-foreground">{framework.at_risk ? `${framework.at_risk} control${framework.at_risk === 1 ? "" : "s"} at risk` : framework.not_assessed ? `${framework.not_assessed} governance gap${framework.not_assessed === 1 ? "" : "s"}` : `${framework.controls.length} controls clear`}</div>
         </div>

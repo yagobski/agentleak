@@ -74,6 +74,67 @@ export interface Finding {
   recommendation: string
   source: string
   target: string
+  event_id?: string
+  run_id?: string
+}
+
+/** Which detector tiers actually ran (report.detection). */
+export interface Detection {
+  mode: string
+  tiers: string[]
+  degraded: boolean
+}
+
+/** AgentRisk derivation block (report.agentrisk). */
+export interface AgentRiskBlock {
+  ri_global: number
+  ri_by_channel: Record<string, number>
+  wsl: number
+  rho_s: number
+  level_profile: Record<LevelLabel, number>
+  vault_level_profile: Record<LevelLabel, number>
+  leaked_count: number
+  vault_count: number
+  rank_robust?: boolean
+  detectors?: string[]
+  scope_def: string
+  weights: number[]
+}
+
+export interface PolicyEvaluation {
+  enabled: boolean
+  passed: boolean
+  assertions_checked: string[]
+  violations: (string | Record<string, unknown>)[]
+}
+
+/** One event of a captured trace (the input to /api/analyze). */
+export interface TraceEvent {
+  event_id: string
+  channel: string
+  source?: string
+  target?: string
+  content?: unknown
+  metadata?: Record<string, unknown>
+  timestamp?: string
+}
+
+export interface TraceDoc {
+  run_id?: string
+  agent_name?: string
+  scenario_id?: string
+  events: TraceEvent[]
+}
+
+export interface LeaderboardEntry {
+  project_id: string
+  name: string
+  rank: number
+  risk_index: number
+  privacy_score: number
+  verdict: Report["verdict"]
+  runs: number
+  last_run_at: number | null
 }
 
 export interface Report {
@@ -91,6 +152,11 @@ export interface Report {
   rho_s: number
   scope_def: string
   blocked: boolean
+  degraded?: boolean
+  detection?: Detection
+  warnings?: string[]
+  privacy_policy?: PolicyEvaluation
+  agentrisk?: AgentRiskBlock
   summary: {
     total_findings: number
     detected_total: number
@@ -293,6 +359,8 @@ export interface AgentType {
 export interface Meta {
   version: string
   channels: string[]
+  source_channels?: string[]
+  emission_channels?: string[]
   detectors: string[]
   agent_types: AgentType[]
 }
@@ -846,8 +914,9 @@ export const api = {
     }),
   run: (id: string) => jsonFetch<Run>(`/api/runs/${id}`),
   deleteRun: (id: string) => jsonFetch<{ deleted: boolean }>(`/api/runs/${id}`, { method: "DELETE" }),
+  leaderboard: () => jsonFetch<{ entries: LeaderboardEntry[] }>("/api/leaderboard"),
   compare: (a: string, b: string) =>
-    jsonFetch<{ a: Run; b: Run; dominance: "a" | "b" | "neither" }>("/api/compare", {
+    jsonFetch<{ a: Run; b: Run; dominance: "a" | "b" | "neither"; comparable?: boolean; reason?: string }>("/api/compare", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ a, b }),

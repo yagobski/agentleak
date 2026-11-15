@@ -23,7 +23,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { PageHeader } from "@/layout/AppShell"
-import { riVerdict, verdictColor } from "@/lib/format"
+import { DataTable, type Column } from "@/components/DataTable"
+import { VerdictLabel } from "@/features/Chips"
+import { formatStamp } from "@/features/RunsTable"
+import type { LeaderboardEntry } from "@/lib/api"
 
 function NewProjectDialog({ onCreated }: { onCreated: (p: Project) => void }) {
   const agentTypes = useAgentTypes()
@@ -104,14 +107,42 @@ export function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const nav = useNavigate()
-  const load = () =>
-    api.projects().then(setProjects).catch(() => {}).finally(() => setLoading(false))
+  const [board, setBoard] = useState<Record<string, LeaderboardEntry>>({})
   useEffect(() => {
-    load()
+    api.projects().then(setProjects).catch(() => {}).finally(() => setLoading(false))
+    // The project list carries no run statistics; the leaderboard does.
+    api.leaderboard().then((r) => setBoard(Object.fromEntries(r.entries.map((e) => [e.project_id, e])))).catch(() => {})
   }, [])
 
+  const latest = (id: string) => board[id]
+  const columns: Column<Project>[] = [
+    {
+      id: "name",
+      header: "Project",
+      value: (p) => p.name,
+      cell: (p) => (
+        <div className="min-w-[10rem] max-w-[26rem]">
+          <Link to={`/projects/${p.id}`} className="block truncate underline decoration-border underline-offset-2 hover:decoration-foreground" title={p.name} onClick={(e) => e.stopPropagation()}>
+            {p.name}
+          </Link>
+          {p.description && <div className="truncate text-[12px] text-muted-foreground" title={p.description}>{p.description}</div>}
+        </div>
+      ),
+    },
+    { id: "framework", header: "Framework", value: (p) => agentLabel(p.agent_type), hideBelow: "sm", cell: (p) => <span className="text-[12px]">{agentLabel(p.agent_type)}</span> },
+    { id: "runs", header: "Runs", value: (p) => latest(p.id)?.runs ?? 0, align: "right", cell: (p) => <span className="font-mono text-[12px]">{latest(p.id)?.runs ?? 0}</span> },
+    {
+      id: "verdict",
+      header: "Latest verdict",
+      value: (p) => latest(p.id)?.verdict ?? "",
+      cell: (p) => (latest(p.id) ? <VerdictLabel verdict={latest(p.id)!.verdict} /> : <span className="text-[12px] text-muted-foreground">no run yet</span>),
+    },
+    { id: "risk_index", header: "Latest RI", value: (p) => latest(p.id)?.risk_index ?? null, align: "right", cell: (p) => <span className="font-mono text-[12px]">{latest(p.id)?.risk_index.toFixed(3) ?? "–"}</span> },
+    { id: "updated", header: "Updated", value: (p) => p.updated_at, hideBelow: "md", cell: (p) => <span className="font-mono text-[11px] text-muted-foreground">{formatStamp(p.updated_at)}</span> },
+  ]
+
   return (
-    <div className="animate-fade-up">
+    <div className="min-w-0">
       <PageHeader
         title="Projects"
         description="A workspace for one agent or multi-agent system: policy, integrations, tests and evidence over time."
@@ -138,40 +169,16 @@ export function Projects() {
           <NewProjectDialog onCreated={(p) => nav(`/projects/${p.id}`)} />
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <Link key={p.id} to={`/projects/${p.id}`}>
-              <Card className="h-full p-4 transition-colors hover:border-primary/40">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium">{p.name}</span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    {p.agent_card && (
-                      <span
-                        className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary"
-                        title={`Agent card: ${p.agent_card.name}`}
-                      >
-                        card
-                      </span>
-                    )}
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {agentLabel(p.agent_type)}
-                    </span>
-                  </span>
-                </div>
-                {p.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.description}</p>}
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{p.run_count ?? 0} runs</span>
-                  {p.avg_risk_index != null ? (
-                    <span className="font-mono tnum" style={{ color: verdictColor(riVerdict(p.avg_risk_index)) }}>
-                      avg RI {p.avg_risk_index.toFixed(3)}
-                    </span>
-                  ) : (
-                    <span>no runs yet</span>
-                  )}
-                </div>
-              </Card>
-            </Link>
-          ))}
+        <div className="rounded-lg border border-border bg-card">
+          <DataTable
+            caption="Projects"
+            columns={columns}
+            rows={projects}
+            rowKey={(p) => p.id}
+            initialSort={{ id: "updated", dir: "desc" }}
+            exportName="projects"
+            onRowClick={(p) => nav(`/projects/${p.id}`)}
+          />
         </div>
       )}
     </div>

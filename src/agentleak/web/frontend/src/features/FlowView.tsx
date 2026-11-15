@@ -6,11 +6,8 @@ import {
   ArrowRight,
   Bot,
   Database,
-  Eye,
   FileText,
-  GitBranch,
   HardDrive,
-  Network,
   Radio,
   Route,
   ScrollText,
@@ -326,26 +323,19 @@ export function FlowView({ report }: { report: Report }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Participants", value: flow.nodes.length, icon: Network, tone: "text-primary" },
-          { label: "Data routes", value: flow.edges.length, icon: GitBranch, tone: "text-primary" },
-          { label: "Leaking routes", value: summary.leakEdges, icon: AlertTriangle, tone: summary.leakEdges ? "text-sev-l4" : "text-sev-ok" },
-          { label: "Secrets traced", value: paths.length, icon: Eye, tone: paths.length ? "text-sev-l3" : "text-sev-ok" },
-        ].map((item) => (
-          <Card key={item.label} className="flex items-center gap-3 p-3.5">
-            <span className={`flex size-9 items-center justify-center rounded-lg bg-muted ${item.tone}`}><item.icon className="size-4" /></span>
-            <div><div className="font-mono text-xl font-semibold tnum">{item.value}</div><div className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.label}</div></div>
-          </Card>
-        ))}
-      </div>
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border border-border bg-card px-4 py-3 text-[13px]">
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Participants</dt><dd className="font-mono tnum">{flow.nodes.length}</dd></div>
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Routes</dt><dd className="font-mono tnum">{flow.edges.length}</dd></div>
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Routes carrying a leak</dt><dd className="font-mono tnum">{summary.leakEdges} of {flow.edges.length}</dd></div>
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Leaked values traced</dt><dd className="font-mono tnum">{paths.length}</dd></div>
+      </dl>
 
       {topPath && (
         <Card className="border-sev-l3/20 bg-sev-l3/[0.035] p-4">
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" style={{ color: levelColor(highest) }} />
             <p className="text-sm leading-relaxed">
-              <span className="font-semibold">Primary exposure path. </span>
+              <span className="font-medium">Highest-severity path. </span>
               <code className="font-mono text-xs">{topPath.data_type}</code> entered through {topPath.entered_via ?? "an unknown source"} and crossed {topPath.leak_count} disclosure {topPath.leak_count === 1 ? "boundary" : "boundaries"} across {topPath.channels.join(", ")}.
             </p>
           </div>
@@ -355,8 +345,8 @@ export function FlowView({ report }: { report: Report }) {
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div>
-            <div className="flex items-center gap-2 text-sm font-semibold"><Network className="size-4 text-primary" /> Live data-flow map</div>
-            <p className="mt-1 text-xs text-muted-foreground">Animated routes reveal where trusted data becomes an exposure.</p>
+            <div className="text-sm font-medium">Data-flow map</div>
+            <p className="mt-1 text-xs text-muted-foreground">One edge per source, target and channel. Solid colored edges carried at least one leaked value.</p>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-4 bg-sev-l4" /> leak</span>
