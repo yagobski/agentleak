@@ -390,3 +390,16 @@ def test_gate_escapes_workflow_commands_and_reads_posture(tmp_path: Path) -> Non
     assert ",file=" not in properties  # the comma could not start a new property
     assert "100%250A" in proc.stdout
     assert "Compliance at risk:** gdpr" in summary
+
+
+def test_action_never_pastes_inputs_into_shell_source() -> None:
+    import re
+
+    import yaml
+
+    action = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "action.yml").read_text(encoding="utf-8")
+    )
+    for step in action["runs"]["steps"]:
+        script = step.get("run", "")
+        assert not re.search(r"\$\{\{\s*inputs\.", script), step.get("name")
