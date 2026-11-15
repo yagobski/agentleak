@@ -123,3 +123,28 @@ describe("run filter", () => {
     expect(runQueryString({ q: "", verdict: undefined, limit: 50, gate: "" })).toBe("?limit=50")
   })
 })
+
+import { leakPathsJson, leakPathsSvg } from "@/lib/leakpath"
+import reportFixture from "./fixtures/healthcare-report.json"
+import type { Report } from "@/lib/api"
+
+describe("leak-path export", () => {
+  const report = reportFixture as unknown as Report
+  it("exports every path with de-duplicated steps and masked values only", () => {
+    const doc = JSON.parse(leakPathsJson(report))
+    expect(doc.paths).toHaveLength(report.leak_paths!.length)
+    for (const p of doc.paths) {
+      const keys = p.steps.map((s: { event_id: string; kind: string }) => `${s.event_id}|${s.kind}`)
+      expect(new Set(keys).size).toBe(keys.length)
+    }
+    expect(JSON.stringify(doc)).not.toMatch(/matched_value/)
+  })
+  it("writes well-formed, escaped SVG", () => {
+    const hostile = { ...report, agent_name: `<script>x</script>&"` }
+    const svg = leakPathsSvg(hostile)
+    expect(svg.startsWith("<svg")).toBe(true)
+    expect(svg).not.toContain("<script>")
+    expect(svg).toContain("&lt;script&gt;")
+    expect((svg.match(/<rect /g) ?? []).length).toBeGreaterThan(report.leak_paths!.length)
+  })
+})
