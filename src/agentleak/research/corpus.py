@@ -62,6 +62,7 @@ FAILURE_MODES: dict[str, str] = {
     "agentleak_bench": "pattern",
     "privacylens_ci": "norm",
     "agentdojo_exfil": "hijack",
+    "injecagent_ds": "hijack",
     "agentsocialbench_ma": "norm",
     "mcptox_recipient_hijack": "hijack",
 }

@@ -20,8 +20,8 @@ src/agentleak/web/frontend/node_modules/
 src/agentleak/web/frontend/*.tsbuildinfo
 node_modules/
 
-# AgentLeak local output
-reports/
+# AgentLeak local output (anchored: docs/reports/ is tracked)
+/reports/
 traces/*.local.json
 
 # Secrets — never commit these
