@@ -245,7 +245,7 @@ def compare_runs(
         })
     adjusted = stats.holm_bonferroni([r["test"]["p_value"] for r in results])
     for r, p in zip(results, adjusted, strict=True):
-        r["p_holm"] = round(p, 6)
+        r["p_holm"] = stats.sig(p)
 
     flips = []
     for sid in paired:
@@ -327,7 +327,7 @@ def render_comparison(doc: dict[str, Any]) -> str:
         lines.append(
             f"| {r['label']} | {_rate(r['a'])} | {_rate(r['b'])} | {d['estimate']:+.3f} | "
             f"{d['ci_low']:+.3f} to {d['ci_high']:+.3f} | {r['test']['test']} | "
-            f"{r['test']['p_value']:.4f} | {r['p_holm']:.4f} | {h} |"
+            f"{stats.fmt_p(r['test']['p_value'])} | {stats.fmt_p(r['p_holm'])} | {h} |"
         )
     lines += ["", f"## Scenarios that flipped ({len(doc['flips'])})", ""]
     if not doc["flips"]:

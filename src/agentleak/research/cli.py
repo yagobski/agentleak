@@ -17,6 +17,7 @@ import typer
 
 from .bench import RunError, load_run, run_benchmark
 from .manifest import Manifest, ManifestError, render_template
+from .stats import fmt_p
 
 bench_app = typer.Typer(
     help="Research workflow: experiment manifests, benchmark runs, paired comparisons, "
@@ -97,6 +98,23 @@ def init_cmd(
     typer.echo("")
     typer.echo("Next:")
     typer.echo(f"  agentleak bench run {p}")
+
+
+@bench_app.command("repin")
+def repin_cmd(manifest: str = typer.Argument(..., help="Experiment manifest (YAML).")) -> None:
+    """Update a manifest's pins to the installed version and scenario hashes."""
+    from .manifest import repin
+
+    try:
+        drift = repin(manifest)
+    except ManifestError as exc:
+        raise _fail(str(exc)) from exc
+    if not drift:
+        typer.secho(f"✓ {manifest}: pins already match the installed software", fg=typer.colors.GREEN)
+        return
+    typer.secho(f"✓ {manifest}: pins updated", fg=typer.colors.GREEN)
+    for d in drift:
+        typer.echo(f"  was: {d}")
 
 
 @bench_app.command("run")
@@ -180,7 +198,7 @@ def compare_cmd(
         typer.echo(
             f"  {r['label'][:34]:<34} {r['a']['estimate']:>7.3f} {r['b']['estimate']:>7.3f} "
             f"{d['estimate']:>+7.3f}  {d['ci_low']:+.3f} to {d['ci_high']:+.3f} "
-            f"{r['test']['p_value']:>7.4f} {r['p_holm']:>7.4f}"
+            f"{fmt_p(r['test']['p_value']):>7} {fmt_p(r['p_holm']):>7}"
         )
     flips = doc["flips"]
     typer.echo("")

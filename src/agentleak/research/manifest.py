@@ -368,6 +368,39 @@ pins:
 """
 
 
+def repin(path: str | Path) -> list[str]:
+    """Rewrite only the ``pins:`` block of a manifest file to the installed versions.
+
+    The block is replaced in place when it is the last top-level key (as
+    ``bench init`` writes it), so comments elsewhere survive; otherwise the
+    file is re-serialized. Returns the drift that was resolved.
+    """
+    p = Path(path)
+    m = Manifest.load(p)
+    drift = m.check_pins()
+    pins = m.current_pins()
+    block = "pins:\n" + f'  agentleak_version: "{pins["agentleak_version"]}"\n' + "  sources:\n" + "".join(
+        f"    {s}: {h}\n" for s, h in pins["sources"].items()
+    )
+    text = p.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    start = next((i for i, line in enumerate(lines) if line.startswith("pins:")), None)
+    tail_is_pins = start is not None and all(
+        not line.strip() or line.startswith((" ", "#")) for line in lines[start + 1:]
+    )
+    if start is None:
+        new = text.rstrip("\n") + "\n\n" + block
+    elif tail_is_pins:
+        new = "".join(lines[:start]) + block
+    else:
+        data = yaml.safe_load(text) or {}
+        data["pins"] = pins
+        new = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    p.write_text(new, encoding="utf-8")
+    Manifest.load(p)  # still valid
+    return drift
+
+
 # ---------------------------------------------------------------------------
 # Environment
 # ---------------------------------------------------------------------------
@@ -443,4 +476,5 @@ __all__ = [
     "freeze",
     "git_commit",
     "render_template",
+    "repin",
 ]

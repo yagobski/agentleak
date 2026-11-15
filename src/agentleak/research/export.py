@@ -303,6 +303,10 @@ def methods_paragraph(run: BenchRun) -> str:
     return " ".join(text) + "\n"
 
 
+def latex_p(p: float) -> str:
+    return "$<$0.0001" if p < 1e-4 else f"{p:.4f}"
+
+
 def comparison_latex(doc: dict[str, Any]) -> str:
     """A booktabs table of a paired comparison."""
     conf = round(doc["settings"]["confidence"] * 100)
@@ -344,7 +348,7 @@ def comparison_latex(doc: dict[str, Any]) -> str:
         lines.append(
             f"{latex_escape(r['label'])} & {side(r['a'])} & {side(r['b'])} & "
             f"{d['estimate']:+.3f} & {d['ci_low']:+.3f} to {d['ci_high']:+.3f} & "
-            f"{r['test']['p_value']:.4f} & {r['p_holm']:.4f} \\\\"
+            f"{latex_p(r['test']['p_value'])} & {latex_p(r['p_holm'])} \\\\"
         )
     lines += [r"\bottomrule", r"\end{tabular}", "",
               f"\\par\\smallskip\\footnotesize {note}", r"\end{table}", ""]

@@ -109,7 +109,7 @@ class TestResult:
         return {
             "test": self.name,
             "statistic": _r(self.statistic),
-            "p_value": _r(self.p_value),
+            "p_value": sig(self.p_value),
             **self.details,
         }
 
@@ -136,6 +136,16 @@ class Estimate:
             "n": self.n,
             **self.details,
         }
+
+
+def sig(x: float, digits: int = 6) -> float:
+    """Round to significant digits (p-values: 2e-10 must not become 0)."""
+    return float(f"{x:.{digits}g}")
+
+
+def fmt_p(p: float) -> str:
+    """A p-value for display: four decimals, or ``<0.0001``."""
+    return "<0.0001" if p < 1e-4 else f"{p:.4f}"
 
 
 def _r(x: float | None, digits: int = 6) -> float | None:
@@ -733,6 +743,7 @@ __all__ = [
     "cohens_h",
     "detection_metrics",
     "exact_trend_test",
+    "fmt_p",
     "holm_bonferroni",
     "kendall_tau_b",
     "mcnemar_chi2",
@@ -742,6 +753,7 @@ __all__ = [
     "proportion",
     "quantile",
     "risk_difference",
+    "sig",
     "sign_flip_test",
     "wilson_interval",
     "z_value",

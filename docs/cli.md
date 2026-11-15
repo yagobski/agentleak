@@ -25,6 +25,7 @@ version's complete help output.
 | `evidence [PATH]` | Verify and summarize the gateway's hash-chained decision log. |
 | `subjects` | Inspect the cross-session subject ledger, or erase one subject with `--forget`. |
 | `admin reset-password` / `admin list-users` | Operator recovery for a self-hosted platform. |
+| `bench init` / `repin` / `run` / `compare` / `export` / `capsule` / `verify` / `score-corpus` / `properties` / `ablate-scope` / `show` | Research workflow: experiment manifests, benchmark runs, paired statistics, paper-ready exports, reproducibility capsules. See [research.md](research.md). |
 
 ## Skill
 

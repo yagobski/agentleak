@@ -273,7 +273,8 @@ def run_benchmark(
         raise RunError(
             "the manifest's pins do not match the installed software:\n  - "
             + "\n  - ".join(drift)
-            + "\nRe-pin with `agentleak bench init --force`, or run with --allow-drift "
+            + "\nIf the change is intended, update the pins with `agentleak bench repin "
+            "MANIFEST` (your other settings are kept), or run once with --allow-drift "
             "(the drift is then recorded in manifest.lock.json)."
         )
 
