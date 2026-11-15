@@ -97,17 +97,28 @@ def init(
 # ----------------------------------------------------------------------
 @app.command()
 def validate(
-    config: str = typer.Argument("agentleak.yaml", help="Path to the config file."),
+    config: str | None = typer.Argument(None, help="Path to the config file. [default: agentleak.yaml]"),
     trace: str | None = typer.Option(None, "--trace", "-t", help="Also validate a trace file."),
 ) -> None:
     """Validate a configuration (and optionally a trace) file."""
     ok = True
+    explicit = config is not None
+    config = config or "agentleak.yaml"
+    if trace and not explicit and not os.path.exists(config):
+        # `validate --trace t.json` is a trace check; a missing default config
+        # is not an error then, only a named one is.
+        typer.echo(f"· no {config} here; validating the trace only")
+        config = ""
     try:
+        if not config:
+            raise _SkipConfig
         cfg = Config.load(config)
         typer.secho(f"✓ config valid: {config}", fg=typer.colors.GREEN)
         typer.echo(f"  detectors: {', '.join(k for k, v in cfg.detectors.as_dict().items() if v) or 'none'}")
         typer.echo(f"  channels:  {len(cfg.channels)} · scenarios: {len(cfg.scenarios)}")
         normalize_formats(cfg.reports.formats)
+    except _SkipConfig:
+        pass
     except FileNotFoundError:
         typer.secho(f"✗ config not found: {config}", fg=typer.colors.RED)
         ok = False
@@ -117,7 +128,7 @@ def validate(
 
     if trace:
         try:
-            t = Trace.from_json_file(trace)
+            t = _load_trace_file(trace)
             typer.secho(f"✓ trace valid: {trace} ({len(t.events)} events)", fg=typer.colors.GREEN)
         except Exception as exc:  # noqa: BLE001
             typer.secho(f"✗ invalid trace: {exc}", fg=typer.colors.RED)
@@ -1010,6 +1021,23 @@ def report(
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+class _SkipConfig(Exception):
+    """Internal: `validate --trace` without a config file to check."""
+
+
+def _load_trace_file(path: str) -> Trace:
+    """Load a trace file, refusing JSON that is not a trace.
+
+    A report, a config or any other JSON object would otherwise load as an
+    empty trace and pass the gate.
+    """
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    if not isinstance(data, dict) or not isinstance(data.get("events"), list):
+        raise ValueError("not an AgentLeak trace: expected a JSON object with an 'events' list")
+    return Trace.from_dict(data)
+
+
 def _canaries_of(meta: dict[str, object]) -> CanarySet | None:
     """A pack entry's ground-truth canaries, when it ships any."""
     raw = meta.get("canaries")
@@ -1029,15 +1057,7 @@ def _resolve_traces(
     canary set, because without it those scenarios score a false "Pass".
     """
     if trace:
-        with open(trace, encoding="utf-8") as fh:
-            data = json.load(fh)
-        if not isinstance(data, dict) or not isinstance(data.get("events"), list):
-            # A report, a config or any other JSON object would otherwise load
-            # as an empty trace and pass the gate.
-            raise ValueError(
-                "not an AgentLeak trace: expected a JSON object with an 'events' list"
-            )
-        return [(trace, Trace.from_dict(data), None)]
+        return [(trace, _load_trace_file(trace), None)]
     if pack:
         # A bundled research pack: the whole suite, or one scenario from it.
         # This is what makes the published benchmark one command away.

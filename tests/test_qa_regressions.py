@@ -215,3 +215,26 @@ def test_trace_from_dict_rejects_non_traces_with_value_error(data) -> None:
 
     with pytest.raises(ValueError):
         Trace.from_dict(data)
+
+
+# ----------------------------------------------------------------------
+# QA-08: `validate --trace` failed when no agentleak.yaml was present
+# ----------------------------------------------------------------------
+
+
+def test_validate_trace_only_needs_no_config(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "t.json").write_text('{"events": [{"channel": "log", "content": "hi"}]}', "utf-8")
+    result = _cli.invoke(app, ["validate", "--trace", "t.json"])
+    assert result.exit_code == 0, result.output
+    assert "config not found" not in result.output
+    # A config named explicitly is still required.
+    assert _cli.invoke(app, ["validate", "missing.yaml", "--trace", "t.json"]).exit_code == 1
+    # And a config check alone still reports the missing default file.
+    assert _cli.invoke(app, ["validate"]).exit_code == 1
+
+
+def test_validate_refuses_json_that_is_not_a_trace(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "r.json").write_text('{"verdict": "Pass"}', "utf-8")
+    assert _cli.invoke(app, ["validate", "--trace", "r.json"]).exit_code == 1
