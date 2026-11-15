@@ -289,6 +289,10 @@ def trace_from_spans(
     all_attrs = [_attrs_of(span) for span in spans]
     executed_ids = genai_executed_ids(all_attrs)
     genai_input_seen = False
+    # Whether any event so far is a user_input. Events are only appended in
+    # this loop, so it is updated from each span's new events: rescanning
+    # every event for every GenAI span was quadratic in the span count.
+    user_input_seen = False
 
     for span, (start, end), attrs in zip(spans, times, all_attrs, strict=True):
         first = len(trace.events)
@@ -299,8 +303,7 @@ def trace_from_spans(
         if is_genai_span(attrs):
             genai_input_seen = genai_span_events(
                 trace, attrs, executed_ids=executed_ids,
-                seen_input=genai_input_seen or any(
-                    e.channel_value == "user_input" for e in trace.events),
+                seen_input=genai_input_seen or user_input_seen,
                 origin="otel")
 
         elif kind == "TOOL" or (not kind and _get(attrs, *_TOOL_NAME_KEYS)):
@@ -369,6 +372,8 @@ def trace_from_spans(
                                 metadata={"span_kind": kind or "CHAIN", "origin": "otel"})
 
         _annotate(trace.events[first:], span, attrs, start, end)
+        user_input_seen = user_input_seen or any(
+            e.channel_value == "user_input" for e in trace.events[first:])
 
     if timed:
         # Execution order, not document order (the sort is stable); ids follow it.

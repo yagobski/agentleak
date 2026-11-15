@@ -111,14 +111,19 @@ def trace_problem(raw: dict[str, Any]) -> str | None:
             return f"trace is malformed: span {sid} has a non-integer statusCode"
     # Parent links must end at a root, not loop back: a span cannot be its own
     # ancestor, however long the chain.
+    # Each span is walked once: a span already known to reach a root ends the
+    # walk (walking every chain to its root was quadratic in a long chain).
     parent_of = {s["spanId"]: s["parentSpanId"] for s in raw["spans"] if s.get("parentSpanId")}
+    reaches_root: set[str] = set()
     for sid in parent_of:
-        seen, node = {sid}, parent_of[sid]
-        while node in parent_of:
-            if node in seen:
+        path, on_path, node = [sid], {sid}, parent_of[sid]
+        while node in parent_of and node not in reaches_root:
+            if node in on_path:
                 return f"trace is malformed: span {sid}'s parents form a cycle"
-            seen.add(node)
+            path.append(node)
+            on_path.add(node)
             node = parent_of[node]
+        reaches_root.update(path)
     for span in raw["spans"]:
         sid, parent = span["spanId"], span.get("parentSpanId")
         # promptfoo's test_case root stays open while assertions run, so only

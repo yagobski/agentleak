@@ -129,6 +129,9 @@ ADVERSARIAL = {
     "phone_cues": "call him at 555-0152 " * (N // 21),
     "cue_only": "call reach phone born account salary " * (N // 37),
     "dob_cues": "born on 1994-10-17 " * (N // 19),
+    # A gap of letters that fails at its last character: every split of the
+    # letters into "words" was retried (8 s at 20 KB before the fix).
+    "dob_gap_backtrack": ("born " + "a" * 42 + "@ 1994-10-17. ") * (N // 61),
     "account_digits": "account " + "1 " * (N // 2),
     "account_dashes": "account " + "1-" * (N // 2),
     "salary_groups": "salary " + "1,000 " * (N // 6),

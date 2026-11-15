@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..core.trace import Channel, Trace
+from ..core.trace import MAX_CONTENT_DEPTH, Channel, Trace, _depth
 
 #: Item ``type`` values of the Responses API and the Agents SDK.
 RESPONSES_TYPES = frozenset({
@@ -74,12 +74,19 @@ def text_of(content: Any) -> str:
 
 
 def maybe_json(value: Any) -> Any:
-    """Parse a JSON string; return anything else unchanged."""
+    """Parse a JSON string; return anything else unchanged.
+
+    A string that parses to something nested deeper than a trace may hold is
+    kept as the string: the parsed value would bypass the depth cap every
+    reader applies to the file itself, and fail later when the trace is
+    analysed or written.
+    """
     if isinstance(value, str):
         try:
-            return json.loads(value)
+            parsed = json.loads(value)
         except (json.JSONDecodeError, RecursionError):
             return value
+        return value if _depth(parsed) > MAX_CONTENT_DEPTH else parsed
     return value
 
 

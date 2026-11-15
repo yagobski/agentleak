@@ -41,6 +41,8 @@ from typing import Any
 # GitHub truncates annotations past this; keep well under it.
 MAX_ANNOTATIONS = 40
 LEVEL_TO_ANNOTATION = {4: "error", 3: "error", 2: "warning", 1: "notice"}
+# Environment the agentleak CLI must not inherit (see _run_cli).
+_PRIVATE_ENV = frozenset({"AL_GITHUB_TOKEN"})
 
 
 def _env(name: str, default: str = "") -> str:
@@ -120,8 +122,12 @@ def _run_cli(args: list[str]) -> int:
     print("$ " + _escape_data(shlex.join(["agentleak", *args])), flush=True)
     token = secrets.token_hex(16)
     print(f"::stop-commands::{token}", flush=True)
+    # The comment token is for this script only. The CLI reads a config that
+    # the pull request can change, and a config can name any environment
+    # variable as an LLM-judge key sent to a URL it chooses.
+    env = {k: v for k, v in os.environ.items() if k not in _PRIVATE_ENV}
     try:
-        return subprocess.run(["agentleak", *args], check=False).returncode
+        return subprocess.run(["agentleak", *args], check=False, env=env).returncode
     finally:
         print(f"::{token}::", flush=True)
 

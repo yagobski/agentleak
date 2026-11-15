@@ -241,3 +241,36 @@ def test_action_wires_the_new_inputs():
     env = next(s for s in action["runs"]["steps"] if s.get("id") == "gate")["env"]
     for var in ("AL_SARIF", "AL_PR_COMMENT", "AL_BASELINE", "AL_GITHUB_TOKEN"):
         assert var in env
+
+
+def test_cli_does_not_inherit_the_comment_token(tmp_path):
+    """The CLI reads a config the pull request controls; a config can name any
+    environment variable as an LLM-judge key and send it to a URL it chooses,
+    so the comment token must not be in the CLI's environment."""
+    seen = tmp_path / "env.json"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "agentleak"
+    stub.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, os, sys\n"
+        f"open({str(seen)!r}, 'w').write(json.dumps(sorted(os.environ)))\n"
+        "args = sys.argv[1:]\n"
+        "out = args[args.index('--output') + 1]\n"
+        "os.makedirs(out, exist_ok=True)\n"
+        f"open(os.path.join(out, 'r1.json'), 'w').write(json.dumps({_report()!r}))\n"
+        "sys.exit(1)\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    token = "token-" + "x" * 20
+    proc = subprocess.run(
+        [sys.executable, str(GATE)], capture_output=True, text=True,
+        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+             "AL_TRACE": "t.json", "AL_PR_COMMENT": "true", "AL_GITHUB_TOKEN": token},
+    )
+    assert proc.returncode == 1
+    names = json.loads(seen.read_text())
+    assert "AL_GITHUB_TOKEN" not in names
+    assert "PATH" in names and "AL_TRACE" in names
+    assert token not in proc.stdout + proc.stderr

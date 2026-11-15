@@ -13,6 +13,7 @@ ones (emails, validated cards).
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 
 from ..core.detector import Detector, RawMatch, Severity
 from . import checksums
@@ -250,6 +251,15 @@ def _luhn_ok(digits: str) -> bool:
 
 def _inside(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
     return any(a <= span[0] and span[1] <= b for a, b in spans)
+
+
+def _inside_sorted(span: tuple[int, int], starts: list[int], spans: list[tuple[int, int]]) -> bool:
+    """:func:`_inside` for spans sorted by start and not overlapping (one
+    ``finditer`` pass), in log time: only the last span starting at or before
+    ``span`` can hold it. A scan of every email per postal-code candidate was
+    quadratic in a text of many addresses."""
+    i = bisect_right(starts, span[0]) - 1
+    return i >= 0 and span[1] <= spans[i][1]
 
 
 def _dni_letter_ok(number: str, letter: str) -> bool:
@@ -519,11 +529,12 @@ class PIIDetector(Detector):
                     recommendation="Home addresses are re-identifying; remove them from internal channels.",
                 ))
 
+        email_starts = [a for a, _b in email_spans]
         for m in POSTAL_RE.finditer(text):
             # "a1b2c3" inside "dana.a1b2c3@example.com" is part of the address,
             # not a Canadian postal code; reporting it made the sanitizer
             # redact the inner span and leave the rest of the email behind.
-            if inside_blob(text, m.start(), m.end()) or _inside(m.span(), email_spans):
+            if inside_blob(text, m.start(), m.end()) or _inside_sorted(m.span(), email_starts, email_spans):
                 continue
             matches.append(self._match(
                 data_type="address", severity=Severity.MEDIUM, confidence=0.6,
