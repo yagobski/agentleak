@@ -17,6 +17,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from ..core.netguard import UnsafeURLError, open_model_url
+
 
 class LLMError(RuntimeError):
     """Raised when the LLM endpoint is unreachable or returns an error."""
@@ -125,8 +127,10 @@ class OpenAICompatLLM:
             f"{self.config.base_url}/chat/completions", data=body, headers=headers, method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=self.config.timeout) as resp:
+            with open_model_url(req, timeout=self.config.timeout) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
+        except UnsafeURLError as exc:  # hosted mode: internal addresses are refused
+            raise LLMError(str(exc)) from exc
         except urllib.error.HTTPError as exc:  # surface the provider's message
             detail = exc.read().decode("utf-8", "replace")[:300]
             raise LLMError(f"LLM endpoint returned HTTP {exc.code}: {detail}") from exc

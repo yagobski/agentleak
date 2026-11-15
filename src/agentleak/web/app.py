@@ -42,6 +42,7 @@ from ..core.canary import CanarySet
 from ..core.codescan import scan_payload
 from ..core.compliance import FRAMEWORKS
 from ..core.config import Config
+from ..core.netguard import set_outbound_guard
 from ..core.regex_safety import check_regex
 from ..core.report import AnalysisResult
 from ..core.runner import AgentLeakRunner
@@ -671,6 +672,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
     # environment. Local/self-hosted stays unlimited; AGENTLEAK_PUBLIC_MODE=1
     # turns on the free-for-agents hosted-service defaults.
     limits = Limits.from_env()
+    # A hosted, multi-account deployment must not call model endpoints on its
+    # own private network on a user's behalf; a self-hosted one usually has to.
+    set_outbound_guard(limits.public_mode)
 
     def _public_base_url(request: Request) -> str:
         """Return the canonical external origin for discovery documents.
