@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
+from .context import matches_for as context_matches
 
 # Tolerant separator: handles flattened "key: value", JSON quotes, and "=".
 _SEP = r"[\"'\s:=#-]*"
@@ -98,4 +99,7 @@ class HRDetector(Detector):
                 recommendation="Employment-status changes are confidential until officially communicated.",
             ))
 
+        # "her salary is $128,000 a year", "il gagne 65000 EUR": an amount
+        # named by a pay noun, or by an earning verb with a currency or period.
+        matches.extend(context_matches(self.name, text, frozenset({"salary"}), matches))
         return matches

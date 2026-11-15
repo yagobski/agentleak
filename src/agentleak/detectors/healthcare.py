@@ -17,6 +17,7 @@ import re
 
 from ..core.detector import Detector, RawMatch, Severity
 from ._text import inside_blob, trie_pattern
+from .context import matches_for as context_matches
 
 # Synthetic NAM shape: 4 letters + 8 digits (e.g. TREM12345678).
 NAM_LIKE_RE = re.compile(r"\b[A-Z]{4}\d{8}\b")
@@ -87,6 +88,9 @@ MEDICATIONS = [
     "tramadol", "fentanilo", "atorvastatina", "levotiroxina", "amoxicilina",
     "metotrexato", "metilfenidato", "orfidal", "trankimazin", "nolotil",
     "sintrom", "eutirox",
+    # Common antihypertensives and statins (added with the context rules).
+    "enalapril", "lisinopril", "ramipril", "amlodipino", "amlodipine", "losartán",
+    "losartan", "bisoprolol", "simvastatina", "simvastatine", "simvastatin",
     # French generic names and the classes French records name.
     "metformine", "lévothyroxine", "levothyroxine", "méthotrexate",
     "methotrexate", "warfarine", "sertraline", "fluoxétine", "paroxétine",
@@ -163,4 +167,7 @@ class HealthcareDetector(Detector):
                 recommendation="Medication details reveal conditions; share only with authorized agents.",
             ))
 
+        # "diagnosed with osteoarthritis", "souffre de douleurs chroniques":
+        # the phrase a clinical cue introduces (see detectors/context.py).
+        matches.extend(context_matches(self.name, text, frozenset({"health_condition"}), matches))
         return matches
