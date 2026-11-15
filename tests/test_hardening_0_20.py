@@ -57,3 +57,20 @@ def test_promptfoo_span_chain_check_is_linear() -> None:
     assert "form a cycle" in (trace_problem({"traceId": "t", "spans": spans}) or "")
     assert "form a cycle" in (trace_problem({"traceId": "t", "spans": [
         {"spanId": "a", "name": "x", "startTime": 1, "endTime": 2, "parentSpanId": "a"}]}) or "")
+
+
+def test_markdown_report_escapes_the_imported_source_name() -> None:
+    """``observation.source`` comes from the trace file's metadata; the Markdown
+    report printed it raw (HTML, a line break starting a heading, a link)."""
+    from agentleak import AgentLeakRunner, Trace
+    from agentleak.reporters import render
+
+    hostile = "<img src=x onerror=alert(1)>\n# owned [x](https://attacker.example)"
+    trace = Trace.from_dict({"metadata": {"observation": {
+        "source": hostile, "observable_channels": ["final_output"], "unobserved_channels": ["log"]}},
+        "events": [{"channel": "final_output", "content": "hi"}]})
+    md = render(AgentLeakRunner().analyze(trace).to_dict(), "markdown")
+    line = next(ln for ln in md.splitlines() if ln.startswith("> Imported from"))
+    assert "<img" not in md and "[x](" not in md and "\\[x\\](" in line
+    assert "owned" in line and not any(ln.startswith("# owned") for ln in md.splitlines())
+    assert "only final_output could be observed" in line and "audited: log." in line
