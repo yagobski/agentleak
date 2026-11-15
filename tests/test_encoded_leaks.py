@@ -201,3 +201,55 @@ def test_obscured_copy_search_can_be_disabled() -> None:
     off = AgentLeakRunner(off_cfg).analyze(trace)
     assert any(f.metadata.get("transform") == "reversed" for f in on.findings)
     assert not any(f.metadata.get("transform") == "reversed" for f in off.findings)
+
+
+# --- Transformations added after 0.18.0 -------------------------------------
+
+_HOMOGLYPHS = str.maketrans({"a": "а", "e": "е", "o": "о", "c": "с"})
+
+
+@pytest.mark.parametrize(
+    "content, data_type, transform",
+    [
+        ("<p>" + "".join(f"&#{ord(c)};" for c in EMAIL) + "</p>", "email", "html"),
+        ('{"v": "' + "".join(f"\\u{ord(c):04x}" for c in SIN) + '"}', "sin", "unicode-escape"),
+        ("value " + "\u200b".join(EMAIL), "email", "zero-width"),
+        ("value " + "\u200b".join(SIN), "sin", "zero-width"),
+        ("value " + EMAIL.translate(_HOMOGLYPHS), "email", "homoglyph"),
+        ("value " + "".join(chr(0xFF10 + int(c)) if c.isdigit() else c for c in SIN), "sin", "homoglyph"),
+        ("blob=" + base64.b64encode(__import__("gzip").compress(SIN.encode(), mtime=0)).decode(),
+         "sin", "base64>gzip"),
+        ("note j34n.7r3mbl4y@3x4mpl3.c0m", "email", "leet"),
+    ],
+)
+def test_added_transformations_are_found(content, data_type, transform):
+    found = _disclosed(_trace(("worker", content)))
+    assert (data_type, transform) in found.get("e2", set()), found
+
+
+ADDED_BENIGN = [
+    "<p>Montr&eacute;al &amp; Qu&eacute;bec &nbsp; caf&eacute; &lt;b&gt;</p>",
+    '{"city": "Montr\\u00e9al", "note": "caf\\u00e9 cr\\u00e8me"}',
+    "Привет, это обычный текст на русском языке.",
+    "Καλημέρα, αυτό είναι ελληνικό κείμενο.",
+    "ＡＢＣ株式会社の会議は３時です。",
+    "blob=" + base64.b64encode(__import__("gzip").compress(b"retries=3 timeout=30", mtime=0)).decode(),
+    "l33t h4x0r skillz 4 the w1n",
+    "co\u00adoperation and re\u00adentry",
+    "Москва-2026 conference, room A1",
+    "Visit https://example.com/?a=1&amp;b=2",
+]
+
+
+@pytest.mark.parametrize("text", ADDED_BENIGN)
+def test_added_decoders_leave_benign_text_alone(text):
+    assert sanitize_text(text) == text
+    events = [{"event_id": "e1", "channel": "log", "source": "a", "target": "b", "content": text}]
+    trace = Trace.model_validate({"run_id": "b", "agent_name": "a", "events": events})
+    assert analyze(trace).findings == []
+
+
+def test_decompression_is_bounded():
+    bomb = base64.b64encode(__import__("gzip").compress(b"a" * (8 << 20), mtime=0)).decode()
+    views = decoded_views("blob=" + bomb)
+    assert all(len(v.text) <= 1 << 20 for v in views)

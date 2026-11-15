@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
+from . import checksums
 
 # Tolerant separator: handles flattened "key: value", JSON quotes, and "=".
 _SEP = r"[\"'\s:=#-]*"
@@ -41,12 +42,13 @@ class FinanceDetector(Detector):
         matches: list[RawMatch] = []
 
         for m in IBAN_RE.finditer(text):
-            # Require at least one digit beyond the country/check prefix to
-            # avoid matching ordinary uppercase tokens.
-            if any(ch.isdigit() for ch in m.group(0)[4:]):
+            # Validated, not shape-matched: a registered country, that
+            # country's exact length, and the ISO 7064 mod-97 check digits.
+            # "US13 3000 …" has the shape and is not an IBAN — the US has none.
+            if checksums.iban(m.group(0)):
                 matches.append(self._match(
-                    data_type="iban", severity=Severity.HIGH, confidence=0.75,
-                    matched_value=m.group(0),
+                    data_type="iban", severity=Severity.HIGH, confidence=0.95,
+                    matched_value=m.group(0), rule="iban",
                     recommendation="Mask IBANs before inter-agent messages and tool calls.",
                 ))
 

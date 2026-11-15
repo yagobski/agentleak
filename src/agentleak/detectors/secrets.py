@@ -9,9 +9,13 @@ immediately actionable by an attacker — so most matches here are critical.
 
 from __future__ import annotations
 
+import math
 import re
+from collections import Counter
 
 from ..core.detector import Detector, RawMatch, Severity
+from . import checksums
+from .secret_rules import RULES as PROVIDER_RULES
 
 AWS_ACCESS_KEY_RE = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
 GITHUB_TOKEN_RE = re.compile(r"\bgh[oprsu]_[A-Za-z0-9]{36}\b")
@@ -41,28 +45,66 @@ PRIVATE_KEY_RE = re.compile(
     r"|(?:[ \t]*\r?\n[ \t]*[A-Za-z0-9+/=:,-]{8,})*)"
 )
 CONNECTION_STRING_RE = re.compile(
-    r"(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqps?)://[^\s'\"]+"
+    r"(?i)\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|amqps?|mssql|"
+    r"sqlserver|clickhouse|cockroachdb|snowflake)://[^\s'\"]+"
+)
+# A DSN with no credentials that points at this machine says nothing anyone
+# could use: ``redis://localhost:6379/0`` is configuration, not a secret.
+_LOCAL_DSN_RE = re.compile(
+    r"(?i)^[a-z+]+://(?:localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|db|database|host)(?::\d+)?(?:/|$)"
+)
+# Key=value connection strings (ADO.NET, ODBC, JDBC properties) that embed a
+# password: ``Server=db;User Id=app;Password=s3cr3t;``.
+KV_CONNECTION_STRING_RE = re.compile(
+    r"(?i)(?:\b(?:server|data source|host|address|addr|network address)\s*=\s*[^;\n]{1,200};"
+    r"[^\n]{0,300}?)\b(?:password|pwd)\s*=\s*([^;'\"\s]{4,})"
 )
 # Credentials embedded in any other URL: ``https://user:token@host``. The
 # database schemes above are reported with or without credentials; for every
 # other scheme only the userinfo form is a secret.
 URL_CREDENTIALS_RE = re.compile(
-    r"(?i)\b[a-z][a-z0-9+.-]*://[^\s:/@'\"]+:[^\s/@'\"]+@[^\s'\"]+"
+    r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://[^\s:/@'\"]+:[^\s/@'\"]+@[^\s'\"]+"
 )
 # Generic ``password: ...`` / ``api_key = ...`` assignments. Broad, so lower
 # confidence; the assigned value must be non-trivial.
 # The key may carry a prefix — ``DB_PASSWORD``, ``OPENAI_API_KEY``,
 # ``aws_secret_access_key`` — which is how most secrets are actually named; a
-# bare ``\b`` before the key word cannot see past the underscore.
-# The lookbehind alone admits exactly the same key words as the former
-# ``(?:[A-Za-z0-9]+[_-])*`` prefix (a key word after ``_`` or ``-`` qualifies
-# either way) and only groups 1-2 are read. The prefix rescanned every
-# ``x-x-x-...`` run from each position: 23 s on 50 KB, quadratic beyond.
+# bare ``\b`` before the key word cannot see past the underscore. The prefix is
+# checked by a one-character look-behind, not matched: matching
+# ``(?:[A-Za-z0-9]+[_-])*`` from every start position was quadratic on a long
+# run like ``1-1-1-…`` (48 s on 50 KB).
 SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9])"
-    r"(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\b"
+    r"(?i)(?:(?<=[_-])|(?<![A-Za-z0-9]))"
+    r"(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key"
+    # French, Spanish, Portuguese, German and Italian names for a password or
+    # an API key, as configuration files and chat messages write them.
+    r"|mot[_ -]de[_ -]passe|mdp|cl[ée][_ -]api|contrase[ñn]a|clave(?:[_ -]api)?|senha|"
+    r"chave[_ -]api|passwort|kennwort|schl[üu]ssel|parola[_ -]d[ie][_ -]?ordine|chiave[_ -]api)\b"
     r"\s*[:=]\s*[\"']?([^\"'\s,}]{6,})"
 )
+# Names that hold key material but whose values are often prose or paths
+# ("private_key: see vault"). The value must look random to count.
+KEY_MATERIAL_ASSIGNMENT_RE = re.compile(
+    r"(?i)(?:(?<=[_-])|(?<![A-Za-z0-9]))"
+    r"(passphrase|credentials?|(?:private|signing|encryption|master|session|client)[_-]?key)\b"
+    r"\s*[:=]\s*[\"']?([A-Za-z0-9+/=_.~-]{16,})"
+)
+# Values that say "a secret goes here" rather than holding one: sk-xxxx…,
+# ``****``, ``<your-key>``, ``YOUR_API_KEY``, ``...``.
+_PLACEHOLDER_RE = re.compile(
+    r"(?i)x{6,}|\*{3,}|\.{3}|…|<[^>]*>|\{\{|\$\{|your[_-]|placeholder|redacted|0{12,}|"
+    r"replace[_-]?me|changeme|insert[_-]"
+)
+
+
+def _placeholder(value: str) -> bool:
+    return bool(_PLACEHOLDER_RE.search(value))
+
+
+def _entropy(value: str) -> float:
+    """Shannon entropy in bits per character."""
+    counts = Counter(value)
+    return -sum(n / len(value) * math.log2(n / len(value)) for n in counts.values())
 
 # A captured "value" that is really a function call or attribute access is a
 # reference, not a hardcoded secret — e.g. ``api_key = os.environ.get("KEY")``
@@ -105,6 +147,23 @@ class SecretsDetector(Detector):
                 recommendation="Rotate the key immediately; private keys must never enter agent channels.",
             ))
 
+        for rule in PROVIDER_RULES:
+            if rule.hints and not any(h in text for h in rule.hints):
+                continue
+            for m in rule.pattern.finditer(text):
+                value = m.group(0)
+                if _placeholder(value):
+                    continue
+                confidence = rule.confidence
+                if rule.checksum is not None and rule.checksum(value):
+                    confidence = 0.99
+                matches.append(self._match(
+                    data_type=rule.data_type,
+                    severity=Severity.HIGH if rule.high_only else Severity.CRITICAL,
+                    confidence=confidence, matched_value=value,
+                    recommendation=rule.recommendation, rule=rule.rule,
+                ))
+
         for m in AWS_ACCESS_KEY_RE.finditer(text):
             matches.append(self._match(
                 data_type="aws_access_key", severity=Severity.CRITICAL, confidence=0.97,
@@ -113,8 +172,13 @@ class SecretsDetector(Detector):
             ))
 
         for m in GITHUB_TOKEN_RE.finditer(text):
+            if _placeholder(m.group(0)):
+                continue
+            # The last six characters of a real token are a CRC32 of the rest.
+            # Synthetic test tokens lack it, so it raises confidence, nothing more.
             matches.append(self._match(
-                data_type="github_token", severity=Severity.CRITICAL, confidence=0.95,
+                data_type="github_token", severity=Severity.CRITICAL,
+                confidence=0.99 if checksums.crc32_token(m.group(0)) else 0.95, rule="github_token",
                 matched_value=m.group(0),
                 recommendation="Revoke the GitHub token; do not pass tokens through prompts or memory.",
             ))
@@ -134,6 +198,8 @@ class SecretsDetector(Detector):
             ))
 
         for m in STRIPE_KEY_RE.finditer(text):
+            if _placeholder(m.group(0)):
+                continue
             matches.append(self._match(
                 data_type="stripe_key", severity=Severity.CRITICAL, confidence=0.95,
                 matched_value=m.group(0),
@@ -141,6 +207,8 @@ class SecretsDetector(Detector):
             ))
 
         for m in LLM_API_KEY_RE.finditer(text):
+            if _placeholder(m.group(0)):
+                continue
             matches.append(self._match(
                 data_type="llm_api_key", severity=Severity.CRITICAL, confidence=0.95,
                 matched_value=m.group(0),
@@ -175,6 +243,8 @@ class SecretsDetector(Detector):
         for m in CONNECTION_STRING_RE.finditer(text):
             value = m.group(0)
             has_creds = "@" in value and "://" in value and ":" in value.split("://", 1)[1].split("@")[0]
+            if not has_creds and _LOCAL_DSN_RE.match(value):
+                continue
             matches.append(self._match(
                 data_type="connection_string",
                 severity=Severity.CRITICAL if has_creds else Severity.HIGH,
@@ -195,14 +265,40 @@ class SecretsDetector(Detector):
                 recommendation="Never put credentials in a URL; they end up in logs, traces and shell history.",
             ))
 
+        for m in KV_CONNECTION_STRING_RE.finditer(text):
+            if _placeholder(m.group(1)):
+                continue
+            matches.append(self._match(
+                data_type="connection_string", severity=Severity.CRITICAL, confidence=0.9,
+                matched_value=m.group(0), rule="kv_connection_string",
+                recommendation="Strip database/connection strings (and embedded credentials) from traces.",
+            ))
+
+        for m in KEY_MATERIAL_ASSIGNMENT_RE.finditer(text):
+            value = m.group(2)
+            if (
+                _placeholder(value)
+                or _entropy(value) < 3.5
+                or not any(ch.isdigit() for ch in value)
+                or _ATTRIBUTE_REFERENCE_RE.match(value)
+                or _CONSTANT_REFERENCE_RE.match(value)
+            ):
+                continue
+            matches.append(self._match(
+                data_type="secret_assignment", severity=Severity.HIGH, confidence=0.65,
+                matched_value=value, rule="key_material_assignment",
+                recommendation="Remove inline secret assignments from agent payloads and logs.",
+            ))
+
         for m in SECRET_ASSIGNMENT_RE.finditer(text):
             value = m.group(2)
             # Skip obvious placeholders to reduce false positives.
             if value.lower() in {"none", "null", "true", "false", "redacted", "xxxxxx", "******"}:
                 continue
             # AgentLeak's own Sanitizer placeholder ([REDACTED_GITHUB_TOKEN]):
-            # the value has already been removed, which is the fix.
-            if _REDACTED_PLACEHOLDER_RE.match(value):
+            # the value has already been removed, which is the fix. Also skip
+            # obvious fillers such as ``sk-xxxx``.
+            if _REDACTED_PLACEHOLDER_RE.match(value) or _placeholder(value):
                 continue
             # Skip references (env reads, function calls, attribute lookups,
             # ALL-CAPS constants): they point at a secret, they don't embed one.

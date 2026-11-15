@@ -1,0 +1,379 @@
+{
+  "software_version": "0.18.0",
+  "language": "fr",
+  "detector_tier": "fast (deterministic: regex + dictionaries)",
+  "tiers_not_run": [
+    "presidio",
+    "semantic judge"
+  ],
+  "source": "made-up labelled French values in scripts/detection_quality_fr.json",
+  "conditions": {
+    "structured": {
+      "recall": 1.0,
+      "ci95": [
+        0.9674,
+        1.0
+      ],
+      "numerator": 114,
+      "denominator": 114,
+      "by_data_type": [
+        {
+          "data_type": "address",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "credit_card",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "date_of_birth",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "email",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "health_condition",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "health_identifier",
+          "recall": 1.0,
+          "ci95": [
+            0.6097,
+            1.0
+          ],
+          "hit": 6,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 6,
+          "confused_as": {}
+        },
+        {
+          "data_type": "iban",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "medication",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "national_id",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "person_name",
+          "recall": 1.0,
+          "ci95": [
+            0.7575,
+            1.0
+          ],
+          "hit": 12,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 12,
+          "confused_as": {}
+        },
+        {
+          "data_type": "phone_number",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "salary",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "sin",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        }
+      ]
+    },
+    "prose": {
+      "recall": 0.8596,
+      "ci95": [
+        0.7841,
+        0.9117
+      ],
+      "numerator": 98,
+      "denominator": 114,
+      "by_data_type": [
+        {
+          "data_type": "address",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "credit_card",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "date_of_birth",
+          "recall": 0.0,
+          "ci95": [
+            0.0,
+            0.3244
+          ],
+          "hit": 0,
+          "type_confused": 0,
+          "missed": 8,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "email",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "health_condition",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "health_identifier",
+          "recall": 1.0,
+          "ci95": [
+            0.6097,
+            1.0
+          ],
+          "hit": 6,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 6,
+          "confused_as": {}
+        },
+        {
+          "data_type": "iban",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "medication",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "national_id",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "person_name",
+          "recall": 0.75,
+          "ci95": [
+            0.4677,
+            0.9111
+          ],
+          "hit": 9,
+          "type_confused": 0,
+          "missed": 3,
+          "labelled_values": 12,
+          "confused_as": {}
+        },
+        {
+          "data_type": "phone_number",
+          "recall": 1.0,
+          "ci95": [
+            0.7225,
+            1.0
+          ],
+          "hit": 10,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 10,
+          "confused_as": {}
+        },
+        {
+          "data_type": "salary",
+          "recall": 0.375,
+          "ci95": [
+            0.1368,
+            0.6943
+          ],
+          "hit": 3,
+          "type_confused": 0,
+          "missed": 5,
+          "labelled_values": 8,
+          "confused_as": {}
+        },
+        {
+          "data_type": "sin",
+          "recall": 1.0,
+          "ci95": [
+            0.6756,
+            1.0
+          ],
+          "hit": 8,
+          "type_confused": 0,
+          "missed": 0,
+          "labelled_values": 8,
+          "confused_as": {}
+        }
+      ]
+    }
+  },
+  "false_positives": {
+    "control_texts": 20,
+    "detections": 0,
+    "rate_per_text": 0.0,
+    "detail": [],
+    "note": "Independent negatives: the English controls translated, plus ordinary French sentences. Never pool them with recall."
+  }
+}

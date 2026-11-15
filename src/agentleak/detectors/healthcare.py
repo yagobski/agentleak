@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 
 from ..core.detector import Detector, RawMatch, Severity
+from ._text import inside_blob, trie_pattern
 
 # Synthetic NAM shape: 4 letters + 8 digits (e.g. TREM12345678).
 NAM_LIKE_RE = re.compile(r"\b[A-Z]{4}\d{8}\b")
@@ -51,6 +52,19 @@ HEALTH_CONDITIONS = [
     "psicosis", "linfoma", "metástasis", "metastasis", "migraña", "migrana",
     "fibromialgia", "artrosis", "artritis", "anorexia", "bulimia", "tdah",
     "trastorno bipolar", "trastorno de ansiedad", "trastorno alimentario",
+    # French (GDPR and Québec Law 25 are this project's anchors), with and
+    # without accents. Left out on purpose: "avc" and "sida" collide with
+    # acronyms in technical text far more often than they name a diagnosis
+    # ("sida" is already listed above for Spanish).
+    "épilepsie", "epilepsie", "sclérose en plaques", "sclerose en plaques",
+    "maladie de crohn", "maladie d'alzheimer", "maladie de parkinson",
+    "insuffisance rénale", "insuffisance renale", "insuffisance cardiaque",
+    "schizophrénie", "schizophrenie", "trouble bipolaire", "troubles bipolaires",
+    "trouble anxieux", "hépatite", "hepatite", "leucémie", "leucemie",
+    "lymphome", "mélanome", "melanome", "anorexie", "boulimie", "cirrhose",
+    "psychose", "infarctus", "accident vasculaire cérébral", "fibromyalgie",
+    "polyarthrite", "endométriose", "endometriose", "diabete",
+    "depression majeure", "hypertension artérielle",
 ]
 
 MEDICATIONS = [
@@ -73,12 +87,21 @@ MEDICATIONS = [
     "tramadol", "fentanilo", "atorvastatina", "levotiroxina", "amoxicilina",
     "metotrexato", "metilfenidato", "orfidal", "trankimazin", "nolotil",
     "sintrom", "eutirox",
+    # French generic names and the classes French records name.
+    "metformine", "lévothyroxine", "levothyroxine", "méthotrexate",
+    "methotrexate", "warfarine", "sertraline", "fluoxétine", "paroxétine",
+    "venlafaxine", "lorazépam", "diazépam", "zolpidem", "quétiapine",
+    "rispéridone", "olanzapine", "tramadol", "fentanyl", "tamoxifène",
+    "atorvastatine", "amoxicilline", "paracétamol", "antidépresseur",
+    "antidépresseurs", "anxiolytique", "anxiolytiques", "antirétroviraux",
+    "chimiotherapie", "insulinothérapie",
 ]
 
 
 def _dictionary_regex(terms: list[str]) -> re.Pattern[str]:
-    escaped = sorted({re.escape(t) for t in terms}, key=len, reverse=True)
-    return re.compile(r"(?i)\b(" + "|".join(escaped) + r")\b")
+    # Factored as a trie (see trie_pattern): the same matches as a
+    # longest-first alternation, at a fraction of the cost per word.
+    return re.compile(r"(?i)\b(" + trie_pattern(sorted({t.lower() for t in terms})) + r")\b")
 
 
 _CONDITION_RE = _dictionary_regex(HEALTH_CONDITIONS)
@@ -93,6 +116,8 @@ class HealthcareDetector(Detector):
 
         seen_ids: set[str] = set()
         for m in NAM_LIKE_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             seen_ids.add(m.group(0))
             matches.append(self._match(
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
@@ -121,6 +146,8 @@ class HealthcareDetector(Detector):
             ))
 
         for m in _CONDITION_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             matches.append(self._match(
                 data_type="health_condition", severity=Severity.MEDIUM, confidence=0.7,
                 matched_value=m.group(1),
@@ -128,6 +155,8 @@ class HealthcareDetector(Detector):
             ))
 
         for m in _MEDICATION_RE.finditer(text):
+            if inside_blob(text, m.start(), m.end()):
+                continue
             matches.append(self._match(
                 data_type="medication", severity=Severity.MEDIUM, confidence=0.65,
                 matched_value=m.group(1),

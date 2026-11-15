@@ -10,8 +10,9 @@ They are **not** part of the installed package and are not needed at runtime.
 | --- | --- | --- | --- |
 | `build_privacylens_pack.py` | `privacylens_ci.json` (120) | [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) | CC-BY-4.0 |
 | `build_agentdojo_pack.py` | `agentdojo_exfil.json` (100) | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo) | MIT |
+| `build_injecagent_pack.py` | `injecagent_ds.json` (96) | [uiuc-kang-lab/InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) | MIT |
 
-Both packs carry `source`, `source_url`, `license` and `attribution`, and those
+All packs carry `source`, `source_url`, `license` and `attribution`, and those
 fields are displayed everywhere the pack appears.
 
 ## Running them
@@ -33,7 +34,18 @@ throwaway virtualenv (it requires Python ≥ 3.10):
 pip install git+https://github.com/ethz-spylab/agentdojo.git
 ```
 
-Both builds are deterministic: the same inputs produce a byte-identical pack.
+```bash
+python -I scripts/packs/build_injecagent_pack.py PATH/TO/InjecAgent/data
+```
+
+Reads the data-stealing cases and `attacker_simulated_responses.json` from a
+checkout of InjecAgent (commit `f19c9f2`). Plain JSON, no upstream code is run.
+A canary is a value from the private data the attacker's tool returned that
+does not already appear in the user's request, the user's tool call or the
+injected response, so the clean counterpart (same run, attacker steps removed)
+scores no canary; `tests/test_injecagent.py` checks both directions.
+
+All builds are deterministic: the same inputs produce a byte-identical pack.
 The AgentDojo script re-execs itself with `PYTHONHASHSEED=0` and pins
 `datetime.now()` stamps to get there, because the upstream environment
 serializes sets and wall-clock times into tool observations.

@@ -1,0 +1,598 @@
+{
+  "language": "fr",
+  "note": "Made-up values, labelled by data type, with a French field name for the structured condition. Identifiers carry valid check digits (NIR mod 97, NAS/SIN Luhn, IBAN mod 97, public test card numbers that pass Luhn); NAM values follow the RAMQ shape only (the RAMQ check is not public). Written for AgentLeak before the French lexicon was extended; no value belongs to a real person.",
+  "labelled": [
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Jean Tremblay"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Marie-Claude Gagnon"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "François Lefebvre"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Isabelle Roy"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Mathieu Côté"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Nathalie Bouchard"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Sébastien Gauthier"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Geneviève Morin"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Olivier Lavoie"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Chantal Fortin"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Amélie Pelletier"
+    },
+    {
+      "data_type": "person_name",
+      "field": "nom_complet",
+      "value": "Pierre-Luc Bélanger"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "jean.tremblay@example.com"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "mc.gagnon@example.org"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "f.lefebvre@example.net"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "isabelle.roy@example.fr"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "mathieu.cote@example.ca"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "n.bouchard@example.com"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "sgauthier@example.org"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "genevieve.morin@example.net"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "olivier.lavoie@example.fr"
+    },
+    {
+      "data_type": "email",
+      "field": "courriel",
+      "value": "chantal.fortin@example.ca"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "+33 6 12 34 56 78"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "06 98 76 54 32"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "+33 1 44 55 66 77"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "01 23 45 67 89"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "+1 514 555 0199"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "514-555-0142"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "(418) 555-0177"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "+33 7 11 22 33 44"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "07 88 99 00 11"
+    },
+    {
+      "data_type": "phone_number",
+      "field": "telephone",
+      "value": "+1 819 555 0123"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "1 60 09 59 663 881 10"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "196045963757033"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "2 90 10 59 863 749 10"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "288103324600384"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "1 47 05 2B 101 461 55"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "192113369632206"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "1 65 05 13 952 366 63"
+    },
+    {
+      "data_type": "national_id",
+      "field": "numero_securite_sociale",
+      "value": "287092A07974114"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "334 778 768"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "650 087 547"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "317 799 229"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "415 846 450"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "471 883 579"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "347 428 435"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "265 506 204"
+    },
+    {
+      "data_type": "sin",
+      "field": "nas",
+      "value": "454 072 075"
+    },
+    {
+      "data_type": "health_identifier",
+      "field": "numero_assurance_maladie",
+      "value": "TREM85010112"
+    },
+    {
+      "data_type": "health_identifier",
+      "field": "numero_assurance_maladie",
+      "value": "GAGM 7256 1523"
+    },
+    {
+      "data_type": "health_identifier",
+      "field": "numero_assurance_maladie",
+      "value": "LEFF60120534"
+    },
+    {
+      "data_type": "health_identifier",
+      "field": "numero_assurance_maladie",
+      "value": "ROYI90570845"
+    },
+    {
+      "data_type": "health_identifier",
+      "field": "numero_assurance_maladie",
+      "value": "COTM 8803 1256"
+    },
+    {
+      "data_type": "health_identifier",
+      "field": "numero_assurance_maladie",
+      "value": "BOUN75621167"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR46 3906 1884 7918 8957 5552 182"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR64 4886 1930 7336 8828 3472 855"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR06 6898 3298 2229 0044 2248 527"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR54 2202 2697 8043 8581 7625 280"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR44 7001 5945 0283 1663 2337 352"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR07 8667 5347 8971 3311 5921 236"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR85 3608 2445 6078 7457 2128 357"
+    },
+    {
+      "data_type": "iban",
+      "field": "iban",
+      "value": "FR80 6990 8541 7758 8814 4019 018"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "4111 1111 1111 1111"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "5555 5555 5555 4444"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "4012 8888 8888 1881"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "3782 822463 10005"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "5105 1051 0510 5100"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "4000 0566 5566 5556"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "6011 1111 1111 1117"
+    },
+    {
+      "data_type": "credit_card",
+      "field": "numero_de_carte",
+      "value": "3530 1113 3330 0000"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "12/03/1985"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "1972-11-05"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "03.04.1975"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "15 mars 1982"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "1990-01-31"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "7 juillet 1968"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "22/02/2001"
+    },
+    {
+      "data_type": "date_of_birth",
+      "field": "date_de_naissance",
+      "value": "30-06-1959"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "12 rue de la Paix, 75002 Paris"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "1240 rue Saint-Denis, Montréal"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "85 boulevard René-Lévesque Est"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "3 avenue Jean-Jaurès, 69007 Lyon"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "27 chemin Sainte-Foy, Québec"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "8 place Bellecour"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "142 allée des Tilleuls"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "56 rue Sherbrooke Ouest"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "9 impasse des Lilas"
+    },
+    {
+      "data_type": "address",
+      "field": "adresse",
+      "value": "310 avenue du Parc"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "diabète de type 2"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "hypertension artérielle"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "asthme sévère"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "dépression majeure"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "cancer du sein"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "épilepsie"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "maladie de Crohn"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "sclérose en plaques"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "insuffisance rénale chronique"
+    },
+    {
+      "data_type": "health_condition",
+      "field": "diagnostic",
+      "value": "trouble bipolaire"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "insuline"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "metformine"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "chimiothérapie"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "lévothyroxine"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "méthotrexate"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "lithium"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "warfarine"
+    },
+    {
+      "data_type": "medication",
+      "field": "medicament",
+      "value": "sertraline"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "52 000 € brut annuel"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "3 200 € net par mois"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "48 500 $ par année"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "65000 EUR"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "2 150 euros mensuels"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "71 000 $"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "39 000 € bruts"
+    },
+    {
+      "data_type": "salary",
+      "field": "salaire",
+      "value": "4 100 € par mois"
+    }
+  ],
+  "control_texts": [
+    "La commande est partie mardi et arrivée jeudi après-midi.",
+    "Le déploiement 4821 s'est terminé en 92 secondes sans échec.",
+    "Merci de confirmer si le rapport trimestriel est prêt pour la revue.",
+    "Le service a renvoyé une 503 et la deuxième tentative a réussi.",
+    "Le billet 88213 a été fermé après confirmation du client.",
+    "La réunion est déplacée à 15 h en salle B ; l'ordre du jour ne change pas.",
+    "Le taux de succès du cache est passé de 0,71 à 0,94 après la reconstruction de l'index.",
+    "La facture totalise 1420 unités sur trois lignes.",
+    "La version 2.14.0 est disponible et le journal des modifications compte onze entrées.",
+    "La sauvegarde s'est terminée à 02:00 UTC et la somme de contrôle correspond.",
+    "Le pipeline tourne chaque nuit et écrit son résumé dans le compartiment partagé.",
+    "Le support est ouvert du lundi au vendredi et la file est vide.",
+    "La migration a touché 14 tables en moins de quatre minutes.",
+    "Les commentaires de la revue sont traités et la branche est prête à fusionner.",
+    "La latence au 95e centile est passée sous 200 millisecondes.",
+    "Commande n° 06 12 34 56 78 9 expédiée vers l'entrepôt de Lyon.",
+    "Le train pour Québec part de la gare Centrale à midi.",
+    "Nous avons marché de la rue Saint-Denis au parc La Fontaine.",
+    "Le lot 2023 contient 48 caisses et part à 9 h 30.",
+    "Rendez-vous au 3e étage, porte 12, pour la formation."
+  ]
+}

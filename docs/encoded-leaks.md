@@ -63,6 +63,62 @@ python scripts/encoded_leaks.py                 # this checkout
 python scripts/encoded_leaks.py --installed     # whatever version is installed
 ```
 
+## Added after 0.18.0
+
+Seven more transformations, measured by the same script with the same rule
+(right type, original value, on the disclosing message). They are reported as
+their own rows so the 46-cell table above stays comparable across versions.
+
+| Transformation | `sin` | `credit_card` | `phone_number` | `email` | `llm_api_key` | `health_condition` |
+|---|---|---|---|---|---|---|
+| HTML entities | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ |
+| JSON unicode escapes | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ |
+| zero-width padded | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ |
+| homoglyphs / fullwidth | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ |
+| gzip + base64 | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ |
+| leetspeak | ✓\* ✓ | ✓\* ✓ | ✓\* ✓ | ✗ ✓ | ✗ ✓ | ✗ ✓ |
+| split in three | ✓ ✓ | ✓ ✓ | ✓ ✓ | n/a | ✓ ✓ | n/a |
+
+Each cell reads **0.18.0 → this release**: **7 of 40 → 40 of 40**.
+
+\* Leetspeak replaces letters; a SIN, a card number or a phone number has none,
+so its leetspeak copy is the plaintext. Those three cells are not evidence of
+leetspeak decoding, before or after. "Split in three" already worked in 0.18.0:
+the split rule accepts up to four fragments.
+
+How each is read:
+
+- **HTML entities** (`&#106;&#101;…`, `&#x40;`, `&commat;`) and **JSON or
+  Python unicode escapes** (`@`, `\x40`) are self-announcing, like
+  base64: the run is unescaped and the detectors read the result. A run whose
+  only entity is `&amp;` is not reported as a transformation.
+- **Zero-width padding** (zero-width space and joiners, word joiner, BOM, soft
+  hyphen): the invisible characters are removed from the run, which continues
+  across spaces while they keep appearing.
+- **Homoglyphs and fullwidth forms**: NFKC folds fullwidth digits and letters,
+  and a written-out subset of the Unicode confusables maps Cyrillic and Greek
+  look-alikes to Latin. Only a token that mixes in ASCII letters or digits, or
+  uses fullwidth forms, is folded, so Russian or Greek prose is left alone.
+- **gzip or zlib, then base64**: a base64 token that decodes to a gzip or zlib
+  header is inflated, never past 1 MiB, and read if the result is text.
+- **Leetspeak** (`j34n.7r3mbl4y@3x4mpl3.c0m`) is lossy (`1` is `i` or `l`), so
+  it is an *anchored* rule like ROT13: the text and every value the trace has
+  already exposed are folded to the same letter classes and compared, only for
+  values with at least four letters.
+
+False-positive check, on sources not written for these decoders: every bundled
+scenario (built-ins and all packs) gives the same verdict, risk index and
+finding count with and without them; and HTML with ordinary entities
+(`Montr&eacute;al &amp; Qu&eacute;bec`), JSON with escaped accents, Russian,
+Greek and Japanese prose with fullwidth digits, gzip of a config line, leet
+slang with nothing to anchor on and soft-hyphenated words all give no finding
+and come back from `redact` unchanged (`tests/test_encoded_leaks.py`).
+
+Writing these decoders also found a pre-existing quadratic pattern: the
+URL-encoding run was rescanned from every position of a long token with no
+`%` in it (13 s on a 64 KB decoded blob). Every run pattern now starts only
+where its run starts, and `tests/test_detector_timing.py` guards it.
+
 ## How it works
 
 The transformations fall into two families that fail differently, so each
@@ -132,7 +188,7 @@ says nothing about a `123` on another.
 
 ## Limits
 
-- **ROT13, reversal and splitting need context.** They are found in trace
+- **ROT13, reversal, splitting and leetspeak need context.** They are found in trace
   analysis, where the whole trace is available. `redact` and `proxy` judge one
   piece of text at a time, so they catch the self-announcing encodings and not
   these.

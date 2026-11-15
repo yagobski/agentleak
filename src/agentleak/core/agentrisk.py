@@ -78,6 +78,7 @@ DATA_TYPE_LEVELS: dict[str, int] = {
     "national_insurance_number": 4,  # UK national identifier, identity-theft equivalent to SSN/SIN
     "spanish_national_id": 4,  # Spanish DNI/NIE, same standing as SSN/SIN/NINO
     "spanish_social_security_number": 4,  # Spanish NUSS, the SSN equivalent
+    "national_id": 4,  # check-digit-validated national IDs (NIR, codice fiscale, BSN, PESEL, CPF…)
     "credit_card": 4,
     "iban": 4,
     "account_number": 4,
@@ -112,6 +113,7 @@ DATA_TYPE_LEVELS: dict[str, int] = {
     "hr_complaint": 2,
     # L1 — public / organizational identifiers
     "person_name": 1,
+    "business_identifier": 1,  # company registry number (CNPJ); personal only for a sole trader
 }
 
 # Fallback when a data_type isn't in the map (e.g. custom detectors): derive a
