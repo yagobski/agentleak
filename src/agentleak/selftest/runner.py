@@ -28,7 +28,7 @@ from .document import (
     history_entry,
     new_run_id,
 )
-from .history import SelftestHistory, target_key
+from .history import SelftestHistory, target_key, trusted_rerun
 
 DEFAULT_FAIL_ON = 3
 DEFAULT_TIMEOUT = 60.0
@@ -588,7 +588,7 @@ def status(opts: SelftestOptions | None = None) -> dict[str, Any]:
             "first_score": scores[0] if scores else None,
             "best_score": max(scores) if scores else None,
             "passes": sum(1 for r in runs if r.get("passed")),
-            "rerun": last.get("rerun"),
+            "rerun": trusted_rerun(last.get("rerun")),
         })
     rows.sort(key=lambda r: str(r.get("latest_at")), reverse=True)
     return {
@@ -603,7 +603,9 @@ def status(opts: SelftestOptions | None = None) -> dict[str, Any]:
             if not rows else
             ("Latest self-test passed. Re-run after your next change."
              if rows[0]["passed"] else
-             f"Latest self-test did not pass. Fix, then re-run: {(rows[0].get('rerun') or {}).get('cli', 'agentleak selftest')}")
+             "Latest self-test did not pass. Fix, then re-run: "
+             + ((rows[0].get("rerun") or {}).get("cli")
+                or "the same agentleak selftest command as before"))
         ),
     }
 
