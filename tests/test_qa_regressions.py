@@ -322,3 +322,71 @@ def test_run_ingest_accepts_a_trace_dict() -> None:
         run.ingest({"events": [{"channel": "log", "content": "SSN 123-45-6789"}]})
     assert len(run.trace.events) == 1
     assert run.report is not None and run.report.findings
+
+
+# ----------------------------------------------------------------------
+# QA-13: GitHub Action gate (scripts/gh_gate.py)
+# ----------------------------------------------------------------------
+
+
+def _run_gate(tmp_path: Path, reports: dict[str, dict], **env: str):
+    import os
+    import subprocess
+    import sys
+
+    gate = Path(__file__).resolve().parents[1] / "scripts" / "gh_gate.py"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "agentleak"
+    stub.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, os, sys\n"
+        f"reports = {reports!r}\n"
+        "args = sys.argv[1:]\n"
+        "out = args[args.index('--output') + 1]\n"
+        "os.makedirs(out, exist_ok=True)\n"
+        "for name, rep in reports.items():\n"
+        "    open(os.path.join(out, name), 'w').write(json.dumps(rep))\n"
+        "sys.exit(1)\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    outputs, summary = tmp_path / "out.txt", tmp_path / "sum.md"
+    outputs.touch()
+    summary.touch()
+    proc = subprocess.run(
+        [sys.executable, str(gate)], capture_output=True, text=True,
+        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+             "GITHUB_OUTPUT": str(outputs), "GITHUB_STEP_SUMMARY": str(summary), **env},
+    )
+    parsed = dict(ln.split("=", 1) for ln in outputs.read_text().splitlines() if "=" in ln)
+    return proc, parsed, summary.read_text()
+
+
+def test_gate_headlines_the_worst_of_several_runs(tmp_path: Path) -> None:
+    clean = {"run_id": "a_clean", "privacy_score": 100, "verdict": "Pass", "blocked": False,
+             "findings": []}
+    leaky = {"run_id": "b_leaky", "privacy_score": 20, "verdict": "Fail", "blocked": True,
+             "findings": [{"channel": "log", "data_type": "ssn", "level": 4}]}
+    proc, out, summary = _run_gate(
+        tmp_path, {"a_clean.json": clean, "b_leaky.json": leaky}, AL_SCENARIO="all"
+    )
+    assert proc.returncode == 1
+    assert out["verdict"] == "Fail" and out["score"] == "20"
+    assert out["findings"] == "1"
+    assert "2 runs analyzed, 1 blocked" in summary
+
+
+def test_gate_escapes_workflow_commands_and_reads_posture(tmp_path: Path) -> None:
+    evil = {"run_id": "r", "privacy_score": 10, "verdict": "Fail", "blocked": True,
+            "compliance": {"posture": {"failed_frameworks": ["gdpr"]}},
+            "findings": [{"channel": "log", "level": 4,
+                          "data_type": "x,file=evil.py\n::warning::injected 100%0A"}]}
+    proc, _, summary = _run_gate(tmp_path, {"r.json": evil}, AL_TRACE="t.json")
+    lines = proc.stdout.splitlines()
+    assert not any(ln.startswith("::warning::injected") for ln in lines)
+    annotation = next(ln for ln in lines if ln.startswith("::error "))
+    properties = annotation[len("::error "):].split("::", 1)[0]
+    assert ",file=" not in properties  # the comma could not start a new property
+    assert "100%250A" in proc.stdout
+    assert "Compliance at risk:** gdpr" in summary
