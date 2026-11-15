@@ -141,7 +141,7 @@ _DOB_CUE = _words([
 ])
 # A date of birth is often a few words away from its cue ("née à Lyon le",
 # "nació en Sevilla el"): up to five words, none holding a digit.
-_DOB_GAP = re.compile(r"[\s,:'’]*(?:[^\W\d_][\w'’.-]*[\s,:'’]*){0,5}")
+_DOB_GAP = re.compile(r"[\s,:=#'’\"]*(?:[^\W\d_][\w'’.-]*[\s,:=#'’\"]*){0,5}")
 
 
 def _plausible_date(value: str, _cue: str) -> bool:
@@ -160,7 +160,8 @@ def _plausible_date(value: str, _cue: str) -> bool:
 # --- account number ----------------------------------------------------------
 _ACCOUNT_VALUE = re.compile(r"(?<![\w.,/-])\d(?:[ -]?\d){5,19}(?![\w/-]|[.,]\d)")
 _ACCOUNT_CUE = _words([
-    "account", "accounts", "acct", "a/c", "checking", "chequing", "savings", "routing",
+    # Not "routing": a routing number names a bank, not a customer.
+    "account", "accounts", "acct", "a/c", "checking", "chequing", "savings",
     "compte", "cuenta",
 ])
 # An id noun right before "account" governs the number that follows it.
