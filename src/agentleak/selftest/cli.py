@@ -12,6 +12,7 @@ from typing import Any
 
 import typer
 
+from .._console import echo, secho
 from .document import EXIT_CODES, SCHEMA_VERSION, parse_level
 from .runner import DEFAULT_FAIL_ON, DEFAULT_TIMEOUT, SelftestOptions
 
@@ -44,7 +45,7 @@ def _want_json(flag: bool | None) -> bool:
 def _emit_error(as_json: bool, outcome: str, message: str, hint: str = "") -> None:
     code = EXIT_CODES[outcome]
     if as_json:
-        typer.echo(json.dumps({
+        echo(json.dumps({
             "schema_version": SCHEMA_VERSION,
             "kind": "agentleak.selftest.error",
             "passed": False,
@@ -54,9 +55,9 @@ def _emit_error(as_json: bool, outcome: str, message: str, hint: str = "") -> No
             "hint": hint,
         }, indent=2))
     else:
-        typer.secho(f"✗ {message}", fg=typer.colors.RED, err=True)
+        secho(f"✗ {message}", fg=typer.colors.RED, err=True)
         if hint:
-            typer.echo(f"  {hint}", err=True)
+            echo(f"  {hint}", err=True)
     raise typer.Exit(code=code)
 
 
@@ -67,31 +68,31 @@ def _rerun(argv: list[str]) -> dict[str, Any]:
 def _render_human(doc: dict[str, Any]) -> None:
     color = {"pass": typer.colors.GREEN, "fail": typer.colors.RED,
              "incomplete": typer.colors.YELLOW, "error": typer.colors.RED}[doc["outcome"]]
-    typer.secho(f"\nAgentLeak self-test · {doc['mode']} · {doc['run_id']}", bold=True)
-    typer.secho(doc["summary"], fg=color, bold=True)
+    secho(f"\nAgentLeak self-test · {doc['mode']} · {doc['run_id']}", bold=True)
+    secho(doc["summary"], fg=color, bold=True)
     if doc.get("risk_index") is not None:
-        typer.echo(f"Risk Index {doc['risk_index']:.3f} · privacy {doc['privacy_score']}/100 · "
+        echo(f"Risk Index {doc['risk_index']:.3f} · privacy {doc['privacy_score']}/100 · "
                    f"verdict {doc['verdict']} · fail-on {doc['threshold']['fail_on']}")
     det = doc["detection"]
     tiers = ", ".join(det["tiers"] or det.get("code_tiers") or []) or "none"
-    typer.secho(f"Detection tiers: {tiers}" + (" (degraded)" if det["degraded"] else ""),
+    secho(f"Detection tiers: {tiers}" + (" (degraded)" if det["degraded"] else ""),
                 fg=typer.colors.BRIGHT_BLACK)
     for check in doc.get("checks") or []:
         mark = "✓" if check["passed"] else "✗"
-        typer.secho(f"  {mark} {check['name']}: {check['detail']}",
+        secho(f"  {mark} {check['name']}: {check['detail']}",
                     fg=typer.colors.GREEN if check["passed"] else typer.colors.RED)
     if doc.get("inputs"):
-        typer.echo("")
+        echo("")
         for item in doc["inputs"]:
             if item.get("error"):
-                typer.secho(f"  ! {item['label']}: {item['error']}", fg=typer.colors.YELLOW)
+                secho(f"  ! {item['label']}: {item['error']}", fg=typer.colors.YELLOW)
             else:
-                typer.echo(f"  {item['label']}: {item['format']}, {item['events']} events, "
+                echo(f"  {item['label']}: {item['format']}, {item['events']} events, "
                            f"{item['verdict']}" + (f", {item['canaries_planted']} canaries"
                                                    if item.get("canaries_planted") else ""))
     leaking = [c for c in doc["channels"] if c["status"] in ("leak", "clean")]
     if leaking:
-        typer.echo("")
+        echo("")
         for c in doc["channels"]:
             if c["role"] != "disclosure":
                 continue
@@ -99,31 +100,31 @@ def _render_human(doc: dict[str, Any]) -> None:
                      "not_observed": "not recorded"}[c["status"]]
             fg = typer.colors.RED if c["status"] == "leak" else (
                 typer.colors.GREEN if c["status"] == "clean" else typer.colors.BRIGHT_BLACK)
-            typer.echo(f"  {c['channel']:<22}", nl=False)
-            typer.secho(f"{label:<14}", fg=fg, nl=False)
-            typer.echo(f"{c['finding_count']} finding(s)")
+            echo(f"  {c['channel']:<22}", nl=False)
+            secho(f"{label:<14}", fg=fg, nl=False)
+            echo(f"{c['finding_count']} finding(s)")
     delta = doc.get("delta")
     if delta:
-        typer.echo("")
-        typer.echo(f"Since last self-test: {delta['direction']}"
+        echo("")
+        echo(f"Since last self-test: {delta['direction']}"
                    + (f", score {delta['delta_score']:+d}" if delta.get("delta_score") is not None else "")
                    + f", {len(delta['new'])} new, {len(delta['fixed'])} fixed")
     steps = [s for s in doc["next_steps"] if s["kind"] != "rerun"]
     if steps:
-        typer.echo("")
-        typer.secho("Next steps:", bold=True)
+        echo("")
+        secho("Next steps:", bold=True)
         for i, step in enumerate(steps[:6], 1):
             where = f" [{step['channel']}]" if step.get("channel") else ""
-            typer.echo(f"  {i}. ({step['priority']}){where} {step['action']}")
+            echo(f"  {i}. ({step['priority']}){where} {step['action']}")
             if step.get("command"):
-                typer.echo(f"     $ {step['command']}")
+                echo(f"     $ {step['command']}")
             fix = step.get("fix") or {}
             if fix.get("type") == "apply_defense":
-                typer.echo(f"     fix: {fix['defense']} at {fix['where']}")
+                echo(f"     fix: {fix['defense']} at {fix['where']}")
     if doc.get("rerun"):
-        typer.echo("")
-        typer.echo(f"Re-run: {doc['rerun']['cli']}")
-    typer.secho("Not a certification: a pass means no finding from the tiers listed above.",
+        echo("")
+        echo(f"Re-run: {doc['rerun']['cli']}")
+    secho("Not a certification: a pass means no finding from the tiers listed above.",
                 fg=typer.colors.BRIGHT_BLACK)
 
 
@@ -212,7 +213,7 @@ def register(app: typer.Typer) -> None:
             if get_scenario not in battery.TEMPLATE_BY_ID:
                 _emit_error(want_json, "usage", f"unknown scenario {get_scenario!r}",
                             "List them with: agentleak selftest --list-scenarios")
-            typer.echo(json.dumps(runner.issue_scenario(get_scenario, opts), indent=2))
+            echo(json.dumps(runner.issue_scenario(get_scenario, opts), indent=2))
             return
         if explain_fp:
             _print(explain(explain_fp, state_dir=state_dir), want_json, human=_render_explain)
@@ -249,7 +250,7 @@ def register(app: typer.Typer) -> None:
 
         try:
             if cmd:
-                typer.secho(
+                secho(
                     "Running your agent command once per scenario, on this machine, with "
                     "synthetic data only. AgentLeak itself makes no network call; if your "
                     "agent calls a remote model, the synthetic data goes where your agent sends it.",
@@ -260,7 +261,7 @@ def register(app: typer.Typer) -> None:
                     if scenarios else None, timeout=timeout, use_shell=shell, code=code,
                     rerun=rerun,
                     progress=(None if want_json else
-                              lambda sid: typer.secho(f"  · {sid}", fg=typer.colors.BRIGHT_BLACK, err=True)),
+                              lambda sid: secho(f"  · {sid}", fg=typer.colors.BRIGHT_BLACK, err=True)),
                 )
             elif trace:
                 if "-" in trace and sys.stdin.isatty():
@@ -285,7 +286,7 @@ def register(app: typer.Typer) -> None:
             return
 
         if want_json:
-            typer.echo(json.dumps(doc, indent=2, ensure_ascii=False))
+            echo(json.dumps(doc, indent=2, ensure_ascii=False))
         else:
             _render_human(doc)
         raise typer.Exit(code=doc["exit_code"])
@@ -293,39 +294,39 @@ def register(app: typer.Typer) -> None:
 
 def _print(payload: dict[str, Any], as_json: bool, *, human: Any) -> None:
     if as_json:
-        typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
+        echo(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
         human(payload)
 
 
 def _render_status(st: dict[str, Any]) -> None:
-    typer.secho(f"Self-test history: {st['history_path']} ({st['entries']} entries)", bold=True)
+    secho(f"Self-test history: {st['history_path']} ({st['entries']} entries)", bold=True)
     for row in st["targets"]:
         mark = "pass" if row["passed"] else row["outcome"]
-        typer.echo(f"  {row['latest_at']}  {row['mode']:<10} {mark:<10} "
+        echo(f"  {row['latest_at']}  {row['mode']:<10} {mark:<10} "
                    f"score {row['privacy_score']}  runs {row['runs']}  "
                    f"open findings {row['open_findings']}  {', '.join(row['inputs'] or [])}")
-    typer.echo(st["next_step"])
+    echo(st["next_step"])
 
 
 def _render_catalog(cat: dict[str, Any]) -> None:
-    typer.secho(f"Built-in battery (protocol {cat['protocol']}):", bold=True)
+    secho(f"Built-in battery (protocol {cat['protocol']}):", bold=True)
     for s in cat["scenarios"]:
-        typer.echo(f"  {s['id']:<22} {s['title']}  (canaries: {', '.join(s['canary_fields'])})")
+        echo(f"  {s['id']:<22} {s['title']}  (canaries: {', '.join(s['canary_fields'])})")
 
 
 def _render_explain(ex: dict[str, Any]) -> None:
     if not ex["found"]:
-        typer.echo(ex["explanation"])
+        echo(ex["explanation"])
         return
-    typer.secho(f"Finding {ex['fingerprint']}", bold=True)
-    typer.echo(ex["why"])
-    typer.echo(f"Rule: {ex['rule']['detector']} — {ex['rule']['what_it_matches']}")
-    typer.echo(f"Severity: {ex['severity']['meaning']}")
+    secho(f"Finding {ex['fingerprint']}", bold=True)
+    echo(ex["why"])
+    echo(f"Rule: {ex['rule']['detector']} — {ex['rule']['what_it_matches']}")
+    echo(f"Severity: {ex['severity']['meaning']}")
     fix = ex.get("fix") or {}
     if fix:
-        typer.echo("Fix:")
-        typer.echo(fix.get("code") or fix.get("suggestion") or "")
+        echo("Fix:")
+        echo(fix.get("code") or fix.get("suggestion") or "")
 
 
 __all__ = ["register"]

@@ -213,3 +213,50 @@ def test_occurrences_match_repeated_find(monkeypatch) -> None:
                     expected.append(start)
                     start = text.find(value, start + 1)
                 assert found[value] == expected, (text, value)
+
+
+def _hostile_trace(tmp_path):
+    import json
+
+    hostile = "agent\x1b]0;pwned\x07\x1b[2J\rX\x08\x9b31m\x7f"
+    path = tmp_path / ("trace\x1b[31m.json")
+    path.write_text(json.dumps({
+        "run_id": "run\x1b]52;c;ZXZpbA==\x07", "agent_name": hostile,
+        "metadata": {"observation": {"source": "tool\x1b[8m", "observable_channels": ["final_output"],
+                                     "unobserved_channels": ["log"]}},
+        "events": [{"channel": "tool_response", "source": "db\x1b[2K", "content": "SSN 123-45-6789"},
+                   {"channel": "log", "source": "agent\r", "content": "SSN 123-45-6789"}],
+    }), encoding="utf-8")
+    return path
+
+
+def _assert_terminal_safe(output: str) -> None:
+    for ch in ("\x1b", "\x07", "\r", "\x08", "\x9b", "\x7f", "\x00"):
+        assert ch not in output, repr(ch)
+
+
+def test_cli_console_neutralises_terminal_controls_from_a_trace(tmp_path) -> None:
+    """agent_name, run_id, observation.source, finding fields and file names
+    reach the terminal; control characters in them must not act on it."""
+    from typer.testing import CliRunner
+
+    from agentleak.cli import app
+
+    trace = _hostile_trace(tmp_path)
+    result = CliRunner().invoke(app, ["run", "--trace", str(trace), "--output", str(tmp_path / "r"),
+                                      "--format", "json"])
+    assert result.exit_code in (0, 1), result.output
+    _assert_terminal_safe(result.output)
+    assert "\\u001b]0;pwned\\u0007" in result.output     # shown, inert
+    assert "Observed by tool\\u001b[8m" in result.output
+
+
+def test_console_clean_keeps_text_and_json() -> None:
+    import json
+
+    from agentleak._console import clean
+
+    assert clean("line\n\tindented é ✓") == "line\n\tindented é ✓"
+    doc = json.dumps({"v": "a\x85b\x7fc\x1bd"}, ensure_ascii=False)
+    assert json.loads(clean(doc)) == {"v": "a\x85b\x7fc\x1bd"}
+    _assert_terminal_safe(clean("".join(chr(c) for c in range(0x00, 0xA0) if chr(c) not in "\n\t")))
