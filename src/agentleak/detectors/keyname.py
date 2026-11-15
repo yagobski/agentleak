@@ -93,7 +93,10 @@ _SENSITIVE_KEYS: dict[str, tuple[str, Severity, str]] = {
 
 # Values that are not real leaks — empty, placeholders, or already redacted.
 _TRIVIAL_VALUE_RE = re.compile(
-    r"^(?:none|null|n/?a|true|false|redacted|unknown|\?+|-+|x{3,}|\*{2,}|"
+    # ``[REDACTED_SSN]`` is AgentLeak's own Sanitizer placeholder: a redacted
+    # value is the fix, not a leak (the tail regex has already eaten the "]").
+    r"^(?:none|null|n/?a|true|false|redacted|\[?redacted(?:_[a-z0-9_]+)?\]?|"
+    r"unknown|\?+|-+|x{3,}|\*{2,}|"
     r"<[^>]*>|\{\{.*|\$\{.*)$",
     re.IGNORECASE,
 )

@@ -1,0 +1,32 @@
+[
+ {
+  "content": "Refund my last charge.",
+  "role": "user"
+ },
+ {
+  "arguments": "{}",
+  "call_id": "call_h",
+  "name": "transfer_to_billing",
+  "type": "function_call",
+  "id": "fc_h",
+  "status": "completed"
+ },
+ {
+  "call_id": "call_h",
+  "output": "{\"assistant\": \"billing\"}",
+  "type": "function_call_output"
+ },
+ {
+  "id": "msg_b",
+  "content": [
+   {
+    "annotations": [],
+    "text": "Billing here; card 4111 1111 1111 1111 refunded.",
+    "type": "output_text"
+   }
+  ],
+  "role": "assistant",
+  "status": "completed",
+  "type": "message"
+ }
+]

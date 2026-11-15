@@ -85,6 +85,9 @@ _CONSTANT_REFERENCE_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")
 _ATTRIBUTE_REFERENCE_RE = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$")
 
 
+_REDACTED_PLACEHOLDER_RE = re.compile(r"^\[?REDACTED(?:_[A-Za-z0-9_]+)?\]?$", re.IGNORECASE)
+
+
 class SecretsDetector(Detector):
     name = "secrets_detector"
 
@@ -190,6 +193,10 @@ class SecretsDetector(Detector):
             value = m.group(2)
             # Skip obvious placeholders to reduce false positives.
             if value.lower() in {"none", "null", "true", "false", "redacted", "xxxxxx", "******"}:
+                continue
+            # AgentLeak's own Sanitizer placeholder ([REDACTED_GITHUB_TOKEN]):
+            # the value has already been removed, which is the fix.
+            if _REDACTED_PLACEHOLDER_RE.match(value):
                 continue
             # Skip references (env reads, function calls, attribute lookups,
             # ALL-CAPS constants): they point at a secret, they don't embed one.

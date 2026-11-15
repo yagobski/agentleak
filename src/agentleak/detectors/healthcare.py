@@ -28,7 +28,10 @@ NAM_SPACED_RE = re.compile(r"\b(?:NAM\s+)?[A-Z]{4}(?:[\s-]\d{2,4}){2,4}\b")
 # ``NAM`` label and internal spaces/hyphens in the identifier body.
 MRN_RE = re.compile(
     r"(?i)\b(?:mrn|medical record(?: number)?|health[_ ]?id)\b[:\s#]*"
-    r"((?:NAM\s*)?[A-Z0-9][A-Z0-9 \-]{4,})"
+    # The identifier must hold a digit: without that guard the label of a
+    # redacted field ("medical record number: [REDACTED_…]") captured the
+    # word "number" as an MRN.
+    r"((?:NAM\s*)?(?=[A-Z \-]*\d)[A-Z0-9][A-Z0-9 \-]{4,})"
 )
 
 HEALTH_CONDITIONS = [

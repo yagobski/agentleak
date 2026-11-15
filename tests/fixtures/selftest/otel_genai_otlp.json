@@ -1,0 +1,172 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "telemetry.sdk.language",
+      "value": {
+       "stringValue": "python"
+      }
+     },
+     {
+      "key": "telemetry.sdk.name",
+      "value": {
+       "stringValue": "opentelemetry"
+      }
+     },
+     {
+      "key": "telemetry.sdk.version",
+      "value": {
+       "stringValue": "1.45.2"
+      }
+     },
+     {
+      "key": "service.instance.id",
+      "value": {
+       "stringValue": "162b679d-c74c-4e06-aab2-09e8d4d21262"
+      }
+     },
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "unknown_service:python"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "scope": {
+      "name": "gen"
+     },
+     "spans": [
+      {
+       "traceId": "Duk0bYAju+CbT0RLMm44pA==",
+       "spanId": "3s5gIWbbT8s=",
+       "parentSpanId": "zmFPiaOkZ/g=",
+       "name": "chat gpt-4o-mini",
+       "kind": "SPAN_KIND_INTERNAL",
+       "startTimeUnixNano": "1794713041732161000",
+       "endTimeUnixNano": "1794713041732195000",
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\": \"user\", \"parts\": [{\"type\": \"text\", \"content\": \"Update the CRM for customer C-7.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\": \"assistant\", \"parts\": [{\"type\": \"tool_call\", \"id\": \"call_9\", \"name\": \"crm_update\", \"arguments\": {\"note\": \"Reached Sam Rivera at sam.rivera@example.com\"}}]}]"
+         }
+        }
+       ],
+       "status": {},
+       "flags": 256
+      },
+      {
+       "traceId": "Duk0bYAju+CbT0RLMm44pA==",
+       "spanId": "LC7JOXl4F84=",
+       "parentSpanId": "zmFPiaOkZ/g=",
+       "name": "execute_tool crm_update",
+       "kind": "SPAN_KIND_INTERNAL",
+       "startTimeUnixNano": "1794713041732222000",
+       "endTimeUnixNano": "1794713041732233000",
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "crm_update"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.id",
+         "value": {
+          "stringValue": "call_9"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"note\": \"Reached Sam Rivera at sam.rivera@example.com\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "saved"
+         }
+        }
+       ],
+       "status": {},
+       "flags": 256
+      },
+      {
+       "traceId": "Duk0bYAju+CbT0RLMm44pA==",
+       "spanId": "meQIHOjSRSk=",
+       "parentSpanId": "zmFPiaOkZ/g=",
+       "name": "chat gpt-4o-mini",
+       "kind": "SPAN_KIND_INTERNAL",
+       "startTimeUnixNano": "1794713041732247000",
+       "endTimeUnixNano": "1794713041732256000",
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\": \"assistant\", \"parts\": [{\"type\": \"text\", \"content\": \"The CRM is updated.\"}], \"finish_reason\": \"stop\"}]"
+         }
+        }
+       ],
+       "status": {},
+       "flags": 256
+      },
+      {
+       "traceId": "Duk0bYAju+CbT0RLMm44pA==",
+       "spanId": "zmFPiaOkZ/g=",
+       "name": "invoke_agent support",
+       "kind": "SPAN_KIND_INTERNAL",
+       "startTimeUnixNano": "1794713041732120000",
+       "endTimeUnixNano": "1794713041732263000",
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "invoke_agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "support"
+         }
+        }
+       ],
+       "status": {},
+       "flags": 256
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

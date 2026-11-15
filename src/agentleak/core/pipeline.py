@@ -185,9 +185,12 @@ class HybridPipeline:
             text, [f.matched_value for f in findings if f.data_type in CREDENTIAL_TYPES]
         )
         if credential_spans:
+            # A canary is exact ground truth: it stays even when it is shaped
+            # like the credential that contains it (a planted AWS-format key).
             findings = [
                 f for f in findings
                 if f.data_type in CREDENTIAL_TYPES
+                or f.data_type == "canary"
                 or not _all_inside(text, f.matched_value, credential_spans)
             ]
 

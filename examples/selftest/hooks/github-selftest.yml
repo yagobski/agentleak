@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
+# Copy into .github/workflows/. Runs the existing AgentLeak action as the gate,
+# then the self-test, and keeps its JSON document as an artifact so an agent
+# (or a reviewer) can read next_steps without re-running anything.
+# Needs an agentleak release that includes `selftest` (added after 0.18.0).
+
+name: agent-selftest
+
+on:
+  pull_request:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The existing gate: annotations and a job summary on the PR.
+      - name: Privacy gate
+        uses: yagobski/agentleak@v1
+        with:
+          trace: traces/latest.json
+          fail-under: "80"
+
+      # The self-test document: same engine, machine-readable result.
+      - name: Self-test
+        run: |
+          pip install --quiet agentleak
+          agentleak selftest --trace traces/ --code . --no-history --json > selftest.json
+      - name: Keep the self-test document
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentleak-selftest
+          path: selftest.json

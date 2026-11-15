@@ -1,0 +1,45 @@
+[
+ {
+  "content": "Please add a CRM note for customer C-1.",
+  "role": "user"
+ },
+ {
+  "arguments": "{\"customer_id\":\"C-1\"}",
+  "call_id": "call_1",
+  "name": "lookup_customer",
+  "type": "function_call",
+  "id": "fc_1",
+  "status": "completed"
+ },
+ {
+  "call_id": "call_1",
+  "output": "Customer Dana Example, email dana.example@example.com, phone 555-0142, SSN 412-55-9087",
+  "type": "function_call_output"
+ },
+ {
+  "arguments": "{\"note\":\"Called dana.example@example.com about SSN 412-55-9087\"}",
+  "call_id": "call_2",
+  "name": "send_crm_note",
+  "type": "function_call",
+  "id": "fc_2",
+  "status": "completed"
+ },
+ {
+  "call_id": "call_2",
+  "output": "ok",
+  "type": "function_call_output"
+ },
+ {
+  "id": "msg_1",
+  "content": [
+   {
+    "annotations": [],
+    "text": "Done, the note is saved.",
+    "type": "output_text"
+   }
+  ],
+  "role": "assistant",
+  "status": "completed",
+  "type": "message"
+ }
+]

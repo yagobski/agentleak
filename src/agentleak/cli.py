@@ -57,6 +57,12 @@ def version() -> None:
     typer.echo(f"agentleak {__version__}")
 
 
+# selftest lives in its own package; registered here so it lists near the top.
+from .selftest.cli import register as _register_selftest  # noqa: E402
+
+_register_selftest(app)
+
+
 # ----------------------------------------------------------------------
 # init
 # ----------------------------------------------------------------------
