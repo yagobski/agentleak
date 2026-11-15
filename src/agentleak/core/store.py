@@ -1279,7 +1279,9 @@ class Store:
             "agent_type": row["agent_type"],
             "description": row["description"],
             "owner_id": row["owner_id"] if "owner_id" in keys else "",
-            "config": json.loads(row["config"]),
+            # Older builds stored whatever PATCH sent, so a project could hold
+            # a non-object config that every later request crashed on.
+            "config": config if isinstance(config := json.loads(row["config"]), dict) else {},
             "agent_card": json.loads(card_raw) if card_raw else None,
             "public_slug": row["public_slug"] if "public_slug" in keys else "",
             "created_at": row["created_at"],

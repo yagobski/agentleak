@@ -197,3 +197,21 @@ def test_html_report_escapes_trace_controlled_fields() -> None:
          "level_label": "L4"},
     ]
     assert "<img src=x" not in render(data, "html")
+
+
+def test_regex_safety_flags_nested_variable_repeats() -> None:
+    from agentleak.core.regex_safety import UnsafeRegexError, check_regex
+
+    for bad in [r"(a+)+$", r"(\w*\s?)*", r"(?:x+y?)+z"]:
+        with pytest.raises(UnsafeRegexError):
+            check_regex(bad)
+    for good in [r"\bEMP-\d{6}\b", r"(\d{3}-)+", r"[A-Z]{2}\d+", r"(?:ab)+"]:
+        check_regex(good)
+
+
+@pytest.mark.parametrize("data", [[], {"events": 3}, {"events": ["x"]}])
+def test_trace_from_dict_rejects_non_traces_with_value_error(data) -> None:
+    from agentleak import Trace
+
+    with pytest.raises(ValueError):
+        Trace.from_dict(data)

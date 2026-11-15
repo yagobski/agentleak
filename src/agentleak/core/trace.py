@@ -155,10 +155,20 @@ class Trace(BaseModel):
     # ------------------------------------------------------------------
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Trace:
-        """Build a trace from a plain dict, assigning event ids when missing."""
+        """Build a trace from a plain dict, assigning event ids when missing.
+
+        Raises ``ValueError`` (pydantic's ``ValidationError`` included) for
+        anything that is not a trace, so callers can handle one error type.
+        """
+        if not isinstance(data, dict):
+            raise ValueError("A trace must be a JSON object with an 'events' list.")
         events = data.get("events", [])
+        if not isinstance(events, list):
+            raise ValueError("A trace's 'events' must be a list.")
         normalized: list[dict[str, Any]] = []
         for i, raw in enumerate(events, start=1):
+            if not isinstance(raw, dict):
+                raise ValueError(f"Event {i} must be a JSON object.")
             event = dict(raw)
             if not event.get("event_id"):
                 event["event_id"] = f"evt_{i:03d}"

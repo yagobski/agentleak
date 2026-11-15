@@ -95,3 +95,93 @@ def test_served_docs_quote_the_scenario_count_that_ships(tmp_path) -> None:
         for n in re.findall(r"(\d+) (?:bundled )?scenarios bundled|(\d+) bundled scenarios", text):
             quoted = int(n[0] or n[1])
             assert quoted == total, f"{where} quotes {quoted} bundled scenarios, {total} ship"
+
+
+# ----------------------------------------------------------------------
+# QA-06: malformed input produced 500s, and a bad PATCH bricked a project
+# ----------------------------------------------------------------------
+
+
+@pytest.fixture()
+def one_user(tmp_path):
+    store = Store(str(tmp_path / "qa.db"))
+    client = TestClient(create_app(store=store), raise_server_exceptions=False)
+    client.post("/api/auth/register", json={"email": "q@example.test", "password": "q-pass-12345"})
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    key = client.post(f"/api/projects/{pid}/api-key").json()["api_key"]
+    return client, pid, key, store
+
+
+@pytest.mark.parametrize("config", ["bad", [1], {"vault": "x"}, {"vault": {"mode": "explicit", "levels": 3}}])
+def test_patch_rejects_unloadable_config_and_project_keeps_working(one_user, config) -> None:
+    client, pid, _, _ = one_user
+    r = client.patch(f"/api/projects/{pid}", json={"config": config})
+    assert r.status_code == 400
+    assert client.post(f"/api/projects/{pid}/runs", json={"scenario_id": "hr_clean_case"}).status_code == 200
+    assert client.post(f"/api/projects/{pid}/api-key").status_code == 200
+
+
+def test_project_stored_with_non_object_config_still_loads(one_user) -> None:
+    client, pid, _, store = one_user
+    with store._conn() as conn:  # simulate a row written by an older build
+        conn.execute("UPDATE projects SET config = ? WHERE id = ?", ('"bad"', pid))
+    assert client.get(f"/api/projects/{pid}").status_code == 200
+    assert client.post(f"/api/projects/{pid}/runs", json={"scenario_id": "hr_clean_case"}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path, body",
+    [
+        ("/api/render/html", {"report": {"channel_risks": "x"}}),
+        ("/api/render/markdown", {"report": {}}),
+        ("/api/compare", {"a": [], "b": {}}),
+        ("/api/scenarios", {"data": {"objective": "x", "private_vault": {"records": []}}}),
+        ("/api/scenarios", {"data": {"objective": {}, "private_vault": []}}),
+        ("/api/scenarios", {"data": {"source_text": 5, "pii_annotations": 3}}),
+        ("/api/analyze", {"trace": [1]}),
+        ("/api/analyze", {"trace": {"events": "x"}}),
+        ("/api/analyze", {"trace": {"events": [1]}}),
+    ],
+)
+def test_malformed_session_input_is_a_4xx(one_user, path, body) -> None:
+    client = one_user[0]
+    r = client.post(path, json=body)
+    assert 400 <= r.status_code < 500, (path, r.status_code, r.text[:200])
+
+
+def test_redteam_rejects_non_integer_n(one_user) -> None:
+    client, pid, _, _ = one_user
+    assert client.post(f"/api/projects/{pid}/redteam", json={"n": "abc"}).status_code == 400
+
+
+@pytest.mark.parametrize("path", ["/api/selftest", "/api/agent/improve"])
+@pytest.mark.parametrize("trace", [[1], {"events": 3}, {"events": ["x"]}])
+def test_malformed_selftest_trace_is_a_400(one_user, path, trace) -> None:
+    client, _, key, _ = one_user
+    r = client.post(path, json={"trace": trace}, headers={"x-agentleak-key": key})
+    assert r.status_code == 400, r.text[:200]
+
+
+# ----------------------------------------------------------------------
+# QA-07: a custom detector regex could pin a server worker for hours
+# ----------------------------------------------------------------------
+
+
+def test_nested_repeat_custom_detector_is_refused(one_user) -> None:
+    import time
+
+    client, pid, key, _ = one_user
+    evil = [{"name": "x", "pattern": "(a+)+$"}]
+    trace = {"events": [{"channel": "log", "content": "a" * 40 + "!"}]}
+    start = time.monotonic()
+    assert client.post("/api/analyze", json={"trace": trace, "custom_detectors": evil}).status_code == 400
+    assert client.post(
+        "/api/selftest", json={"trace": trace, "custom_detectors": evil},
+        headers={"x-agentleak-key": key},
+    ).status_code == 400
+    assert client.patch(
+        f"/api/projects/{pid}", json={"config": {"custom_detectors": evil}}
+    ).status_code == 400
+    assert time.monotonic() - start < 5
+    ok = [{"name": "emp", "pattern": r"\bEMP-\d{6}\b"}]
+    assert client.post("/api/analyze", json={"trace": trace, "custom_detectors": ok}).status_code == 200
