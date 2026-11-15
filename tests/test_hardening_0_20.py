@@ -74,3 +74,22 @@ def test_markdown_report_escapes_the_imported_source_name() -> None:
     assert "<img" not in md and "[x](" not in md and "\\[x\\](" in line
     assert "owned" in line and not any(ln.startswith("# owned") for ln in md.splitlines())
     assert "only final_output could be observed" in line and "audited: log." in line
+
+
+def test_triage_resolution_is_not_findings_times_decisions() -> None:
+    """Every finding was matched against every decision of the project: a run
+    of 2 000 findings in a project at the 50 000-decision cap took 19 s per
+    triage request (and per write, which returns the view)."""
+    from agentleak.core import triage as tri
+
+    findings = [{"finding_id": f"f{i}", "channel": "log", "data_type": "ssn", "level": 4,
+                 "redacted_value": f"***{i}"} for i in range(2000)]
+    decisions = [{"id": f"d{j:05d}", "run_id": "r0", "finding_id": f"f{j % 2000}", "run_created_at": 0,
+                  "identity_key": f"m1|log|ssn|4|***{j % 4000}", "masked_key": f"m1|log|ssn|4|***{j % 4000}",
+                  "state": "false_positive", "created_at": j} for j in range(50_000)]
+    start = time.perf_counter()
+    resolved = tri.resolve(findings, {}, run_id="r1", run_created_at=1, decisions=decisions, now=2)
+    assert time.perf_counter() - start < 5.0
+    # The newest matching decision is carried over (f5 matches every j with j % 4000 == 5).
+    newest = max(j for j in range(50_000) if j % 4000 == 5)
+    assert resolved[5].carried and resolved[5].decision["id"] == f"d{newest:05d}"

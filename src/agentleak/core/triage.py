@@ -204,22 +204,43 @@ def resolve(
     same project is carried over. An accepted risk past its expiry is in force
     as *needs review*, and says so.
     """
-    decs = list(decisions)
+    # The newest decision per key, indexed once: matching every finding
+    # against every decision was findings x decisions per request (2 000 x
+    # 50 000 took 19 s). The keys follow _same_finding exactly.
+    direct_by: dict[Any, Mapping[str, Any]] = {}
+    keyed_by: dict[str, Mapping[str, Any]] = {}  # k1 identity -> newest
+    unkeyed_by: dict[str, Mapping[str, Any]] = {}  # masked key, decisions without k1
+    masked_by: dict[str, Mapping[str, Any]] = {}  # masked key, every decision
+
+    def keep(index: dict[Any, Mapping[str, Any]], key: Any, d: Mapping[str, Any]) -> None:
+        best = index.get(key)
+        if best is None or _order(d) > _order(best):
+            index[key] = d
+
+    for d in decisions:
+        if d.get("run_id") == run_id:
+            keep(direct_by, d.get("finding_id"), d)
+        if float(d.get("run_created_at") or 0) <= run_created_at:
+            d_ident = str(d.get("identity_key", ""))
+            d_masked = str(d.get("masked_key", ""))
+            keep(masked_by, d_masked, d)
+            if d_ident.startswith("k1|"):
+                keep(keyed_by, d_ident, d)
+            else:
+                keep(unkeyed_by, d_masked, d)
+
     out: list[Resolved] = []
     for f in report_findings:
         fid = str(f.get("finding_id", ""))
         ident = identity_key(f, fingerprints.get(fid))
         masked = masked_key(f)
-        direct = [d for d in decs if d.get("run_id") == run_id and d.get("finding_id") == fid]
         carried = False
-        chosen: Mapping[str, Any] | None = None
-        if direct:
-            chosen = max(direct, key=_order)
-        else:
-            cands = [
-                d for d in decs
-                if float(d.get("run_created_at") or 0) <= run_created_at and _same_finding(d, ident, masked)
-            ]
+        chosen: Mapping[str, Any] | None = direct_by.get(fid)
+        if chosen is None:
+            if ident.startswith("k1|"):
+                cands = [c for c in (keyed_by.get(ident), unkeyed_by.get(masked)) if c is not None]
+            else:
+                cands = [c for c in (masked_by.get(masked),) if c is not None]
             if cands:
                 chosen = max(cands, key=_order)
                 carried = True
