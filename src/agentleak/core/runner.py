@@ -210,8 +210,10 @@ class AgentLeakRunner:
 
         # Copies of an exposed value that no plaintext detector can read:
         # reversed, ROT13-rotated, or split across messages to one recipient.
+        run_warnings = list(self._warnings)
         if self._obscured_copies:
-            findings = _add_obscured_copies(trace, findings, self._channels, counter)
+            findings = _add_obscured_copies(trace, findings, self._channels, counter,
+                                            warnings=run_warnings)
 
         # One identity per secret before anything counts them. Detectors
         # disagree on where an entity ends, and AgentRisk keys a secret on the
@@ -221,7 +223,7 @@ class AgentLeakRunner:
 
         # Where each value entered the run and every node it passed through,
         # so a flow rule can judge a leak by its source, not only its last hop.
-        _annotate_provenance(trace, findings)
+        _annotate_provenance(trace, findings, warnings=run_warnings)
 
         # Stable, readable ordering: highest severity level first, then confidence.
         findings.sort(key=lambda f: (-f.level, -f.confidence))
@@ -265,7 +267,7 @@ class AgentLeakRunner:
             subject_evaluation=subject_evaluation,
             task_success=trace.task_success,
             observation=_observation_of(trace),
-            warnings=list(self._warnings),
+            warnings=run_warnings,
             detection_mode=self._pipeline.mode.value,
             tiers=self._pipeline.finding_tiers,
             event_count=len(trace.events),
@@ -309,7 +311,13 @@ def _observation_of(trace: Trace) -> dict[str, Any] | None:
     }
 
 
-def _annotate_provenance(trace: Trace, findings: list[Finding]) -> None:
+#: Distinct values x events that provenance may compare by substring search.
+PROVENANCE_BUDGET = 5_000_000
+
+
+def _annotate_provenance(
+    trace: Trace, findings: list[Finding], *, warnings: list[str] | None = None
+) -> None:
     """Set ``metadata["origin"]`` and ``metadata["path"]`` on each finding.
 
     The origin is the sender of the first event, in trace order, whose text
@@ -319,15 +327,35 @@ def _annotate_provenance(trace: Trace, findings: list[Finding]) -> None:
     events = [e for e in trace.events if e.searchable_text]
     texts = [canonical_form(e.searchable_text) for e in events]
     cache: dict[str, tuple[str, tuple[str, ...]]] = {}
+    keys = {canonical_form(f.matched_value) for f in findings} - {""}
+    # Every value against every event is quadratic in the trace. Past the
+    # budget, a value's path is built from the events it was detected in.
+    full_search = len(keys) * len(events) <= PROVENANCE_BUDGET
+    detected_in: dict[str, set[int]] = {}
+    if not full_search:
+        index_of: dict[str, list[int]] = {}
+        for i, event in enumerate(events):
+            index_of.setdefault(event.event_id, []).append(i)
+        for f in findings:
+            detected_in.setdefault(canonical_form(f.matched_value), set()).update(
+                index_of.get(f.event_id, ()))
+        if warnings is not None:
+            warnings.append(
+                f"Provenance traced through detected events only: {len(keys)} distinct values x "
+                f"{len(events)} events is over its budget ({PROVENANCE_BUDGET}); a value that "
+                "passed through an event without being detected there is not on its path."
+            )
     for finding in findings:
         key = canonical_form(finding.matched_value)
         if not key:
             continue
         if key not in cache:
             path: list[str] = []
-            for event, text in zip(events, texts, strict=True):
-                if key not in text:
-                    continue
+            if full_search:
+                holders = [e for e, text in zip(events, texts, strict=True) if key in text]
+            else:
+                holders = [events[i] for i in sorted(detected_in.get(key, ()))]
+            for event in holders:
                 for node in (event.source or "", event.target or ""):
                     if node and (not path or path[-1] != node):
                         path.append(node)
@@ -341,11 +369,20 @@ def _alnum_key(value: str) -> str:
     return "".join(ch for ch in value.casefold() if ch.isalnum())
 
 
+#: Distinct values x events the obscured-copy search may compare. Its cost is
+#: that product: 1,000 events with 2,000 distinct values took 5 s and 2,000
+#: events 17 s, from a request body of about 100 KB. Past the budget the
+#: search is skipped and the run is marked degraded, never silently clean.
+OBSCURED_COPIES_BUDGET = 1_000_000
+
+
 def _add_obscured_copies(
     trace: Trace,
     findings: list[Finding],
     channels: set[str] | None,
     counter: int,
+    *,
+    warnings: list[str] | None = None,
 ) -> list[Finding]:
     """Findings for obscured copies of values this trace already exposed."""
     events = [
@@ -362,6 +399,15 @@ def _add_obscured_copies(
         key = canonical_form(f.matched_value)
         if key not in templates or f.level > templates[key].level:
             templates[key] = f
+    if len(templates) * len(events) > OBSCURED_COPIES_BUDGET:
+        if warnings is not None:
+            warnings.append(
+                f"Obscured-copy search skipped: {len(templates)} distinct values x "
+                f"{len(events)} events is over its budget ({OBSCURED_COPIES_BUDGET}). "
+                "Reversed, ROT13 and split copies were not checked; split the trace "
+                "or set detection.obscured_copies: false to silence this."
+            )
+        return findings
     copies = find_obscured_copies(
         [(e.searchable_text, e.target, e.channel_value) for e in events],
         [t.matched_value for t in templates.values()],

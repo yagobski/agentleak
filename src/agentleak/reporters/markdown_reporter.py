@@ -16,17 +16,36 @@ _LEVEL_LABEL = {
 }
 
 
+def _t(value: Any) -> str:
+    """Trace-controlled text for Markdown: no raw HTML, no table breaks, no links.
+
+    Agent names, run ids, data types, sources and channels come from the
+    trace. Unescaped, ``<img src=x onerror=...>`` reaches any viewer that
+    renders raw HTML, a ``|`` breaks a table row and a newline starts a new
+    block.
+    """
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    for ch, rep in (("<", "&lt;"), (">", "&gt;"), ("|", "\\|"), ("[", "\\["), ("]", "\\]")):
+        text = text.replace(ch, rep)
+    return text
+
+
+def _c(value: Any) -> str:
+    """Text inside an inline code span: a backtick or newline would end it."""
+    return str(value).replace("`", "'").replace("\r", " ").replace("\n", " ").replace("|", "\\|")
+
+
 def render(data: dict[str, Any]) -> str:
     lines: list[str] = []
     a = lines.append
 
     a("# AgentLeak Privacy Report")
     a("")
-    a(f"- **Project:** {data.get('project', 'n/a')}")
-    a(f"- **Agent:** {data.get('agent_name', 'n/a')}")
+    a(f"- **Project:** {_t(data.get('project', 'n/a'))}")
+    a(f"- **Agent:** {_t(data.get('agent_name', 'n/a'))}")
     if data.get("scenario_id"):
-        a(f"- **Scenario:** {data['scenario_id']}")
-    a(f"- **Run:** {data.get('run_id', 'n/a')}")
+        a(f"- **Scenario:** {_t(data['scenario_id'])}")
+    a(f"- **Run:** {_t(data.get('run_id', 'n/a'))}")
     a(f"- **Generated:** {data.get('generated_at', 'n/a')}")
     a("- **Scoring:** AgentRisk (severity-weighted Risk Index)")
     a("")
@@ -43,7 +62,7 @@ def render(data: dict[str, Any]) -> str:
         f"L2: {lp.get('L2', 0)} · L1: {lp.get('L1', 0)}"
     )
     if data.get("scope_def"):
-        a(f"- Scope (ρ_S denominator): {data['scope_def']}")
+        a(f"- Scope (ρ_S denominator): {_t(data['scope_def'])}")
     if data.get("blocked"):
         a("- ⛔ **Blocked:** this run would fail a CI gate.")
     a("")
@@ -54,11 +73,11 @@ def render(data: dict[str, Any]) -> str:
         a(f"## Privacy policy — {status}")
         a("")
         checked = ", ".join(policy.get("assertions_checked", [])) or "none"
-        a(f"- Assertions checked: `{checked}`")
+        a(f"- Assertions checked: `{_c(checked)}`")
         for violation in policy.get("violations", []):
             ids = ", ".join(violation.get("finding_ids", []))
-            evidence = f" Evidence: `{ids}`." if ids else ""
-            a(f"- **{violation['rule']}** — {violation['message']}{evidence}")
+            evidence = f" Evidence: `{_c(ids)}`." if ids else ""
+            a(f"- **{_t(violation['rule'])}** — {_t(violation['message'])}{evidence}")
         flow_violations = policy.get("flows", {}).get("violations", [])
         if flow_violations:
             a("")
@@ -66,10 +85,10 @@ def render(data: dict[str, Any]) -> str:
             a("|---|---|---|---|---|")
             for decision in flow_violations:
                 a(
-                    f"| `{decision['data_type']}` | {decision.get('sender') or '—'} "
-                    f"| {decision.get('recipient') or '—'} "
-                    f"| {decision.get('purpose') or '_none declared_'} "
-                    f"| {decision['reason']} |"
+                    f"| `{_c(decision['data_type'])}` | {_t(decision.get('sender') or '—')} "
+                    f"| {_t(decision.get('recipient') or '—')} "
+                    f"| {_t(decision.get('purpose')) if decision.get('purpose') else '_none declared_'} "
+                    f"| {_t(decision['reason'])} |"
                 )
         a("")
 
@@ -86,7 +105,7 @@ def render(data: dict[str, Any]) -> str:
         a("| --- | --- | ---: | ---: |")
         for cr in channel_risks:
             level = cr.get("level_label", _LEVEL_LABEL.get(cr.get("level", "none"), cr.get("level")))
-            a(f"| {cr['channel']} | {level} | {cr['finding_count']} | {cr.get('ri', 0):.3f} |")
+            a(f"| {_t(cr['channel'])} | {level} | {cr['finding_count']} | {cr.get('ri', 0):.3f} |")
     else:
         a("_No leaks detected in any channel._")
     a("")
@@ -103,14 +122,14 @@ def render(data: dict[str, Any]) -> str:
         )
         for i, f in enumerate(ordered, start=1):
             value = f.get("redacted_value", f.get("matched_value", ""))
-            a(f"### Finding {i} — {f.get('level_label', '')} ({f.get('data_type')})")
+            a(f"### Finding {i} — {f.get('level_label', '')} ({_t(f.get('data_type'))})")
             a("")
-            a(f"- **Channel:** {f['channel']}")
+            a(f"- **Channel:** {_t(f['channel'])}")
             a(f"- **Severity level:** {f.get('level_label', '')} (detector severity: {f['severity']})")
-            a(f"- **Detector:** {f['detector']}")
-            a(f"- **Value:** `{value}`")
+            a(f"- **Detector:** {_t(f['detector'])}")
+            a(f"- **Value:** `{_c(value)}`")
             if f.get("recommendation"):
-                a(f"- **Recommendation:** {f['recommendation']}")
+                a(f"- **Recommendation:** {_t(f['recommendation'])}")
             a("")
 
     leak_paths = data.get("leak_paths", [])
@@ -120,11 +139,11 @@ def render(data: dict[str, Any]) -> str:
         a("_Where each disclosed secret entered the system and how it propagated across agents._")
         a("")
         for p in leak_paths:
-            chain = " → ".join(f"{s['source'] or '?'}:{s['channel']}" for s in p["steps"])
-            agents = f" · agents: {', '.join(p['agents'])}" if p.get("agents") else ""
+            chain = " → ".join(f"{_t(s['source'] or '?')}:{_t(s['channel'])}" for s in p["steps"])
+            agents = f" · agents: {', '.join(_t(x) for x in p['agents'])}" if p.get("agents") else ""
             a(
-                f"- **{p['level_label']} {p['data_type']}** (`{p['value']}`) — entered via "
-                f"`{p.get('entered_via') or 'unknown'}`, {p['leak_count']} disclosure(s){agents}\n"
+                f"- **{p['level_label']} {_t(p['data_type'])}** (`{_c(p['value'])}`) — entered via "
+                f"`{_c(p.get('entered_via') or 'unknown')}`, {p['leak_count']} disclosure(s){agents}\n"
                 f"  - path: {chain}"
             )
         a("")
@@ -134,7 +153,7 @@ def render(data: dict[str, Any]) -> str:
         a("## Recommendations")
         a("")
         for r in recs:
-            a(f"- {r}")
+            a(f"- {_t(r)}")
         a("")
 
     compliance = data.get("compliance", {})
@@ -153,11 +172,11 @@ def render(data: dict[str, Any]) -> str:
             a("")
             for ctrl in fw["controls"]:
                 mark = {"at_risk": "✗", "ok": "✓", "info": "ℹ", "not_assessed": "○"}.get(ctrl["status"], "·")
-                ev = f" ({', '.join(ctrl['evidence'])})" if ctrl["evidence"] else ""
+                ev = f" ({', '.join(_t(e) for e in ctrl['evidence'])})" if ctrl["evidence"] else ""
                 a(f"- {mark} **{ctrl['name']}**{ev}")
                 finding_ids = ctrl.get("evidence_details", {}).get("finding_ids", [])
                 if finding_ids:
-                    a(f"  - findings: `{', '.join(finding_ids)}`")
+                    a(f"  - findings: `{_c(', '.join(finding_ids))}`")
             a("")
 
         integrity = compliance.get("integrity", {})

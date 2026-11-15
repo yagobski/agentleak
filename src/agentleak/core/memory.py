@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -83,6 +84,31 @@ class Delta:
         if self.unchanged:
             parts.append(f"{self.unchanged} still open")
         return ", ".join(parts) if parts else "No findings, and none last time either."
+
+
+def write_private(path: Path, text: str) -> None:
+    """Replace ``path`` atomically with a file only the user can read.
+
+    ``write_text`` followed a symlink: a repository that ships
+    ``.agentleak/selftest-history.jsonl -> ~/.bashrc`` had that file
+    overwritten the first time someone ran ``agentleak selftest`` in it. A new
+    file renamed over the name replaces the link itself, never its target.
+    """
+    import tempfile
+
+    fd, tmp = tempfile.mkstemp(prefix=".tmp-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
 
 
 class ProjectMemory:
@@ -146,7 +172,8 @@ class ProjectMemory:
         }
         history = [*self.entries(), entry][-MAX_ENTRIES:]
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
+        # Atomic and private, never through a symlink planted in a repository.
+        write_private(
+            self.path,
             "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in history),
-            encoding="utf-8",
         )

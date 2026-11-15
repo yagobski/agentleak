@@ -213,6 +213,58 @@ the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
   (0.0006 s on `"a" * 50000 + "@"`); a guard test now keeps it so.
 <!-- END next2/prose -->
 
+<!-- BEGIN next2/hardening -->
+**Upgrade now if you run the web platform.** In 0.19.0 and earlier, any
+account could make the server send one of its environment variables to a
+host of the account's choosing, and a project's model URL could receive the
+operator's API key. If your deployment had provider keys or other secrets in
+its environment, rotate them. Details: `docs/reports/next/HARDENING-REPORT.md`.
+
+### Security
+
+- Request and project settings can no longer set the LLM judge's
+  `api_key_env` or `base_url`; in public mode the judge never runs for a
+  tenant. Before, any account could have the server read any environment
+  variable and send it to its own host.
+- A tenant's model endpoint never receives a key from the server environment:
+  host matching for `OPENROUTER_API_KEY` and friends is exact, and in public
+  mode no environment key is used at all.
+- The outbound guard connects only to the address it checked (no DNS
+  rebinding) and ignores `HTTP(S)_PROXY`.
+- MCP `privacy_preflight` and `privacy_scan_code` are confined to the server
+  root like `privacy_selftest`; failing tools now answer `isError: true`.
+- `bench verify` does not re-run a capsule that enables the LLM judge, and
+  refuses oversized archive members before reading them.
+- Code scans and trace analysis no longer grow quadratically or worse with
+  input size; very large traces skip the obscured-copy search and narrow
+  provenance, and say so in `warnings` (the run is marked degraded).
+- The Sanitizer (gateway, proxies, `redact`) resolves spans in n log n; a few
+  KB of repeated text took minutes.
+- Self-test history, issued scenarios and preflight memory are written
+  atomically with mode 0600 and never through a symlink; a stored re-run
+  command is handed back only when it is a plain `agentleak selftest`.
+- `selftest --cmd` caps what it reads from the agent and never waits forever
+  on a pipe a grandchild holds open.
+- `/api/agent/selftest` resolves stored scenarios for the key's owner only.
+- `proxy --block-changed-tools` refuses a call to a tool not checked against
+  its pin in the current session.
+- `agentleak evidence` refuses fields outside the hashed body and reports the
+  chain head; `--expect-head HASH` catches entries cut off the end.
+- Chunked request bodies are capped like the others.
+- In public mode, `/llms.txt`, `/agents.md` and the agent card no longer use
+  the `Host` header; set `AGENTLEAK_PUBLIC_URL` to choose the origin.
+
+### Fixed
+
+- The Markdown report escapes trace-controlled strings.
+- A trace of the wrong shape is a format error (400, exit 2), not a crash.
+- `bench score-corpus` neutralizes spreadsheet formulas in `scores.csv`.
+- `bench` runs `git` with `core.fsmonitor` and hooks disabled.
+- Inputs validated: `--fail-under` (scan and selftest 0-100, run non-negative),
+  `agent_type`, execute `mode`, red-team `vertical`; `agentleak validate`
+  names unknown top-level keys.
+<!-- END next2/hardening -->
+
 ## [0.19.0] - 2026-11-15
 
 Research workflow, agent self-test, wider detection, a rebuilt GUI and a round

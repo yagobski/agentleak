@@ -20,6 +20,7 @@ pull a card from a running agent's well-known endpoint.
 
 from __future__ import annotations
 
+import http.client
 import ipaddress
 import json
 import socket
@@ -137,7 +138,83 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_SAFE_OPENER = urllib.request.build_opener(_SafeRedirectHandler)
+def _guarded_create_connection(
+    address: tuple[str, int],
+    timeout: Any = socket._GLOBAL_DEFAULT_TIMEOUT,  # type: ignore[attr-defined]
+    source_address: Any = None,
+    *args: Any,
+    **kwargs: Any,
+) -> socket.socket:
+    """``socket.create_connection`` that only connects to an address it checked.
+
+    Checking a hostname and then letting ``urlopen`` resolve it again leaves a
+    window (DNS rebinding): the first answer is public, the second is
+    ``127.0.0.1``. Here the name is resolved once, every answer is checked,
+    and the socket is opened to one of those very addresses. TLS still
+    verifies the certificate against the hostname (``server_hostname`` is set
+    by ``HTTPSConnection`` from the URL, not from the address).
+    """
+    host, port = address
+    try:
+        infos = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+    except OSError as exc:
+        raise OSError(f"Could not resolve host {host!r}: {exc}") from exc
+    for _family, _type, _proto, _canon, sockaddr in infos:
+        raw = str(sockaddr[0]).split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(raw)
+        except ValueError as exc:
+            raise UnsafeURLError(f"host {host!r} resolved to an unparsable address") from exc
+        if _ip_is_disallowed(ip):
+            raise UnsafeURLError(f"URL host {host!r} resolves to a disallowed address ({ip}).")
+    last: OSError | None = None
+    for family, socktype, proto, _canon, sockaddr in infos:
+        sock = socket.socket(family, socktype, proto)
+        try:
+            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:  # type: ignore[attr-defined]
+                sock.settimeout(timeout)
+            if source_address:
+                sock.bind(source_address)
+            sock.connect(sockaddr)
+            return sock
+        except OSError as exc:
+            last = exc
+            sock.close()
+    raise last or OSError(f"Could not connect to {host!r}")
+
+
+class _GuardedHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._create_connection = _guarded_create_connection  # type: ignore[assignment]
+
+
+class _GuardedHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._create_connection = _guarded_create_connection  # type: ignore[assignment]
+
+
+class _GuardedHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req: urllib.request.Request) -> Any:
+        return self.do_open(_GuardedHTTPConnection, req)
+
+
+class _GuardedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req: urllib.request.Request) -> Any:
+        return self.do_open(_GuardedHTTPSConnection, req,
+                            context=self._context)  # type: ignore[attr-defined]
+
+
+# No ProxyHandler: an HTTP(S)_PROXY in the server's environment would resolve
+# the name itself and connect wherever it likes, so the address check above
+# would prove nothing. Guarded requests always go direct.
+_SAFE_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    _GuardedHTTPHandler,
+    _GuardedHTTPSHandler,
+    _SafeRedirectHandler,
+)
 
 
 @dataclass

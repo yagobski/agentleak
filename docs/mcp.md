@@ -43,8 +43,11 @@ Cursor; check your client's docs for the exact file.
 
 Every tool returns structured content. Read-only tools are marked with
 `readOnlyHint`; none has `openWorldHint`, because none reaches the network.
+A call that fails (bad path, unreadable trace, unknown style or scenario)
+comes back with `isError: true`; its text is the JSON error document.
 
-Paths an agent passes to `privacy_selftest` (`trace_path`, `code_path`) must be
+Paths an agent passes to `privacy_selftest` (`trace_path`, `code_path`),
+`privacy_preflight` and `privacy_scan_code` (`path`) must be
 inside the server root: `$AGENTLEAK_MCP_ROOT` when set, otherwise the directory
 the server was started in. Symlinks are resolved before the check. Results only
 carry redacted values. Self-test history lives in `<root>/.agentleak/`.

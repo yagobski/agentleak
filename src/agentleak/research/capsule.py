@@ -153,6 +153,11 @@ def _zenodo_draft(run: BenchRun) -> dict[str, Any]:
     }
 
 
+#: Limits for a capsule being verified (uncompressed sizes).
+_MAX_MEMBER_BYTES = 256 * 1024 * 1024
+_MAX_TOTAL_BYTES = 1024 * 1024 * 1024
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -231,6 +236,15 @@ def verify_capsule(path: str | Path, *, rerun: bool = True) -> VerifyResult:
         if "SHA256SUMS" not in names:
             add("checksums", False, "SHA256SUMS is missing")
             return VerifyResult(False, checks)
+        # A capsule is often someone else's file. Sizes are checked before
+        # anything is decompressed (a few KB can inflate to many GB).
+        oversized = [i.filename for i in zf.infolist() if i.file_size > _MAX_MEMBER_BYTES]
+        total = sum(i.file_size for i in zf.infolist())
+        if oversized or total > _MAX_TOTAL_BYTES:
+            add("size", False,
+                f"refused: members over {_MAX_MEMBER_BYTES} bytes ({', '.join(oversized[:5])}) "
+                f"or {total} bytes in all (limit {_MAX_TOTAL_BYTES})")
+            return VerifyResult(False, checks)
         bad = []
         listed = 0
         for line in zf.read("SHA256SUMS").decode("utf-8").splitlines():
@@ -250,6 +264,16 @@ def verify_capsule(path: str | Path, *, rerun: bool = True) -> VerifyResult:
         traces = {n: zf.read(n) for n in names if n.startswith("run/traces/")}
 
     manifest = Manifest.from_dict(lock["manifest"], where="capsule manifest")
+    judge = manifest.detection.llm_judge or {}
+    if manifest.detection.mode == "hybrid" or judge.get("enabled"):
+        # Re-running would read the key variable the capsule names and send
+        # it, with the scenarios, to the host the capsule names.
+        add("network", False,
+            "not re-run: the capsule's manifest enables the LLM judge, which would send "
+            f"${judge.get('api_key_env') or 'OPENAI_API_KEY'} to "
+            f"{judge.get('base_url') or 'the default endpoint'}. Re-run it yourself with a "
+            "manifest whose detection settings you have checked: agentleak bench run")
+        return VerifyResult(False, checks)
     drift = manifest.check_pins()
     add("software", not drift,
         "installed software matches the capsule's pins" if not drift else "; ".join(drift))

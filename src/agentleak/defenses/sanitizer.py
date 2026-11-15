@@ -50,6 +50,7 @@ import hashlib
 import hmac
 import os
 import re
+from collections.abc import Callable
 from enum import Enum
 from typing import Any
 
@@ -170,6 +171,61 @@ def redaction_coverage() -> dict[str, Any]:
     }
 
 
+def _strictly_inside_any(
+    outers: list[tuple[int, int, str, str]],
+) -> Callable[[tuple[int, int, str, str]], bool]:
+    """``f(span)``: is ``span`` strictly inside (shorter, within) one of ``outers``?
+
+    Sorted sweep, O(n log n); the pairwise test it replaces was O(n^2).
+    """
+    import bisect
+
+    by_start = sorted((o[0], o[1]) for o in outers)
+    starts = [b[0] for b in by_start]
+    prefix_max: list[int] = []
+    best = -1
+    for _, end in by_start:
+        best = max(best, end)
+        prefix_max.append(best)
+    same_max: dict[int, int] = {}
+    for start, end in by_start:
+        same_max[start] = max(same_max.get(start, -1), end)
+
+    def check(span: tuple[int, int, str, str]) -> bool:
+        i = bisect.bisect_left(starts, span[0])  # outers starting strictly before
+        if i and prefix_max[i - 1] >= span[1]:
+            return True
+        return same_max.get(span[0], -1) > span[1]
+
+    return check
+
+
+def _strictly_holds_any(
+    spans: list[tuple[int, int, str, str]],
+) -> Callable[[tuple[int, int, str, str]], bool]:
+    """``f(span)``: does ``span`` strictly contain another of ``spans``?"""
+    import bisect
+
+    by_start = sorted((s[0], s[1]) for s in spans)
+    starts = [b[0] for b in by_start]
+    suffix_min = [0] * len(by_start)
+    best = 1 << 62
+    for i in range(len(by_start) - 1, -1, -1):
+        best = min(best, by_start[i][1])
+        suffix_min[i] = best
+    same_min: dict[int, int] = {}
+    for start, end in by_start:
+        same_min[start] = min(same_min.get(start, 1 << 62), end)
+
+    def check(span: tuple[int, int, str, str]) -> bool:
+        i = bisect.bisect_right(starts, span[0])  # spans starting strictly after
+        if i < len(suffix_min) and suffix_min[i] <= span[1]:
+            return True
+        return same_min.get(span[0], 1 << 62) < span[1]
+
+    return check
+
+
 def _redact_value(
     value: str, dtype: str, style: RedactionStyle, tokenizer: Tokenizer | None = None,
 ) -> str:
@@ -253,14 +309,20 @@ class Sanitizer:
         switched off. Run ``--mode standard`` when spans must be exact.
         """
         found: list[tuple[int, int, str, str]] = []
+        # The same value is reported once per detector hit; locating every
+        # occurrence again for each hit multiplied the spans (a run like
+        # "1.1.1.1..." gave thousands of copies) and the pairwise checks below
+        # then took minutes on a few hundred bytes.
+        located: set[tuple[str, str]] = set()
 
         for detector in self._detectors:
             for raw in detector.detect(text):
                 if raw.data_type in DETECT_ONLY:
                     continue
                 value = str(raw.matched_value)
-                if not value:
+                if not value or (value, raw.data_type) in located:
                     continue
+                located.add((value, raw.data_type))
                 start = text.find(value)
                 while start >= 0:
                     found.append((start, start + len(value), value, raw.data_type.upper()))
@@ -288,13 +350,8 @@ class Sanitizer:
                               worst.data_type.upper()))
                 whole.add((view.start, view.end))
 
-        def contains(outer: tuple[int, int, str, str], inner: tuple[int, int, str, str]) -> bool:
-            return (
-                inner is not outer
-                and inner[0] >= outer[0]
-                and inner[1] <= outer[1]
-                and (inner[1] - inner[0]) < (outer[1] - outer[0])
-            )
+        # Identical spans add nothing (first one kept, so ties resolve as before).
+        found = list(dict.fromkeys(found))
 
         # A credential (or an email address) swallows whatever was matched
         # inside it.
@@ -302,18 +359,17 @@ class Sanitizer:
             span for span in found
             if span[3] in _WHOLE_TYPES or (span[0], span[1]) in whole
         ]
-        found = [
-            span for span in found
-            if not any(contains(cred, span) for cred in credentials)
-        ]
+        swallowed = _strictly_inside_any(credentials)
+        found = [span for span in found if not swallowed(span)]
 
         # Otherwise drop any span that strictly contains another: the inner
         # span is a more precise reading of the same signal.
+        holds_another = _strictly_holds_any(found)
         inner = [
             span for span in found
             if span[3] in _WHOLE_TYPES
             or (span[0], span[1]) in whole
-            or not any(contains(span, other) for other in found)
+            or not holds_another(span)
         ]
 
         # Whatever still overlaps only does so partially — two detectors

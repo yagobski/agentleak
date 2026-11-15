@@ -21,6 +21,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..core.memory import write_private as _write_private
+
 HISTORY_FILE = "selftest-history.jsonl"
 SCENARIO_DIR = "selftest-scenarios"
 DEFAULT_STATE_DIR = ".agentleak"
@@ -83,9 +85,9 @@ class SelftestHistory:
     def record(self, entry: dict[str, Any]) -> None:
         history = [*self.entries(), entry][-MAX_ENTRIES:]
         self.dir.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
+        _write_private(
+            self.path,
             "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in history),
-            encoding="utf-8",
         )
 
     # -- issued scenarios (canary ground truth) -----------------------------
@@ -94,7 +96,7 @@ class SelftestHistory:
         folder = self.dir / SCENARIO_DIR
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"{_safe_name(instance_id)}.json"
-        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        _write_private(path, json.dumps(payload, ensure_ascii=False))
         return path
 
     def load_scenario(self, instance_id: str) -> dict[str, Any] | None:
@@ -106,6 +108,39 @@ class SelftestHistory:
         except (OSError, json.JSONDecodeError):
             return None
         return data if isinstance(data, dict) else None
+
+
+#: Flags a stored re-run command may carry. History files sit in the working
+#: directory and can come with a cloned repository, so a stored command is
+#: untrusted: one that runs a program (``--cmd``, ``--shell``) or loads a
+#: config (``--config``, which can enable a network tier) is never handed back.
+_RERUN_FLAGS = {"--trace", "--trace-format", "--scenarios", "--code", "--fail-on",
+                "--fail-under", "--state-dir"}
+_RERUN_SWITCHES = {"--json", "--human", "--no-history"}
+
+
+def trusted_rerun(rerun: Any) -> dict[str, Any] | None:
+    """A stored ``rerun`` rebuilt from its argv when it is a plain self-test, else ``None``."""
+    import shlex
+
+    if not isinstance(rerun, dict):
+        return None
+    argv = rerun.get("argv")
+    if not isinstance(argv, list) or argv[:2] != ["agentleak", "selftest"]:
+        return None
+    if not all(isinstance(a, str) and "\n" not in a and "\r" not in a for a in argv):
+        return None
+    rest = argv[2:]
+    i = 0
+    while i < len(rest):
+        flag = rest[i]
+        if flag in _RERUN_SWITCHES:
+            i += 1
+        elif flag in _RERUN_FLAGS and i + 1 < len(rest) and not rest[i + 1].startswith("-"):
+            i += 2
+        else:
+            return None
+    return {"cli": shlex.join(argv), "argv": list(argv)}
 
 
 def _safe_name(value: str) -> str:
@@ -182,4 +217,5 @@ __all__ = [
     "default_state_dir",
     "now_iso",
     "target_key",
+    "trusted_rerun",
 ]

@@ -333,7 +333,7 @@ def build_server() -> Any:
     )
     for spec in all_tools():
         server.add_tool(
-            spec["fn"], name=spec["name"], description=spec["description"],
+            _served(spec["fn"]), name=spec["name"], description=spec["description"],
             annotations=ToolAnnotations(
                 read_only_hint=spec.get("read_only", False),
                 destructive_hint=False,
@@ -341,6 +341,52 @@ def build_server() -> Any:
             ),
         )
     return server
+
+
+#: Tool arguments that name a file or directory. Over MCP they must resolve
+#: inside the server root, like the self-test tools' paths.
+_PATH_ARGUMENTS = ("path",)
+
+
+def _served(fn: Any) -> Any:
+    """The tool as served over MCP: paths confined, failures reported as failures.
+
+    ``privacy_preflight`` and ``privacy_scan_code`` used to accept any path:
+    a calling agent (or an instruction injected into it) could list and read
+    redacted lines of any directory the server user can read, and preflight
+    wrote its memory file into that directory. Their paths now go through the
+    same root check as ``privacy_selftest``.
+
+    A tool that returns ``{"error": ...}`` used to answer ``isError: false``,
+    which an agent may read as success. It now raises ``ToolError`` so the
+    result is ``isError: true``; the text is the same JSON document.
+    """
+    import functools
+    import inspect
+    import json
+
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    from .selftest.mcp_tools import _inside_root
+
+    params = inspect.signature(fn).parameters
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        bound = inspect.signature(fn).bind(*args, **kwargs)
+        bound.apply_defaults()
+        for name in _PATH_ARGUMENTS:
+            if name in params and isinstance(bound.arguments.get(name), str):
+                try:
+                    bound.arguments[name] = str(_inside_root(bound.arguments[name]))
+                except PermissionError as exc:
+                    raise ToolError(json.dumps({"error": str(exc)})) from exc
+        result = fn(*bound.args, **bound.kwargs)
+        if isinstance(result, dict) and result.get("error"):
+            raise ToolError(json.dumps(result, ensure_ascii=False, default=str))
+        return result
+
+    return wrapper
 
 
 def all_tools() -> list[dict[str, Any]]:

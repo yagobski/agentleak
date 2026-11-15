@@ -90,23 +90,34 @@ def _cluster(ordered: Sequence[str]) -> dict[str, str]:
         return key
 
     # A value contained at token boundaries has each alphanumeric run as a
-    # whole run of the container, so only values whose first run occurs in
-    # ``wide`` can be inside it. Pairs are still visited in the original
-    # order, so the merges, and the roots, are the same as a full scan.
-    by_first_run: dict[str, list[int]] = {}
+    # whole run of the container, so only values whose runs all occur in
+    # ``wide`` can be inside it. Each value is indexed under its rarest run:
+    # indexing under the first one put every SSN ("123-45-...") in one bucket
+    # and made 4,000 of them 8 million comparisons. Pairs are still visited in
+    # the original order, so the merges, and the roots, are the same as a full
+    # scan.
+    runs_of = [frozenset(_ALNUM_RUN_RE.findall(key)) for key in ordered]
+    frequency: dict[str, int] = {}
+    for runs in runs_of:
+        for run in runs:
+            frequency[run] = frequency.get(run, 0) + 1
+    by_rarest_run: dict[str, list[int]] = {}
     always: list[int] = []
-    for j, key in enumerate(ordered):
-        first = _ALNUM_RUN_RE.search(key)
-        if first is None:
+    for j, runs in enumerate(runs_of):
+        if not runs:
             always.append(j)
         else:
-            by_first_run.setdefault(first.group(0), []).append(j)
+            rarest = min(runs, key=lambda r: (frequency[r], r))
+            by_rarest_run.setdefault(rarest, []).append(j)
 
     for i, wide in enumerate(ordered):
+        wide_runs = runs_of[i]
         candidates = set(always)
-        for run in set(_ALNUM_RUN_RE.findall(wide)):
-            candidates.update(by_first_run.get(run, ()))
+        for run in wide_runs:
+            candidates.update(by_rarest_run.get(run, ()))
         for j in sorted(c for c in candidates if c > i):
+            if not runs_of[j] <= wide_runs:
+                continue
             narrow = ordered[j]
             if find(wide) != find(narrow) and _contains_at_boundaries(wide, narrow):
                 parent[find(narrow)] = find(wide)

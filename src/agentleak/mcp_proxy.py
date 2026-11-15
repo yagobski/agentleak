@@ -109,6 +109,8 @@ class McpProxy:
         self.repin = repin
         self._pending_lists: set[Any] = set()
         self._withheld: set[str] = set()
+        # Tools whose definition this session has compared with the pins.
+        self._verified: set[str] = set()
 
     # ------------------------------------------------------------------
     def _note(self, message: str) -> None:
@@ -158,6 +160,22 @@ class McpProxy:
 
         params = message.get("params") or {}
         tool = str(params.get("name") or "")
+        with self._lock:
+            unverified = (self.pins is not None and self.block_changed_tools
+                          and tool not in self._verified and tool not in self._withheld)
+        if unverified:
+            # A client that cached the tool list (or calls before the list
+            # arrives) would otherwise reach a tool whose definition changed
+            # since it was pinned: the check only ran on tools/list.
+            self.blocked += 1
+            self._note(f"BLOCK {tool}: not checked against the pins in this session")
+            return None, {
+                "jsonrpc": "2.0", "id": message.get("id"),
+                "result": {"isError": True, "content": [{"type": "text", "text": (
+                    f"Blocked by AgentLeak: the tool {tool!r} has not been checked against its "
+                    "pinned definition in this session. Call tools/list first, then retry."
+                )}]},
+            }
         if tool in self._withheld:
             self.blocked += 1
             self._note(f"BLOCK {tool}: its definition changed since it was pinned")
@@ -264,8 +282,14 @@ class McpProxy:
                 )
         if report.new:
             self._note(f"pinned {len(report.new)} new tool(s) from {self.recipient}")
+        names = {str(t.get("name") or "") for t in tools}
+        with self._lock:
+            # Pages of a paginated list add up; they do not replace each other.
+            self._verified |= names - set(report.changed)
+            self._verified -= set(report.changed)
+            if self.block_changed_tools and report.changed:
+                self._withheld |= set(report.changed)
         if self.block_changed_tools and report.changed:
-            self._withheld = set(report.changed)
             kept = [t for t in tools if t.get("name") not in self._withheld]
             message = {**message, "result": {**message["result"], "tools": kept}}
         return message

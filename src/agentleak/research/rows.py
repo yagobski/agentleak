@@ -66,6 +66,26 @@ def coerce_row(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe(value: Any) -> Any:
+    """A cell a spreadsheet will show as text, never evaluate as a formula.
+
+    Strings from a user's corpus (trace ids, agent names) that begin with
+    ``= + - @`` are run as formulas when the CSV is opened in Excel, Sheets
+    or LibreOffice (``=HYPERLINK(...)`` can send data out). Such a string gets
+    a leading apostrophe; numbers, including negative ones, are left alone.
+    """
+    if not isinstance(value, str) or not value.startswith(_FORMULA_START):
+        return value
+    try:
+        float(value)
+        return value
+    except ValueError:
+        return "'" + value
+
+
 def _fmt(value: Any) -> str:
     if isinstance(value, float):
         return repr(round(value, 6))

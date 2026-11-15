@@ -37,6 +37,7 @@ import shlex
 import signal
 import subprocess
 import tempfile
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -44,6 +45,8 @@ from ..core.trace import Channel
 
 _ALLOWED = {c.value for c in Channel}
 MAX_OUTPUT_BYTES = 8 * 1024 * 1024
+MAX_STDERR_BYTES = 64 * 1024
+_DRAIN_SECONDS = 2.0
 
 
 @dataclass
@@ -169,25 +172,118 @@ def run_scenario(
         except (FileNotFoundError, PermissionError, OSError) as exc:
             run.error = f"cannot start the agent command: {exc}"
             return run
-        try:
-            out, err = proc.communicate(payload.encode("utf-8"), timeout=timeout)
-        except subprocess.TimeoutExpired:
-            run.timed_out = True
-            _kill_group(proc)
-            out, err = proc.communicate()
+        out, err, err_total, overflow, _held = _collect(proc, payload.encode("utf-8"), timeout, run)
         run.duration_s = round(time.monotonic() - start, 3)
         run.exit_code = proc.returncode
     out_text = out[:MAX_OUTPUT_BYTES].decode("utf-8", errors="replace")
     err_text = err.decode("utf-8", errors="replace")
-    run.stderr_bytes = len(err)
+    run.stderr_bytes = err_total
     run.events, run.ignored_lines, run.rejected_events = parse_agent_output(out_text)
-    if run.timed_out:
+    if overflow:
+        run.error = (f"stopped: the agent wrote more than {MAX_OUTPUT_BYTES} bytes to stdout "
+                     "(only the part before the limit was scored)")
+    elif run.timed_out:
         run.error = f"timed out after {timeout:g}s"
     elif run.exit_code != 0:
         run.error = f"exited with code {run.exit_code}"
     if run.error and err_text.strip():
         run.stderr_tail = _redacted_tail(err_text)
     return run
+
+
+def _pump(stream: Any, keep: int, *, tail: bool, sink: dict[str, Any],
+          overflow: threading.Event | None) -> None:
+    """Read ``stream`` to EOF keeping at most ``keep`` bytes (head, or tail)."""
+    # The sink is filled as data arrives: a reader still blocked on a pipe
+    # that a stray process holds open must not lose what was already read.
+    buf: bytearray = sink["data"]
+    fd = stream.fileno()
+    while True:
+        try:
+            chunk = os.read(fd, 65536)
+        except OSError:
+            break
+        if not chunk:
+            break
+        with sink["lock"]:
+            sink["total"] += len(chunk)
+            if tail:
+                buf += chunk
+                if len(buf) > keep:
+                    del buf[: len(buf) - keep]
+            elif len(buf) < keep:
+                buf += chunk[: keep - len(buf)]
+        if overflow is not None and sink["total"] > keep:
+            overflow.set()
+
+
+def _feed(stream: Any, data: bytes) -> None:
+    try:
+        stream.write(data)
+        stream.close()
+    except (BrokenPipeError, OSError, ValueError):
+        pass  # the agent need not read stdin (it has $AGENTLEAK_SCENARIO_FILE)
+
+
+def _collect(
+    proc: subprocess.Popen[bytes], payload: bytes, timeout: float, run: AgentRun
+) -> tuple[bytes, bytes, int, bool, bool]:
+    """Feed stdin, read stdout/stderr with hard caps, enforce the timeout.
+
+    ``communicate()`` held everything the agent printed in memory (a child
+    writing gigabytes exhausted it) and, after a timeout, waited without a
+    limit for EOF, which never comes when a grandchild that left the process
+    group (``setsid``) still holds the pipe. Here memory is bounded, output
+    past the limit stops the run, and nothing waits forever.
+    """
+    import time
+
+    out_sink: dict[str, Any] = {"data": bytearray(), "total": 0, "lock": threading.Lock()}
+    err_sink: dict[str, Any] = {"data": bytearray(), "total": 0, "lock": threading.Lock()}
+    overflow = threading.Event()
+    readers = [
+        threading.Thread(target=_pump, args=(proc.stdout, MAX_OUTPUT_BYTES),
+                         kwargs={"tail": False, "sink": out_sink, "overflow": overflow}, daemon=True),
+        threading.Thread(target=_pump, args=(proc.stderr, MAX_STDERR_BYTES),
+                         kwargs={"tail": True, "sink": err_sink, "overflow": None}, daemon=True),
+    ]
+    for t in readers:
+        t.start()
+    threading.Thread(target=_feed, args=(proc.stdin, payload), daemon=True).start()
+    deadline = time.monotonic() + timeout
+    overflowed = False
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            run.timed_out = True
+            break
+        try:
+            proc.wait(timeout=min(0.05, remaining))
+            break
+        except subprocess.TimeoutExpired:
+            if overflow.is_set():
+                overflowed = True
+                break
+    if run.timed_out or overflowed:
+        _kill_group(proc)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+    for t in readers:
+        t.join(timeout=_DRAIN_SECONDS)
+    held = any(t.is_alive() for t in readers)
+    if held:
+        # The agent exited but something it started still holds the pipe:
+        # stop what is left of its process group, then give up on the pipe.
+        _kill_group(proc)
+        for t in readers:
+            t.join(timeout=_DRAIN_SECONDS)
+        held = any(t.is_alive() for t in readers)
+    with out_sink["lock"], err_sink["lock"]:
+        out, err = bytes(out_sink["data"]), bytes(err_sink["data"])
+        err_total = int(err_sink["total"])
+    return out, err, err_total, overflowed, held
 
 
 def _kill_group(proc: subprocess.Popen[bytes]) -> None:

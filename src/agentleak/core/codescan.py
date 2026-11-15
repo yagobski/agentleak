@@ -42,7 +42,9 @@ opt-in download via stdlib urllib).
 
 from __future__ import annotations
 
+import bisect
 import fnmatch
+import functools
 import io
 import json
 import math
@@ -203,11 +205,13 @@ def _compile_code_rules(
             # rather than requests/httpx/fetch.
             "credentialed_record_export",
             re.compile(
-                r"\w+\s*\([^()]{0,240}?"
+                # \b before each \w+: without it every position inside a long
+                # word was a fresh start and a 32 KB identifier took 11 s.
+                r"\b\w+\s*\([^()]{0,240}?"
                 r"\b(?:api[_-]?key|apikey|token|secret|credential|password|auth)\w*\s*="
                 r"[^()]{0,240}?"
                 r"\b(?:payload|record|profile|customer|patient|subject|body|document|dossier)\w*\s*="
-                r"|\w+\s*\([^()]{0,240}?"
+                r"|\b\w+\s*\([^()]{0,240}?"
                 r"\b(?:payload|record|profile|customer|patient|subject|body|document|dossier)\w*\s*="
                 r"[^()]{0,240}?"
                 r"\b(?:api[_-]?key|apikey|token|secret|credential|password|auth)\w*\s*=",
@@ -524,27 +528,48 @@ def _is_scannable(path: str) -> bool:
     )
 
 
+#: Bounds that keep one file's scan linear. A value repeated thousands of
+#: times, or thousands of findings in one file, made the scan quadratic: a
+#: 64 KB file of "1.1.1..." took 5 s, 4,000 e-mail lines 3 s, and a 512 KB
+#: upload minutes. Past these counts more findings add nothing to the score
+#: (it saturates at 25 level-points) or to what a reader can act on.
+_MAX_OCCURRENCES = 200
+MAX_FINDINGS_PER_FILE = 500
+_LONG_LINE = 2000
+
+
 def _occurrences(text: str, value: str) -> list[int]:
-    """Every start offset of ``value`` in ``text``."""
+    """Start offsets of ``value`` in ``text`` (the first ``_MAX_OCCURRENCES``)."""
     if not value:
         return []
     out: list[int] = []
     idx = text.find(value)
-    while idx >= 0:
+    while idx >= 0 and len(out) < _MAX_OCCURRENCES:
         out.append(idx)
         idx = text.find(value, idx + 1)
     return out
 
 
+@functools.lru_cache(maxsize=4)
+def _newlines(text: str) -> list[int]:
+    return [i for i, ch in enumerate(text) if ch == "\n"]
+
+
 def _line_of(text: str, index: int) -> int:
-    return text.count("\n", 0, index) + 1
+    return bisect.bisect_left(_newlines(text), index) + 1
 
 
 def _snippet(text: str, index: int, matched: str) -> str:
     """The matched line, with the sensitive value redacted."""
     start = text.rfind("\n", 0, index) + 1
     end = text.find("\n", index)
-    line = text[start : end if end != -1 else len(text)].strip()
+    end = end if end != -1 else len(text)
+    if end - start > _LONG_LINE:
+        # A minified or generated line: start at the match, and keep enough
+        # after it that every value starting in the first _SNIPPET_MAX
+        # characters is still whole when ``_scrub`` runs.
+        start, end = index, min(end, index + len(matched) + _LONG_LINE)
+    line = text[start:end].strip()
     if matched and matched in line:
         line = line.replace(matched, redact(matched))
     # Truncated to _SNIPPET_MAX by ``scan_text`` after every value found in the
@@ -684,15 +709,21 @@ class CodeScanner:
         if joined != text:
             variants.append(("joined", joined))
         for variant_name, variant_text in variants:
-            for f in self.pipeline.run_event(
+            hits = self.pipeline.run_event(
                 text=variant_text,
                 event_id=path,
                 run_id="codescan",
                 channel="log",  # code at rest ≈ a log-tier surface
-            ):
+            )
+            # Most severe first: once the per-file cap is reached, the values
+            # left are still masked in snippets but not located again (each
+            # search reads the whole file).
+            for f in sorted(hits, key=lambda h: -int(h.level or 0)):
                 if _looks_like_code_expression(f.matched_value):
                     continue
                 sensitive.add(f.matched_value)
+                if len(findings) >= MAX_FINDINGS_PER_FILE:
+                    continue
                 tier = str(f.metadata.get("tier", "regex"))
                 deobfuscated = variant_name == "joined" and f.matched_value not in text
                 rule = (
@@ -805,10 +836,16 @@ class CodeScanner:
                 confidence=0.85,
             ))
 
+        if len(findings) > MAX_FINDINGS_PER_FILE:
+            findings = sorted(findings, key=lambda f: -int(f.level or 0))[:MAX_FINDINGS_PER_FILE]
         # Longest first, so a value that contains another is masked whole.
         ordered = sorted(sensitive, key=len, reverse=True)
+        scrubbed: dict[str, str] = {}
         for code_finding in findings:
-            code_finding.snippet = _scrub(code_finding.snippet, ordered)
+            raw = code_finding.snippet
+            if raw not in scrubbed:
+                scrubbed[raw] = _scrub(raw, ordered)
+            code_finding.snippet = scrubbed[raw]
         return findings
 
     # -- collections ------------------------------------------------------

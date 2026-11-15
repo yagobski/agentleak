@@ -17,7 +17,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from ..core.netguard import UnsafeURLError, open_model_url
+from ..core.netguard import UnsafeURLError, guard_enabled, open_model_url
 
 
 class LLMError(RuntimeError):
@@ -54,8 +54,18 @@ def resolve_api_key(base_url: str, explicit: str = "") -> str:
         return explicit
     if _is_local(base_url):
         return ""  # no auth header for local servers
+    # A hosted deployment calls endpoints its tenants chose. The process
+    # environment holds the operator's keys, which must never be attached to
+    # a tenant's URL: tenants bring their own key or send none.
+    if guard_enabled():
+        return ""
+    import urllib.parse as _up
+
+    hostname = (_up.urlparse(base_url).hostname or "").lower().rstrip(".")
     for host, env in _KEY_ENV_BY_HOST.items():
-        if host in base_url:
+        # Match the host itself, not a substring of the URL: the path or a
+        # look-alike host ("openrouter.ai.example") must not select a key.
+        if hostname == host or hostname.endswith("." + host):
             return os.environ.get(env, "")
     return os.environ.get("OPENAI_API_KEY", "")
 
