@@ -9,6 +9,18 @@ import re
 _BLOB_RE = re.compile(r"[A-Za-z0-9+/=_-]{24,}")
 _SPACE = " \t\r\n\"'`,;()[]{}<>|"
 
+# Month names and abbreviations in EN/FR/ES/DE/PT/IT, shared by the date of
+# birth rules in :mod:`.pii` and :mod:`.context`.
+MONTHS = (
+    r"jan(?:uary|vier|eiro)?|feb(?:ruary|ruar)?|f[ée]v(?:rier)?|fevereiro|mar(?:ch|s|zo|ço)?|"
+    r"m[äa]rz|apr(?:il)?|avr(?:il)?|abr(?:il)?|aprile|may|mai|mayo|maio|maggio|"
+    r"jun[ei]?|juin|junio|junho|giugno|jul[iy]?|juillet|julio|julho|luglio|"
+    r"aug(?:ust)?|ao[uû]t|agosto|sep(?:t(?:ember)?)?|septembre|septiembre|setembro|settembre|"
+    r"oct(?:ober)?|octobre|octubre|okt(?:ober)?|outubro|ottobre|"
+    r"nov(?:ember)?|novembre|noviembre|novembro|dec(?:ember)?|d[ée]cembre|dez(?:ember)?|"
+    r"diciembre|dezembro|dicembre|ene(?:ro)?|gen(?:naio)?|janeiro"
+)
+
 
 def inside_blob(text: str, start: int, end: int) -> bool:
     """Whether ``text[start:end]`` sits inside an opaque encoded token.

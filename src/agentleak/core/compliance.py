@@ -23,9 +23,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # Data-type groupings used by the control predicates.
+# Every credential type the secrets detector emits. ``llm_api_key``,
+# ``google_api_key`` and ``bearer_token`` were missing, so a leaked model-provider
+# key did not put GDPR Art. 32 at risk; tests/test_compliance.py now checks
+# this set against the detector's output.
 SECRET_TYPES = frozenset({
     "private_key", "aws_access_key", "github_token", "slack_token", "stripe_key",
     "jwt", "connection_string", "secret_assignment", "api_key",
+    "llm_api_key", "google_api_key", "bearer_token",
 })
 HEALTH_TYPES = frozenset({"health_identifier", "health_condition", "medication", "sick_leave"})
 IDENTITY_CREDENTIALS = SECRET_TYPES | frozenset({"ssn", "sin", "credit_card", "iban", "account_number"})

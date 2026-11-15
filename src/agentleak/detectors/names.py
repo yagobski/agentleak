@@ -112,11 +112,20 @@ def full_names(text: str) -> list[str]:
     """Full names in *text*: a known given name and one or two surnames."""
     found: list[str] = []
     for m in FULL_NAME_RE.finditer(text):
-        # A possessive is the name plus grammar: "Alex Green's file" is Alex Green.
-        words = [re.sub(r"['’]s$", "", word) for word in m.group(0).split()]
-        while len(words) > 1 and words[-1] in _NOT_SURNAMES:
+        # A possessive is the name plus grammar, and it ends the name: "Alex
+        # Green's file" is Alex Green, and "John Doe's Personal Finance" is
+        # John Doe, not "John Doe Personal".
+        words: list[tuple[str, int, int]] = []
+        for w in re.finditer(r"\S+", m.group(0)):
+            word = re.sub(r"['’]s$", "", w.group(0))
+            start = m.start() + w.start()
+            words.append((word, start, start + len(word)))
+            if word != w.group(0):
+                break
+        while len(words) > 1 and words[-1][0] in _NOT_SURNAMES:
             words.pop()
-        if len(words) < 2 or any(word in _NOT_SURNAMES for word in words[1:]):
+        if len(words) < 2 or any(word in _NOT_SURNAMES for word, _s, _e in words[1:]):
             continue
-        found.append(" ".join(words))
+        # The value is the text as written, so a redactor can find and remove it.
+        found.append(text[words[0][1]:words[-1][2]])
     return found

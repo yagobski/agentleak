@@ -1,0 +1,424 @@
+{
+  "note": "Cued prose: the labelled values of the three quality sets placed in sentences that say what the value is, the way an agent actually writes them ('you can reach her at 555-0152', 'born on 3 March 1984'). Written and committed before any context-window rule existed, and not edited afterwards. Six templates per data type and language: the first three are the development half, the last three the held-out half. Values are split by the seeded hash described under 'split'. A value is found when a finding of the expected type overlaps the value's position in the sentence; type confusion and a finding elsewhere in the sentence are misses.",
+  "frozen": "2026-11-15, commit that adds this file, before any context-window rule",
+  "split": {
+    "seed": 20261115,
+    "method": "For each (language, data type), values are sorted by sha256('<seed>|<language>|<data type>|<value>') and the first ceil(n/2) form the development half; the rest are held out. Templates: the 'development' list goes with development values, the 'held_out' list with held-out values. Rules were tuned on development misses only."
+  },
+  "templates": {
+    "en": {
+      "person_name": {
+        "development": [
+          "I spoke with {value} this morning about the renewal.",
+          "Please forward the summary to {value} before Friday.",
+          "The request was filed by {value} on behalf of the team."
+        ],
+        "held_out": [
+          "Our contact there is {value}, who handles billing.",
+          "{value} asked us to update the shipping details.",
+          "According to {value}, the meeting went well."
+        ]
+      },
+      "date_of_birth": {
+        "development": [
+          "She was born on {value} in a small town.",
+          "His date of birth is {value}, per the intake form.",
+          "The patient's birthday is {value}."
+        ],
+        "held_out": [
+          "Born {value}, he is eligible for the senior plan.",
+          "For verification, her DOB is {value}.",
+          "He gave {value} as his birth date."
+        ]
+      },
+      "address": {
+        "development": [
+          "She lives at {value} with her two kids.",
+          "Please ship the replacement to {value}.",
+          "His home address is {value}."
+        ],
+        "held_out": [
+          "The package should go to {value} by Monday.",
+          "They moved last year and now reside at {value}.",
+          "Mail the signed copy to {value}."
+        ]
+      },
+      "email": {
+        "development": [
+          "You can email her at {value} anytime.",
+          "His work address is {value}.",
+          "Send the invoice to {value}."
+        ],
+        "held_out": [
+          "Reply to {value} with the signed form.",
+          "Her contact email is {value}.",
+          "Reach him by email at {value}."
+        ]
+      },
+      "phone_number": {
+        "development": [
+          "You can reach her at {value} after six.",
+          "Call him on {value} if the delivery is late.",
+          "Her phone number is {value}."
+        ],
+        "held_out": [
+          "Text me at {value} when you arrive.",
+          "The best number to reach him is {value}.",
+          "Give her a call at {value} tomorrow."
+        ]
+      },
+      "salary": {
+        "development": [
+          "Her salary is ${value} a year.",
+          "He earns {value} per year before tax.",
+          "The offer comes with a base pay of ${value}."
+        ],
+        "held_out": [
+          "She makes about ${value} annually.",
+          "His annual compensation is {value} dollars.",
+          "They are paying him ${value} a year now."
+        ]
+      },
+      "ssn": {
+        "development": [
+          "His social security number is {value}.",
+          "Her SSN, {value}, was on the form.",
+          "The applicant listed {value} as the SSN."
+        ],
+        "held_out": [
+          "Use SSN {value} to look up the file.",
+          "The social is {value}, please verify it.",
+          "She read out her social security number, {value}."
+        ]
+      },
+      "account_number": {
+        "development": [
+          "Wire the refund to account {value}.",
+          "His checking account number is {value}.",
+          "The payment came from bank account {value}."
+        ],
+        "held_out": [
+          "Deposit it into her savings account, {value}.",
+          "The account on file is {value}.",
+          "Funds were moved out of account no. {value} last night."
+        ]
+      },
+      "health_condition": {
+        "development": [
+          "She was diagnosed with {value} last spring.",
+          "He has been dealing with {value} for months.",
+          "The patient presented with {value} at intake."
+        ],
+        "held_out": [
+          "Her doctor is treating her for {value}.",
+          "He mentioned his {value} during the call.",
+          "The chart notes a history of {value}."
+        ]
+      }
+    },
+    "fr": {
+      "person_name": {
+        "development": [
+          "J'ai parlé avec {value} ce matin au sujet du dossier.",
+          "Merci de transmettre le résumé à {value} avant vendredi.",
+          "La demande a été déposée par {value}."
+        ],
+        "held_out": [
+          "Notre interlocutrice est {value}, au service facturation.",
+          "{value} nous a demandé de mettre à jour l'adresse de livraison.",
+          "Selon {value}, la rencontre s'est bien passée."
+        ]
+      },
+      "email": {
+        "development": [
+          "Vous pouvez lui écrire à {value}.",
+          "Son courriel est {value}.",
+          "Envoyez la facture à {value}."
+        ],
+        "held_out": [
+          "Répondez à {value} avec le formulaire signé.",
+          "Son adresse électronique est {value}.",
+          "Écrivez-lui à {value} si besoin."
+        ]
+      },
+      "phone_number": {
+        "development": [
+          "Vous pouvez la joindre au {value} après 18 h.",
+          "Appelez-le au {value} si la livraison est en retard.",
+          "Son numéro de téléphone est le {value}."
+        ],
+        "held_out": [
+          "Envoyez-moi un texto au {value} en arrivant.",
+          "Le meilleur numéro pour le joindre est le {value}.",
+          "Rappelez-la demain au {value}."
+        ]
+      },
+      "national_id": {
+        "development": [
+          "Son numéro de sécurité sociale est {value}.",
+          "Le NIR indiqué sur le formulaire est {value}.",
+          "Il a donné {value} comme numéro de sécu."
+        ],
+        "held_out": [
+          "Vérifiez le numéro de sécurité sociale {value} avant l'envoi.",
+          "Sa carte Vitale porte le numéro {value}.",
+          "Le dossier mentionne le NIR {value}."
+        ]
+      },
+      "sin": {
+        "development": [
+          "Son numéro d'assurance sociale est {value}.",
+          "Le NAS {value} figure sur la demande.",
+          "Il a fourni {value} comme NAS."
+        ],
+        "held_out": [
+          "Vérifiez le numéro d'assurance sociale {value}.",
+          "Elle a lu son NAS à voix haute : {value}.",
+          "Le NAS inscrit au dossier est {value}."
+        ]
+      },
+      "health_identifier": {
+        "development": [
+          "Son numéro d'assurance maladie est {value}.",
+          "La carte RAMQ porte le numéro {value}.",
+          "Il a présenté sa carte soleil, numéro {value}."
+        ],
+        "held_out": [
+          "Le numéro d'assurance maladie {value} est expiré.",
+          "Inscrivez le NAM {value} sur la réquisition.",
+          "Sa carte d'assurance maladie indique {value}."
+        ]
+      },
+      "iban": {
+        "development": [
+          "Virez le remboursement sur le compte {value}.",
+          "Son IBAN est {value}.",
+          "Le paiement provient du compte {value}."
+        ],
+        "held_out": [
+          "Merci de verser la somme sur l'IBAN {value}.",
+          "Les coordonnées bancaires sont {value}.",
+          "Le prélèvement sera fait sur le compte {value}."
+        ]
+      },
+      "credit_card": {
+        "development": [
+          "Elle a payé avec la carte {value}.",
+          "Le numéro de carte bancaire est {value}.",
+          "Débitez la carte {value} pour la commande."
+        ],
+        "held_out": [
+          "Sa carte de crédit, {value}, a été refusée.",
+          "Il a dicté le numéro de sa carte : {value}.",
+          "La carte enregistrée est la {value}."
+        ]
+      },
+      "date_of_birth": {
+        "development": [
+          "Elle est née à Lyon le {value}.",
+          "Sa date de naissance : {value}, selon le formulaire.",
+          "Son anniversaire tombe le {value}."
+        ],
+        "held_out": [
+          "Né le {value}, il a droit au tarif senior.",
+          "Pour vérification, sa date de naissance est le {value}.",
+          "Il a indiqué {value} comme date de naissance."
+        ]
+      },
+      "address": {
+        "development": [
+          "Elle habite au {value} avec ses enfants.",
+          "Merci d'expédier le colis au {value}.",
+          "Son adresse personnelle est {value}."
+        ],
+        "held_out": [
+          "Le courrier doit être envoyé au {value} d'ici lundi.",
+          "Ils ont déménagé et résident maintenant au {value}.",
+          "Postez la copie signée au {value}."
+        ]
+      },
+      "health_condition": {
+        "development": [
+          "Elle a reçu un diagnostic de {value} au printemps.",
+          "Il est suivi pour {value} depuis des mois.",
+          "La patiente souffre de {value}."
+        ],
+        "held_out": [
+          "Son médecin la traite pour {value}.",
+          "Il a parlé de son {value} pendant l'appel.",
+          "Le dossier mentionne des antécédents de {value}."
+        ]
+      },
+      "medication": {
+        "development": [
+          "Elle prend {value} tous les matins.",
+          "On lui a prescrit {value} le mois dernier.",
+          "Son traitement comprend {value}."
+        ],
+        "held_out": [
+          "Il est sous {value} depuis deux ans.",
+          "Le pharmacien a renouvelé son {value}.",
+          "Elle a arrêté {value} la semaine dernière."
+        ]
+      },
+      "salary": {
+        "development": [
+          "Son salaire est de {value}.",
+          "Il gagne {value}.",
+          "Le poste offre une rémunération de {value}."
+        ],
+        "held_out": [
+          "Elle touche {value} depuis sa promotion.",
+          "On lui propose {value} pour ce rôle.",
+          "Sa paie s'élève à {value}."
+        ]
+      }
+    },
+    "es": {
+      "person_name": {
+        "development": [
+          "Hablé con {value} esta mañana sobre la renovación.",
+          "Envía el resumen a {value} antes del viernes.",
+          "La solicitud la presentó {value}."
+        ],
+        "held_out": [
+          "Nuestra contacta allí es {value}, de facturación.",
+          "{value} nos pidió actualizar la dirección de envío.",
+          "Según {value}, la reunión fue bien."
+        ]
+      },
+      "email": {
+        "development": [
+          "Puedes escribirle a {value} cuando quieras.",
+          "Su correo del trabajo es {value}.",
+          "Manda la factura a {value}."
+        ],
+        "held_out": [
+          "Responde a {value} con el formulario firmado.",
+          "Su correo electrónico de contacto es {value}.",
+          "Escríbele a {value} si hace falta."
+        ]
+      },
+      "phone_number": {
+        "development": [
+          "Puedes localizarla en el {value} después de las seis.",
+          "Llámale al {value} si el pedido se retrasa.",
+          "Su número de teléfono es el {value}."
+        ],
+        "held_out": [
+          "Mándame un mensaje al {value} cuando llegues.",
+          "El mejor número para contactarlo es el {value}.",
+          "Llámala mañana al {value}."
+        ]
+      },
+      "spanish_national_id": {
+        "development": [
+          "Su DNI es {value}.",
+          "El documento de identidad {value} figura en el contrato.",
+          "Dio {value} como número de DNI."
+        ],
+        "held_out": [
+          "Comprueba el DNI {value} antes de enviarlo.",
+          "Su número de identificación es {value}.",
+          "En la ficha consta el NIF {value}."
+        ]
+      },
+      "iban": {
+        "development": [
+          "Haz la transferencia a la cuenta {value}.",
+          "Su IBAN es {value}.",
+          "El pago vino de la cuenta {value}."
+        ],
+        "held_out": [
+          "Ingresa el importe en el IBAN {value}.",
+          "Los datos bancarios son {value}.",
+          "El recibo se cargará en la cuenta {value}."
+        ]
+      },
+      "credit_card": {
+        "development": [
+          "Pagó con la tarjeta {value}.",
+          "El número de la tarjeta es {value}.",
+          "Carga el pedido a la tarjeta {value}."
+        ],
+        "held_out": [
+          "Su tarjeta de crédito, {value}, fue rechazada.",
+          "Dictó el número de su tarjeta: {value}.",
+          "La tarjeta guardada es la {value}."
+        ]
+      },
+      "address": {
+        "development": [
+          "Vive en {value} con sus hijos.",
+          "Envía el paquete a {value}.",
+          "Su domicilio es {value}."
+        ],
+        "held_out": [
+          "La carta debe llegar a {value} antes del lunes.",
+          "Se mudaron y ahora residen en {value}.",
+          "Manda la copia firmada a {value}."
+        ]
+      },
+      "date_of_birth": {
+        "development": [
+          "Nació en Sevilla el {value}.",
+          "Su fecha de nacimiento es el {value}.",
+          "El paciente nació el {value}."
+        ],
+        "held_out": [
+          "Nacido el {value}, tiene derecho a la tarifa sénior.",
+          "Para verificar, su fecha de nacimiento es {value}.",
+          "Indicó {value} como fecha de nacimiento."
+        ]
+      },
+      "health_condition": {
+        "development": [
+          "Le diagnosticaron {value} la primavera pasada.",
+          "Lleva meses en tratamiento por {value}.",
+          "La paciente padece {value}."
+        ],
+        "held_out": [
+          "Su médico la está tratando por {value}.",
+          "Mencionó su {value} durante la llamada.",
+          "El historial recoge antecedentes de {value}."
+        ]
+      },
+      "medication": {
+        "development": [
+          "Toma {value} todas las mañanas.",
+          "Le recetaron {value} el mes pasado.",
+          "Su tratamiento incluye {value}."
+        ],
+        "held_out": [
+          "Está con {value} desde hace dos años.",
+          "El farmacéutico le renovó la receta de {value}.",
+          "Dejó el {value} la semana pasada."
+        ]
+      },
+      "salary": {
+        "development": [
+          "Su sueldo es de {value}.",
+          "Cobra {value}.",
+          "El puesto ofrece un salario de {value}."
+        ],
+        "held_out": [
+          "Gana {value} desde el ascenso.",
+          "Le ofrecen {value} por el puesto.",
+          "Su nómina asciende a {value}."
+        ]
+      },
+      "spanish_social_security_number": {
+        "development": [
+          "Su número de la Seguridad Social es {value}.",
+          "El NUSS {value} figura en el contrato.",
+          "Dio {value} como número de afiliación."
+        ],
+        "held_out": [
+          "Comprueba el número de afiliación {value}.",
+          "En la nómina aparece el NUSS {value}.",
+          "Su número de Seguridad Social, {value}, está mal escrito."
+        ]
+      }
+    }
+  }
+}

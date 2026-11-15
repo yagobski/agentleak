@@ -302,11 +302,25 @@ def test_cmd_mode_runs_each_scenario_and_plants_canaries(state: str):
     assert "@example.com" not in text
 
 
-def test_the_default_sanitizer_gap_comes_with_an_extra_pattern(state: str):
+def test_the_default_sanitizer_needs_no_extra_pattern_for_a_record_number(state: str):
+    """It used to: the stock Sanitizer left `MRN-12345678` in place, and the
+    fix carried an `extra_patterns` entry for it. The health detector now
+    reads the prefixed token whole, so the fix is the Sanitizer alone."""
     doc = selftest_command([sys.executable, str(LEAKY_AGENT)], SelftestOptions(state_dir=state),
                            scenarios=["healthcare_referral"])
     fix = doc["next_steps"][0]["fix"]
-    assert "medical_record_number" in fix["settings"]["extra_patterns"]
+    assert "medical_record_number" not in (fix["settings"].get("extra_patterns") or {})
+
+
+def test_the_default_sanitizer_removes_every_canary_kind():
+    """So the `extra_patterns` fallback in a fix is a safety net, not a need."""
+    from agentleak.defenses import Sanitizer
+    from agentleak.selftest import battery
+
+    sanitizer = Sanitizer()
+    for kind in sorted(battery.CANARY_KINDS):
+        value = battery.make_value(kind, ("Dana", "Moreau"))
+        assert value not in sanitizer.sanitize(f"value: {value} end"), kind
 
 
 def test_cmd_mode_reports_a_crashing_agent_as_incomplete(state: str, tmp_path: Path):

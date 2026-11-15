@@ -176,12 +176,12 @@
       ]
     },
     "prose": {
-      "recall": 0.7455,
+      "recall": 0.7545,
       "ci95": [
-        0.6567,
-        0.8176
+        0.6664,
+        0.8255
       ],
-      "numerator": 82,
+      "numerator": 83,
       "denominator": 110,
       "by_data_type": [
         {
@@ -264,14 +264,14 @@
         },
         {
           "data_type": "medication",
-          "recall": 0.75,
+          "recall": 0.875,
           "ci95": [
-            0.4093,
-            0.9285
+            0.5291,
+            0.9776
           ],
-          "hit": 6,
+          "hit": 7,
           "type_confused": 0,
-          "missed": 2,
+          "missed": 1,
           "labelled_values": 8,
           "confused_as": {}
         },
