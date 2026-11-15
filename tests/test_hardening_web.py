@@ -203,3 +203,42 @@ def test_markdown_report_escapes_trace_controlled_strings() -> None:
     assert "<img" not in md
     assert "[x](javascript:" not in md
     assert "\n# injected" not in md
+
+
+def test_unknown_enum_inputs_are_refused(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    assert client.post("/api/projects", json={"name": "x", "agent_type": "nope"}).status_code == 400
+    pid = client.post("/api/projects", json={"name": "P"}).json()["id"]
+    assert client.patch(f"/api/projects/{pid}", json={"agent_type": "nope"}).status_code == 400
+    assert client.patch(f"/api/projects/{pid}", json={"agent_type": "generic"}).status_code == 200
+    r = client.post(f"/api/projects/{pid}/execute",
+                    json={"scenario_id": "healthcare_patient_summary", "mode": "turbo"})
+    assert r.status_code == 400, r.text[:200]
+    r = client.post(f"/api/projects/{pid}/redteam", json={"vertical": "nope", "n": 1})
+    assert r.status_code == 400, r.text[:200]
+
+
+@pytest.mark.parametrize("argv", [
+    ["run", "--scenario", "healthcare_patient_summary", "--fail-under", "150"],
+    ["run", "--scenario", "healthcare_patient_summary", "--fail-under", "-5"],
+    ["scan", ".", "--fail-under", "101"],
+    ["selftest", "--fail-under", "200", "--json"],
+])
+def test_fail_under_outside_0_100_is_a_usage_error(argv) -> None:
+    from typer.testing import CliRunner
+
+    from agentleak.cli import app
+
+    result = CliRunner().invoke(app, argv)
+    assert result.exit_code == 2, result.output[-300:]
+
+
+def test_validate_names_unknown_config_keys(tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from agentleak.cli import app
+
+    cfg = tmp_path / "agentleak.yaml"
+    cfg.write_text("project:\n  name: x\ndetecters:\n  pii: false\n")
+    result = CliRunner().invoke(app, ["validate", str(cfg)])
+    assert "detecters" in result.output, result.output

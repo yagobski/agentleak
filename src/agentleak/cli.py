@@ -143,6 +143,12 @@ def validate(
         typer.echo(f"  detectors: {', '.join(k for k, v in cfg.detectors.as_dict().items() if v) or 'none'}")
         typer.echo(f"  channels:  {len(cfg.channels)} · scenarios: {len(cfg.scenarios)}")
         normalize_formats(cfg.reports.formats)
+        # Extra keys are allowed (integrations keep their own settings here),
+        # but a misspelled one ('detecters:') silently configures nothing.
+        unknown = sorted(set(cfg.model_extra or {}))
+        if unknown:
+            typer.secho(f"! unknown top-level key(s), ignored by AgentLeak: {', '.join(unknown)}",
+                        fg=typer.colors.YELLOW)
     except _SkipConfig:
         pass
     except FileNotFoundError:
@@ -376,7 +382,7 @@ def scan(
     mode: str | None = typer.Option(None, "--mode", "-m", help="Detection mode: fast | standard (Presidio) | hybrid (Presidio + LLM-judge)."),
     output: str | None = typer.Option(None, "--output", "-o", help="Write the full result to a file."),
     fmt: str = typer.Option("json", "--format", "-f", help="Output format: json | sarif."),
-    fail_under: int | None = typer.Option(None, "--fail-under", help="Exit non-zero when the code score is below this value."),
+    fail_under: int | None = typer.Option(None, "--fail-under", min=0, max=100, help="Exit non-zero when the code score is below this value (0-100)."),
 ) -> None:
     """Static privacy scan of agent source code (file, dir, zip, or GitHub repo).
 
@@ -925,7 +931,7 @@ def run(
     trace: str | None = typer.Option(None, "--trace", "-t", help="Analyze a trace JSON file."),
     output: str | None = typer.Option(None, "--output", "-o", help="Report output directory."),
     fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats."),
-    fail_under: int | None = typer.Option(None, "--fail-under", help="Exit non-zero if a score is below this."),
+    fail_under: int | None = typer.Option(None, "--fail-under", min=0, max=100, help="Exit non-zero if a score is below this (0-100)."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Less console output."),
 ) -> None:
     """Analyze a trace (or scenario) and write privacy reports."""

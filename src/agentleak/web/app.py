@@ -185,6 +185,10 @@ class _StreamBodyLimit:
         await self.app(scope, limited_receive, send)
 
 
+#: Verticals the red-team generator knows (generators/vault.py).
+_REDTEAM_VERTICALS = frozenset({"healthcare", "finance", "legal", "hr", "customer_support"})
+
+
 def _public_url_from_env() -> str:
     """``AGENTLEAK_PUBLIC_URL`` (``https://host[:port][/prefix]``), or ``""``."""
     from urllib.parse import urlsplit
@@ -904,6 +908,16 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         )
         return resp
 
+    def _checked_agent_type(agent_type: Any) -> None:
+        """An unknown agent_type was stored as is by PATCH (create mapped it to generic)."""
+        from ..core.store import AGENT_TYPES
+
+        if agent_type is not None and agent_type not in AGENT_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown agent_type {agent_type!r}. See /api/meta agent_types.",
+            )
+
     def _checked_config(config: Any) -> dict[str, Any]:
         """Refuse a project config the analyzer cannot load.
 
@@ -1585,6 +1599,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         }
         config.update({key: value for key, value in direct_config.items() if value is not None})
         _checked_config(config)
+        _checked_agent_type(payload.get("agent_type"))
         return _safe_project(db.create_project(
             name,
             agent_type=payload.get("agent_type", "generic"),
@@ -1603,6 +1618,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         config = payload.get("config")
         if config is not None:
             _checked_config(config)
+        _checked_agent_type(payload.get("agent_type"))
         # Preserve previously-stored agent keys when the client sends blanks.
         if isinstance(config, dict):
             _merge_agent_keys(pid, config, db)
@@ -2215,6 +2231,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         _enforce_quota(user["id"], is_admin=user.get("is_admin", False))
 
         vertical = str(payload.get("vertical") or "healthcare")
+        if vertical not in _REDTEAM_VERTICALS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown vertical {vertical!r}. Use one of: {', '.join(sorted(_REDTEAM_VERTICALS))}.",
+            )
         try:
             n = int(payload.get("n") or 5)
         except (TypeError, ValueError) as exc:
@@ -2703,6 +2724,8 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
         # Single-agent project.
         mode = payload.get("mode") or ("live" if agent_cfg.get("model") else "scripted")
+        if mode not in ("live", "scripted"):
+            raise HTTPException(status_code=400, detail="'mode' must be 'live' or 'scripted'.")
         llm = None
         if mode == "live":
             if not agent_cfg.get("base_url") or not agent_cfg.get("model"):
