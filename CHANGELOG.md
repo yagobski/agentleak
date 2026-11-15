@@ -6,6 +6,52 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- **Stored scenarios are private to their owner.** `/api/analyze`,
+  `/api/report/{fmt}`, project runs and execute, `/api/selftest` and
+  `/api/agent/improve` resolved a `scenario_id` from any account. A foreign id
+  now answers like an unknown one. Publishing an ownerless legacy project is
+  refused.
+- **HTML report escapes trace content.** Agent names, run and scenario ids,
+  sources and custom rule names were inserted unescaped, so a trace could carry
+  a script into the report and into `/api/render/html`.
+- **Code-scan snippets mask every sensitive value on the line**, not only the
+  finding's own; console, JSON and SARIF output no longer show the others raw.
+- **`redact --style hash` is keyed.** It was a plain SHA-256 prefix, which can
+  be reversed for SSNs and card numbers by trying every value. It now uses the
+  same key as `token` (`AGENTLEAK_TOKEN_KEY` for a stable digest).
+- **Custom detector patterns with nested repeats (`(a+)+`) are refused** by the
+  platform; one could hold a worker for hours.
+- **Request bodies over 32 MiB get 413** (`AGENTLEAK_MAX_BODY_BYTES`).
+- **GitHub Action**: annotations are escaped like GitHub's toolkit does, so a
+  file name or data type cannot inject workflow commands; the `version` input
+  is no longer pasted into shell source.
+
+### Fixed
+
+- `agentleak run` exits 2 with a message (no traceback) for a missing,
+  malformed, empty or non-UTF-8 trace, a directory, an unknown scenario or an
+  unknown format, and refuses JSON without an `events` list: a report passed by
+  mistake used to score 100 and pass the gate. An empty `events` list warns.
+  `report`, `redact` and `scan -o` handle bad input the same way.
+- `agentleak validate --trace` no longer needs an `agentleak.yaml`.
+- The API returns 400 instead of 500 for malformed traces, uploads, reports,
+  compare ids and red-team counts; a project config that cannot load is
+  refused instead of being saved and breaking the project.
+- Event content nested over 200 levels is refused instead of raising
+  `RecursionError`.
+- Secret-assignment, email and credential-URL detection no longer take
+  quadratic time on long runs of text (23 s on a 50 KB event before). Matches
+  are unchanged.
+- The Action gate headlines the worst run when several run, counts all their
+  findings, and shows failed compliance frameworks again.
+- `AgentLeakClient` explains a 401 (it needs `agentleak serve --local`);
+  `Run.ingest` accepts a trace dict; the trust page title is escaped once.
+- Docs: 266 bundled scenarios (not 283) in `/llms.txt` and `docs/mcp.md`;
+  `docs/install.md` no longer uses a nonexistent `--fail-on`; README no longer
+  lists a "PII Probes" pack; `redact --style token` is documented.
+
 ## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.
