@@ -67,3 +67,31 @@ def test_code_scan_many_values_is_bounded(tmp_path) -> None:
     assert len(result.findings) <= MAX_FINDINGS_PER_FILE
     assert result.score == 0
     assert not any("@example.test" in f.snippet for f in result.findings)
+
+
+# ----------------------------------------------------------------------
+# Analysis of one request: many events with distinct values
+# ----------------------------------------------------------------------
+def test_analysis_of_many_events_is_bounded_and_says_so() -> None:
+    """2,000 log lines with an e-mail and an SSN each (about 100 KB) took 17 s:
+    obscured-copy search, clustering of SSNs that share a first run and
+    provenance all compared every value with every event."""
+    from agentleak import AgentLeakRunner
+    from agentleak.core.trace import Trace
+
+    events = [{"channel": "log", "content": f"user{i}@example.test SSN 123-45-{i:04d} card"}
+              for i in range(3000)]
+    start = time.perf_counter()
+    result = AgentLeakRunner().analyze(Trace.from_dict({"events": events}))
+    assert time.perf_counter() - start < 8.0
+    assert result.leaked_findings()
+    # What was skipped is said, so the run cannot pass for a full one.
+    assert result.degraded and any("budget" in w for w in result.warnings)
+
+
+def test_small_traces_keep_the_full_search() -> None:
+    from agentleak import AgentLeakRunner
+    from agentleak.core.trace import Trace
+
+    events = [{"channel": "log", "content": f"SSN 123-45-{i:04d}"} for i in range(50)]
+    assert not AgentLeakRunner().analyze(Trace.from_dict({"events": events})).degraded
