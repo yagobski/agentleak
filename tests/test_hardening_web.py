@@ -8,6 +8,8 @@ look like credentials are built at run time and are synthetic.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 pytest.importorskip("fastapi")
@@ -149,3 +151,36 @@ def test_agent_selftest_malformed_spans_are_a_400(tmp_path, monkeypatch) -> None
     for body in ({"trace": {"resourceSpans": "x"}}, {"trace": {"resourceSpans": [1]}}):
         r = client.post("/api/agent/selftest", json=body, headers={"x-agentleak-key": key})
         assert r.status_code == 400, r.text[:200]
+
+
+# ----------------------------------------------------------------------
+# Open items from the first QA round
+# ----------------------------------------------------------------------
+def test_chunked_body_over_the_limit_is_refused(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_MAX_BODY_BYTES", "4096")
+    client = _client(tmp_path, monkeypatch)
+    body = json.dumps({"trace": {"events": [{"channel": "log", "content": "x" * 20000}]}}).encode()
+
+    def chunks():  # no Content-Length: sent with Transfer-Encoding: chunked
+        for i in range(0, len(body), 1000):
+            yield body[i:i + 1000]
+
+    r = client.post("/api/analyze", content=chunks(), headers={"content-type": "application/json"})
+    assert r.status_code == 413, (r.status_code, r.text[:200])
+    small = client.post("/api/analyze", json={"trace": {"events": [{"channel": "log", "content": "hi"}]}})
+    assert small.status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/llms.txt", "/agents.md", "/.well-known/agent-card.json"])
+def test_public_mode_ignores_the_host_header(tmp_path, monkeypatch, path) -> None:
+    client = _client(tmp_path, monkeypatch, public=True)
+    r = client.get(path, headers={"host": "evil.example"})
+    assert r.status_code == 200
+    assert "evil.example" not in r.text
+
+
+def test_configured_public_url_is_used(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_PUBLIC_URL", "https://agents.example.org/")
+    client = _client(tmp_path, monkeypatch, public=True)
+    r = client.get("/llms.txt", headers={"host": "evil.example"})
+    assert "https://agents.example.org/" in r.text and "evil.example" not in r.text
