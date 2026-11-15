@@ -14,6 +14,7 @@ version's complete help output.
 | `schema [NAME]` | Print the schema catalog or one named JSON Schema. |
 | `skill` | Register AgentLeak as a skill so coding agents discover it themselves. |
 | `run` | Analyze a trace or scenario and write reports. |
+| `import FILE` | Import promptfoo, Inspect AI, garak or PyRIT output as traces; `--score` analyzes them. See [interop.md](interop.md). |
 | `report` | Re-render a saved JSON report. |
 | `scan` | Scan source code locally, from ZIP or GitHub. |
 | `redact` | Sanitize sensitive values out of text — detection's defensive counterpart. |
@@ -92,6 +93,23 @@ agentleak run --scenario all --quiet
 finding gates also participate in `blocked`. Exit code 0 means the run and
 configured gates passed; 1 means a gate or operational run failed; 2 means
 invalid usage or an unresolvable input.
+
+`--format sarif` writes SARIF 2.1.0 for GitHub code scanning: one result per
+leaked finding with a stable rule id (`agentleak/trace/<data_type>`), the
+channel and level in its properties, the event as a logical location and, with
+`--trace`, the line of that event in the trace file. Values are never included.
+
+## Import
+
+```bash
+agentleak import promptfoo-results.json --score
+agentleak import logs/2026-11-15_task.eval --from inspect -o traces/
+agentleak import garak.report.jsonl --score --format json,sarif --fail-under 80
+```
+
+Auto-detection prints which format it recognised and why; an unrecognised file
+gets an error listing every format tried. Exit codes follow `run`. See
+[interop.md](interop.md).
 
 ## Scan
 

@@ -34,3 +34,4 @@ traces/*.local.json
 .vscode/
 .claude/
 coverage.json
+.scratch/

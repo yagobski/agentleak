@@ -81,6 +81,9 @@ def version() -> None:
 from .selftest.cli import register as _register_selftest  # noqa: E402
 
 _register_selftest(app)
+from .interop.cli import register as _register_import  # noqa: E402
+
+_register_import(app)
 
 
 # ----------------------------------------------------------------------
@@ -924,7 +927,7 @@ def run(
     pack: str | None = typer.Option(None, "--pack", help="Take --scenario from a bundled pack (e.g. agentleak_bench), or run 'all' of it."),
     trace: str | None = typer.Option(None, "--trace", "-t", help="Analyze a trace JSON file."),
     output: str | None = typer.Option(None, "--output", "-o", help="Report output directory."),
-    fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats."),
+    fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats: json, html, markdown, sarif."),
     fail_under: int | None = typer.Option(None, "--fail-under", help="Exit non-zero if a score is below this."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Less console output."),
 ) -> None:
@@ -978,7 +981,7 @@ def run(
         if fail_under is not None:
             result.fail_below = fail_under
         try:
-            written = write_reports(result, out_dir, formats, basename=result.run_id)
+            written = write_reports(result, out_dir, formats, basename=result.run_id, trace_path=trace)
         except OSError as exc:
             typer.secho(f"✗ could not write reports to {out_dir}: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=1) from exc
@@ -1209,6 +1212,11 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
                 f"'{breach['disclosed_to']}'"
             )
 
+    obs = data.get("observation") or {}
+    if obs.get("unobserved_channels"):
+        typer.secho(f"Observed by {obs.get('source')}: {', '.join(obs.get('observable_channels', []))}"
+                    f" only. Not audited: {', '.join(obs['unobserved_channels'])}.",
+                    fg=typer.colors.BRIGHT_YELLOW)
     if data["channel_risks"]:
         typer.echo("")
         typer.echo("Risk by channel:")

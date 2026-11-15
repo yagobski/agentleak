@@ -75,6 +75,11 @@ def render(data: dict[str, Any]) -> str:
 
     a("## Risk by channel")
     a("")
+    obs = data.get("observation") or {}
+    if obs.get("unobserved_channels"):
+        a(f"> Imported from {obs.get('source')}: only {', '.join(obs.get('observable_channels', []))} "
+          f"could be observed. Not observed, so not audited: {', '.join(obs['unobserved_channels'])}.")
+        a("")
     channel_risks = data.get("channel_risks", [])
     if channel_risks:
         a("| Channel | Level | Findings | Channel RI |")
