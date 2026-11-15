@@ -93,3 +93,16 @@ def test_triage_resolution_is_not_findings_times_decisions() -> None:
     # The newest matching decision is carried over (f5 matches every j with j % 4000 == 5).
     newest = max(j for j in range(50_000) if j % 4000 == 5)
     assert resolved[5].carried and resolved[5].decision["id"] == f"d{newest:05d}"
+
+
+def test_postal_codes_inside_many_emails_are_linear() -> None:
+    """Each postal-code candidate was checked against every email span."""
+    from agentleak.detectors.pii import PIIDetector
+
+    text = "".join(f"x{i}.a1b2c3@ex.co " for i in range(25_000))
+    start = time.perf_counter()
+    found = PIIDetector().detect(text)
+    assert time.perf_counter() - start < 10.0
+    assert not [m for m in found if m.data_type == "address"]
+    # Outside an email the same shape is still a postal code.
+    assert any(m.data_type == "address" for m in PIIDetector().detect("x@ex.co then H2X 1Y4 here"))
