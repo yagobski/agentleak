@@ -269,3 +269,22 @@ def test_secret_assignment_still_matches_prefixed_keys() -> None:
     text = "DB_PASSWORD=hunter2hunter OPENAI_API_KEY: zz9ab7cd aws_secret_access_key = q1w2e3r4t5"
     values = {m.matched_value for m in SecretsDetector().detect(text)}
     assert {"hunter2hunter", "zz9ab7cd", "q1w2e3r4t5"} <= values
+
+
+# ----------------------------------------------------------------------
+# QA-11: deeply nested event content raised RecursionError (500 on selftest)
+# ----------------------------------------------------------------------
+
+
+def test_deeply_nested_content_is_a_value_error() -> None:
+    from agentleak import Trace
+
+    content: object = "x"
+    for _ in range(3000):
+        content = {"k": content}
+    with pytest.raises(ValueError, match="nested"):
+        Trace.from_dict({"events": [{"channel": "log", "content": content}]})
+    shallow: object = "x"
+    for _ in range(50):
+        shallow = {"k": shallow}
+    assert Trace.from_dict({"events": [{"channel": "log", "content": shallow}]}).events
