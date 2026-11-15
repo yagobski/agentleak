@@ -74,3 +74,42 @@ def test_request_cannot_send_a_server_env_var_to_its_own_host(tmp_path, monkeypa
     if public:
         # A hosted deployment never spends the operator's key on a tenant's run.
         assert sent == []
+
+
+# ----------------------------------------------------------------------
+# H-02: a tenant's model URL received the operator's API key from the env
+# ----------------------------------------------------------------------
+def test_unit_key_resolution_matches_hosts_not_substrings(monkeypatch) -> None:
+    from agentleak.agent.llm import resolve_api_key
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "synthetic-or")
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-oa")
+    assert resolve_api_key("https://openrouter.ai/api/v1") == "synthetic-or"
+    assert resolve_api_key("https://evil.example/openrouter.ai/v1") != "synthetic-or"
+    assert resolve_api_key("https://openrouter.ai.evil.example/v1") != "synthetic-or"
+
+
+def test_hosted_execute_never_sends_operator_key_to_tenant_url(tmp_path, monkeypatch) -> None:
+    from agentleak.core import netguard
+
+    operator_key = "synthetic-operator-" + "k" * 20
+    monkeypatch.setenv("OPENAI_API_KEY", operator_key)
+    monkeypatch.setenv("OPENROUTER_API_KEY", operator_key)
+    seen: list[str] = []
+
+    def _capture(request, timeout):  # noqa: ANN001, ANN202
+        import urllib.error
+
+        seen.append(request.get_header("Authorization") or "")
+        raise urllib.error.URLError("no network in tests")
+
+    monkeypatch.setattr(netguard._SAFE_OPENER, "open", _capture)
+    monkeypatch.setattr(netguard, "_assert_safe_http_url", lambda url: None)
+    client = _client(tmp_path, monkeypatch, public=True)
+    pid = client.post("/api/projects", json={"name": "p", "config": {"agent": {
+        "base_url": "https://tenant.example/openrouter.ai/v1", "model": "m", "api_key": ""}}}).json()["id"]
+    sid = client.get("/api/scenarios").json()
+    sid = (sid.get("scenarios") if isinstance(sid, dict) else sid)[0]["id"]
+    client.post(f"/api/projects/{pid}/execute", json={"scenario_id": sid, "mode": "live"})
+    assert seen, "the live run should have tried the tenant endpoint"
+    assert all(operator_key not in h for h in seen), seen
