@@ -19,7 +19,8 @@ pooled; every report lists both denominators.
 
 Ground truth per source
 -----------------------
-* ``privacylens_ci`` / ``agentdojo_exfil`` — the pack's canaries (the exact
+* ``privacylens_ci`` / ``agentdojo_exfil`` / ``agentsocialbench_ma`` /
+  ``mcptox_recipient_hijack`` — the pack's canaries (the exact
   facts or values that must not travel).
 * ``agentleak_bench`` — every field value in the scenario's ``private_vault``
   (string form, at least four characters).
@@ -61,6 +62,8 @@ FAILURE_MODES: dict[str, str] = {
     "agentleak_bench": "pattern",
     "privacylens_ci": "norm",
     "agentdojo_exfil": "hijack",
+    "agentsocialbench_ma": "norm",
+    "mcptox_recipient_hijack": "hijack",
 }
 
 BUILTIN_SOURCE = "builtin"
