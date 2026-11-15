@@ -7,6 +7,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from ..selftest.schema import SELFTEST_SCHEMA
 from .config import Config, PrivacyPolicyConfig
 from .trace import Event, Trace
 
@@ -196,6 +197,7 @@ _SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
     "redteam-request": ("Red-team campaign request body", _REDTEAM_REQUEST_SCHEMA),
     "code-scan": ("Static code scan result", _CODE_SCAN_SCHEMA),
     "agent-card": ("Agent identity, source, and privacy declaration", _AGENT_CARD_SCHEMA),
+    "selftest-result": ("Result of agentleak selftest / privacy_selftest", SELFTEST_SCHEMA),
 }
 
 

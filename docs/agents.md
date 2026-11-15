@@ -1,5 +1,12 @@
 # Running agents (live & scripted)
 
+> **If you are an agent testing yourself**, you want
+> [selftest-agents.md](selftest-agents.md): `agentleak selftest --trace run.json`
+> scores a run you recorded, and `agentleak selftest --cmd "python my_agent.py"`
+> runs your own agent on a canary battery, locally, with one JSON result. This
+> page covers something else: the platform running a model *it* drives against a
+> stored scenario.
+
 A **run** can come from analyzing a trace you already have *or* from **executing
 an agent** against a scenario and capturing the trace it produces. The second is
 how you turn "I added a project" into "I tested a real agent against real

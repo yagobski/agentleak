@@ -99,8 +99,8 @@ The final output is clean — and irrelevant. The health identifier crossed
 two internal channels at L4.
 
 **Loop:** change the researcher to pass a case reference instead of the
-raw identifier (`redact` the note first if you must forward text), re-run
-`check_trace` on the corrected trace, confirm `"verdict": "Pass"`. Only
+raw identifier (`privacy_redact` the note first if you must forward text), re-run
+`privacy_selftest` on the corrected trace, confirm `"verdict": "Pass"`. Only
 then emit the summary.
 
 ## 3. CI gate: block the merge on L4
@@ -108,18 +108,15 @@ then emit the summary.
 In the pipeline, after the agent's regression traces are produced:
 
 ```bash
-agentleak run --trace traces/*.json --fail-on L4 --format json
+agentleak selftest --trace traces/ --fail-on L4 --json > selftest.json
 ```
 
 - Exit 0: no L4 findings — merge proceeds.
-- Non-zero exit: an L4 leaked somewhere in the run — the build fails and
-  the JSON report names the channel, the data type, and the event.
+- Exit 1: an L4 leaked somewhere in the run — the build fails and
+  the JSON document names the channel, the data type, and the event index.
+- Exit 2/3/4: usage error, incomplete input, internal error — not a pass.
 
-For a fast deterministic gate (no model calls, sub-second per trace):
-
-```bash
-agentleak run --trace traces/*.json --fail-on L4 --mode fast
-```
-
-Promote to `--mode hybrid` on the nightly run if you want the LLM judge
-to catch paraphrased leaks the patterns miss.
+The default is a fast deterministic gate (no model calls). Set
+`detection.mode: hybrid` in an `agentleak.yaml` passed with `--config` on the
+nightly run if you want the LLM judge to catch paraphrased leaks the patterns
+miss; it sends text to the model endpoint you configure.

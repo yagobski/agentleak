@@ -6,6 +6,9 @@ startCommand:
   type: stdio
   configSchema:
     # AgentLeak runs fully locally: no configuration, account or API key needed.
+    # Tools: privacy_selftest (the self-test loop), privacy_selftest_status,
+    # privacy_explain_finding, privacy_list_scenarios, privacy_get_scenario,
+    # privacy_preflight, privacy_scan_code, privacy_check_trace, privacy_redact.
     type: object
     properties: {}
   commandFunction:

@@ -1981,6 +1981,29 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             "next_steps": _next_steps(result, scan),
         }
 
+    @app.post("/api/agent/selftest")
+    def agent_selftest(
+        payload: dict[str, Any] = Body(...),
+        x_agentleak_key: str = Header(default="", alias="x-agentleak-key"),
+    ) -> dict[str, Any]:
+        """Self-test loop step returning the document `agentleak selftest --json` prints.
+
+        Body: ``trace`` in any format the CLI accepts, or ``scenario_id``;
+        optional ``fail_on`` (L1..L4). The run is saved to the project and
+        ``delta`` compares it with the project's previous run.
+        """
+        from ..selftest.http import selftest_http
+
+        project = _project_from_key(str(payload.get("api_key") or "") or x_agentleak_key)
+        _enforce_quota(project.get("owner_id", ""))
+        db.record_api_usage(project["id"], "/api/agent/selftest")
+        db.meter_usage(project.get("owner_id", ""), "/api/agent/selftest")
+        try:
+            return selftest_http(payload, project=project, store=db,
+                                 analyze=_analyze, resolve_trace=_trace_from_payload)
+        except (ValueError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     # -- red-team (adversarial batch testing) --------------------------
     @app.get("/api/redteam/catalog")
     def redteam_catalog() -> dict[str, Any]:

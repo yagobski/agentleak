@@ -57,7 +57,7 @@ working around it.
 
 ```bash
 agentleak version
-agentleak scan --scenario healthcare_patient_summary
+agentleak run --scenario healthcare_patient_summary
 ```
 
 Expected: a Risk Index, a per-channel breakdown, and a report path. If you see
@@ -107,7 +107,7 @@ result, because `.env` files and cloud keys routinely end up in tool calls and l
 If the user wants builds to fail on regressions:
 
 ```bash
-agentleak run --trace traces/latest.json --fail-under 70
+agentleak selftest --trace traces/ --fail-on L4
 ```
 
 Exit code 1 when the privacy score is below 70, and also whenever an L4 value leaks

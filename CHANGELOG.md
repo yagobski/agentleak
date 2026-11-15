@@ -163,6 +163,65 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   `docs/install.md` no longer uses a nonexistent `--fail-on`; README no longer
   lists a "PII Probes" pack; `redact --style token` is documented.
 
+<!-- BEGIN next/selftest -->
+### Added — agent self-test
+
+- **`agentleak selftest`**: one local command for an agent to test itself, no
+  account, no network. No arguments: a seconds-long engine check that ends with
+  the next command to run. `--trace FILE|DIR|-` scores recorded traces (stdin
+  included); `--cmd "AGENT"` runs the agent once per built-in scenario over a
+  documented stdin/stdout JSON protocol (`agentleak.selftest.v1`, argv without a
+  shell unless `--shell`, per-scenario timeout and process isolation);
+  `--code PATH` reuses the static scan; `--status`, `--explain FINGERPRINT`,
+  `--list-scenarios`, `--get-scenario ID`.
+- **Canary battery**: five scenarios whose records carry freshly generated,
+  format-valid synthetic canaries (email, phone, SSN-format, record number,
+  Luhn-valid card, mod-97 IBAN, AWS- and GitHub-format keys), matched exactly on
+  every disclosure channel.
+- **One versioned result document** (`schema_version` 1.0, `agentleak schema
+  selftest-result`): `passed`, `outcome`, `exit_code`, `verdict`, `risk_index`,
+  `privacy_score`, per-channel status, detection tiers actually run, redacted
+  findings with fingerprints and event indexes, ordered `next_steps` with `fix`
+  objects that use `agentleak.defenses.Sanitizer`, `delta` against the previous
+  local self-test, and `rerun`. Fields shared with `/api/agent/improve` keep
+  their names and meaning. JSON when piped, with `--json` or `AGENTLEAK_JSON=1`.
+  Exit codes: 0 pass, 1 finding at or above `--fail-on` (default L3), 2 usage,
+  3 incomplete, 4 internal error.
+- **MCP tools** `privacy_selftest`, `privacy_selftest_status`,
+  `privacy_explain_finding`, `privacy_list_scenarios`, `privacy_get_scenario`,
+  with described parameters, tool annotations and structured content; paths are
+  confined to the server root. The server now reports its version.
+- **Trace formats** auto-detected by the self-test: OpenAI Responses / Agents
+  SDK items (`to_input_list()`, handoffs as inter-agent messages), Claude Code
+  session and sub-agent transcripts, OpenTelemetry GenAI semantic-convention
+  spans, chat-completions messages as a bare list (tool names recovered from
+  `tool_call_id`), AgentLeak event JSON lines.
+- **`POST /api/agent/selftest`** returns the same document from a server;
+  `AgentSelfClient.selftest(..., document=True)` and
+  `AgentSelfClient.for_local_server()` (key from a `--local` server, no email).
+- Recipes: Claude Code `Stop` hook, git pre-commit hook, GitHub Actions
+  workflow, an `AGENTS.md` snippet; a leaky toy agent and a scripted loop that
+  fixes it to green (`examples/selftest/`).
+
+### Fixed
+
+- The keyname and secret-assignment detectors reported AgentLeak's own
+  Sanitizer placeholders (`ssn: [REDACTED_SSN]`, `TOKEN=[REDACTED_…]`) as
+  leaks, so applying the recommended fix could never pass.
+- The MRN pattern captured the word "number" from a redacted
+  `medical record number:` field.
+- A canary shaped like a credential (an AWS-format key) was dropped by the
+  "match inside a credential" filter, losing exact proof of the leak.
+- `SKILL.md`, `llms.txt`, the `privacy-preflight` skill and `docs/install.md`
+  showed commands that do not exist (`scan --trace`, `scan --scenario`,
+  `run --fail-on`, `run --redteam`, `agentleak demo`) and MCP tool names
+  without their `privacy_` prefix; a test now parses every documented command.
+- Published figures in `SKILL.md` aligned with the skill's own reference sheet
+  (4,979 validated traces; 68.8% vs 27.2%; 41.7% missed); `docs/mcp.md` no
+  longer claims an upload path that does not exist, and counts 266 bundled
+  scenarios, not 283.
+<!-- END next/selftest -->
+
 ## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.

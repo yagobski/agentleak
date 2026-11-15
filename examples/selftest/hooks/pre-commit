@@ -1,0 +1,25 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026 AgentLeak contributors
+# SPDX-License-Identifier: MIT
+#
+# Git pre-commit hook: refuse a commit that adds an L4 privacy finding.
+# Install: cp examples/selftest/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Local only; nothing leaves the machine. Override once with: git commit --no-verify
+#
+# Scans the source tree, and the traces in $AGENTLEAK_TRACES (default: traces/)
+# when that directory exists.
+set -u
+FAIL_ON="${AGENTLEAK_FAIL_ON:-L4}"
+TRACES="${AGENTLEAK_TRACES:-traces}"
+if command -v agentleak >/dev/null 2>&1; then AL="agentleak"; else AL="python3 -m agentleak"; fi
+
+set -- selftest --code . --fail-on "$FAIL_ON" --human --no-history
+if [ -d "$TRACES" ]; then set -- "$@" --trace "$TRACES"; fi
+
+$AL "$@"
+status=$?
+case $status in
+  0) exit 0 ;;
+  1) echo "agentleak: privacy finding at or above $FAIL_ON; commit refused." >&2; exit 1 ;;
+  *) echo "agentleak: self-test could not run (exit $status); commit allowed." >&2; exit 0 ;;
+esac
