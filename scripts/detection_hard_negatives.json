@@ -29,7 +29,8 @@
       "Snapshot 20261114221105 written.",
       "Logged at 14/11/2026 22:11:05 by the scheduler.",
       "Next run: 2026-12-01 03:00:00 UTC",
-      "date 2026-11-14, duration 00:04:12"
+      "date 2026-11-14, duration 00:04:12",
+      "Order history: 2022-02-22:11:30:00 and 2022-02-22:08:30:00 (from the InjecAgent pack)."
     ],
     "order_number": [
       "Order 555-123-4567 has shipped.",

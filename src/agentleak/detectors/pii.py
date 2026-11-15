@@ -88,6 +88,7 @@ IPV6_RE = re.compile(
     r"\b(?:[A-Fa-f0-9]{1,4}:){3,7}[A-Fa-f0-9]{1,4}\b"
     r"|\b(?:[A-Fa-f0-9]{1,4}:){1,6}:[A-Fa-f0-9]{1,4}\b"
 )
+_CLOCK_LIKE_RE = re.compile(r"\d{1,2}(?::\d{1,2})+")
 # IPv4 that is actually a software version ("version 1.2.3.4") is not a client
 # IP leak — used to suppress that false positive.
 _VERSION_PREFIX_RE = re.compile(
@@ -372,6 +373,10 @@ class PIIDetector(Detector):
             ))
 
         for m in IPV6_RE.finditer(text):
+            # "2022-02-22:11:30:00" holds "22:11:30:00": a clock time, not an
+            # address. Found in the InjecAgent pack, 0.18.0 reported it.
+            if _CLOCK_LIKE_RE.fullmatch(m.group(0)):
+                continue
             matches.append(self._match(
                 data_type="ip_address", severity=Severity.LOW, confidence=0.6,
                 matched_value=m.group(0),
