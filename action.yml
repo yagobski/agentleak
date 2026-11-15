@@ -53,6 +53,22 @@ inputs:
     description: "Directory to run in."
     required: false
     default: "."
+  sarif:
+    description: "Write findings as SARIF 2.1.0 to this path (off when empty). Upload it with github/codeql-action/upload-sarif; that job needs `security-events: write`."
+    required: false
+    default: ""
+  pr-comment:
+    description: "Post or update one sticky pull-request comment with the verdict and per-channel table (needs `pull-requests: write`)."
+    required: false
+    default: "false"
+  baseline:
+    description: "A JSON report (or a directory of them) from the base branch; the PR comment then lists new and resolved findings."
+    required: false
+    default: ""
+  github-token:
+    description: "Token used only to post the PR comment."
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   score:
@@ -70,6 +86,12 @@ outputs:
   report:
     description: "Path to the JSON report produced by the gate."
     value: ${{ steps.gate.outputs.report }}
+  sarif:
+    description: "Path to the SARIF file, when the sarif input is set."
+    value: ${{ steps.gate.outputs.sarif }}
+  comment:
+    description: "created | updated | failed | skipped:<why>, when pr-comment is true."
+    value: ${{ steps.gate.outputs.comment }}
 
 runs:
   using: composite
@@ -106,4 +128,8 @@ runs:
         AL_CONFIG: ${{ inputs.config }}
         AL_ANNOTATE: ${{ inputs.annotate }}
         AL_SUMMARY: ${{ inputs.comment-summary }}
+        AL_SARIF: ${{ inputs.sarif }}
+        AL_PR_COMMENT: ${{ inputs.pr-comment }}
+        AL_BASELINE: ${{ inputs.baseline }}
+        AL_GITHUB_TOKEN: ${{ inputs.github-token }}
       run: python "$GITHUB_ACTION_PATH/scripts/gh_gate.py"

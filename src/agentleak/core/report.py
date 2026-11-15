@@ -196,6 +196,11 @@ class AnalysisResult:
     subject_evaluation: Any = None
     #: The trace's own task_success, when the caller declared one.
     task_success: bool | None = None
+    #: What the trace's source could observe (``trace.metadata["observation"]``,
+    #: set by the importers). A black-box red-team log sees only the prompt and
+    #: the reply; the report carries that so silence on the other channels is
+    #: not read as a clean audit of them.
+    observation: dict[str, Any] | None = None
 
     # -- convenience accessors (used by the SDK and reporters) -----------
     @property
@@ -335,6 +340,7 @@ class AnalysisResult:
             "warnings": list(self.warnings),
             "privacy_policy": self.policy_evaluation.to_dict(),
             **({"utility": self.utility()} if self.task_success is not None else {}),
+            **({"observation": self.observation} if self.observation else {}),
             **(
                 {"cross_session": self.subject_evaluation.to_dict()}
                 if self.subject_evaluation is not None

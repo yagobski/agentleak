@@ -101,6 +101,48 @@ All notable changes to AgentLeak OSS are documented here. The format follows
   by masked value.
 <!-- END next2/gui -->
 
+<!-- BEGIN next2/interop -->
+### Added
+
+- `agentleak import FILE [--from auto|promptfoo|inspect|garak|pyrit] [-o OUT] [--score]`
+  turns the output of promptfoo (eval results, with OpenTelemetry traces when
+  present), Inspect AI (`.eval` and `.json` logs), garak (`report.jsonl`) and
+  PyRIT (conversation JSON) into AgentLeak traces, and with `--score` analyzes
+  them. Auto-detection says what it recognised and why; an unrecognised file
+  gets an error listing every format tried. Each importer was built against real
+  output of the tool (promptfoo 0.125.1, Inspect AI 0.3.290, garak 0.17.1,
+  PyRIT 1.2.0). See `docs/interop.md`.
+- Imported traces record their provenance (tool, version, source SHA-256,
+  record id) and what their source could observe, in a new optional
+  `Trace.metadata`. Reports scored from them carry an `observation` block, and
+  the console, Markdown and HTML reports name the channels that were not
+  observed, so a black-box import (garak, promptfoo without tracing) is never
+  presented as a clean audit of tool calls or memory.
+- `agentleak run --format sarif` (and `report --format sarif`): SARIF 2.1.0 for
+  trace findings, with rule ids `agentleak/trace/<data_type>`, the channel and
+  level on each result, the event as location and no values.
+- GitHub Action: optional `sarif` output for code scanning
+  (`security-events: write`) and an optional sticky pull-request comment
+  (`pr-comment`, `pull-requests: write`) with the verdict, the per-channel
+  table and, given a `baseline` report, new and resolved findings.
+
+### Fixed
+
+- `integrations.openai_swarm.trace_from_messages` dropped every
+  `function_call`, `function_call_output`, `reasoning` and handoff item of an
+  OpenAI Agents SDK `to_input_list()`; a leak passed to a tool scored as a
+  clean Pass. It now reads them with the converter the self-test uses. It also
+  records `system`/`developer` messages as `user_input`.
+- `integrations.otel.trace_from_spans` produced no event for OpenTelemetry
+  GenAI semantic-convention spans (`execute_tool`, `chat`, `invoke_agent` …).
+  It now reads them, alone or mixed with OpenInference spans. The promptfoo
+  assertion with `require_trace: true` therefore grades such traces instead of
+  reporting INCOMPLETE.
+- The Action's job summary and step outputs now escape report values (data
+  types, channels, file names) and run the CLI between `stop-commands`
+  markers.
+<!-- END next2/interop -->
+
 ## [0.19.0] - 2026-11-15
 
 Research workflow, agent self-test, wider detection, a rebuilt GUI and a round

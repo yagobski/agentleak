@@ -307,7 +307,9 @@ Use the generic recorder anywhere, or the framework adapters:
 - **MCP** — `agentleak.integrations.mcp.trace_from_mcp`
 - **Generic** — `agentleak.integrations.generic.TraceRecorder`
 
-See [docs/integrations.md](docs/integrations.md).
+See [docs/integrations.md](docs/integrations.md). Already ran promptfoo, Inspect AI,
+garak or PyRIT? `agentleak import <their output> --score` audits the same run
+channel by channel; see [docs/interop.md](docs/interop.md).
 
 ## Privacy guarantees
 
@@ -340,6 +342,7 @@ there.
 - [Encoded and obscured leaks](docs/encoded-leaks.md) — base64, hex, URL-encoding, reversal, ROT13 and split copies passed between agents, measured before and after
 - [Contextual integrity](docs/contextual-integrity.md) — judge the flow (data × sender × recipient × purpose), not the presence
 - [Runtime gateway](docs/runtime-gateway.md) — `agentleak proxy`: allow, redact or block a tool call before it is sent — and judge its result on the way back, swap values for pseudonyms, pin tool definitions, sign the evidence log
+- [Interop](docs/interop.md) — `agentleak import`: score promptfoo, Inspect AI, garak and PyRIT output; SARIF for trace findings
 - [Model gateways and eval harnesses](docs/integrations.md#5-on-the-traffic-path-model-gateways-and-eval-harnesses) — `agentleak llm-proxy` (OpenAI-compatible), a LiteLLM guardrail, and a promptfoo assertion
 - [Cross-session leaks](docs/cross-session.md) — whose data is this, and did it end up in somebody else's session
 - [AgentRisk scoring](docs/agentrisk.md) — deterministic risk, vaults, channels and thresholds

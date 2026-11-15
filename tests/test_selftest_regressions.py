@@ -8,7 +8,8 @@
 2. `medical record number: [REDACTED_…]` captured the word "number" as an MRN.
 3. A canary shaped like a credential (an AWS-format key) was dropped by the
    "match inside a credential" filter, so canary mode silently lost its proof.
-4. Format converters: OpenAI Agents SDK items and OTel GenAI spans lost events.
+4. Format converters: OpenAI Agents SDK items and OTel GenAI spans lost events
+   (in the SDK adapters too, until they moved to the shared converters).
 """
 
 from __future__ import annotations
@@ -52,18 +53,20 @@ def test_a_redacted_record_number_label_is_not_an_mrn():
 
 
 def test_a_credential_shaped_canary_is_kept():
-    key = "AKIAQ7X3NB5PLW2KDJ4M"
+    key = "AKIA" + "Q7X3NB5PLW2KDJ4M"  # built at run time: no key-shaped literal in the repo
     trace = Trace.from_dict({"events": [{"channel": "generated_file", "content": f"KEY={key}"}]})
     result = AgentLeakRunner().analyze(trace, canary_set=CanarySet(realistic=[key]))
     types = {f.data_type for f in result.leaked_findings()}
     assert {"canary", "aws_access_key"} <= types
 
 
-def test_agents_sdk_items_keep_tool_calls_that_the_chat_adapter_drops():
+def test_agents_sdk_items_keep_tool_calls_in_both_entry_points():
     items = json.loads((FIXTURES / "agents_sdk_items.json").read_text())
-    old = trace_from_messages(items)
-    assert not [e for e in old.events if e.channel_value == "tool_call"]  # the gap
+    # The SDK adapter used to keep 2 of these 6 events (the gap closed in 0.20).
+    adapter = trace_from_messages(items)
     new = formats.from_openai_responses(items, run_id="r")
+    assert [(e.channel_value, e.target) for e in adapter.events] == \
+        [(e.channel_value, e.target) for e in new.events]
     calls = [e for e in new.events if e.channel_value == "tool_call"]
     assert [e.target for e in calls] == ["lookup_customer", "send_crm_note"]
     assert [e.channel_value for e in new.events].count("tool_response") == 2
@@ -80,8 +83,11 @@ def test_agents_sdk_handoff_is_an_inter_agent_message():
 
 def test_otel_genai_spans_produce_events():
     payload = json.loads((FIXTURES / "otel_genai_otlp.json").read_text())
-    assert trace_from_spans(payload).events == []  # the gap in the OpenInference adapter
+    # The OpenInference adapter used to return no event at all (closed in 0.20).
+    adapter = trace_from_spans(payload)
     loaded = formats.load_any(payload)
+    assert [e.channel_value for e in adapter.events] == \
+        [e.channel_value for e in loaded.trace.events]
     assert loaded.format == "otel_genai"
     channels = [e.channel_value for e in loaded.trace.events]
     assert channels.count("tool_call") == 1  # the output-message call is not counted twice

@@ -21,7 +21,8 @@ format id              what it is
 
 Every converter is a faithful mapping, never a synthesis: an event exists only
 when the input recorded one. Content in a trace is data to analyze; nothing in
-it is ever executed or followed.
+it is ever executed or followed. The converters themselves live in
+:mod:`agentleak.interop.convert`, shared with the SDK adapters.
 
 How each shape was verified is recorded in ``docs/reports/SELFTEST-REPORT.md``; the test
 fixtures under ``tests/fixtures/selftest/`` were produced by the real SDKs
@@ -37,24 +38,15 @@ from pathlib import Path
 from typing import Any
 
 from ..core.trace import Channel, Trace
+from ..interop import convert as _convert
 
 #: Refuse to load anything larger: a trace this size is almost certainly not one.
 MAX_BYTES = 64 * 1024 * 1024
 TRACE_SUFFIXES = (".json", ".jsonl", ".ndjson")
 
-_RESPONSES_TYPES = {
-    "function_call", "function_call_output", "message", "reasoning",
-    "computer_call", "computer_call_output", "web_search_call", "file_search_call",
-    "custom_tool_call", "custom_tool_call_output", "mcp_call", "local_shell_call",
-    "local_shell_call_output", "code_interpreter_call",
-}
+_RESPONSES_TYPES = _convert.RESPONSES_TYPES
 _CHANNELS = {c.value for c in Channel}
-_GENAI_OPS = {
-    "chat", "text_completion", "generate_content", "execute_tool", "invoke_agent",
-    "create_agent", "embeddings", "retrieval", "invoke_workflow", "invoke_runner",
-    "plan", "fetch_response", "realtime_inference",
-}
-_FILE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+_GENAI_OPS = _convert.GENAI_OPS
 
 
 class TraceFormatError(ValueError):
@@ -207,332 +199,16 @@ def _items_of(data: Any) -> list[Any] | None:
 
 
 # ----------------------------------------------------------------------
-# converters
+# converters: one implementation, shared with the SDK adapters and importers
 # ----------------------------------------------------------------------
-def _text_of(content: Any) -> str:
-    """Flatten message content (string, or a list of typed parts) to text."""
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for part in content:
-            if isinstance(part, dict):
-                text = part.get("text") or part.get("content") or part.get("refusal")
-                if isinstance(text, (str, list)):
-                    parts.append(_text_of(text))
-            elif isinstance(part, str):
-                parts.append(part)
-        return "\n".join(p for p in parts if p)
-    if isinstance(content, dict):
-        return _text_of(content.get("text") or content.get("content"))
-    return str(content)
-
-
-def from_openai_chat(messages: list[dict[str, Any]], *, run_id: str) -> Trace:
-    """Chat-completions messages -> trace.
-
-    ``system``/``user`` -> user_input; assistant ``tool_calls`` -> tool_call
-    (target is the function name); ``tool``/``function`` -> tool_response
-    (the tool name is recovered from ``tool_call_id`` when the message has no
-    ``name``); assistant text -> inter_agent_message, except the last assistant
-    text, which is the final_output.
-    """
-    trace = Trace(run_id=run_id, agent_name="chat_agent")
-    names: dict[str, str] = {}
-    last_text = max(
-        (i for i, m in enumerate(messages)
-         if m.get("role") == "assistant" and _text_of(m.get("content")).strip()),
-        default=-1,
-    )
-    for i, m in enumerate(messages):
-        role = str(m.get("role") or "")
-        text = _text_of(m.get("content"))
-        if role in ("system", "developer", "user"):
-            if text.strip():
-                trace.add_event("user_input", text, source=role, target="agent")
-        elif role in ("tool", "function"):
-            call_id = str(m.get("tool_call_id") or "")
-            tool = str(m.get("name") or names.get(call_id) or "tool")
-            trace.add_event("tool_response", text, source=tool, target="agent",
-                            metadata={"tool_name": tool, "tool_call_id": call_id})
-        elif role == "assistant":
-            calls = list(m.get("tool_calls") or [])
-            if isinstance(m.get("function_call"), dict):
-                calls.append({"function": m["function_call"]})
-            for call in calls:
-                fn = call.get("function") or {} if isinstance(call, dict) else {}
-                tool = str(fn.get("name") or "tool")
-                if isinstance(call, dict) and call.get("id"):
-                    names[str(call["id"])] = tool
-                trace.add_event("tool_call", str(fn.get("arguments") or ""), source="agent",
-                                target=tool, metadata={"tool_name": tool,
-                                                       "tool_call_id": call.get("id") if isinstance(call, dict) else None})
-            if text.strip():
-                if i == last_text:
-                    trace.add_event("final_output", text, source="agent", target="user")
-                else:
-                    trace.add_event("inter_agent_message", text, source="agent", target="agent")
-    return trace
-
-
-def from_openai_responses(items: list[dict[str, Any]], *, run_id: str) -> Trace:
-    """Responses API / OpenAI Agents SDK items -> trace.
-
-    Verified against ``RunResult.to_input_list()`` from openai-agents 0.24 and
-    the ``openai`` 3.x Responses types:
-
-    * ``{"role": "user"|"system"|"developer", "content": ...}`` -> user_input
-    * ``function_call`` (``name``, ``arguments``, ``call_id``) -> tool_call;
-      a ``transfer_to_<agent>`` call is an agent handoff -> inter_agent_message
-    * ``function_call_output`` (``call_id``, ``output``) -> tool_response
-    * ``reasoning`` summaries -> log
-    * assistant ``message`` (``content[].output_text``) -> inter_agent_message,
-      the last one -> final_output
-    * other ``*_call`` items (web search, computer, shell, MCP) -> tool_call,
-      their ``*_output`` -> tool_response
-    """
-    trace = Trace(run_id=run_id, agent_name="responses_agent")
-    names: dict[str, str] = {}
-    handoffs: set[str] = set()
-    agent = "agent"
-
-    def is_assistant_message(item: dict[str, Any]) -> bool:
-        return item.get("role") == "assistant" and item.get("type", "message") == "message"
-
-    last_msg = max(
-        (i for i, it in enumerate(items) if is_assistant_message(it) and _text_of(it.get("content")).strip()),
-        default=-1,
-    )
-    for i, item in enumerate(items):
-        kind = str(item.get("type") or "")
-        role = item.get("role")
-        if role in ("user", "system", "developer") and kind in ("", "message"):
-            text = _text_of(item.get("content"))
-            if text.strip():
-                trace.add_event("user_input", text, source=str(role), target=agent)
-        elif kind == "function_call" or kind == "custom_tool_call":
-            name = str(item.get("name") or "tool")
-            call_id = str(item.get("call_id") or item.get("id") or "")
-            names[call_id] = name
-            args = item.get("arguments", item.get("input", ""))
-            if name.startswith("transfer_to_"):
-                handoffs.add(call_id)
-                peer = name.removeprefix("transfer_to_")
-                trace.add_event("inter_agent_message", str(args or ""), source=agent, target=peer,
-                                metadata={"handoff": True, "tool_name": name, "call_id": call_id})
-                agent = peer
-            else:
-                trace.add_event("tool_call", str(args or ""), source=agent, target=name,
-                                metadata={"tool_name": name, "call_id": call_id})
-        elif kind.endswith("_call_output"):
-            call_id = str(item.get("call_id") or "")
-            if call_id in handoffs:
-                continue
-            name = names.get(call_id, kind.removesuffix("_output"))
-            output = item.get("output", "")
-            trace.add_event("tool_response", output if isinstance(output, str) else json.dumps(output),
-                            source=name, target=agent, metadata={"tool_name": name, "call_id": call_id})
-        elif kind.endswith("_call"):
-            name = kind.removesuffix("_call")
-            payload = {k: v for k, v in item.items() if k not in ("id", "status", "type")}
-            call_id = str(item.get("call_id") or item.get("id") or "")
-            names[call_id] = name
-            trace.add_event("tool_call", payload, source=agent, target=name,
-                            metadata={"tool_name": name, "call_id": call_id})
-        elif kind == "reasoning":
-            text = _text_of(item.get("summary")) or _text_of(item.get("content"))
-            if text.strip():
-                trace.add_event("log", text, source=agent, target="reasoning")
-        elif is_assistant_message(item):
-            text = _text_of(item.get("content"))
-            if text.strip():
-                if i == last_msg:
-                    trace.add_event("final_output", text, source=agent, target="user")
-                else:
-                    trace.add_event("inter_agent_message", text, source=agent, target="agent")
-    return trace
-
-
-def from_claude_code(records: list[dict[str, Any]], *, run_id: str) -> Trace:
-    """A Claude Code transcript (one JSON object per line) -> trace.
-
-    Main session: the human's turns -> user_input; assistant text -> final_output
-    (it is shown to the user as it is written). Sub-agent transcript
-    (``isSidechain: true``): the task string from the main agent and the
-    sub-agent's text -> inter_agent_message. In both: ``thinking`` -> log;
-    ``tool_use`` -> tool_call, except Write/Edit/MultiEdit/NotebookEdit ->
-    generated_file (the content written, targeted at the file path);
-    ``tool_result`` -> tool_response. Other record types (summary, system,
-    attachment, snapshots) carry no agent action and are skipped.
-    """
-    trace = Trace(run_id=run_id, agent_name="claude_code")
-    tool_names: dict[str, str] = {}
-    sidechain = any(r.get("isSidechain") for r in records if isinstance(r, dict))
-    me = "subagent" if sidechain else "claude_code"
-    boss = "main_agent" if sidechain else "user"
-    for record in records:
-        if not isinstance(record, dict) or record.get("type") not in ("user", "assistant"):
-            continue
-        message = record.get("message") or {}
-        role = message.get("role") or record.get("type")
-        content = message.get("content")
-        if isinstance(content, str):
-            if role == "user":
-                channel = "inter_agent_message" if sidechain else "user_input"
-                trace.add_event(channel, content, source=boss, target=me)
-            elif content.strip():
-                channel = "inter_agent_message" if sidechain else "final_output"
-                trace.add_event(channel, content, source=me, target=boss)
-            continue
-        for block in content or []:
-            if not isinstance(block, dict):
-                continue
-            kind = block.get("type")
-            if kind == "text" and str(block.get("text") or "").strip():
-                if role == "user":
-                    trace.add_event("inter_agent_message" if sidechain else "user_input",
-                                    block["text"], source=boss, target=me)
-                else:
-                    trace.add_event("inter_agent_message" if sidechain else "final_output",
-                                    block["text"], source=me, target=boss)
-            elif kind == "thinking" and str(block.get("thinking") or "").strip():
-                trace.add_event("log", block["thinking"], source=me, target="reasoning")
-            elif kind == "tool_use":
-                name = str(block.get("name") or "tool")
-                tool_input = block.get("input") or {}
-                tool_names[str(block.get("id") or "")] = name
-                if name in _FILE_TOOLS and isinstance(tool_input, dict):
-                    written = (tool_input.get("content") or tool_input.get("new_string")
-                               or tool_input.get("new_source") or tool_input.get("edits") or "")
-                    trace.add_event("generated_file", written if isinstance(written, (str, list, dict)) else str(written),
-                                    source=me, target=str(tool_input.get("file_path") or tool_input.get("notebook_path") or "file"),
-                                    metadata={"tool_name": name, "tool_use_id": block.get("id")})
-                else:
-                    trace.add_event("tool_call", tool_input, source=me, target=name,
-                                    metadata={"tool_name": name, "tool_use_id": block.get("id")})
-            elif kind == "tool_result":
-                name = tool_names.get(str(block.get("tool_use_id") or ""), "tool")
-                trace.add_event("tool_response", _text_of(block.get("content")), source=name, target=me,
-                                metadata={"tool_name": name, "tool_use_id": block.get("tool_use_id")})
-    return trace
-
-
-def _maybe_json(value: Any) -> Any:
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return value
-    return value
-
-
-def from_otel_genai(spans: list[Any], *, run_id: str) -> Trace:
-    """OpenTelemetry GenAI semantic-convention spans -> trace.
-
-    Verified against semantic-conventions-genai (execute-tool.md,
-    client-inference.md, gen-ai-output-messages.json) and spans emitted by the
-    OpenTelemetry Python SDK:
-
-    * ``execute_tool``: ``gen_ai.tool.call.arguments`` -> tool_call,
-      ``gen_ai.tool.call.result`` -> tool_response (both opt-in in the
-      convention: without them the span carries no content and nothing is
-      recorded — the report says so)
-    * inference (``chat`` …): ``gen_ai.system_instructions`` and
-      ``gen_ai.input.messages`` of the first span -> user_input;
-      ``gen_ai.output.messages`` text parts -> inter_agent_message, the last
-      one -> final_output; ``tool_call`` parts are not recorded twice when an
-      ``execute_tool`` span carries the same call id
-    * ``invoke_agent`` spans only give structure; their content, when present,
-      is read the same way as an inference span
-    Values may be structured (AnyValue) or JSON strings; both are read.
-    """
-    from ..integrations.otel import _ms
-
-    trace = Trace(run_id=run_id, agent_name="otel_genai_agent")
-    rows = []
-    for span in spans:
-        attrs = _span_attrs(span)
-        start = _ms(span.get("startTimeUnixNano") if isinstance(span, dict) else None)
-        rows.append((start, attrs, span))
-    if all(r[0] is not None for r in rows):
-        rows.sort(key=lambda r: r[0] or 0.0)
-    executed_ids = {
-        str(a.get("gen_ai.tool.call.id")) for _, a, _ in rows
-        if a.get("gen_ai.operation.name") == "execute_tool" and a.get("gen_ai.tool.call.id")
-    }
-    seen_input = False
-    outputs: list[int] = []
-    for _, attrs, _span in rows:
-        op = str(attrs.get("gen_ai.operation.name") or "")
-        agent = str(attrs.get("gen_ai.agent.name") or "agent")
-        if op == "execute_tool":
-            tool = str(attrs.get("gen_ai.tool.name") or "tool")
-            args = attrs.get("gen_ai.tool.call.arguments")
-            if args is not None:
-                trace.add_event("tool_call", _maybe_json(args), source=agent, target=tool,
-                                metadata={"tool_name": tool, "origin": "otel_genai",
-                                          "tool_call_id": attrs.get("gen_ai.tool.call.id")})
-            result = attrs.get("gen_ai.tool.call.result")
-            if result is not None:
-                trace.add_event("tool_response", _maybe_json(result), source=tool, target=agent,
-                                metadata={"tool_name": tool, "origin": "otel_genai"})
-            continue
-        if not seen_input:
-            for key in ("gen_ai.system_instructions", "gen_ai.input.messages"):
-                value = _maybe_json(attrs.get(key))
-                text = _genai_text(value)
-                if text:
-                    trace.add_event("user_input", text, source="user", target=agent,
-                                    metadata={"origin": "otel_genai", "attribute": key})
-                    seen_input = True
-        for message in _as_list(_maybe_json(attrs.get("gen_ai.output.messages"))):
-            if not isinstance(message, dict):
-                continue
-            for part in message.get("parts") or []:
-                if not isinstance(part, dict):
-                    continue
-                ptype = part.get("type")
-                if ptype == "text" and str(part.get("content") or "").strip():
-                    trace.add_event("inter_agent_message", part["content"], source=agent, target="agent",
-                                    metadata={"origin": "otel_genai"})
-                    outputs.append(len(trace.events) - 1)
-                elif ptype == "tool_call" and str(part.get("id")) not in executed_ids:
-                    tool = str(part.get("name") or "tool")
-                    trace.add_event("tool_call", part.get("arguments") or "", source=agent, target=tool,
-                                    metadata={"tool_name": tool, "origin": "otel_genai",
-                                              "tool_call_id": part.get("id")})
-                elif ptype == "reasoning" and str(part.get("content") or "").strip():
-                    trace.add_event("log", part["content"], source=agent, target="reasoning",
-                                    metadata={"origin": "otel_genai"})
-    if outputs:
-        final = trace.events[outputs[-1]]
-        final.channel = Channel.FINAL_OUTPUT
-        final.target = "user"
-    return trace
-
-
-def _as_list(value: Any) -> list[Any]:
-    if isinstance(value, list):
-        return value
-    return [] if value is None else [value]
-
-
-def _genai_text(value: Any) -> str:
-    """Text of system instructions or input messages (parts with ``content``)."""
-    texts: list[str] = []
-    for item in _as_list(value):
-        if isinstance(item, str):
-            texts.append(item)
-        elif isinstance(item, dict):
-            if isinstance(item.get("parts"), list):
-                for part in item["parts"]:
-                    if isinstance(part, dict) and part.get("type") in ("text", None) and part.get("content"):
-                        texts.append(str(part["content"]))
-            elif item.get("content"):
-                texts.append(str(item["content"]))
-    return "\n".join(t for t in texts if t.strip())
+from_openai_chat = _convert.from_openai_chat
+from_openai_responses = _convert.from_openai_responses
+from_claude_code = _convert.from_claude_code
+from_otel_genai = _convert.from_otel_genai
+_text_of = _convert.text_of
+_maybe_json = _convert.maybe_json
+_as_list = _convert.as_list
+_genai_text = _convert.genai_text
 
 
 def convert(data: Any, fmt: str, *, run_id: str) -> Trace:

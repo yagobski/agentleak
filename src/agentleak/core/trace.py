@@ -145,6 +145,11 @@ class Trace(BaseModel):
     task_success: bool | None = None
     timestamp: datetime = Field(default_factory=_utcnow)
     events: list[Event] = Field(default_factory=list)
+    #: Optional run-level metadata. An imported trace records here where it
+    #: came from (``provenance``: tool, version, source file hash, record id)
+    #: and what its source could see (``observation``), so a report never
+    #: presents an unobserved channel as audited. Absent in older traces.
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     def add_event(
         self,
@@ -200,6 +205,8 @@ class Trace(BaseModel):
             if not event.get("event_id"):
                 event["event_id"] = f"evt_{i:03d}"
             normalized.append(event)
+        if _depth(data.get("metadata")) > MAX_CONTENT_DEPTH:
+            raise ValueError(f"Trace metadata is nested more than {MAX_CONTENT_DEPTH} levels deep.")
         payload = {**data, "events": normalized}
         return cls.model_validate(payload)
 

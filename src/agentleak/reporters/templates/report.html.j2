@@ -130,6 +130,9 @@
   {% if insight %}<div class="insight">{{ insight | safe }}</div>{% endif %}
 
   <h2>Risk by channel</h2>
+  {% if d.observation and d.observation.unobserved_channels %}
+  <div class="insight">Imported from {{ d.observation.source }}: only {{ d.observation.observable_channels | join(", ") }} could be observed. Not observed, so not audited: {{ d.observation.unobserved_channels | join(", ") }}.</div>
+  {% endif %}
   <div class="panel">
     <table>
       <thead><tr><th>Channel</th><th>Top level</th><th>Findings</th><th>Channel RI</th><th style="width:30%">Contribution</th></tr></thead>
