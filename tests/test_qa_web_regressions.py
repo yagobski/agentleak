@@ -185,3 +185,18 @@ def test_nested_repeat_custom_detector_is_refused(one_user) -> None:
     assert time.monotonic() - start < 5
     ok = [{"name": "emp", "pattern": r"\bEMP-\d{6}\b"}]
     assert client.post("/api/analyze", json={"trace": trace, "custom_detectors": ok}).status_code == 200
+
+
+# ----------------------------------------------------------------------
+# QA-10: request bodies were unbounded
+# ----------------------------------------------------------------------
+
+
+def test_oversized_body_is_refused_before_parsing(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENTLEAK_MAX_BODY_BYTES", "1000")
+    client = TestClient(create_app(store=Store(str(tmp_path / "qa.db"))))
+    client.post("/api/auth/register", json={"email": "z@example.test", "password": "z-pass-12345"})
+    big = {"trace": {"events": [{"channel": "log", "content": "x" * 5000}]}}
+    assert client.post("/api/analyze", json=big).status_code == 413
+    small = {"trace": {"events": [{"channel": "log", "content": "hello"}]}}
+    assert client.post("/api/analyze", json=small).status_code == 200

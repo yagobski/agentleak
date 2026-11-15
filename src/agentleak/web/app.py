@@ -726,6 +726,23 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         max_attempts=limits.register_per_ip_hour or 1, window=3600.0
     )
 
+    # Request bodies were unbounded: one POST could hand the analyzer any
+    # amount of text. 32 MiB leaves room for a base64 zip upload.
+    try:
+        _max_body = int(os.environ.get("AGENTLEAK_MAX_BODY_BYTES", "") or 32 * 1024 * 1024)
+    except ValueError:
+        _max_body = 32 * 1024 * 1024
+
+    @app.middleware("http")
+    async def _body_limit(request, call_next):  # noqa: ANN001, ANN202
+        length = request.headers.get("content-length", "")
+        if _max_body > 0 and length.isdigit() and int(length) > _max_body:
+            return JSONResponse(
+                {"detail": f"Request body over the {_max_body}-byte limit (AGENTLEAK_MAX_BODY_BYTES)."},
+                status_code=413,
+            )
+        return await call_next(request)
+
     @app.middleware("http")
     async def _ip_rate_limit(request, call_next):  # noqa: ANN001, ANN202
         ip = client_ip(dict(request.headers), getattr(request.client, "host", ""))
