@@ -164,6 +164,10 @@ agentleak run --scenario healthcare_patient_summary
 agentleak run --trace traces/example_trace.json --format json,html,markdown
 ```
 
+An agent testing itself uses `agentleak selftest --trace run.json` instead: one
+JSON document on stdout with fixes and the command to re-run
+([agent self-test](docs/selftest-agents.md)).
+
 You'll get a console summary plus `reports/<run_id>.{json,html,md}`.
 
 Declare deterministic release assertions in `privacy_policy` (risk, finding
@@ -322,6 +326,7 @@ there.
 
 - [Quickstart](docs/quickstart.md)
 - [Install (agent-oriented)](docs/install.md) — the walkthrough written for a coding agent to follow and report back on
+- [Agent self-test](docs/selftest-agents.md) — `agentleak selftest`: an agent tests itself locally, reads one JSON document, fixes, re-tests until green
 - [MCP mode](docs/mcp.md) — let a coding agent check its own work before it ships
 - [Trust page and monitoring](docs/trust-and-monitoring.md) — publish a verifiable score, and watch it over time
 - [Benchmark](https://www.agentleak.org/benchmark) — what pattern matching misses, measured on all 266 bundled scenarios

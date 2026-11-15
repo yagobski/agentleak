@@ -6,6 +6,7 @@ version's complete help output.
 | Command | Purpose |
 | --- | --- |
 | `version` | Print the package version. |
+| `selftest` | Test an agent for privacy leaks locally and get one versioned JSON document: engine check (no arguments), `--trace FILE\|DIR\|-`, `--cmd "AGENT"`, `--code PATH`, `--status`. See [selftest-agents.md](selftest-agents.md). |
 | `init [PATH]` | Scaffold configuration, folders and a sample trace. `--force` overwrites config. |
 | `validate CONFIG` | Validate configuration; `--trace` also validates a trace. |
 | `scenarios` | List built-in scenarios and sensitive-data domains. |
@@ -25,6 +26,27 @@ version's complete help output.
 | `evidence [PATH]` | Verify and summarize the gateway's hash-chained decision log. |
 | `subjects` | Inspect the cross-session subject ledger, or erase one subject with `--forget`. |
 | `admin reset-password` / `admin list-users` | Operator recovery for a self-hosted platform. |
+
+## Selftest
+
+One local command for an agent to test itself; no account, no network.
+
+```bash
+agentleak selftest                          # engine check: does the tool work here? (seconds)
+agentleak selftest --trace run.json         # score a trace (file, directory, or - for stdin)
+agentleak selftest --cmd "python agent.py"  # run the agent on the built-in canary battery
+agentleak selftest --code .                 # static scan of the agent's source
+agentleak selftest --status                 # latest result per target, and the trend
+agentleak selftest --explain <fingerprint>  # why a finding fired, and the fix
+agentleak selftest --list-scenarios         # the battery; --get-scenario ID issues one
+```
+
+JSON is printed with `--json`, when stdout is not a terminal, or with
+`AGENTLEAK_JSON=1`; `--human` forces text. `--fail-on L1..L4` (default `L3`)
+sets the gate; `--fail-under N` also fails below a privacy score.
+Exit codes: `0` pass, `1` finding at or above the gate, `2` usage error,
+`3` incomplete (agent crashed, timed out or reported nothing), `4` internal error.
+The document's schema: `agentleak schema selftest-result`.
 
 ## Skill
 
