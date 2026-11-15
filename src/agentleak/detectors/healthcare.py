@@ -148,7 +148,8 @@ class HealthcareDetector(Detector):
                 recommendation="Remove or mask health identifiers before calling external tools.",
             ))
 
-        for m in MRN_TOKEN_RE.finditer(text):
+        has_mrn = "mrn" in text.lower()
+        for m in (MRN_TOKEN_RE.finditer(text) if has_mrn else ()):
             matches.append(self._match(
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
                 matched_value=m.group(1), rule="mrn_token",

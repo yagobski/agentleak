@@ -502,10 +502,13 @@ class PIIDetector(Detector):
             ))
 
         address_values = [m.matched_value for m in matches if m.data_type == "address"]
-        for pattern, rule in (
-            (ADDRESS_US_ZIP_RE, "address_us_zip"), (ADDRESS_US_MILITARY_RE, "address_us_military"),
+        for pattern, rule, needed in (
+            (ADDRESS_US_ZIP_RE, "address_us_zip", ", "),
+            # APO/FPO/DPO is always followed by " A": a substring test skips
+            # the regex on almost every event.
+            (ADDRESS_US_MILITARY_RE, "address_us_military", "PO A"),
         ):
-            for m in pattern.finditer(text):
+            for m in (pattern.finditer(text) if needed in text else ()):
                 value = m.group(0).strip()
                 if any(value in v for v in address_values):
                     continue

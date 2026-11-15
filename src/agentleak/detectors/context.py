@@ -43,7 +43,6 @@ in ``tests/test_detector_timing.py``.
 from __future__ import annotations
 
 import re
-from bisect import bisect_right
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
@@ -62,7 +61,7 @@ class ContextRule:
     severity: Severity
     confidence: float
     value: re.Pattern[str]
-    cue: re.Pattern[str]
+    cue: frozenset[str]  # lower-case cue words; see _cue_hits
     gap: re.Pattern[str]
     window: int
     recommendation: str
@@ -73,9 +72,14 @@ class ContextRule:
     veto_before: re.Pattern[str] | None = None
 
 
-def _words(terms: list[str]) -> re.Pattern[str]:
-    """Case-insensitive whole-word alternation, factored as a trie."""
-    return re.compile(r"(?i)(?<!\w)(?:" + trie_pattern(sorted({t.lower() for t in terms})) + r")(?!\w)")
+def _words(terms: list[str]) -> frozenset[str]:
+    """A cue lexicon: whole words (or fixed phrases), matched case-insensitively.
+
+    All lexicons are matched in one pass by :func:`_cue_hits`, not one regex
+    per rule: the pipeline runs the hosting detectors one after another on
+    the same text, and seven case-insensitive scans cost 14% of throughput.
+    """
+    return frozenset(t.lower() for t in terms)
 
 
 def _glue(terms: list[str]) -> re.Pattern[str]:
@@ -282,6 +286,26 @@ _HEALTH_PHRASE_RE = re.compile(r"[^\W\d_][\w'’-]*|\d+")
 
 HEALTH_RULES = ("ctx_health_diagnosis", "ctx_health_symptom")
 
+_ALL_CUES = frozenset().union(
+    *(rule.cue for rule in RULES), _HEALTH_STRONG_CUE, _HEALTH_WEAK_CUE
+)
+_ANY_CUE_RE = re.compile(r"(?i)(?<!\w)(?:" + trie_pattern(sorted(_ALL_CUES)) + r")(?!\w)")
+# The hosting detectors run one after another on the same event text, so the
+# cue pass of the last text is kept. A tuple is swapped in whole, so a reader
+# on another thread sees an old entry or a new one, never half of each.
+_last_hits: tuple[str, list[tuple[int, int, str, str]]] = ("", [])
+
+
+def _cue_hits(text: str) -> list[tuple[int, int, str, str]]:
+    """Every cue word in *text*, as ``(start, end, lower-case term, word)``."""
+    global _last_hits
+    cached_text, cached = _last_hits
+    if cached_text is text or cached_text == text:
+        return cached
+    hits = [(m.start(), m.end(), m.group(0).lower(), m.group(0)) for m in _ANY_CUE_RE.finditer(text)]
+    _last_hits = (text, hits)
+    return hits
+
 
 def _phrase_after(text: str, start: int) -> tuple[str, int, int] | None:
     """The noun phrase after a cue: up to six words, ended by punctuation or by
@@ -303,12 +327,15 @@ def _phrase_after(text: str, start: int) -> tuple[str, int, int] | None:
 
 
 def _health(text: str) -> Iterator[tuple[str, str, tuple[int, int], float]]:
-    for rule, cue_re, confidence in (
+    hits = _cue_hits(text)
+    for rule, cues, confidence in (
         ("ctx_health_diagnosis", _HEALTH_STRONG_CUE, 0.6),
         ("ctx_health_symptom", _HEALTH_WEAK_CUE, 0.5),
     ):
-        for cue in cue_re.finditer(text):
-            found = _phrase_after(text, cue.end())
+        for _start, end, term, _word in hits:
+            if term not in cues:
+                continue
+            found = _phrase_after(text, end)
             if not found:
                 continue
             phrase, s, e = found
@@ -325,33 +352,48 @@ def _health(text: str) -> Iterator[tuple[str, str, tuple[int, int], float]]:
             yield rule, phrase, (s, e), confidence
 
 
+# Longest value any rule takes; bounds the search after a cue.
+_MAX_VALUE = 64
+
+
 def scan(text: str, data_types: frozenset[str] | set[str]) -> Iterator[tuple[ContextRule, str, tuple[int, int]]]:
     """Yield ``(rule, value, span)`` for every context-window match of the
-    given data types (health conditions excluded: see :func:`matches_for`)."""
+    given data types (health conditions excluded: see :func:`matches_for`).
+
+    Cue first: values are only looked for in the ``window`` after a cue, so a
+    text with no cue costs one scan, and a costly value pattern (dates with
+    month names) runs on a few dozen characters, not on the whole event."""
+    hits = _cue_hits(text)
+    if not hits:
+        return
     for rule in RULES:
         if rule.data_type not in data_types:
             continue
-        cues = list(rule.cue.finditer(text))
-        if not cues:
-            continue
-        ends = [c.end() for c in cues]
-        for m in rule.value.finditer(text):
-            start = m.start()
-            i = bisect_right(ends, start) - 1
-            while i >= 0 and start - ends[i] <= rule.window:
-                gap = text[ends[i]:start]
-                if (
-                    not _BREAK_RE.search(gap)
-                    and rule.gap.fullmatch(gap)
-                    and (rule.validate is None or rule.validate(m.group(0), cues[i].group(0)))
-                    and not (
-                        rule.veto_before
-                        and rule.veto_before.search(text, max(0, cues[i].start() - 24), cues[i].start())
-                    )
-                ):
-                    yield rule, m.group(0).strip(), m.span()
+        taken: set[tuple[int, int]] = set()
+        for start, end, term, word in hits:
+            if term not in rule.cue:
+                continue
+            if rule.veto_before and rule.veto_before.search(text, max(0, start - 24), start):
+                continue
+            limit = min(len(text), end + rule.window + _MAX_VALUE)
+            for m in rule.value.finditer(text, end, limit):
+                if m.start() - end > rule.window:
                     break
-                i -= 1
+                if m.end() == limit < len(text):
+                    # Cut by the search bound: read the value on the full text.
+                    full = rule.value.match(text, m.start())
+                    if full is None:
+                        continue
+                    m = full
+                gap = text[end:m.start()]
+                if _BREAK_RE.search(gap) or not rule.gap.fullmatch(gap):
+                    continue
+                if rule.validate is not None and not rule.validate(m.group(0), word):
+                    continue
+                if m.span() not in taken:
+                    taken.add(m.span())
+                    yield rule, m.group(0).strip(), m.span()
+                break
 
 
 def matches_for(
