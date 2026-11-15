@@ -746,12 +746,19 @@ def evidence(
     keygen: str | None = typer.Option(
         None, "--keygen", help="Write a new signing key pair to this path (and PATH.pub), then exit.",
     ),
+    expect_head: str | None = typer.Option(
+        None, "--expect-head",
+        help="Fail unless the chain ends at this hash (or a prefix of 12+ characters): catches "
+             "entries cut off the end.",
+    ),
 ) -> None:
     """Verify and summarize a gateway evidence log.
 
     The log is hash-chained: each entry carries the hash of the one before it,
     so editing, removing or reordering any entry breaks every hash after it and
-    this command says which one. That is tamper-evident, not tamper-proof —
+    this command says which one. Entries cut off the END leave a valid chain:
+    keep the head hash this command prints somewhere else and pass it back with
+    --expect-head. That is tamper-evident, not tamper-proof —
     anyone who can write the file can rewrite the whole chain — but it is the
     property an auditor needs and a plain log does not have.
     """
@@ -783,6 +790,12 @@ def evidence(
             raise typer.Exit(code=2) from exc
 
     result = verify_chain(path, public_key=key)
+    if expect_head is not None and result.ok:
+        want = expect_head.strip().lower()
+        if len(want) < 12 or not result.head.startswith(want):
+            result.ok = False
+            result.detail = (f"the chain ends at {result.head[:16]}, not at the expected head "
+                             f"{want[:16]}: entries were removed from the end, or added")
     if verify_only:
         if fmt == "json":
             typer.echo(json.dumps(result.to_dict(), indent=2))

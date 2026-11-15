@@ -258,6 +258,11 @@ so a client that cached the list cannot reach a tool nobody re-checked.
 
 ## Signing the log
 
+A chain cannot show that entries were cut off its end: what is left still
+verifies. `agentleak evidence LOG --verify` prints the head hash; keep it
+outside the log (a CI artifact, a ticket) and check later with
+`--expect-head HASH`.
+
 The hash chain is tamper-evident: anyone who can write the file can still
 recompute every hash. Sign it and a rewrite needs the private key:
 

@@ -115,6 +115,9 @@ class VerificationResult:
     entries: int
     broken_at: int | None = None
     detail: str = ""
+    #: Hash of the last entry. A chain cannot show that entries were cut off
+    #: its end; compare this with a head recorded elsewhere to catch that.
+    head: str = GENESIS
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -122,6 +125,7 @@ class VerificationResult:
             "entries": self.entries,
             "broken_at": self.broken_at,
             "detail": self.detail,
+            "head": self.head,
         }
 
 
@@ -234,6 +238,12 @@ class EvidenceLog:
         }
 
 
+_ENTRY_KEYS = frozenset({
+    "sequence", "timestamp", "previous", "action", "tool", "recipient", "purpose",
+    "data_types", "reason", "run_id", "agent", "metadata", "hash", "signature", "key_id",
+})
+
+
 def verify(path: str | os.PathLike[str], public_key: Any = None) -> VerificationResult:
     """Walk the chain and report the first link that does not hold.
 
@@ -260,6 +270,18 @@ def verify(path: str | os.PathLike[str], public_key: Any = None) -> Verification
                     detail=f"line {line_number} is not valid JSON",
                 )
 
+            if not isinstance(raw, dict):
+                return VerificationResult(
+                    ok=False, entries=count, broken_at=line_number,
+                    detail=f"line {line_number} is not an evidence entry",
+                )
+            extra = sorted(set(raw) - _ENTRY_KEYS)
+            if extra:
+                # Fields outside the hashed body would ride along unverified.
+                return VerificationResult(
+                    ok=False, entries=count, broken_at=line_number,
+                    detail=f"line {line_number} carries fields no hash covers: {', '.join(extra)}",
+                )
             recorded = raw.get("hash")
             entry = EvidenceEntry.from_dict(raw)
             expected = chain_hash(entry.payload())
@@ -305,4 +327,5 @@ def verify(path: str | os.PathLike[str], public_key: Any = None) -> Verification
     detail = f"{count} entries, chain intact"
     if public_key is not None:
         detail += ", every entry signed"
-    return VerificationResult(ok=True, entries=count, detail=detail)
+    detail += f", head {previous[:16]}"
+    return VerificationResult(ok=True, entries=count, detail=detail, head=previous)
