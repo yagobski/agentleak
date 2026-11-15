@@ -40,3 +40,20 @@ def test_otel_genai_input_is_still_taken_once() -> None:
 
     trace = trace_from_spans([chat(1), chat(2), chat(3)])
     assert [e.content for e in trace.events if e.channel_value == "user_input"] == ["q1"]
+
+
+def test_promptfoo_span_chain_check_is_linear() -> None:
+    """The cycle check walked every span's chain to its root: a 8 000-span
+    chain took 1.9 s and grew with the square of its length."""
+    from agentleak.interop.promptfoo import trace_problem
+
+    n = 200_000
+    spans = [{"spanId": f"s{i}", "name": "x", "startTime": 1, "endTime": 2,
+              **({"parentSpanId": f"s{i - 1}"} if i else {})} for i in range(n)]
+    start = time.perf_counter()
+    assert trace_problem({"traceId": "t", "spans": spans}) is None
+    assert time.perf_counter() - start < 10.0
+    spans[0]["parentSpanId"] = f"s{n - 1}"
+    assert "form a cycle" in (trace_problem({"traceId": "t", "spans": spans}) or "")
+    assert "form a cycle" in (trace_problem({"traceId": "t", "spans": [
+        {"spanId": "a", "name": "x", "startTime": 1, "endTime": 2, "parentSpanId": "a"}]}) or "")
