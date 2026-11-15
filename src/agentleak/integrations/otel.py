@@ -32,6 +32,13 @@ OpenInference kind  AgentLeak channel
 ``GUARDRAIL``       ``log``
 ==================  ===================================================
 
+Spans that follow the OpenTelemetry **GenAI** semantic conventions instead
+(``gen_ai.operation.name`` = ``execute_tool``, ``chat``, ``invoke_agent`` …,
+with no OpenInference kind) are read with the shared GenAI converter
+(:func:`agentleak.interop.convert.genai_span_events`): tool arguments and
+results, the first input messages, output text, tool-call and reasoning parts.
+Before 0.20 these spans produced no event at all.
+
 Usage::
 
     from agentleak.integrations.otel import trace_from_spans
@@ -277,15 +284,26 @@ def trace_from_spans(
         spans, times = [spans[i] for i in order], [times[i] for i in order]
 
     trace = Trace(run_id=run_id, agent_name=agent_name)
+    from ..interop.convert import genai_executed_ids, genai_span_events, is_genai_span
 
-    for span, (start, end) in zip(spans, times, strict=True):
+    all_attrs = [_attrs_of(span) for span in spans]
+    executed_ids = genai_executed_ids(all_attrs)
+    genai_input_seen = False
+
+    for span, (start, end), attrs in zip(spans, times, all_attrs, strict=True):
         first = len(trace.events)
-        attrs = _attrs_of(span)
         kind = str(_get(attrs, *_KIND_KEYS, default="") or "").upper()
         name = str(_get(span, "name", default="") or "")
         agent = str(_get(attrs, *_AGENT_KEYS, default=None) or name or default_agent)
 
-        if kind == "TOOL" or (not kind and _get(attrs, *_TOOL_NAME_KEYS)):
+        if is_genai_span(attrs):
+            genai_input_seen = genai_span_events(
+                trace, attrs, executed_ids=executed_ids,
+                seen_input=genai_input_seen or any(
+                    e.channel_value == "user_input" for e in trace.events),
+                origin="otel")
+
+        elif kind == "TOOL" or (not kind and _get(attrs, *_TOOL_NAME_KEYS)):
             tool = str(_get(attrs, *_TOOL_NAME_KEYS, default=name or "tool"))
             args = _get(attrs, *_TOOL_ARGS_KEYS)
             if args is not None:

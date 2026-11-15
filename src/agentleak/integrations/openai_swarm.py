@@ -12,7 +12,12 @@ Works with:
 
 * **Swarm** — ``response = client.run(...)`` then ``response.messages``.
 * **Agents SDK** — ``result = await Runner.run(...)`` then
-  ``result.to_input_list()`` (or any list of message dicts).
+  ``result.to_input_list()`` (or any list of message dicts). These are
+  Responses API items (``function_call``, ``function_call_output``,
+  ``reasoning``, typed ``message`` items), not chat messages; they are read by
+  the shared converter :func:`agentleak.interop.convert.from_openai_responses`.
+  Before 0.20 this adapter dropped every one of those items except the user
+  and assistant text.
 
 Usage::
 
@@ -49,6 +54,21 @@ def _sender_of(msg: Any, role: str) -> str:
     return str(getattr(msg, "sender", None) or getattr(msg, "name", None) or role)
 
 
+def _as_item(msg: Any) -> Any:
+    """A plain dict for an SDK item object (pydantic ``model_dump``)."""
+    if isinstance(msg, dict):
+        return msg
+    dump = getattr(msg, "model_dump", None)
+    if callable(dump):
+        try:
+            value = dump(exclude_none=True)
+        except TypeError:
+            value = dump()
+        if isinstance(value, dict):
+            return value
+    return msg
+
+
 def _tool_calls_of(msg: Any) -> Any:
     if isinstance(msg, dict):
         return msg.get("tool_calls")
@@ -66,8 +86,20 @@ def trace_from_messages(
     Assistant tool-call arguments become ``tool_call`` events; ``tool``/``function``
     role messages become ``tool_response`` events; assistant turns where the
     active agent changed are recorded as ``inter_agent_message`` (a handoff); the
-    last assistant turn is the ``final_output``.
+    last assistant turn is the ``final_output``; ``system``/``developer``
+    messages are ``user_input``.
+
+    A list of Responses API / Agents SDK items is detected and converted with
+    :func:`agentleak.interop.convert.from_openai_responses` instead, so their
+    tool calls, tool outputs, reasoning and handoffs are kept.
     """
+    from ..interop.convert import from_openai_responses, is_responses_items
+
+    items = [_as_item(m) for m in messages]
+    if is_responses_items(items):
+        return from_openai_responses([i for i in items if isinstance(i, dict)],
+                                     run_id=run_id, agent_name=agent_name)
+
     trace = Trace(run_id=run_id, agent_name=agent_name)
     msgs = list(messages)
     last_sender: str | None = None
@@ -116,6 +148,10 @@ def trace_from_messages(
         elif role == "user":
             trace.add_event(
                 channel="user_input", content=content, source="user", target=str(sender),
+            )
+        elif role in ("system", "developer"):
+            trace.add_event(
+                channel="user_input", content=content, source=role, target="agent",
             )
         last_sender = sender
 
