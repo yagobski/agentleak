@@ -57,6 +57,9 @@ LEAK_MODE = {
     "agentleak_bench": "pattern",
     "privacylens_ci": "norm",
     "agentdojo_exfil": "hijack",
+    # An instruction planted in a tool response makes the agent read private
+    # data with one tool and send it out with another.
+    "injecagent_ds": "hijack",
 }
 
 
