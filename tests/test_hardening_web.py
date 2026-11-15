@@ -184,3 +184,22 @@ def test_configured_public_url_is_used(tmp_path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch, public=True)
     r = client.get("/llms.txt", headers={"host": "evil.example"})
     assert "https://agents.example.org/" in r.text and "evil.example" not in r.text
+
+
+def test_markdown_report_escapes_trace_controlled_strings() -> None:
+    from agentleak import AgentLeakRunner
+    from agentleak.core.trace import Trace
+    from agentleak.reporters import render
+
+    hostile = "<img src=x onerror=alert(1)>|[x](javascript:alert(1))\n# injected"
+    trace = Trace.from_dict({
+        "run_id": hostile, "agent_name": hostile, "scenario_id": hostile,
+        "events": [
+            {"channel": "tool_response", "content": "SSN 123-45-6789", "source": hostile},
+            {"channel": "log", "content": "SSN 123-45-6789", "source": hostile},
+        ],
+    })
+    md = render(AgentLeakRunner().analyze(trace).to_dict(), "markdown")
+    assert "<img" not in md
+    assert "[x](javascript:" not in md
+    assert "\n# injected" not in md
