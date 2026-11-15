@@ -658,6 +658,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         valid_email,
     )
     from .limits import Limits, client_ip, month_start, next_month_start
+    from .triage_api import record_fingerprints, register_triage_routes
 
     db = store or Store()
     app = FastAPI(
@@ -1630,6 +1631,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
 
         # Auto-save the run to the linked project so the owner can track it.
         run = db.create_run(project["id"], report_data, source="selftest")
+        record_fingerprints(db, run, result.findings)
 
         compliance = report_data.get("compliance", {})
         posture = compliance.get("posture", {})
@@ -2277,6 +2279,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
                 result = runner.analyze(trace, canary_set=scenario.vault.canary_set)
                 report_data = result.to_dict()
                 run = db.create_run(project["id"], report_data, source=source)
+                record_fingerprints(db, run, result.findings)
                 run_ids.append(run["id"])
 
                 fam_id = CLASS_TO_FAMILY.get(scenario.attack_class.id, "F1")
@@ -2471,6 +2474,11 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         last_run = db.get_run(runs[0]["id"]) if runs else None
         return _project_model(project, last_run)
 
+    # -- triage, paged run listing, session probe (web/triage_api.py) ---
+    # Registered before GET /api/runs/{rid} so /api/runs/export is not read
+    # as a run id.
+    register_triage_routes(app, db=db, require_user=require_user, owned_project=_owned_project)
+
     # -- runs ----------------------------------------------------------
     @app.get("/api/projects/{pid}/runs")
     def list_runs(pid: str, user: dict[str, Any] = Depends(require_user)) -> list[dict[str, Any]]:
@@ -2484,17 +2492,23 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         # Merge stored project settings with the request (request can't disable
         # detectors here; it just supplies the trace/scenario).
         settings = {**project["config"], **{k: payload[k] for k in ("detectors", "vault", "custom_detectors", "redact") if k in payload}}
+        # B7: an evaluation gate sent with the run is applied, unless the
+        # project already defines one (a submitter cannot replace its gate).
+        if isinstance(payload.get("privacy_policy"), dict) and not project["config"].get("privacy_policy"):
+            settings["privacy_policy"] = payload["privacy_policy"]
         merged = {**settings, **{k: payload[k] for k in ("trace", "scenario_id") if k in payload}}
         try:
             result = _analyze(merged, project_name=project["name"], store=db, owner_id=user["id"])
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _meter(user, "/api/projects/runs")
-        return db.create_run(
+        run = db.create_run(
             pid, result.to_dict(),
             source=payload.get("source", "manual"),
             label=str(payload.get("label", "")),
         )
+        record_fingerprints(db, run, result.findings)
+        return run
 
     @app.get("/api/projects/{pid}/history")
     def run_history(
@@ -2612,7 +2626,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             result = AgentLeakRunner(cfg).analyze(trace)
             source = f"pipeline:{len(agents)} agents" + (" (live)" if live else " (scripted)")
             _meter(user, "/api/projects/execute")
-            return db.create_run(pid, result.to_dict(), source=source, label=label)
+            run = db.create_run(pid, result.to_dict(), source=source, label=label)
+            record_fingerprints(db, run, result.findings)
+            return run
 
         # Single-agent project.
         mode = payload.get("mode") or ("live" if agent_cfg.get("model") else "scripted")
@@ -2639,7 +2655,9 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         result = AgentLeakRunner(cfg).analyze(trace)
         source = f"agent:{llm.model}" if llm else "agent:scripted"
         _meter(user, "/api/projects/execute")
-        return db.create_run(pid, result.to_dict(), source=source, label=label)
+        run = db.create_run(pid, result.to_dict(), source=source, label=label)
+        record_fingerprints(db, run, result.findings)
+        return run
 
     def _owned_run(rid: str, user: dict[str, Any]) -> dict[str, Any]:
         run = db.get_run(rid)
@@ -2681,7 +2699,20 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
         assets = _STATIC_DIR / "assets"
         if assets.exists():
             app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
-        index_template = index_file.read_text(encoding="utf-8")
+        # B6: re-read index.html when it changes on disk. A rebuild deletes the
+        # old hashed assets, so a copy cached at start-up pointed at files
+        # that no longer existed until the server was restarted.
+        _index_cache: dict[str, Any] = {"mtime": None, "text": ""}
+
+        def index_template_now() -> str:
+            try:
+                mtime = index_file.stat().st_mtime_ns
+            except OSError:
+                return str(_index_cache["text"])
+            if mtime != _index_cache["mtime"]:
+                _index_cache["text"] = index_file.read_text(encoding="utf-8")
+                _index_cache["mtime"] = mtime
+            return str(_index_cache["text"])
 
         @app.get("/", include_in_schema=False)
         def _root_to_app():
@@ -2698,7 +2729,7 @@ def create_app(store: Store | None = None, *, serve_ui: bool | None = None):  # 
             candidate = _STATIC_DIR / full_path
             if full_path and candidate.is_file() and candidate.resolve().is_relative_to(_STATIC_DIR.resolve()):
                 return FileResponse(candidate)
-            return HTMLResponse(_render_spa_html(index_template, full_path))  # client-side routing
+            return HTMLResponse(_render_spa_html(index_template_now(), full_path))  # client-side routing
     elif not _serve_ui:  # pragma: no cover
         # Dev mode — the Vite server at :5173 is the UI; this process is API only.
         # No root route registered → FastAPI returns 404 for non-API paths.

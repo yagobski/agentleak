@@ -68,6 +68,55 @@ def verify_password(password: str, stored: str) -> bool:
 # Session lifetime (30 days) — sessions live in the local DB only.
 SESSION_TTL = 30 * 24 * 3600
 
+# Finding triage (added in 0.20). Additive only: two new tables and their
+# indexes, created with IF NOT EXISTS on every start. No existing table is
+# altered, so a database touched by this version still opens with 0.19.0,
+# which simply ignores them. Both tables cascade from rows that 0.19.0 can
+# delete (projects, runs), and SQLite enforces that from the child table's
+# own definition, so deletes stay clean whichever version runs them.
+TRIAGE_DDL: tuple[str, ...] = (
+    """CREATE TABLE IF NOT EXISTS finding_fingerprints (
+        run_id TEXT NOT NULL,
+        finding_id TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        PRIMARY KEY (run_id, finding_id),
+        FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
+    )""",
+    """CREATE TABLE IF NOT EXISTS finding_triage (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        run_id TEXT NOT NULL,
+        run_created_at REAL NOT NULL,
+        finding_id TEXT NOT NULL,
+        identity_key TEXT NOT NULL,
+        masked_key TEXT NOT NULL,
+        state TEXT NOT NULL,
+        rationale TEXT NOT NULL DEFAULT '',
+        expires_at REAL,
+        reviewer_id TEXT NOT NULL DEFAULT '',
+        reviewer_email TEXT NOT NULL DEFAULT '',
+        created_at REAL NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_triage_project ON finding_triage(project_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_triage_run ON finding_triage(run_id, finding_id)",
+)
+
+# Server-side run listing: sortable columns and their SQL (whitelist).
+RUN_SORT_COLUMNS: dict[str, str] = {
+    "created_at": "r.created_at",
+    "risk_index": "r.risk_index",
+    "privacy_score": "r.privacy_score",
+    "leaked_secrets": "r.leaked",
+    "verdict": "r.verdict",
+    "agent_name": "r.agent_name",
+    "project": "p.name",
+}
+
+
+def _like_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 class Store:
     """Thread-safe-enough SQLite store (one connection per call)."""
@@ -83,6 +132,7 @@ class Store:
         parent = Path(self.path).parent
         if str(parent):
             parent.mkdir(parents=True, exist_ok=True)
+        self._fp_key: tuple[bytes | None, str] | None = None
         self._init()
 
     def _conn(self) -> sqlite3.Connection:
@@ -218,6 +268,7 @@ class Store:
                 )"""
             )
             self._migrate(c)
+            self._init_triage(c)
 
     @staticmethod
     def _migrate(c: sqlite3.Connection) -> None:
@@ -266,6 +317,12 @@ class Store:
                 c.execute("UPDATE users SET is_admin=1 WHERE id=?", (first["id"],))
         if "disabled" not in user_cols:
             c.execute("ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0")
+
+    @staticmethod
+    def _init_triage(c: sqlite3.Connection) -> None:
+        """Create the triage tables (idempotent, additive; see TRIAGE_DDL)."""
+        for statement in TRIAGE_DDL:
+            c.execute(statement)
 
     # -- users & sessions ----------------------------------------------
     def create_user(self, email: str, password: str, *, name: str = "") -> dict[str, Any]:
@@ -840,7 +897,32 @@ class Store:
                 ).fetchall()
             else:
                 rows = c.execute("SELECT * FROM projects ORDER BY updated_at DESC").fetchall()
-        return [self._project_row(r) for r in rows]
+            projects = [self._project_row(r) for r in rows]
+            # Same run statistics get_project returns (they were missing here,
+            # so every project in a list read "0 runs").
+            ids = [p["id"] for p in projects]
+            agg: dict[str, sqlite3.Row] = {}
+            last: dict[str, sqlite3.Row] = {}
+            for start in range(0, len(ids), 500):
+                chunk = ids[start:start + 500]
+                marks = ",".join("?" for _ in chunk)
+                for r in c.execute(
+                    f"SELECT project_id, COUNT(*) n, AVG(risk_index) avg_ri FROM runs"
+                    f" WHERE project_id IN ({marks}) GROUP BY project_id", chunk
+                ):
+                    agg[r["project_id"]] = r
+                for r in c.execute(
+                    f"SELECT * FROM runs r WHERE r.project_id IN ({marks}) AND r.id = ("
+                    " SELECT r2.id FROM runs r2 WHERE r2.project_id = r.project_id"
+                    " ORDER BY r2.created_at DESC, r2.id DESC LIMIT 1)", chunk
+                ):
+                    last[r["project_id"]] = r
+        for p in projects:
+            a = agg.get(p["id"])
+            p["run_count"] = int(a["n"]) if a else 0
+            p["avg_risk_index"] = round(a["avg_ri"], 4) if a and a["avg_ri"] is not None else None
+            p["last_run"] = self._run_summary(last[p["id"]]) if p["id"] in last else None
+        return projects
 
     def get_project(self, pid: str) -> dict[str, Any] | None:
         with self._conn() as c:
@@ -1266,6 +1348,184 @@ class Store:
             "avg_privacy_score": round(r["avg_score"], 1) if r["avg_score"] is not None else None,
             "blocked_runs": r["blocked"] or 0,
             "recent_runs": [self._run_summary(x) for x in recent],
+        }
+
+    # -- server-side run listing (added in 0.20) -------------------------
+    def query_runs(
+        self,
+        owner_id: str,
+        *,
+        project_id: str | None = None,
+        verdict: str | None = None,
+        gate: str | None = None,
+        source: str | None = None,
+        since: float | None = None,
+        until: float | None = None,
+        q: str | None = None,
+        sort: str = "created_at",
+        direction: str = "desc",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """One owner's runs across projects, filtered, sorted and paged.
+
+        Ordering is stable: the sort column, then the run id in the same
+        direction, so a page boundary never repeats or skips a row. Callers
+        validate every argument; ``sort`` is looked up in a whitelist here too.
+        """
+        where = ["p.owner_id = ?"]
+        params: list[Any] = [owner_id]
+        if project_id:
+            where.append("r.project_id = ?")
+            params.append(project_id)
+        if verdict:
+            where.append("r.verdict = ?")
+            params.append(verdict)
+        if gate in ("blocked", "passed"):
+            where.append("r.blocked = ?")
+            params.append(1 if gate == "blocked" else 0)
+        if source:
+            where.append("(r.source = ? OR r.source LIKE ? ESCAPE '\\')")
+            params += [source, _like_escape(source) + ":%"]
+        if since is not None:
+            where.append("r.created_at >= ?")
+            params.append(since)
+        if until is not None:
+            where.append("r.created_at < ?")
+            params.append(until)
+        if q:
+            like = f"%{_like_escape(q)}%"
+            where.append(
+                "(r.id LIKE ? ESCAPE '\\' OR r.agent_name LIKE ? ESCAPE '\\'"
+                " OR r.label LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\')"
+            )
+            params += [like, like, like, like]
+        col = RUN_SORT_COLUMNS.get(sort, "r.created_at")
+        dir_sql = "ASC" if direction == "asc" else "DESC"
+        clause = " AND ".join(where)
+        with self._conn() as c:
+            total = int(c.execute(
+                f"SELECT COUNT(*) n FROM runs r JOIN projects p ON p.id = r.project_id WHERE {clause}", params
+            ).fetchone()["n"])
+            rows = c.execute(
+                "SELECT r.id, r.project_id, r.created_at, r.source, r.agent_name, r.risk_index,"
+                " r.privacy_score, r.verdict, r.blocked, r.leaked, r.label, p.name AS project_name"
+                f" FROM runs r JOIN projects p ON p.id = r.project_id WHERE {clause}"
+                f" ORDER BY {col} {dir_sql}, r.id {dir_sql} LIMIT ? OFFSET ?",
+                [*params, int(limit), int(offset)],
+            ).fetchall()
+        out = []
+        for r in rows:
+            item = self._run_summary(r)
+            item["project_name"] = r["project_name"]
+            out.append(item)
+        return out, total
+
+    def run_source_kinds(self, owner_id: str) -> list[str]:
+        """Distinct run source kinds for an owner (``agent:gpt-x`` → ``agent``)."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT DISTINCT r.source FROM runs r JOIN projects p ON p.id = r.project_id"
+                " WHERE p.owner_id = ? LIMIT 2000",
+                (owner_id,),
+            ).fetchall()
+        return sorted({str(r["source"] or "").split(":", 1)[0] for r in rows} - {""})
+
+    # -- finding triage (added in 0.20) ---------------------------------
+    def fingerprint_key(self) -> tuple[bytes | None, str]:
+        """The HMAC key for finding fingerprints and where it came from (cached).
+
+        Read from ``AGENTLEAK_FINGERPRINT_KEY`` or a 0600 key file beside the
+        database; never stored in the database. See ``core/triage.py``.
+        """
+        cached = self._fp_key
+        if cached is None:
+            from .triage import load_fingerprint_key
+
+            cached = load_fingerprint_key(self.path)
+            self._fp_key = cached
+        return cached
+
+    def set_finding_fingerprints(self, run_id: str, fingerprints: dict[str, str]) -> None:
+        """Store the keyed fingerprints of a run's findings (HMACs, never values)."""
+        if not fingerprints:
+            return
+        with self._conn() as c:
+            c.executemany(
+                "INSERT OR REPLACE INTO finding_fingerprints (run_id, finding_id, fingerprint) VALUES (?,?,?)",
+                [(run_id, fid, fp) for fid, fp in fingerprints.items()],
+            )
+
+    def finding_fingerprints(self, run_id: str) -> dict[str, str]:
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT finding_id, fingerprint FROM finding_fingerprints WHERE run_id=?", (run_id,)
+            ).fetchall()
+        return {r["finding_id"]: r["fingerprint"] for r in rows}
+
+    def add_triage_decisions(
+        self,
+        *,
+        project_id: str,
+        run_id: str,
+        run_created_at: float,
+        items: list[tuple[str, str, str]],
+        state: str,
+        rationale: str,
+        expires_at: float | None,
+        reviewer_id: str,
+        reviewer_email: str,
+    ) -> list[dict[str, Any]]:
+        """Append one decision per ``(finding_id, identity_key, masked_key)``.
+
+        Decisions are never updated or deleted one by one: a new decision is a
+        new row, so the table is the audit trail. They go when the project goes.
+        """
+        now = _now()
+        rows = [
+            (_new_id("tri"), project_id, run_id, run_created_at, fid, ident, masked, state,
+             rationale, expires_at, reviewer_id, reviewer_email, now)
+            for fid, ident, masked in items
+        ]
+        with self._conn() as c:
+            c.executemany(
+                "INSERT INTO finding_triage (id, project_id, run_id, run_created_at, finding_id,"
+                " identity_key, masked_key, state, rationale, expires_at, reviewer_id,"
+                " reviewer_email, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                rows,
+            )
+        cols = ("id", "project_id", "run_id", "run_created_at", "finding_id", "identity_key",
+                "masked_key", "state", "rationale", "expires_at", "reviewer_id", "reviewer_email",
+                "created_at")
+        return [self._triage_row(dict(zip(cols, r, strict=True))) for r in rows]
+
+    def list_triage_decisions(self, project_id: str, *, limit: int = 50_000) -> list[dict[str, Any]]:
+        """A project's triage decisions, oldest first (the newest ``limit``)."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT * FROM finding_triage WHERE project_id=? ORDER BY created_at DESC, id DESC LIMIT ?",
+                (project_id, limit),
+            ).fetchall()
+        return [self._triage_row(dict(r)) for r in reversed(rows)]
+
+    @staticmethod
+    def _triage_row(r: dict[str, Any]) -> dict[str, Any]:
+        expires = r.get("expires_at")
+        return {
+            "id": r["id"],
+            "project_id": r["project_id"],
+            "run_id": r["run_id"],
+            "run_created_at": r["run_created_at"],
+            "finding_id": r["finding_id"],
+            "identity_key": r["identity_key"],
+            "masked_key": r["masked_key"],
+            "state": r["state"],
+            "rationale": r["rationale"],
+            "expires_at": expires,
+            "expires_on": time.strftime("%Y-%m-%d", time.gmtime(float(expires) - 1)) if expires else None,
+            "reviewer_id": r["reviewer_id"],
+            "reviewer_email": r["reviewer_email"],
+            "created_at": r["created_at"],
         }
 
     # -- row mappers ----------------------------------------------------
