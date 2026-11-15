@@ -67,6 +67,15 @@ def _readme(run: BenchRun) -> str:
         for p in run.lock.get("sources", [])
     )
     version = s.get("software", {}).get("agentleak_version", "?")
+    git = run.lock.get("environment", {}).get("git") or {}
+    cff, _ = load_citation()
+    source_install = ""
+    if git.get("commit") and cff.get("repository-code"):
+        source_install = (
+            "\n# or the exact source commit the run used"
+            + (" (it had uncommitted changes)" if git.get("dirty") else "")
+            + f":\npip install \"git+{cff['repository-code']}@{git['commit']}\""
+        )
     return f"""\
 # {s.get('experiment')}: reproducibility capsule
 
@@ -76,7 +85,7 @@ to check or redo this benchmark is in this archive.
 ## Reproduce
 
 ```bash
-pip install "agentleak=={version}"
+pip install "agentleak=={version}"{source_install}
 agentleak bench verify capsule.zip     # checksums + re-run + hash comparison
 ```
 

@@ -6,6 +6,48 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+<!-- research workflow (next/research) -->
+### Added
+
+- **`agentleak bench`, a research workflow** (new package
+  `agentleak.research`, no new dependency). An experiment manifest (`bench
+  init`) pins the software version and the SHA-256 of every scenario source;
+  `bench run` analyzes leaking fixtures, the five independent clean controls
+  and a derived compliant counterpart of each pack fixture, and writes
+  `rows.csv` (scenario x repetition x channel), `summary.json` (every metric
+  with numerator, denominator, interval and method), `manifest.lock.json`
+  (environment, hashes, licences) and `REPORT.md`. Runs are resumable and
+  deterministic: same manifest and seed give a byte-identical `rows.csv`.
+  Detectors never receive the ground truth; fixture-integrity checks are
+  reported apart from detection, and independent and derived negatives are
+  never pooled.
+- `bench compare`: paired comparison of two runs with paired bootstrap
+  intervals, exact McNemar and sign-flip tests, Holm-adjusted p-values,
+  Cohen's h and the list of scenarios that flipped. Refuses runs with
+  different source hashes or labels; warns on different tiers, degraded runs,
+  versions or Risk Index denominators.
+- `bench export`: booktabs LaTeX and Markdown tables whose captions state the
+  definition, denominator, interval method, version, tier and provenance; a
+  metrics CSV; a Methods paragraph; BibTeX from `CITATION.cff` (no entry is
+  invented for datasets whose citation the repository does not hold).
+- `bench capsule` / `bench verify`: a deterministic reproducibility zip
+  (outputs, exports, environment freeze, licences, README, `SHA256SUMS`, draft
+  `.zenodo.json`; nothing is uploaded) and a verifier that re-runs it and
+  compares hashes.
+- AgentRisk for researchers: `bench score-corpus` scores a JSONL/JSON/CSV
+  corpus of events or labelled secrets, prints a hand-checkable derivation and
+  a weight-sensitivity analysis; `bench properties` checks the formal
+  properties against the installed implementation; `bench ablate-scope`
+  shows what changes when `user_input` and `tool_response` count as
+  emissions. The formula is unchanged.
+- `agentleak.research.stats`: Wilson, Clopper-Pearson, BCa and percentile
+  bootstrap, paired bootstrap, McNemar (exact and chi-square), Newcombe risk
+  difference, Cohen's h, Holm-Bonferroni, Cochran-Armitage and exact trend
+  tests, sign-flip permutation test, Kendall's tau-b. Standard library only,
+  seeded, tested against published values.
+- `docs/research.md` tutorial and `examples/research/`.
+<!-- /research workflow -->
+
 ## [0.18.0] - 2026-11-02
 
 The version described and evaluated in the revised SoftwareX article.

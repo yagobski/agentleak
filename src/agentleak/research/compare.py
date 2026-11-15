@@ -24,7 +24,7 @@ from typing import Any
 from . import stats
 from .bench import BenchRun, dump_json, load_run
 from .corpus import DISCLOSURE_CHANNELS
-from .render import CHANNEL_LABELS
+from .render import CHANNEL_LABELS, provenance_line
 from .rows import scenario_table
 from .summary import metric_seed
 
@@ -264,10 +264,12 @@ def compare_runs(
         "schema": COMPARISON_SCHEMA,
         "a": {"path": str(a.out_dir), "experiment": a.summary.get("experiment"),
               "detector": a.summary.get("detector"),
-              "agentleak_version": a.summary.get("software", {}).get("agentleak_version")},
+              "agentleak_version": a.summary.get("software", {}).get("agentleak_version"),
+              "provenance": a.summary.get("provenance", [])},
         "b": {"path": str(b.out_dir), "experiment": b.summary.get("experiment"),
               "detector": b.summary.get("detector"),
-              "agentleak_version": b.summary.get("software", {}).get("agentleak_version")},
+              "agentleak_version": b.summary.get("software", {}).get("agentleak_version"),
+              "provenance": b.summary.get("provenance", [])},
         "checks": checks,
         "forced": bool(failures and force),
         "settings": {"seed": seed, "bootstrap_resamples": n_boot, "confidence": conf,
@@ -301,6 +303,12 @@ def render_comparison(doc: dict[str, Any]) -> str:
         "",
         f"A: `{doc['a']['path']}` · B: `{doc['b']['path']}` · {doc['paired_units']} paired "
         "scenarios.",
+        "",
+        f"A: agentleak {doc['a']['agentleak_version']}, detection "
+        f"{doc['a']['detector'].get('mode')} [{', '.join(doc['a']['detector'].get('tiers_run', []))}]. "
+        f"B: agentleak {doc['b']['agentleak_version']}, detection "
+        f"{doc['b']['detector'].get('mode')} [{', '.join(doc['b']['detector'].get('tiers_run', []))}].",
+        f"Data: {provenance_line({'provenance': doc['a']['provenance']})}.",
         "",
         "## Comparability",
         "",

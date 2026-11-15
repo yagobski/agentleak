@@ -214,3 +214,15 @@ def test_scope_ablation_flips_every_clean_control(runs, tmp_path):
     assert all(r["ri_ablated"] >= r["ri_default"] for r in doc["rows"])
     for name in ("scope_ablation.json", "scope_ablation.csv", "SCOPE-ABLATION.md"):
         assert (tmp_path / "abl" / name).exists()
+
+
+def test_comparison_outputs_carry_version_tier_and_provenance(runs, tmp_path):
+    a, b = runs
+    doc = compare_runs(a, b, out_dir=tmp_path / "c")
+    for side in ("a", "b"):
+        assert doc[side]["agentleak_version"] and doc[side]["detector"]["tiers_run"]
+        assert {p["source"] for p in doc[side]["provenance"]} >= {"builtin"}
+    md = (tmp_path / "c" / "COMPARISON.md").read_text()
+    tex = (tmp_path / "c" / "comparison.tex").read_text()
+    for text in (md, tex):
+        assert "sha256" in text and "agentleak" in text

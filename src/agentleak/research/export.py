@@ -323,7 +323,9 @@ def comparison_latex(doc: dict[str, Any]) -> str:
         f"A: agentleak {doc['a']['agentleak_version']}, {doc['a']['detector'].get('mode')} "
         f"[{', '.join(doc['a']['detector'].get('tiers_run', []))}]. B: agentleak "
         f"{doc['b']['agentleak_version']}, {doc['b']['detector'].get('mode')} "
-        f"[{', '.join(doc['b']['detector'].get('tiers_run', []))}]. Comparability warnings: "
+        f"[{', '.join(doc['b']['detector'].get('tiers_run', []))}]. Data: "
+        + provenance_line({"provenance": doc["a"].get("provenance", [])})
+        + ". Comparability warnings: "
         + ("; ".join(c["detail"] for c in doc["checks"] if c["status"] != "ok") or "none")
         + "."
     )
