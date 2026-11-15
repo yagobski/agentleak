@@ -30,7 +30,7 @@ keywords:
   - software testing
   - compliance
 license: MIT
-version: 0.19.0
+version: 0.19.1
 preferred-citation:
   type: article
   title: "AgentLeak: A Benchmark for Internal-Channel Privacy Leakage in Multi-Agent LLM Systems"
