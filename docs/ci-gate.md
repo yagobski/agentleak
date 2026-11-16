@@ -173,3 +173,15 @@ A green job certifies only the tested fixtures and configured policy. It does
 not prove safety against unseen prompts, tools, memory paths, model updates, or
 production data. Require human review for policy changes, vault reductions, and
 any exception that permits a critical finding.
+
+### The configuration is input from the pull request
+
+`agentleak.yaml` lives in the repository, so a pull request can change it. A
+configuration cannot make AgentLeak send an arbitrary environment variable
+anywhere: a key named in `api_key_env` goes only to its provider's host (or,
+for another `*_API_KEY`, to a server on the runner itself), and any other pair
+must be allowed by `AGENTLEAK_KEY_ENVS` in the workflow's `env:`, which the
+pull request does not control on `pull_request` from a fork. See
+[detection.md](detection.md#tier-3--llm-judge). Still expose to the gate step
+only the secrets it needs; on `pull_request_target`, do not run the gate
+against the pull request's code with secrets available.

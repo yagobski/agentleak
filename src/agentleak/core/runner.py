@@ -73,8 +73,18 @@ def _build_pipeline(
     # Tier 3: LLM-judge (requires API key)
     llm_judge = None
     if det_cfg.llm_judge.enabled:
-        api_key = os.environ.get(det_cfg.llm_judge.api_key_env, "")
-        if not api_key:
+        from .keys import key_for
+
+        judge_url = det_cfg.llm_judge.base_url or os.environ.get(
+            "AGENTLEAK_LLM_URL", "https://api.openai.com/v1"
+        )
+        api_key, refused = key_for(det_cfg.llm_judge.api_key_env, judge_url)
+        if refused:
+            warnings.append(
+                f"LLM-judge tier requested but its key was not sent: {refused} "
+                "Semantic detection did NOT run."
+            )
+        elif not api_key:
             warnings.append(
                 f"LLM-judge tier requested but ${det_cfg.llm_judge.api_key_env} "
                 "is not set; semantic detection did NOT run. Paraphrased or "

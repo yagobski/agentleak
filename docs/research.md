@@ -559,6 +559,12 @@ agent:
   temperature: 0.0
 ```
 
+A manifest cannot send any variable to any host: `api_key_env` follows the
+rule in [detection.md](detection.md#tier-3--llm-judge) (a provider's key goes to
+that provider, another `*_API_KEY` to a local server, anything else only when
+`AGENTLEAK_KEY_ENVS` allows it), and a refused pair stops the run with the
+line to add.
+
 In live mode the label is `live`: whether the agent leaks is what is measured,
 so there are no clean counterparts and no recall. The summary reports the leak
 rate (scenarios with a leak in any repetition), the mean per-scenario leak

@@ -206,8 +206,28 @@ detection:
     timeout: 30.0
 ```
 
-Supported key env vars (checked in order):
-`OPENAI_API_KEY` · `OPENROUTER_API_KEY` · `ANTHROPIC_API_KEY` · `TOGETHER_API_KEY` · `GROQ_API_KEY`
+**Which key goes where.** A configuration file chooses the endpoint and the
+name of the variable that holds its key, and in CI that file is often one a
+pull request can edit. So the pair is checked before the variable is read:
+
+| Variable | May be sent to |
+| --- | --- |
+| `OPENAI_API_KEY` | `api.openai.com` and its subdomains |
+| `OPENROUTER_API_KEY` | `openrouter.ai` |
+| `ANTHROPIC_API_KEY` | `api.anthropic.com` |
+| `GROQ_API_KEY` | `api.groq.com` |
+| `TOGETHER_API_KEY` | `api.together.xyz` |
+| any other `*_API_KEY` | a server on this machine (`localhost`, `127.0.0.1`, `::1`) |
+| anything else | nowhere, unless the operator allows it |
+
+The operator allows more in the process environment, never in a
+configuration file: `AGENTLEAK_KEY_ENVS` takes comma-separated entries
+`NAME@host` (that host and its subdomains) or `NAME` (any host), for example
+`AGENTLEAK_KEY_ENVS=AZURE_OPENAI_KEY@myres.openai.azure.com`. A refused pair is
+reported in the run's warnings with the line to add, and the judge does not
+run. With `api_key_env` unset, the judge takes the first provider key above
+that may go to its endpoint. The same rule applies to live agent runs and to
+`agentleak bench` live agents.
 
 On any error (network, missing key, bad JSON) the LLM-judge returns `[]` — the
 pipeline continues without crashing.
