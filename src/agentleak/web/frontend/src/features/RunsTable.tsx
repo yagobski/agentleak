@@ -11,24 +11,23 @@ import { VerdictLabel } from "./Chips"
 
 export type RunRow = RunSummary & { project_name?: string }
 
-/** Every run in the workspace, across projects (newest first). */
-export function useAllRuns() {
+/** The most recent runs in the workspace, across projects (newest first, one request). */
+export function useAllRuns(limit = 200) {
   const [runs, setRuns] = useState<RunRow[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState("")
   const load = useCallback(() => {
     setError("")
     api
-      .projects()
-      .then(async (projects) => {
-        const lists = await Promise.all(
-          projects.map((p) => api.projectRuns(p.id).then((rs) => rs.map((r) => ({ ...r, project_name: p.name })))),
-        )
-        setRuns(lists.flat().sort((a, b) => b.created_at - a.created_at))
+      .runsPage({ limit, sort: "created_at", dir: "desc" })
+      .then((p) => {
+        setRuns(p.items)
+        setTotal(p.total)
       })
       .catch((e) => setError((e as Error).message))
-  }, [])
+  }, [limit])
   useEffect(load, [load])
-  return { runs, error, reload: load }
+  return { runs, total, error, reload: load }
 }
 
 export function formatStamp(epoch: number): string {

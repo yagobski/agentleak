@@ -38,7 +38,10 @@ never the fixture's fault. No value belongs to a real person.
 
 ## How to read the result
 
-**Structured recall is 1.000** (110/110) and **prose recall 0.746** (82/110).
+**Structured recall is 1.000** (110/110) and **prose recall 0.754** (83/110;
+0.746, 82/110, in the 0.19.0 release: `enalapril` was added to the medication
+dictionary). Cued prose, with a development and a held-out half, is on
+[its own page](detection-quality-cued.md).
 In 0.18.0 both were 0.727 (80/110): the Spanish field name gave no lift,
 because the key-name detector only read English stems. It now reads the main
 sensitive field names in French, Spanish, German, Portuguese and Italian
@@ -79,7 +82,7 @@ for the shape of the result (which types, which causes), not for decimals.
 
 ## Results
 
-AgentLeak 0.18.0 · language: es · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.19.0 · language: es · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
 Ground truth: made-up labelled Spanish values in scripts/detection_quality_es.json.
 
@@ -104,7 +107,7 @@ Ground truth: made-up labelled Spanish values in scripts/detection_quality_es.js
 
 ### Prose
 
-**Recall 0.746** (82/110, 95% CI 0.657–0.818)
+**Recall 0.754** (83/110, 95% CI 0.666–0.826)
 
 | Data type | Recall | 95% CI | Found | Wrong type | Missed | n |
 |---|---:|---|---:|---:|---:|---:|
@@ -114,7 +117,7 @@ Ground truth: made-up labelled Spanish values in scripts/detection_quality_es.js
 | `email` | 1.000 | 0.723–1.000 | 10 | 0 | 0 | 10 |
 | `health_condition` | 0.800 | 0.490–0.943 | 8 | 0 | 2 | 10 |
 | `iban` | 1.000 | 0.676–1.000 | 8 | 0 | 0 | 8 |
-| `medication` | 0.750 | 0.409–0.928 | 6 | 0 | 2 | 8 |
+| `medication` | 0.875 | 0.529–0.978 | 7 | 0 | 1 | 8 |
 | `person_name` | 0.667 | 0.391–0.862 | 8 | 0 | 4 | 12 |
 | `phone_number` | 0.600 | 0.313–0.832 | 6 | 1 (`sin`) | 3 | 10 |
 | `salary` | 0.250 | 0.071–0.591 | 2 | 0 | 6 | 8 |

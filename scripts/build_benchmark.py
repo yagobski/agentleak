@@ -60,6 +60,10 @@ LEAK_MODE = {
     # An instruction planted in a tool response makes the agent read private
     # data with one tool and send it out with another.
     "injecagent_ds": "hijack",
+    # A fact an agent may hold but must not pass to this agent or this group.
+    "agentsocialbench_ma": "norm",
+    # A poisoned MCP tool description sends the user's data to its recipient.
+    "mcptox_recipient_hijack": "hijack",
 }
 
 

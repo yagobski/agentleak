@@ -1,0 +1,164 @@
+{
+  "note": "Look-alikes for the context-window rules: a cue word next to a value that is not personal data (an order number after 'call', a year after 'born', a price after 'pay', a version after 'account', ticket and job ids, ISO dates in logs, timestamps, non-medical 'suffers from'). English, French and Spanish. Written and committed with the cued-prose fixture, before any context-window rule existed, and not edited afterwards. Each category has a development half (looked at while tuning) and a held-out half (only counted). Each text is analysed as one 'log' event by the full fast pipeline; a text with any finding counts as flagged.",
+  "frozen": "2026-11-15, commit that adds this file, before any context-window rule",
+  "development": {
+    "call_cue_reference": [
+      "Reach out about ticket 555-0182 if it reopens.",
+      "He called back about invoice 482-1934 this morning.",
+      "Text the team when build 2024-1103 finishes.",
+      "Appelez le service au sujet de la commande 482-1934.",
+      "Llámale por el pedido 731-0042 cuando puedas."
+    ],
+    "born_year_only": [
+      "She was born in 1984 in a small town in Ohio.",
+      "He was born in the spring of 1990.",
+      "Elle est née en 1984 à Lyon.",
+      "Nació en 1975 en un pueblo de Cádiz."
+    ],
+    "born_non_person": [
+      "The project was born in 2019 out of a hackathon.",
+      "The idea was born on a whiteboard during the 2021 offsite.",
+      "Le projet est né en 2019 lors d'un hackathon."
+    ],
+    "pay_price": [
+      "Pay $40 for expedited shipping.",
+      "The invoice says we must pay $84,000 by March.",
+      "Rent is $2,400 a month, utilities included.",
+      "Payez 40 € pour la livraison express.",
+      "El alquiler cuesta 900 € al mes."
+    ],
+    "version_numbers": [
+      "The account service moved to version 3.4.1 last week.",
+      "Checking account module 4.2.0 is deprecated.",
+      "Le module compte passe en version 2.14.0.",
+      "La cuenta de servicio usa la versión 1.8.3."
+    ],
+    "ticket_and_job_ids": [
+      "Customer account migration job 88213 finished at noon.",
+      "Account ticket 4471223 was closed after review.",
+      "La tâche de migration des comptes 552190 est terminée.",
+      "La incidencia de la cuenta 7781234 se cerró ayer."
+    ],
+    "iso_dates_in_logs": [
+      "2024-03-12 10:22:01 INFO birthday-reminder service restarted",
+      "2024-06-30T12:00:01Z birthdate validator loaded 1200 rules",
+      "2023-11-05 08:00:01 WARN salary-export job retried 3 times"
+    ],
+    "timestamps": [
+      "Job started at 10:42:13 and finished at 10:55:02.",
+      "Created 2023-01-15T08:30:00Z, updated 2023-01-16T09:00:00Z.",
+      "Tâche lancée le 2024-02-01 à 09:15:00."
+    ],
+    "health_lookalikes": [
+      "The server suffers from memory pressure under load.",
+      "The build has been dealing with flaky tests for months.",
+      "The team is recovering from last week's outage.",
+      "Le serveur souffre de lenteurs depuis la mise à jour.",
+      "La red sufre de cortes intermitentes."
+    ],
+    "address_lookalikes": [
+      "Send the report to 3 Engineering Leads by Friday.",
+      "She lives at the edge of town near the river.",
+      "Ship Release 12 Beta to the QA group.",
+      "Envoyez le rapport au 3e étage.",
+      "Vive en las afueras desde 2019."
+    ],
+    "salary_lookalikes": [
+      "The salary survey had 1200 responses this year.",
+      "He earns 4000 points a year in the loyalty program.",
+      "Le salaire minimum a augmenté de 2 % en 2024.",
+      "El salario medio subió un 3 por ciento."
+    ],
+    "account_lookalikes": [
+      "Your account has 3 unread messages.",
+      "The account team closed 120000 tickets this year.",
+      "Le compte rendu de la réunion fait 12 pages.",
+      "La cuenta atrás empieza el 2025."
+    ],
+    "phone_lookalikes": [
+      "Call 911 in an emergency.",
+      "Phone sales grew 12 percent in 2024.",
+      "Llama a la API con un timeout de 3000 ms."
+    ]
+  },
+  "held_out": {
+    "call_cue_reference": [
+      "Call me about order 220-4410 when you can.",
+      "She phoned regarding claim 918-2231.",
+      "Ring the desk if case 731-0042 escalates.",
+      "Il a rappelé pour la facture 731-0042.",
+      "Escribió sobre la factura 482-1934 ayer."
+    ],
+    "born_year_only": [
+      "Born in 1962, he joined the company in 1990.",
+      "My grandmother was born around 1935.",
+      "Il est né en 1990 à Montréal.",
+      "Nacida en 1982, estudió en Salamanca."
+    ],
+    "born_non_person": [
+      "The idea was born on 2021-03-04 during a hackathon.",
+      "Our partnership was born in 2018 in Berlin.",
+      "La empresa nació en 2015 en Valencia."
+    ],
+    "pay_price": [
+      "You will pay 1,200 dollars for the annual license.",
+      "The grant pays $50,000 per year to the lab.",
+      "The house costs $350,000 after the discount.",
+      "Le loyer est de 1 200 € par mois.",
+      "Paga 40 € por el envío urgente."
+    ],
+    "version_numbers": [
+      "The account API is now at 1.2.3.",
+      "Account-service build 20240501 passed all checks.",
+      "Le service de compte utilise la version 5.0.2.",
+      "La versión 2.3.4 de la cuenta demo ya está disponible."
+    ],
+    "ticket_and_job_ids": [
+      "The account sync job 99812 failed twice.",
+      "Account cleanup batch 2024113 removed stale sessions.",
+      "Le ticket 4471223 concernant le compte est fermé.",
+      "El lote 2024113 de cuentas inactivas se borró."
+    ],
+    "iso_dates_in_logs": [
+      "[2024-05-17 06:00:00] INFO born-at column added to schema",
+      "2022-10-09T23:59:59Z payroll batch completed",
+      "2024-01-31 00:00:00 INFO date de naissance: champ optionnel"
+    ],
+    "timestamps": [
+      "Backup ran from 01:00:00 to 01:42:57 without errors.",
+      "Last login 2024-07-04 18:22:10 UTC from the office.",
+      "Proceso iniciado el 2024-03-10 a las 08:00:00."
+    ],
+    "health_lookalikes": [
+      "Diagnosed with a misconfigured proxy, the job was restarted.",
+      "Treated for corrosion, the pipe lasted twice as long.",
+      "The history of the project starts in 2019.",
+      "Le projet est suivi pour sa qualité de code.",
+      "El servidor padece de lentitud por las tardes."
+    ],
+    "address_lookalikes": [
+      "Mail it to the Finance Team before noon.",
+      "Move to 2 Factor Authentication by next quarter.",
+      "The service listens at 8080 on the internal gateway.",
+      "Expédiez la commande au service Logistique.",
+      "Envía el informe a 3 Responsables de Equipo."
+    ],
+    "salary_lookalikes": [
+      "The salary band review is due in 2025.",
+      "She makes 30 commits a day on average.",
+      "Le salaire sera versé le 28 du mois.",
+      "Cobra 2 euros por cada envío adicional."
+    ],
+    "account_lookalikes": [
+      "The account was created on 2023-04-05.",
+      "Account limits allow 500000 requests per day.",
+      "Le compte à rebours affiche 120000 secondes.",
+      "La cuenta tiene 12 usuarios activos."
+    ],
+    "phone_lookalikes": [
+      "Call stack depth reached 1024 frames.",
+      "Text size is 14 px on mobile.",
+      "Appelez la fonction avec 3 arguments."
+    ]
+  }
+}

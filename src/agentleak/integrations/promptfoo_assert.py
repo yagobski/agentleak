@@ -118,63 +118,15 @@ def _grade(trace: Any, cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _time(value: Any) -> bool:
-    """A non-negative span time the normalizer can actually convert."""
-    from .otel import _ms
-
-    return _ms(value) is not None and value >= 0
-
-
 def _trace_problem(raw: dict[str, Any]) -> str | None:
     """Why promptfoo's trace (TraceData) cannot be trusted, if it cannot.
 
-    Only what was exported can be checked: a span the application never
-    created or never sent cannot be detected here.
+    The shape knowledge lives in :mod:`agentleak.interop.promptfoo`, shared
+    with ``agentleak import --from promptfoo``.
     """
-    if not isinstance(raw.get("traceId"), str) or not raw["traceId"]:
-        return "trace is malformed: traceId must be a non-empty string"
-    ids: set[str] = set()
-    for i, span in enumerate(raw["spans"]):
-        sid = span.get("spanId") if isinstance(span, dict) else None
-        if not isinstance(sid, str) or not sid or sid in ids:
-            return f"trace is malformed: span #{i} needs a unique spanId string"
-        ids.add(sid)
-        start, end = span.get("startTime"), span.get("endTime")
-        if not _time(start) or (end is not None and not (_time(end) and end >= start)):
-            return f"trace is malformed: span {sid} has an invalid startTime/endTime"
-        # Optional fields may be absent, but a present value must have the right
-        # type: an empty list is not a missing parent or empty attributes.
-        parent, attrs = span.get("parentSpanId"), span.get("attributes")
-        if not isinstance(span.get("name"), str) or (
-                parent is not None and not isinstance(parent, str)):
-            return f"trace is malformed: span {sid} needs a string name and parentSpanId"
-        if attrs is not None and not isinstance(attrs, dict):
-            return f"trace is malformed: span {sid} has non-object attributes"
-        status = span.get("statusCode")
-        if status is not None and (not isinstance(status, int) or isinstance(status, bool)):
-            return f"trace is malformed: span {sid} has a non-integer statusCode"
-    # Parent links must end at a root, not loop back: a span cannot be its own
-    # ancestor, however long the chain.
-    parent_of = {s["spanId"]: s["parentSpanId"] for s in raw["spans"] if s.get("parentSpanId")}
-    for sid in parent_of:
-        seen, node = {sid}, parent_of[sid]
-        while node in parent_of:
-            if node in seen:
-                return f"trace is malformed: span {sid}'s parents form a cycle"
-            seen.add(node)
-            node = parent_of[node]
-    for span in raw["spans"]:
-        sid, parent = span["spanId"], span.get("parentSpanId")
-        # promptfoo's test_case root stays open while assertions run, so only
-        # its child, the target span, may point at a parent that is absent.
-        if (parent and parent not in ids
-                and (span.get("attributes") or {}).get("promptfoo.span.role") != "target"):
-            return f"trace is partial: span {sid}'s parent {parent} is not in the trace"
-        if span.get("endTime") is None:
-            return f"trace is partial: span {sid} has no endTime (still open)"
-        if span.get("statusCode") == 2:   # OTel ERROR
-            return f"trace is partial: span {sid} ended with an error status"
-    return None
+    from ..interop.promptfoo import trace_problem
+
+    return trace_problem(raw)
 
 
 def _grade_promptfoo_trace(context: Any, cfg: dict[str, Any]) -> dict[str, Any]:
@@ -189,20 +141,18 @@ def _grade_promptfoo_trace(context: Any, cfg: dict[str, Any]) -> dict[str, Any]:
     if not raw["spans"]:
         return _incomplete("trace has no spans")
 
-    def role(span: Any) -> Any:
-        attrs = span.get("attributes") if isinstance(span, dict) else None
-        return attrs.get("promptfoo.span.role") if isinstance(attrs, dict) else None
+    from ..interop.promptfoo import app_spans as _app_spans
+    from ..interop.promptfoo import checked_spans
 
     # Grader spans are the evaluator's own work, possibly still running, so
     # they are neither checked nor graded; every other span is checked.
-    spans = [s for s in raw["spans"] if role(s) != "grader"]
-    problem = _trace_problem({**raw, "spans": spans})
+    spans, problem = checked_spans(raw)
     if problem:
         return _incomplete(problem)
 
     # promptfoo's own target span is not evidence of what the application did:
     # only spans the application exported are graded.
-    app_spans = [s for s in spans if role(s) is None]
+    app_spans = _app_spans(spans)
     if not app_spans:
         return _incomplete("the trace holds only promptfoo's own spans; the application "
                            "exported none")

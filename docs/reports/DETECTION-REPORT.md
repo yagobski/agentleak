@@ -215,7 +215,7 @@ deliberate:
 | New decoders | 6 (HTML entities, unicode escapes, zero-width, homoglyph/fullwidth, gzip/zlib in base64, leetspeak) | `core/transforms.py` |
 | New data types | 2 (`national_id` level 4, `business_identifier` level 1) | `core/agentrisk.DATA_TYPE_LEVELS` |
 | Built-in detector groups | 6 (unchanged) | `agentleak.detectors.BUILTIN_DETECTORS` |
-| Bundled scenarios | 362 (266 + 96 InjecAgent) | `/api/meta` → `scenarios.total` |
+| Bundled scenarios | 491 (266 + 96 InjecAgent + 105 AgentSocialBench + 24 MCPTox) | `/api/meta` → `scenarios.total` |
 
 ## Sources
 

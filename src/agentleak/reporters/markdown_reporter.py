@@ -94,6 +94,15 @@ def render(data: dict[str, Any]) -> str:
 
     a("## Risk by channel")
     a("")
+    obs = data.get("observation") or {}
+    if obs.get("unobserved_channels"):
+        # The source name comes from the trace file's metadata: escape it like
+        # every other trace-controlled string.
+        a(f"> Imported from {_t(obs.get('source'))}: only "
+          f"{_t(', '.join(map(str, obs.get('observable_channels', []))))} "
+          f"could be observed. Not observed, so not audited: "
+          f"{_t(', '.join(map(str, obs['unobserved_channels'])))}.")
+        a("")
     channel_risks = data.get("channel_risks", [])
     if channel_risks:
         a("| Channel | Level | Findings | Channel RI |")

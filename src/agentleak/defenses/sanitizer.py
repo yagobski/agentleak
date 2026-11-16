@@ -123,6 +123,12 @@ DETECT_ONLY: dict[str, str] = {
 # wrong label — in the "sanitised" output.
 _CREDENTIAL_TYPES = frozenset(t.upper() for t in CREDENTIAL_TYPES)
 
+# An email address is self-delimiting too. A word inside it that another
+# detector recognises ("a1b2c3" read as a postal code, "diabetes" in
+# "j.diabetes.clinic@…") used to win as the inner span, and the rest of the
+# address stayed in the output: ``dana.[REDACTED_ADDRESS]@example.com``.
+_WHOLE_TYPES = _CREDENTIAL_TYPES | {"EMAIL"}
+
 
 def _default_detectors() -> list[Any]:
     """The Tier-1 detector chain, built once and shared.
@@ -163,6 +169,39 @@ def redaction_coverage() -> dict[str, Any]:
         "detect_only": {k: v for k, v in sorted(DETECT_ONLY.items()) if k in emitted},
         "extra": sorted(dt for dt, _ in _EXTRA_PATTERNS),
     }
+
+
+# Above this many values of one length, one pass over the text beats a
+# ``str.find`` scan per value (C-speed, but one full scan each).
+_SLIDE_FROM = 64
+
+
+def _occurrences(text: str, values: set[str]) -> dict[str, list[int]]:
+    """Every start offset of every value in ``text``, overlapping ones
+    included, ascending: what ``text.find(value, start + 1)`` in a loop
+    returns, without scanning the whole text once per value (quadratic when
+    an event holds thousands of distinct values)."""
+    by_len: dict[int, list[str]] = {}
+    for value in values:
+        by_len.setdefault(len(value), []).append(value)
+    out: dict[str, list[int]] = {}
+    for size, group in by_len.items():
+        if len(group) < _SLIDE_FROM:
+            for value in group:
+                starts: list[int] = []
+                start = text.find(value)
+                while start >= 0:
+                    starts.append(start)
+                    start = text.find(value, start + 1)
+                out[value] = starts
+            continue
+        hits: dict[str, list[int]] = {value: [] for value in group}
+        for i in range(len(text) - size + 1):
+            bucket = hits.get(text[i:i + size])
+            if bucket is not None:
+                bucket.append(i)
+        out.update(hits)
+    return out
 
 
 def _strictly_inside_any(
@@ -308,6 +347,7 @@ class Sanitizer:
         # "1.1.1.1..." gave thousands of copies) and the pairwise checks below
         # then took minutes on a few hundred bytes.
         located: set[tuple[str, str]] = set()
+        order: list[tuple[str, str]] = []
 
         for detector in self._detectors:
             for raw in detector.detect(text):
@@ -317,10 +357,11 @@ class Sanitizer:
                 if not value or (value, raw.data_type) in located:
                     continue
                 located.add((value, raw.data_type))
-                start = text.find(value)
-                while start >= 0:
-                    found.append((start, start + len(value), value, raw.data_type.upper()))
-                    start = text.find(value, start + 1)
+                order.append((value, raw.data_type))
+        positions = _occurrences(text, {value for value, _dtype in order})
+        for value, dtype in order:
+            for start in positions[value]:
+                found.append((start, start + len(value), value, dtype.upper()))
 
         for dtype, pattern in self._patterns:
             for match in pattern.finditer(text):
@@ -347,10 +388,11 @@ class Sanitizer:
         # Identical spans add nothing (first one kept, so ties resolve as before).
         found = list(dict.fromkeys(found))
 
-        # A credential swallows whatever was matched inside it.
+        # A credential (or an email address) swallows whatever was matched
+        # inside it.
         credentials = [
             span for span in found
-            if span[3] in _CREDENTIAL_TYPES or (span[0], span[1]) in whole
+            if span[3] in _WHOLE_TYPES or (span[0], span[1]) in whole
         ]
         swallowed = _strictly_inside_any(credentials)
         found = [span for span in found if not swallowed(span)]
@@ -360,7 +402,7 @@ class Sanitizer:
         holds_another = _strictly_holds_any(found)
         inner = [
             span for span in found
-            if span[3] in _CREDENTIAL_TYPES
+            if span[3] in _WHOLE_TYPES
             or (span[0], span[1]) in whole
             or not holds_another(span)
         ]

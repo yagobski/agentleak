@@ -10,6 +10,7 @@ import re
 
 from ..core.detector import Detector, RawMatch, Severity
 from . import checksums
+from .context import matches_for as context_matches
 
 # Tolerant separator: handles flattened "key: value", JSON quotes, and "=".
 _SEP = r"[\"'\s:=#-]*"
@@ -94,4 +95,7 @@ class FinanceDetector(Detector):
                 recommendation="Internal risk notes must never reach the final output or the customer.",
             ))
 
+        # "his checking account number is 999327394-49830116": a digit run
+        # that the word "account" names, a few glue words away.
+        matches.extend(context_matches(self.name, text, frozenset({"account_number"}), matches))
         return matches

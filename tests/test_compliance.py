@@ -195,3 +195,40 @@ def test_compliance_integrity_digest_is_reproducible_and_unsigned():
     assert len(integrity["digest"]) == 64
     assert integrity["signed"] is False
     assert "digital signature" in integrity["note"]
+
+
+def _runtime_key(prefix: str, length: int) -> str:
+    """Key-shaped strings are built at run time (see test_key_shaped_placeholders)."""
+    import random
+    import string
+
+    rng = random.Random(prefix)
+    return prefix + "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+
+def test_every_credential_type_the_detectors_emit_is_a_secret_type():
+    """A credential type missing here silently leaves GDPR Art. 32 compliant."""
+    import inspect
+    import re
+
+    from agentleak.core.compliance import SECRET_TYPES
+    from agentleak.detectors import secrets
+    from agentleak.detectors.secret_rules import RULES
+
+    emitted = {r.data_type for r in RULES} | set(
+        re.findall(r'data_type="([a-z_]+)"', inspect.getsource(secrets))
+    )
+    assert emitted <= SECRET_TYPES, sorted(emitted - SECRET_TYPES)
+
+
+def test_model_provider_and_google_keys_trip_gdpr_art32():
+    for text in (
+        "calling with " + _runtime_key("sk-proj-", 40),
+        "calling with " + _runtime_key("AIza", 35),
+        "Authorization: Bearer " + _runtime_key("", 32),
+    ):
+        trace = Trace(run_id="r")
+        trace.add_event("tool_call", text)
+        gdpr = next(f for f in _report(trace)["compliance"]["frameworks"] if f["id"] == "gdpr")
+        art32 = next(ctrl for ctrl in gdpr["controls"] if ctrl["id"] == "gdpr.art32")
+        assert art32["status"] == "at_risk", text[:20]

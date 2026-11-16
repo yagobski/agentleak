@@ -106,6 +106,9 @@ runs once anyway and records the drift in the lock file.
 | `agentleak_bench` | 36 | MIT | pattern | `private_vault` field values |
 | `privacylens_ci` | 120 | CC-BY-4.0 | norm | the dataset's sensitive facts (canaries) |
 | `agentdojo_exfil` | 100 | MIT | hijack | the exfiltrated values (canaries) |
+| `injecagent_ds` | 96 | MIT | unspecified | the stolen values (canaries) |
+| `agentsocialbench_ma` | 105 | MIT | norm | the must-not-cross statements (canaries) |
+| `mcptox_recipient_hijack` | 24 | CC-BY-4.0 | hijack | the user's data in the redirected call (canaries) |
 
 Every unit carries a label fixed **by construction**, never by the detectors:
 

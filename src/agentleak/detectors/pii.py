@@ -13,10 +13,13 @@ ones (emails, validated cards).
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 
 from ..core.detector import Detector, RawMatch, Severity
 from . import checksums
-from ._text import inside_blob
+from ._text import MONTHS as _MONTHS
+from ._text import SubstringIndex, inside_blob
+from .context import matches_for as context_matches
 from .names import full_names
 from .national_ids import scan as scan_national_ids
 
@@ -105,15 +108,6 @@ _VERSION_PREFIX_RE = re.compile(
 CREDIT_CARD_RE = re.compile(r"(?<![\d-])(?<!\d )\d(?:[ -]?\d){11,18}(?![ -]?\d)")
 # Dates only flagged as DOB when anchored to a birth keyword (avoids matching
 # trace timestamps and arbitrary dates).
-_MONTHS = (
-    r"jan(?:uary|vier|eiro)?|feb(?:ruary|ruar)?|f[ée]v(?:rier)?|fevereiro|mar(?:ch|s|zo|ço)?|"
-    r"m[äa]rz|apr(?:il)?|avr(?:il)?|abr(?:il)?|aprile|may|mai|mayo|maio|maggio|"
-    r"jun[ei]?|juin|junio|junho|giugno|jul[iy]?|juillet|julio|julho|luglio|"
-    r"aug(?:ust)?|ao[uû]t|agosto|sep(?:t(?:ember)?)?|septembre|septiembre|setembro|settembre|"
-    r"oct(?:ober)?|octobre|octubre|okt(?:ober)?|outubro|ottobre|"
-    r"nov(?:ember)?|novembre|noviembre|novembro|dec(?:ember)?|d[ée]cembre|dez(?:ember)?|"
-    r"diciembre|dezembro|dicembre|ene(?:ro)?|gen(?:naio)?|janeiro"
-)
 DOB_RE = re.compile(
     r"(?i)\b(?:dob|d\.o\.b\.|date of birth|born(?: on)?|birth ?date"
     r"|n[ée]e? le|date de naissance"
@@ -211,6 +205,29 @@ ADDRESS_ES_RE = re.compile(
     r"(?:,?\s*(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b"
     r"(?:\s+" + _ES_CAP + r"(?:\s+" + _ES_LINK + _ES_CAP + r"){0,4})?)?"
 )
+# A US street address with its city, state and ZIP tail ("262 Kaiser Plain,
+# Lloydside, AL 82804"): the street-type word may be one ADDRESS_RE leaves out
+# (Plain, Trace, Ford, Wells…) because the tail says what the line is. The
+# state must be a USPS code, territories and military included.
+_US_STATES = (
+    "AL|AK|AS|AZ|AR|CA|CO|CT|DE|DC|FM|FL|GA|GU|HI|ID|IL|IN|IA|KS|KY|LA|ME|MH|MD|MA|MI|"
+    "MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|MP|OH|OK|OR|PW|PA|PR|RI|SC|SD|TN|TX|UT|VT|VI|"
+    "VA|WA|WV|WI|WY|AA|AE|AP"
+)
+_CAP_WORD = r"[A-Z][A-Za-z'.-]*"
+ADDRESS_US_ZIP_RE = re.compile(
+    r"(?<![\w.:])\d{1,6}\s+" + _CAP_WORD + r"(?:\s+" + _CAP_WORD + r"){0,3}"
+    r"(?:,?\s+(?:Suite|Ste|Apt|Apartment|Unit|#)\.?\s*[A-Za-z0-9-]+)?"
+    r",\s*" + _CAP_WORD + r"(?:\s+" + _CAP_WORD + r"){0,3},\s*(?:" + _US_STATES + r")"
+    r"\s+\d{5}(?:-\d{4})?(?![\w-])"
+)
+# US military mail: "PSC 9148, Box 4175, APO AE 64580", "Unit 4674 Box 2801,
+# DPO AA 99206", "USS Carlson, FPO AP 58705". APO/FPO/DPO with AA/AE/AP and a
+# ZIP is unambiguous.
+ADDRESS_US_MILITARY_RE = re.compile(
+    r"\b(?:(?:PSC|CMR|Unit)\s+\d{1,5},?\s+Box\s+\d{1,5}|USN?S\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)"
+    r",?\s+(?:APO|FPO|DPO)\s+A[AEP]\s+\d{5}(?![\w-])"
+)
 # Canadian postal code (A1A 1A1) — distinctive enough to match without a keyword.
 POSTAL_RE = re.compile(r"\b[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d\b")
 # Probable full name following a person keyword, e.g. "patient Jean Tremblay".
@@ -223,6 +240,9 @@ NAME_RE = re.compile(
 )
 
 
+_CONTEXT_TYPES = frozenset({"phone_number", "date_of_birth"})
+
+
 def _luhn_ok(digits: str) -> bool:
     """Kept for callers outside this module: Luhn over 13 to 19 digits."""
     nums = "".join(d for d in digits if d.isdigit())
@@ -231,6 +251,15 @@ def _luhn_ok(digits: str) -> bool:
 
 def _inside(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
     return any(a <= span[0] and span[1] <= b for a, b in spans)
+
+
+def _inside_sorted(span: tuple[int, int], starts: list[int], spans: list[tuple[int, int]]) -> bool:
+    """:func:`_inside` for spans sorted by start and not overlapping (one
+    ``finditer`` pass), in log time: only the last span starting at or before
+    ``span`` can hold it. A scan of every email per postal-code candidate was
+    quadratic in a text of many addresses."""
+    i = bisect_right(starts, span[0]) - 1
+    return i >= 0 and span[1] <= spans[i][1]
 
 
 def _dni_letter_ok(number: str, letter: str) -> bool:
@@ -254,7 +283,9 @@ class PIIDetector(Detector):
 
         # No "@", no email; skipping the scan avoids EMAIL_RE's quadratic
         # rescans of long local-part-like runs (base64, hex, dotted ids).
+        email_spans: list[tuple[int, int]] = []
         for m in (EMAIL_RE.finditer(text) if "@" in text else ()):
+            email_spans.append(m.span())
             matches.append(self._match(
                 data_type="email", severity=Severity.MEDIUM, confidence=0.95,
                 matched_value=m.group(0),
@@ -480,8 +511,33 @@ class PIIDetector(Detector):
                 recommendation="Home addresses are re-identifying; remove them from internal channels.",
             ))
 
+        # "Is this value inside one already reported?", from an index rather
+        # than a scan of every earlier address (quadratic in a long event).
+        address_values = SubstringIndex(
+            [m.matched_value for m in matches if m.data_type == "address"], both_ways=False)
+        for pattern, rule, needed in (
+            (ADDRESS_US_ZIP_RE, "address_us_zip", ", "),
+            # APO/FPO/DPO is always followed by " A": a substring test skips
+            # the regex on almost every event.
+            (ADDRESS_US_MILITARY_RE, "address_us_military", "PO A"),
+        ):
+            for m in (pattern.finditer(text) if needed in text else ()):
+                value = m.group(0).strip()
+                if address_values.related(value):
+                    continue
+                address_values.add(value)
+                matches.append(self._match(
+                    data_type="address", severity=Severity.HIGH, confidence=0.75,
+                    matched_value=value, rule=rule,
+                    recommendation="Home addresses are re-identifying; remove them from internal channels.",
+                ))
+
+        email_starts = [a for a, _b in email_spans]
         for m in POSTAL_RE.finditer(text):
-            if inside_blob(text, m.start(), m.end()):
+            # "a1b2c3" inside "dana.a1b2c3@example.com" is part of the address,
+            # not a Canadian postal code; reporting it made the sanitizer
+            # redact the inner span and leave the rest of the email behind.
+            if inside_blob(text, m.start(), m.end()) or _inside_sorted(m.span(), email_starts, email_spans):
                 continue
             matches.append(self._match(
                 data_type="address", severity=Severity.MEDIUM, confidence=0.6,
@@ -489,4 +545,7 @@ class PIIDetector(Detector):
                 recommendation="Postal codes narrow identity; avoid passing them where not required.",
             ))
 
+        # Values that are ambiguous alone, taken when the word before them
+        # names them ("reach her at 555-0152", "born on 1994-10-17").
+        matches.extend(context_matches(self.name, text, _CONTEXT_TYPES, matches))
         return matches

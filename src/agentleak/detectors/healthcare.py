@@ -17,6 +17,7 @@ import re
 
 from ..core.detector import Detector, RawMatch, Severity
 from ._text import inside_blob, trie_pattern
+from .context import matches_for as context_matches
 
 # Synthetic NAM shape: 4 letters + 8 digits (e.g. TREM12345678).
 NAM_LIKE_RE = re.compile(r"\b[A-Z]{4}\d{8}\b")
@@ -28,12 +29,18 @@ NAM_SPACED_RE = re.compile(r"\b(?:NAM\s+)?[A-Z]{4}(?:[\s-]\d{2,4}){2,4}\b")
 # US-style MRN / medical record number anchored on a keyword. Allows a leading
 # ``NAM`` label and internal spaces/hyphens in the identifier body.
 MRN_RE = re.compile(
-    r"(?i)\b(?:mrn|medical record(?: number)?|health[_ ]?id)\b[:\s#]*"
+    r"\b(?i:mrn|medical record(?: number)?|health[_ ]?id)\b[:\s#]*"
     # The identifier must hold a digit: without that guard the label of a
     # redacted field ("medical record number: [REDACTED_…]") captured the
-    # word "number" as an MRN.
-    r"((?:NAM\s*)?(?=[A-Z \-]*\d)[A-Z0-9][A-Z0-9 \-]{4,})"
+    # word "number" as an MRN. It is upper case and ends on a letter or digit:
+    # case-insensitive, "MRN 12345678 attached" took " attached" with it.
+    r"((?:NAM\s*)?(?=[A-Z \-]*\d)[A-Z0-9][A-Z0-9 \-]{3,}[A-Z0-9])"
 )
+# A record number written as one token with its prefix ("MRN-12345678",
+# "MRN12345678"). The prefix is part of the identifier as printed, so it is
+# matched and removed with the digits: redacting the digits alone left
+# "MRN-[REDACTED_…]", which still reads as a record number to the next scan.
+MRN_TOKEN_RE = re.compile(r"(?<![\w-])((?i:mrn)-?\d{4,12})(?![\w-])")
 
 HEALTH_CONDITIONS = [
     "diabetes", "cancer", "hypertension", "asthma", "depression", "anxiety",
@@ -87,6 +94,9 @@ MEDICATIONS = [
     "tramadol", "fentanilo", "atorvastatina", "levotiroxina", "amoxicilina",
     "metotrexato", "metilfenidato", "orfidal", "trankimazin", "nolotil",
     "sintrom", "eutirox",
+    # Common antihypertensives and statins (added with the context rules).
+    "enalapril", "lisinopril", "ramipril", "amlodipino", "amlodipine", "losartán",
+    "losartan", "bisoprolol", "simvastatina", "simvastatine", "simvastatin",
     # French generic names and the classes French records name.
     "metformine", "lévothyroxine", "levothyroxine", "méthotrexate",
     "methotrexate", "warfarine", "sertraline", "fluoxétine", "paroxétine",
@@ -138,6 +148,14 @@ class HealthcareDetector(Detector):
                 recommendation="Remove or mask health identifiers before calling external tools.",
             ))
 
+        has_mrn = "mrn" in text.lower()
+        for m in (MRN_TOKEN_RE.finditer(text) if has_mrn else ()):
+            matches.append(self._match(
+                data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.85,
+                matched_value=m.group(1), rule="mrn_token",
+                recommendation="Remove or mask medical record numbers before internal channels.",
+            ))
+
         for m in MRN_RE.finditer(text):
             matches.append(self._match(
                 data_type="health_identifier", severity=Severity.CRITICAL, confidence=0.8,
@@ -163,4 +181,7 @@ class HealthcareDetector(Detector):
                 recommendation="Medication details reveal conditions; share only with authorized agents.",
             ))
 
+        # "diagnosed with osteoarthritis", "souffre de douleurs chroniques":
+        # the phrase a clinical cue introduces (see detectors/context.py).
+        matches.extend(context_matches(self.name, text, frozenset({"health_condition"}), matches))
         return matches

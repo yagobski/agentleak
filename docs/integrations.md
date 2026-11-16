@@ -119,7 +119,11 @@ result = AgentLeakRunner().analyze(trace)
 
 ### OpenAI Swarm / Agents SDK
 
-Multi-agent handoffs are surfaced as `inter_agent_message` events.
+Multi-agent handoffs are surfaced as `inter_agent_message` events. A list of
+Agents SDK items (`result.to_input_list()`: `function_call`,
+`function_call_output`, `reasoning`, typed `message` items) is detected and
+read by the same converter as `agentleak selftest --trace`; before 0.20 this
+adapter dropped those items.
 
 ```python
 from agentleak.integrations.openai_swarm import trace_from_messages
@@ -239,6 +243,10 @@ trace = trace_from_spans(spans, run_id="run_001")
 result = AgentLeakRunner().analyze(trace)
 ```
 
+GenAI semantic-convention spans (`gen_ai.operation.name` = `execute_tool`,
+`chat`, `invoke_agent` …) are read with the shared GenAI converter, also in a
+list mixed with OpenInference spans. Before 0.20 they produced no event.
+
 Mapping: `TOOL` spans → `tool_call` (arguments) + `tool_response` (output);
 `RETRIEVER` → `tool_response` (retrieved docs); `LLM` turns →
 `inter_agent_message`, with the **last** model/chain output promoted to
@@ -261,6 +269,13 @@ rec.final_output("All set!")
 
 result = AgentLeakRunner().analyze(rec.trace)
 ```
+
+## 4b. From red-team and eval tools: `agentleak import`
+
+promptfoo, Inspect AI, garak and PyRIT already write a log of every attack
+they ran. `agentleak import results.json --score` turns that log into traces
+and scores them; see [Interop](interop.md) for what each tool's log can and
+cannot show.
 
 ## 5. On the traffic path: model gateways and eval harnesses
 

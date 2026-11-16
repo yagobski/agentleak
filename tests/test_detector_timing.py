@@ -43,6 +43,10 @@ ADVERSARIAL = {
     "kv_conn": "Server=x;" * (N // 9),
     "dob": "born " * (N // 5),
     "street": "12 Main " * (N // 8),
+    # A run of local-part characters ending in "@": quadratic for an email
+    # pattern without the start-of-run look-behind (1.8 s at this size).
+    "email_run_then_at": "a" * N + "@",
+    "email_long_domain": "a@" + "b" * N,
 }
 
 
@@ -84,3 +88,15 @@ def test_trie_pattern_matches_like_a_longest_first_alternation() -> None:
     new = re.compile(r"\b(" + trie_pattern(terms) + r")\b")
     for text in ("type 2 diabetes and diabète, cancer du sein, diab ab a", "cancer dub", "abc ab"):
         assert [m.group(0) for m in old.finditer(text)] == [m.group(0) for m in new.finditer(text)]
+
+
+def test_email_pattern_is_linear_on_a_run_ending_in_at() -> None:
+    """The QA report measured 1.8 s for this input with the plain pattern;
+    the shipped one starts only where a run starts. A tight bound, because a
+    regression here is quadratic, not slow."""
+    from agentleak.detectors.pii import EMAIL_RE
+
+    for text in ("a" * N + "@", "a." * (N // 2) + "@", "a@" + "b" * N):
+        start = time.perf_counter()
+        EMAIL_RE.findall(text)
+        assert time.perf_counter() - start < 0.2

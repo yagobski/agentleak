@@ -1,0 +1,4392 @@
+{
+  "software_version": "0.20.0",
+  "detector_tier": "fast (deterministic: regex + dictionaries)",
+  "tiers_not_run": [
+    "presidio",
+    "semantic judge"
+  ],
+  "split": {
+    "seed": 20261115,
+    "method": "For each (language, data type), values are sorted by sha256('<seed>|<language>|<data type>|<value>') and the first ceil(n/2) form the development half; the rest are held out. Templates: the 'development' list goes with development values, the 'held_out' list with held-out values. Rules were tuned on development misses only."
+  },
+  "conditions": {
+    "structured": "value under the key that names it (detection_quality.py method)",
+    "prose_uncued": "value in a sentence with no cue (detection_quality.py method); the honest floor",
+    "prose_cued": "value in a sentence that says what it is; (value, template) instances, value position checked"
+  },
+  "languages": {
+    "en": {
+      "values": {
+        "development": 191,
+        "held_out": 187,
+        "all": 378
+      },
+      "structured": {
+        "development": {
+          "recall": 1.0,
+          "ci95": [
+            0.9803,
+            1.0
+          ],
+          "numerator": 191,
+          "denominator": 191,
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.8713,
+                1.0
+              ],
+              "hit": 26,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 26,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.7719,
+                1.0
+              ],
+              "hit": 13,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 13,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.8957,
+                1.0
+              ],
+              "hit": 33,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 33,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.9259,
+                1.0
+              ],
+              "hit": 48,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 48,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.8513,
+                1.0
+              ],
+              "hit": 22,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 22,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.8241,
+                1.0
+              ],
+              "hit": 18,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 18,
+              "confused_as": {}
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.8157,
+                1.0
+              ],
+              "hit": 17,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 17,
+              "confused_as": {}
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 1.0,
+          "ci95": [
+            0.9799,
+            1.0
+          ],
+          "numerator": 187,
+          "denominator": 187,
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.8713,
+                1.0
+              ],
+              "hit": 26,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 26,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.8957,
+                1.0
+              ],
+              "hit": 33,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 33,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.6457,
+                1.0
+              ],
+              "hit": 7,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 7,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.9259,
+                1.0
+              ],
+              "hit": 48,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 48,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.8454,
+                1.0
+              ],
+              "hit": 21,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 21,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.8157,
+                1.0
+              ],
+              "hit": 17,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 17,
+              "confused_as": {}
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.8157,
+                1.0
+              ],
+              "hit": 17,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 17,
+              "confused_as": {}
+            }
+          ]
+        },
+        "all": {
+          "recall": 1.0,
+          "ci95": [
+            0.9899,
+            1.0
+          ],
+          "numerator": 378,
+          "denominator": 378,
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.9312,
+                1.0
+              ],
+              "hit": 52,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 52,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.8668,
+                1.0
+              ],
+              "hit": 25,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 25,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.945,
+                1.0
+              ],
+              "hit": 66,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 66,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 15,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.9615,
+                1.0
+              ],
+              "hit": 96,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 96,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.918,
+                1.0
+              ],
+              "hit": 43,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 43,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.9011,
+                1.0
+              ],
+              "hit": 35,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 35,
+              "confused_as": {}
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.8985,
+                1.0
+              ],
+              "hit": 34,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 34,
+              "confused_as": {}
+            }
+          ]
+        }
+      },
+      "prose_uncued": {
+        "development": {
+          "recall": 0.623,
+          "ci95": [
+            0.5525,
+            0.6887
+          ],
+          "numerator": 119,
+          "denominator": 191,
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.3903
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 6,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.8713,
+                1.0
+              ],
+              "hit": 26,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 26,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.2281
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 13,
+              "labelled_values": 13,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.8957,
+                1.0
+              ],
+              "hit": 33,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 33,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.25,
+              "ci95": [
+                0.0715,
+                0.5907
+              ],
+              "hit": 2,
+              "type_confused": 0,
+              "missed": 6,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8542,
+              "ci95": [
+                0.7283,
+                0.9275
+              ],
+              "hit": 41,
+              "type_confused": 0,
+              "missed": 7,
+              "labelled_values": 48,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.1487
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 22,
+              "labelled_values": 22,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.1759
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 18,
+              "labelled_values": 18,
+              "confused_as": {}
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.8157,
+                1.0
+              ],
+              "hit": 17,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 17,
+              "confused_as": {}
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 0.631,
+          "ci95": [
+            0.5599,
+            0.6969
+          ],
+          "numerator": 118,
+          "denominator": 187,
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.3903
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 6,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.8713,
+                1.0
+              ],
+              "hit": 26,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 26,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.2425
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 12,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.8957,
+                1.0
+              ],
+              "hit": 33,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 33,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.2857,
+              "ci95": [
+                0.0822,
+                0.6411
+              ],
+              "hit": 2,
+              "type_confused": 0,
+              "missed": 5,
+              "labelled_values": 7,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8333,
+              "ci95": [
+                0.7042,
+                0.913
+              ],
+              "hit": 40,
+              "type_confused": 0,
+              "missed": 8,
+              "labelled_values": 48,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.1546
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 21,
+              "labelled_values": 21,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.1843
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 17,
+              "labelled_values": 17,
+              "confused_as": {}
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.8157,
+                1.0
+              ],
+              "hit": 17,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 17,
+              "confused_as": {}
+            }
+          ]
+        },
+        "all": {
+          "recall": 0.627,
+          "ci95": [
+            0.5772,
+            0.6742
+          ],
+          "numerator": 237,
+          "denominator": 378,
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.2425
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 12,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.9312,
+                1.0
+              ],
+              "hit": 52,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 52,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.1332
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 25,
+              "labelled_values": 25,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.945,
+                1.0
+              ],
+              "hit": 66,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 66,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.2667,
+              "ci95": [
+                0.109,
+                0.5195
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 11,
+              "labelled_values": 15,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8438,
+              "ci95": [
+                0.7581,
+                0.903
+              ],
+              "hit": 81,
+              "type_confused": 0,
+              "missed": 15,
+              "labelled_values": 96,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.082
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 43,
+              "labelled_values": 43,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.0989
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 35,
+              "labelled_values": 35,
+              "confused_as": {}
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.8985,
+                1.0
+              ],
+              "hit": 34,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 34,
+              "confused_as": {}
+            }
+          ]
+        }
+      },
+      "prose_cued": {
+        "development": {
+          "recall": 0.9634,
+          "ci95": [
+            0.9446,
+            0.9759
+          ],
+          "numerator": 552,
+          "denominator": 573,
+          "unit": "(value, template) instance",
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 1.0,
+              "ci95": [
+                0.8241,
+                1.0
+              ],
+              "hit": 18,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 18,
+              "rules_fired": {
+                "ctx_account_number": 6,
+                "finance_detector:default": 12
+              }
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.9531,
+                1.0
+              ],
+              "hit": 78,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 78,
+              "rules_fired": {
+                "address_us_military": 15,
+                "address_us_zip": 15,
+                "pii_detector:default": 48
+              }
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.9103,
+                1.0
+              ],
+              "hit": 39,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 39,
+              "rules_fired": {
+                "ctx_dob": 26,
+                "pii_detector:default": 13
+              }
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.9626,
+                1.0
+              ],
+              "hit": 99,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 99,
+              "rules_fired": {
+                "pii_detector:default": 99
+              }
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.862,
+                1.0
+              ],
+              "hit": 24,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 24,
+              "rules_fired": {
+                "ctx_health_diagnosis": 7,
+                "ctx_health_symptom": 14,
+                "healthcare_detector:default": 3
+              }
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8542,
+              "ci95": [
+                0.7873,
+                0.9026
+              ],
+              "hit": 123,
+              "type_confused": 0,
+              "missed": 21,
+              "instances": 144,
+              "rules_fired": {
+                "pii_detector:default": 123
+              }
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.945,
+                1.0
+              ],
+              "hit": 66,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 66,
+              "rules_fired": {
+                "ctx_phone_local": 66
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.9336,
+                1.0
+              ],
+              "hit": 54,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 54,
+              "rules_fired": {
+                "ctx_salary": 36,
+                "ctx_salary_verb": 18
+              }
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.93,
+                1.0
+              ],
+              "hit": 51,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 51,
+              "rules_fired": {
+                "us_ssn": 51
+              }
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 0.8806,
+          "ci95": [
+            0.8511,
+            0.9049
+          ],
+          "numerator": 494,
+          "denominator": 561,
+          "unit": "(value, template) instance",
+          "by_data_type": [
+            {
+              "data_type": "account_number",
+              "recall": 1.0,
+              "ci95": [
+                0.8241,
+                1.0
+              ],
+              "hit": 18,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 18,
+              "rules_fired": {
+                "ctx_account_number": 18
+              }
+            },
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.9531,
+                1.0
+              ],
+              "hit": 78,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 78,
+              "rules_fired": {
+                "address_us_military": 3,
+                "address_us_zip": 24,
+                "pii_detector:default": 51
+              }
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.6667,
+              "ci95": [
+                0.5033,
+                0.7979
+              ],
+              "hit": 24,
+              "type_confused": 0,
+              "missed": 12,
+              "instances": 36,
+              "rules_fired": {
+                "ctx_dob": 12,
+                "pii_detector:default": 12
+              }
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.9626,
+                1.0
+              ],
+              "hit": 99,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 99,
+              "rules_fired": {
+                "pii_detector:default": 99
+              }
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.3333,
+              "ci95": [
+                0.1719,
+                0.5463
+              ],
+              "hit": 7,
+              "type_confused": 0,
+              "missed": 14,
+              "instances": 21,
+              "rules_fired": {
+                "ctx_health_symptom": 1,
+                "healthcare_detector:default": 6
+              }
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8333,
+              "ci95": [
+                0.764,
+                0.8854
+              ],
+              "hit": 120,
+              "type_confused": 0,
+              "missed": 24,
+              "instances": 144,
+              "rules_fired": {
+                "pii_detector:default": 120
+              }
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.9425,
+                1.0
+              ],
+              "hit": 63,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 63,
+              "rules_fired": {
+                "ctx_phone_local": 63
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.6667,
+              "ci95": [
+                0.5297,
+                0.7803
+              ],
+              "hit": 34,
+              "type_confused": 0,
+              "missed": 17,
+              "instances": 51,
+              "rules_fired": {
+                "ctx_salary": 17,
+                "ctx_salary_verb": 17
+              }
+            },
+            {
+              "data_type": "ssn",
+              "recall": 1.0,
+              "ci95": [
+                0.93,
+                1.0
+              ],
+              "hit": 51,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 51,
+              "rules_fired": {
+                "us_ssn": 51
+              }
+            }
+          ]
+        },
+        "all": {
+          "recall": 0.9224,
+          "ci95": [
+            0.9054,
+            0.9366
+          ],
+          "numerator": 1046,
+          "denominator": 1134
+        }
+      },
+      "benign_controls": {
+        "texts": 15,
+        "detections": 0,
+        "detail": []
+      }
+    },
+    "fr": {
+      "values": {
+        "development": 57,
+        "held_out": 57,
+        "all": 114
+      },
+      "structured": {
+        "development": {
+          "recall": 1.0,
+          "ci95": [
+            0.9369,
+            1.0
+          ],
+          "numerator": 57,
+          "denominator": 57,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.4385,
+                1.0
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 3,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 1.0,
+          "ci95": [
+            0.9369,
+            1.0
+          ],
+          "numerator": 57,
+          "denominator": 57,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.4385,
+                1.0
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 3,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "all": {
+          "recall": 1.0,
+          "ci95": [
+            0.9674,
+            1.0
+          ],
+          "numerator": 114,
+          "denominator": 114,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            }
+          ]
+        }
+      },
+      "prose_uncued": {
+        "development": {
+          "recall": 0.8596,
+          "ci95": [
+            0.7468,
+            0.9271
+          ],
+          "numerator": 49,
+          "denominator": 57,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.4899
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 4,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.4385,
+                1.0
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 3,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8333,
+              "ci95": [
+                0.4365,
+                0.9699
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.25,
+              "ci95": [
+                0.0456,
+                0.6994
+              ],
+              "hit": 1,
+              "type_confused": 0,
+              "missed": 3,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 0.8596,
+          "ci95": [
+            0.7468,
+            0.9271
+          ],
+          "numerator": 49,
+          "denominator": 57,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.4899
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 4,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.4385,
+                1.0
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 3,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.6667,
+              "ci95": [
+                0.3,
+                0.9032
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 2,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.5,
+              "ci95": [
+                0.15,
+                0.85
+              ],
+              "hit": 2,
+              "type_confused": 0,
+              "missed": 2,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "all": {
+          "recall": 0.8596,
+          "ci95": [
+            0.7841,
+            0.9117
+          ],
+          "numerator": 98,
+          "denominator": 114,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.3244
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 8,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.75,
+              "ci95": [
+                0.4677,
+                0.9111
+              ],
+              "hit": 9,
+              "type_confused": 0,
+              "missed": 3,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.375,
+              "ci95": [
+                0.1368,
+                0.6943
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 5,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            }
+          ]
+        }
+      },
+      "prose_cued": {
+        "development": {
+          "recall": 0.9825,
+          "ci95": [
+            0.9497,
+            0.994
+          ],
+          "numerator": 168,
+          "denominator": 171,
+          "unit": "(value, template) instance",
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "payment_card": 12
+              }
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_dob": 8,
+                "keyname_detector:default": 4,
+                "pii_detector:default": 4
+              }
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "healthcare_detector:default": 15
+              }
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.7008,
+                1.0
+              ],
+              "hit": 9,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 9,
+              "rules_fired": {
+                "healthcare_detector:default": 9
+              }
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "iban": 12
+              }
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "healthcare_detector:default": 12
+              }
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "fr_nir": 12
+              }
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8333,
+              "ci95": [
+                0.6078,
+                0.9416
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 3,
+              "instances": 18,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "phone_fr": 6,
+                "phone_international": 3,
+                "phone_nanp": 6
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_salary": 6,
+                "ctx_salary_verb": 3,
+                "salary_gross_net": 3
+              }
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "ca_sin": 8,
+                "ca_sin_labelled": 4
+              }
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 0.9181,
+          "ci95": [
+            0.8673,
+            0.9506
+          ],
+          "numerator": 157,
+          "denominator": 171,
+          "unit": "(value, template) instance",
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "payment_card": 12
+              }
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.6667,
+              "ci95": [
+                0.3906,
+                0.8619
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 4,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_dob": 4,
+                "pii_detector:default": 4
+              }
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "healthcare_detector:default": 15
+              }
+            },
+            {
+              "data_type": "health_identifier",
+              "recall": 1.0,
+              "ci95": [
+                0.7008,
+                1.0
+              ],
+              "hit": 9,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 9,
+              "rules_fired": {
+                "healthcare_detector:default": 9
+              }
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "iban": 12
+              }
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "healthcare_detector:default": 12
+              }
+            },
+            {
+              "data_type": "national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "fr_nir": 12
+              }
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.6667,
+              "ci95": [
+                0.4375,
+                0.8372
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 6,
+              "instances": 18,
+              "rules_fired": {
+                "pii_detector:default": 12
+              }
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "phone_fr": 3,
+                "phone_international": 6,
+                "phone_nanp": 6
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.6667,
+              "ci95": [
+                0.3906,
+                0.8619
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 4,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_salary_verb": 2,
+                "salary_gross_net": 6
+              }
+            },
+            {
+              "data_type": "sin",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "ca_sin": 12
+              }
+            }
+          ]
+        },
+        "all": {
+          "recall": 0.9503,
+          "ci95": [
+            0.9218,
+            0.9687
+          ],
+          "numerator": 325,
+          "denominator": 342
+        }
+      },
+      "benign_controls": {
+        "texts": 20,
+        "detections": 0,
+        "detail": []
+      }
+    },
+    "es": {
+      "values": {
+        "development": 55,
+        "held_out": 55,
+        "all": 110
+      },
+      "structured": {
+        "development": {
+          "recall": 1.0,
+          "ci95": [
+            0.9347,
+            1.0
+          ],
+          "numerator": 55,
+          "denominator": 55,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 1.0,
+          "ci95": [
+            0.9347,
+            1.0
+          ],
+          "numerator": 55,
+          "denominator": 55,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.6097,
+                1.0
+              ],
+              "hit": 6,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "all": {
+          "recall": 1.0,
+          "ci95": [
+            0.9663,
+            1.0
+          ],
+          "numerator": 110,
+          "denominator": 110,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            }
+          ]
+        }
+      },
+      "prose_uncued": {
+        "development": {
+          "recall": 0.8364,
+          "ci95": [
+            0.7174,
+            0.9114
+          ],
+          "numerator": 46,
+          "denominator": 55,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.4899
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 4,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.8,
+              "ci95": [
+                0.3755,
+                0.9638
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8333,
+              "ci95": [
+                0.4365,
+                0.9699
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.8,
+              "ci95": [
+                0.3755,
+                0.9638
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.5,
+              "ci95": [
+                0.15,
+                0.85
+              ],
+              "hit": 2,
+              "type_confused": 0,
+              "missed": 2,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 0.6727,
+          "ci95": [
+            0.541,
+            0.7819
+          ],
+          "numerator": 37,
+          "denominator": 55,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 0.6,
+              "ci95": [
+                0.2307,
+                0.8824
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 2,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.4899
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 4,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.8,
+              "ci95": [
+                0.3755,
+                0.9638
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 0.75,
+              "ci95": [
+                0.3006,
+                0.9544
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.5,
+              "ci95": [
+                0.1876,
+                0.8124
+              ],
+              "hit": 3,
+              "type_confused": 0,
+              "missed": 3,
+              "labelled_values": 6,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.4,
+              "ci95": [
+                0.1176,
+                0.7693
+              ],
+              "hit": 2,
+              "type_confused": 1,
+              "missed": 2,
+              "labelled_values": 5,
+              "confused_as": {
+                "sin": 1
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.4899
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 4,
+              "labelled_values": 4,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.5655,
+                1.0
+              ],
+              "hit": 5,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 5,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.5101,
+                1.0
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 4,
+              "confused_as": {}
+            }
+          ]
+        },
+        "all": {
+          "recall": 0.7545,
+          "ci95": [
+            0.6664,
+            0.8255
+          ],
+          "numerator": 83,
+          "denominator": 110,
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 0.8,
+              "ci95": [
+                0.4902,
+                0.9433
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 2,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.0,
+              "ci95": [
+                0.0,
+                0.3244
+              ],
+              "hit": 0,
+              "type_confused": 0,
+              "missed": 8,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.8,
+              "ci95": [
+                0.4902,
+                0.9433
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 2,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "medication",
+              "recall": 0.875,
+              "ci95": [
+                0.5291,
+                0.9776
+              ],
+              "hit": 7,
+              "type_confused": 0,
+              "missed": 1,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.6667,
+              "ci95": [
+                0.3906,
+                0.8619
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 4,
+              "labelled_values": 12,
+              "confused_as": {}
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.6,
+              "ci95": [
+                0.3127,
+                0.8318
+              ],
+              "hit": 6,
+              "type_confused": 1,
+              "missed": 3,
+              "labelled_values": 10,
+              "confused_as": {
+                "sin": 1
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.25,
+              "ci95": [
+                0.0715,
+                0.5907
+              ],
+              "hit": 2,
+              "type_confused": 0,
+              "missed": 6,
+              "labelled_values": 8,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ],
+              "hit": 10,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 10,
+              "confused_as": {}
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.6756,
+                1.0
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 0,
+              "labelled_values": 8,
+              "confused_as": {}
+            }
+          ]
+        }
+      },
+      "prose_cued": {
+        "development": {
+          "recall": 0.9818,
+          "ci95": [
+            0.9479,
+            0.9938
+          ],
+          "numerator": 162,
+          "denominator": 165,
+          "unit": "(value, template) instance",
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "payment_card": 12
+              }
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_dob": 8,
+                "pii_detector:default": 4
+              }
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "ctx_health_diagnosis": 1,
+                "ctx_health_symptom": 2,
+                "healthcare_detector:default": 12
+              }
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "iban": 12
+              }
+            },
+            {
+              "data_type": "medication",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "healthcare_detector:default": 12
+              }
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.8333,
+              "ci95": [
+                0.6078,
+                0.9416
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 3,
+              "instances": 18,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "ctx_phone_local": 3,
+                "pii_detector:default": 12
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_salary": 4,
+                "ctx_salary_verb": 2,
+                "salary_gross_net": 6
+              }
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "pii_detector:default": 12
+              }
+            }
+          ]
+        },
+        "held_out": {
+          "recall": 0.7576,
+          "ci95": [
+            0.6868,
+            0.8166
+          ],
+          "numerator": 125,
+          "denominator": 165,
+          "unit": "(value, template) instance",
+          "by_data_type": [
+            {
+              "data_type": "address",
+              "recall": 0.6,
+              "ci95": [
+                0.3575,
+                0.8018
+              ],
+              "hit": 9,
+              "type_confused": 0,
+              "missed": 6,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 9
+              }
+            },
+            {
+              "data_type": "credit_card",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "payment_card": 12
+              }
+            },
+            {
+              "data_type": "date_of_birth",
+              "recall": 0.6667,
+              "ci95": [
+                0.3906,
+                0.8619
+              ],
+              "hit": 8,
+              "type_confused": 0,
+              "missed": 4,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_dob": 4,
+                "pii_detector:default": 4
+              }
+            },
+            {
+              "data_type": "email",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "health_condition",
+              "recall": 0.8,
+              "ci95": [
+                0.5481,
+                0.9295
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 3,
+              "instances": 15,
+              "rules_fired": {
+                "healthcare_detector:default": 12
+              }
+            },
+            {
+              "data_type": "iban",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "iban": 12
+              }
+            },
+            {
+              "data_type": "medication",
+              "recall": 0.75,
+              "ci95": [
+                0.4677,
+                0.9111
+              ],
+              "hit": 9,
+              "type_confused": 0,
+              "missed": 3,
+              "instances": 12,
+              "rules_fired": {
+                "healthcare_detector:default": 9
+              }
+            },
+            {
+              "data_type": "person_name",
+              "recall": 0.5,
+              "ci95": [
+                0.2903,
+                0.7097
+              ],
+              "hit": 9,
+              "type_confused": 0,
+              "missed": 9,
+              "instances": 18,
+              "rules_fired": {
+                "pii_detector:default": 9
+              }
+            },
+            {
+              "data_type": "phone_number",
+              "recall": 0.5333,
+              "ci95": [
+                0.3012,
+                0.7519
+              ],
+              "hit": 8,
+              "type_confused": 3,
+              "missed": 4,
+              "instances": 15,
+              "rules_fired": {
+                "ctx_phone_local": 2,
+                "pii_detector:default": 6
+              }
+            },
+            {
+              "data_type": "salary",
+              "recall": 0.3333,
+              "ci95": [
+                0.1381,
+                0.6094
+              ],
+              "hit": 4,
+              "type_confused": 0,
+              "missed": 8,
+              "instances": 12,
+              "rules_fired": {
+                "ctx_salary_verb": 4
+              }
+            },
+            {
+              "data_type": "spanish_national_id",
+              "recall": 1.0,
+              "ci95": [
+                0.7961,
+                1.0
+              ],
+              "hit": 15,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 15,
+              "rules_fired": {
+                "pii_detector:default": 15
+              }
+            },
+            {
+              "data_type": "spanish_social_security_number",
+              "recall": 1.0,
+              "ci95": [
+                0.7575,
+                1.0
+              ],
+              "hit": 12,
+              "type_confused": 0,
+              "missed": 0,
+              "instances": 12,
+              "rules_fired": {
+                "pii_detector:default": 12
+              }
+            }
+          ]
+        },
+        "all": {
+          "recall": 0.8697,
+          "ci95": [
+            0.8291,
+            0.9018
+          ],
+          "numerator": 287,
+          "denominator": 330
+        }
+      },
+      "benign_controls": {
+        "texts": 20,
+        "detections": 0,
+        "detail": []
+      }
+    }
+  },
+  "hard_negatives": {
+    "source": "scripts/detection_hard_negatives.json (authored for AgentLeak)",
+    "texts": 82,
+    "flagged": 0,
+    "rate": 0.0,
+    "ci95": [
+      0.0,
+      0.0448
+    ],
+    "by_category": [
+      {
+        "category": "uuid",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "git_sha",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "version",
+        "texts": 6,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3903
+        ]
+      },
+      {
+        "category": "timestamp",
+        "texts": 7,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3543
+        ]
+      },
+      {
+        "category": "order_number",
+        "texts": 9,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.2992
+        ]
+      },
+      {
+        "category": "placeholder_secret",
+        "texts": 12,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.2425
+        ]
+      },
+      {
+        "category": "ip_like_version",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "phone_like_id",
+        "texts": 5,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      {
+        "category": "base64_harmless",
+        "texts": 4,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      {
+        "category": "hash",
+        "texts": 4,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      {
+        "category": "places_prose",
+        "texts": 8,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      {
+        "category": "numbers_misc",
+        "texts": 8,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      {
+        "category": "test_identifiers_obviously_fake",
+        "texts": 4,
+        "flagged": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      }
+    ],
+    "note": "Share of hard-negative texts with at least one finding from the full fast pipeline (decoding included). Written alongside the precision fixes it measures, so it shows those cases are handled, not that unseen ones are."
+  },
+  "context_hard_negatives": {
+    "source": "scripts/detection_hard_negatives_context.json",
+    "development": {
+      "texts": 52,
+      "flagged": 0,
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        0.0688
+      ],
+      "by_category": [
+        {
+          "category": "call_cue_reference",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "born_year_only",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "born_non_person",
+          "texts": 3,
+          "flagged": 0
+        },
+        {
+          "category": "pay_price",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "version_numbers",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "ticket_and_job_ids",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "iso_dates_in_logs",
+          "texts": 3,
+          "flagged": 0
+        },
+        {
+          "category": "timestamps",
+          "texts": 3,
+          "flagged": 0
+        },
+        {
+          "category": "health_lookalikes",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "address_lookalikes",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "salary_lookalikes",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "account_lookalikes",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "phone_lookalikes",
+          "texts": 3,
+          "flagged": 0
+        }
+      ],
+      "detail": []
+    },
+    "held_out": {
+      "texts": 52,
+      "flagged": 2,
+      "rate": 0.0385,
+      "ci95": [
+        0.0106,
+        0.1298
+      ],
+      "by_category": [
+        {
+          "category": "call_cue_reference",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "born_year_only",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "born_non_person",
+          "texts": 3,
+          "flagged": 1
+        },
+        {
+          "category": "pay_price",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "version_numbers",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "ticket_and_job_ids",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "iso_dates_in_logs",
+          "texts": 3,
+          "flagged": 1
+        },
+        {
+          "category": "timestamps",
+          "texts": 3,
+          "flagged": 0
+        },
+        {
+          "category": "health_lookalikes",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "address_lookalikes",
+          "texts": 5,
+          "flagged": 0
+        },
+        {
+          "category": "salary_lookalikes",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "account_lookalikes",
+          "texts": 4,
+          "flagged": 0
+        },
+        {
+          "category": "phone_lookalikes",
+          "texts": 3,
+          "flagged": 0
+        }
+      ],
+      "detail": [
+        {
+          "data_type": "date_of_birth",
+          "value": "2021-03-04",
+          "rule": "",
+          "text": "The idea was born on 2021-03-04 during a hackathon.",
+          "category": "born_non_person"
+        },
+        {
+          "data_type": "date_of_birth",
+          "value": "champ optionnel",
+          "rule": "",
+          "text": "2024-01-31 00:00:00 INFO date de naissance: champ optionnel",
+          "category": "iso_dates_in_logs"
+        }
+      ]
+    }
+  }
+}

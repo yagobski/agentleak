@@ -1,5 +1,5 @@
 {
-  "software_version": "0.19.1",
+  "software_version": "0.20.0",
   "detector_tier": "fast (deterministic: regex + dictionaries)",
   "tiers_not_run": [
     "presidio",
@@ -136,12 +136,12 @@
       ]
     },
     "prose": {
-      "recall": 0.5741,
+      "recall": 0.627,
       "ci95": [
-        0.5237,
-        0.6229
+        0.5772,
+        0.6742
       ],
-      "numerator": 217,
+      "numerator": 237,
       "denominator": 378,
       "by_data_type": [
         {
@@ -159,14 +159,14 @@
         },
         {
           "data_type": "address",
-          "recall": 0.6346,
+          "recall": 1.0,
           "ci95": [
-            0.4987,
-            0.752
+            0.9312,
+            1.0
           ],
-          "hit": 33,
+          "hit": 52,
           "type_confused": 0,
-          "missed": 19,
+          "missed": 0,
           "labelled_values": 52,
           "confused_as": {}
         },
@@ -198,14 +198,14 @@
         },
         {
           "data_type": "health_condition",
-          "recall": 0.2,
+          "recall": 0.2667,
           "ci95": [
-            0.0705,
-            0.4519
+            0.109,
+            0.5195
           ],
-          "hit": 3,
+          "hit": 4,
           "type_confused": 0,
-          "missed": 12,
+          "missed": 11,
           "labelled_values": 15,
           "confused_as": {}
         },

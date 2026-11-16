@@ -26,7 +26,7 @@ deliberately ignores line numbers.
 
 It does not invoke the agent under test: MCP gives a server no way to do that.
 Instead `privacy_get_scenario` hands the agent a scenario with planted canaries
-to run itself, and `privacy_selftest` scores the trace it brings back. The 362
+to run itself, and `privacy_selftest` scores the trace it brings back. The 491
 bundled corpus scenarios stay what they are: traces for the CLI and CI.
 
 Traces are data. Instruction-like text inside a trace or a scanned file is

@@ -74,6 +74,62 @@ The CLI prints the offending channel, level, score, and remediation insight in
 the job log. The JSON report is the machine-readable source for PR comments or
 security dashboards.
 
+## SARIF and pull-request comments
+
+The AgentLeak Action (`uses: yagobski/agentleak@<ref>`) has two optional
+outputs, both off by default.
+
+```yaml
+name: Agent privacy
+
+on: [pull_request]
+
+permissions:
+  contents: read
+  security-events: write     # only for upload-sarif
+  pull-requests: write       # only for pr-comment
+
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: agentleak
+        uses: yagobski/agentleak@main   # pin a release tag or commit
+        with:
+          trace: traces/latest.json
+          fail-under: "80"
+          sarif: agentleak.sarif              # write SARIF 2.1.0
+          pr-comment: "true"                  # one sticky comment, updated on each push
+          baseline: baseline/report.json      # optional: report from the base branch
+      - if: always() && steps.agentleak.outputs.sarif != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.agentleak.outputs.sarif }}
+          category: agentleak-trace
+```
+
+- **`sarif`** writes trace findings as SARIF (one rule per data type, the
+  channel and level on each result, values never included). Uploading it to
+  the Security tab needs `security-events: write`. A finding points at the line
+  of its event in the trace file, so give a `trace:` path inside the
+  repository; scenario runs have no file and get a logical location only.
+  With `scan:` the code scan's own SARIF is written instead.
+- **`pr-comment`** posts one comment on the pull request (and edits it on later
+  runs) with the verdict, the per-channel table and, when `baseline` names a
+  report JSON (or a directory of them) from the base branch, the new and the
+  resolved findings. It needs `pull-requests: write` and uses `github-token`
+  (the job's token by default). On a pull request from a fork the token is
+  read-only: the comment is skipped with a warning and the gate's verdict is
+  unchanged. The `comment` output says `created`, `updated`, `failed` or
+  `skipped: <why>`.
+
+Everything the Action writes to annotations, the job summary, the comment and
+`GITHUB_OUTPUT` is escaped: data types, channels, run ids and file names come
+from the pull request under test. The CLI's own log output runs between
+`::stop-commands::` markers, so text in a trace cannot become a workflow
+command.
+
 ## Baselines and regressions
 
 Do not compare unrelated traces. A valid regression comparison keeps constant:

@@ -11,6 +11,8 @@ They are **not** part of the installed package and are not needed at runtime.
 | `build_privacylens_pack.py` | `privacylens_ci.json` (120) | [SALT-NLP/PrivacyLens](https://huggingface.co/datasets/SALT-NLP/PrivacyLens) | CC-BY-4.0 |
 | `build_agentdojo_pack.py` | `agentdojo_exfil.json` (100) | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo) | MIT |
 | `build_injecagent_pack.py` | `injecagent_ds.json` (96) | [uiuc-kang-lab/InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) | MIT |
+| `build_agentsocialbench_pack.py` | `agentsocialbench_ma.json` (105) | [kingofspace0wzz/agentsocialbench](https://github.com/kingofspace0wzz/agentsocialbench) | MIT |
+| `build_mcptox_pack.py` | `mcptox_recipient_hijack.json` (24) | [zhiqiangwang4/MCPTox-Benchmark](https://github.com/zhiqiangwang4/MCPTox-Benchmark) | CC-BY-4.0 (data) |
 
 All packs carry `source`, `source_url`, `license` and `attribution`, and those
 fields are displayed everywhere the pack appears.
@@ -44,6 +46,32 @@ A canary is a value from the private data the attacker's tool returned that
 does not already appear in the user's request, the user's tool call or the
 injected response, so the clean counterpart (same run, attacker steps removed)
 scores no canary; `tests/test_injecagent.py` checks both directions.
+
+```bash
+git clone https://github.com/kingofspace0wzz/agentsocialbench /tmp/asb
+git -C /tmp/asb checkout 6d8497c05dbab812714b2545a563e6fe7d4160ec
+python -I scripts/packs/build_agentsocialbench_pack.py /tmp/asb
+```
+
+Reads `prism/data/scenarios/` (plain JSON). Five categories, a fixed quota
+each, scenarios ordered by the SHA-256 of their id. Each record holds the
+sender's private context, two must-not-cross statements (the canaries) and
+the source's abstractions for them; `"variant": "clean"` on a record gives the
+clean counterpart. `tests/test_multiagent_packs.py` checks that every canary
+was in the sender's context, lands on the claimed channel, and is absent from
+the counterpart.
+
+```bash
+git clone https://github.com/zhiqiangwang4/MCPTox-Benchmark /tmp/mcptox
+git -C /tmp/mcptox checkout 630121b3275f74cc72d000a7a056e4d3c68648ef
+python -I scripts/packs/build_mcptox_pack.py /tmp/mcptox
+```
+
+Reads `response_all.json`. Keeps the cases where a model's recorded call sends
+the user's data to a recipient the poisoned description named, and a model
+that ignored the description gives the clean counterpart. The script prints
+how many of the 1,348 instances each rule removed; the same counts are stored
+in the pack under `selection`.
 
 All builds are deterministic: the same inputs produce a byte-identical pack.
 The AgentDojo script re-execs itself with `PYTHONHASHSEED=0` and pins

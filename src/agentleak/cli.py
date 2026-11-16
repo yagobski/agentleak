@@ -16,6 +16,7 @@ from typing import Any
 import typer
 
 from . import __version__
+from ._console import echo, secho
 from .core.canary import CanarySet
 from .core.config import DEFAULT_CONFIG_YAML, Config
 from .core.report import AnalysisResult
@@ -35,7 +36,7 @@ app = typer.Typer(
 
 def _print_version(value: bool) -> None:
     if value:
-        typer.echo(f"agentleak {__version__}")
+        echo(f"agentleak {__version__}")
         raise typer.Exit()
 
 
@@ -74,13 +75,16 @@ _INTERNAL_CHANNELS = {
 @app.command()
 def version() -> None:
     """Print the AgentLeak version."""
-    typer.echo(f"agentleak {__version__}")
+    echo(f"agentleak {__version__}")
 
 
 # selftest lives in its own package; registered here so it lists near the top.
 from .selftest.cli import register as _register_selftest  # noqa: E402
 
 _register_selftest(app)
+from .interop.cli import register as _register_import  # noqa: E402
+
+_register_import(app)
 
 
 # ----------------------------------------------------------------------
@@ -99,23 +103,23 @@ def init(
 
     config_path = os.path.join(root, "agentleak.yaml")
     if os.path.exists(config_path) and not force:
-        typer.secho(f"! {config_path} already exists (use --force to overwrite).", fg=typer.colors.YELLOW)
+        secho(f"! {config_path} already exists (use --force to overwrite).", fg=typer.colors.YELLOW)
     else:
         with open(config_path, "w", encoding="utf-8") as fh:
             fh.write(DEFAULT_CONFIG_YAML)
-        typer.secho(f"✓ wrote {config_path}", fg=typer.colors.GREEN)
+        secho(f"✓ wrote {config_path}", fg=typer.colors.GREEN)
 
     # Drop a runnable sample trace so `agentleak run` works immediately.
     sample = load_example_trace("healthcare_patient_summary")
     sample_path = os.path.join(root, "traces", "example_trace.json")
     with open(sample_path, "w", encoding="utf-8") as fh:
         json.dump(sample.to_dict(), fh, indent=2)
-    typer.secho(f"✓ wrote {sample_path}", fg=typer.colors.GREEN)
+    secho(f"✓ wrote {sample_path}", fg=typer.colors.GREEN)
 
-    typer.echo("")
-    typer.echo("Next steps:")
-    typer.echo("  agentleak run --trace traces/example_trace.json")
-    typer.echo("  agentleak run --scenario healthcare_patient_summary")
+    echo("")
+    echo("Next steps:")
+    echo("  agentleak run --trace traces/example_trace.json")
+    echo("  agentleak run --scenario healthcare_patient_summary")
 
 
 # ----------------------------------------------------------------------
@@ -133,37 +137,37 @@ def validate(
     if trace and not explicit and not os.path.exists(config):
         # `validate --trace t.json` is a trace check; a missing default config
         # is not an error then, only a named one is.
-        typer.echo(f"· no {config} here; validating the trace only")
+        echo(f"· no {config} here; validating the trace only")
         config = ""
     try:
         if not config:
             raise _SkipConfig
         cfg = Config.load(config)
-        typer.secho(f"✓ config valid: {config}", fg=typer.colors.GREEN)
-        typer.echo(f"  detectors: {', '.join(k for k, v in cfg.detectors.as_dict().items() if v) or 'none'}")
-        typer.echo(f"  channels:  {len(cfg.channels)} · scenarios: {len(cfg.scenarios)}")
+        secho(f"✓ config valid: {config}", fg=typer.colors.GREEN)
+        echo(f"  detectors: {', '.join(k for k, v in cfg.detectors.as_dict().items() if v) or 'none'}")
+        echo(f"  channels:  {len(cfg.channels)} · scenarios: {len(cfg.scenarios)}")
         normalize_formats(cfg.reports.formats)
         # Extra keys are allowed (integrations keep their own settings here),
         # but a misspelled one ('detecters:') silently configures nothing.
         unknown = sorted(set(cfg.model_extra or {}))
         if unknown:
-            typer.secho(f"! unknown top-level key(s), ignored by AgentLeak: {', '.join(unknown)}",
+            secho(f"! unknown top-level key(s), ignored by AgentLeak: {', '.join(unknown)}",
                         fg=typer.colors.YELLOW)
     except _SkipConfig:
         pass
     except FileNotFoundError:
-        typer.secho(f"✗ config not found: {config}", fg=typer.colors.RED)
+        secho(f"✗ config not found: {config}", fg=typer.colors.RED)
         ok = False
     except Exception as exc:  # noqa: BLE001 - surface any validation error
-        typer.secho(f"✗ invalid config: {exc}", fg=typer.colors.RED)
+        secho(f"✗ invalid config: {exc}", fg=typer.colors.RED)
         ok = False
 
     if trace:
         try:
             t = _load_trace_file(trace)
-            typer.secho(f"✓ trace valid: {trace} ({len(t.events)} events)", fg=typer.colors.GREEN)
+            secho(f"✓ trace valid: {trace} ({len(t.events)} events)", fg=typer.colors.GREEN)
         except Exception as exc:  # noqa: BLE001
-            typer.secho(f"✗ invalid trace: {exc}", fg=typer.colors.RED)
+            secho(f"✗ invalid trace: {exc}", fg=typer.colors.RED)
             ok = False
 
     raise typer.Exit(code=0 if ok else 1)
@@ -187,32 +191,32 @@ def scenarios(
 
     if packs:
         for entry in list_packs():
-            typer.secho(entry["id"], fg=typer.colors.CYAN, bold=True)
-            typer.echo(f"  {entry['description'] or entry['name']}")
-            typer.echo(f"  {entry['count']} scenario(s) · source: {entry['source'] or 'bundled'}")
+            secho(entry["id"], fg=typer.colors.CYAN, bold=True)
+            echo(f"  {entry['description'] or entry['name']}")
+            echo(f"  {entry['count']} scenario(s) · source: {entry['source'] or 'bundled'}")
             if entry.get("license"):
-                typer.echo(f"  licence: {entry['license']}")
-            typer.echo(f"  run one: agentleak run --pack {entry['id']} --scenario <id>")
+                echo(f"  licence: {entry['license']}")
+            echo(f"  run one: agentleak run --pack {entry['id']} --scenario <id>")
         return
 
     if pack:
         try:
             entries = expand_pack(pack)
         except (KeyError, FileNotFoundError, ValueError) as exc:
-            typer.secho(f"✗ unknown pack: {pack}", fg=typer.colors.RED)
+            secho(f"✗ unknown pack: {pack}", fg=typer.colors.RED)
             raise typer.Exit(code=1) from exc
         for meta, _trace in entries:
-            typer.secho(meta.get("origin_id") or meta.get("name", "?"), fg=typer.colors.CYAN, bold=True)
+            secho(meta.get("origin_id") or meta.get("name", "?"), fg=typer.colors.CYAN, bold=True)
             if meta.get("description"):
-                typer.echo(f"  {meta['description']}")
-        typer.echo(f"\n{len(entries)} scenario(s) in {pack}.")
+                echo(f"  {meta['description']}")
+        echo(f"\n{len(entries)} scenario(s) in {pack}.")
         return
 
     for s in list_scenarios():
-        typer.secho(s.id, fg=typer.colors.CYAN, bold=True)
-        typer.echo(f"  {s.description}")
-        typer.echo(f"  domain: {s.domain} · sensitive: {', '.join(s.sensitive_data)}")
-    typer.echo("\nAlso available: agentleak scenarios --packs  (research benchmark suites)")
+        secho(s.id, fg=typer.colors.CYAN, bold=True)
+        echo(f"  {s.description}")
+        echo(f"  domain: {s.domain} · sensitive: {', '.join(s.sensitive_data)}")
+    echo("\nAlso available: agentleak scenarios --packs  (research benchmark suites)")
 
 
 # ----------------------------------------------------------------------
@@ -228,7 +232,7 @@ def agent_card_cmd() -> None:
     """
     from .core.agentcard import platform_card
 
-    typer.echo(json.dumps(platform_card(__version__).to_dict(), indent=2))
+    echo(json.dumps(platform_card(__version__).to_dict(), indent=2))
 
 
 @app.command()
@@ -241,9 +245,9 @@ def schema(
     try:
         payload = schema_catalog() if name == "catalog" else get_schema(name)
     except KeyError as exc:
-        typer.secho(f"✗ {exc.args[0]}", fg=typer.colors.RED)
+        secho(f"✗ {exc.args[0]}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
-    typer.echo(json.dumps(payload, indent=2))
+    echo(json.dumps(payload, indent=2))
 
 
 # ----------------------------------------------------------------------
@@ -294,11 +298,11 @@ def skill(
     from . import skill as skill_mod
 
     if show:
-        typer.echo(skill_mod.skill_text())
+        echo(skill_mod.skill_text())
         return
 
     if install and uninstall:
-        typer.secho("✗ --install and --uninstall are mutually exclusive.", fg=typer.colors.RED)
+        secho("✗ --install and --uninstall are mutually exclusive.", fg=typer.colors.RED)
         raise typer.Exit(code=2)
 
     # --- resolve which locations we operate on --------------------------------
@@ -309,7 +313,7 @@ def skill(
             try:
                 targets = [skill_mod.target_by_id(t) for t in target]
             except KeyError as exc:
-                typer.secho(f"✗ {exc.args[0]}", fg=typer.colors.RED)
+                secho(f"✗ {exc.args[0]}", fg=typer.colors.RED)
                 raise typer.Exit(code=2) from exc
         else:
             targets = skill_mod.detect_targets()
@@ -318,27 +322,27 @@ def skill(
     # --- status (no flags) ----------------------------------------------------
     if not install and not uninstall:
         rows = skill_mod.status()
-        typer.echo("")
-        typer.secho("👁️  AgentLeak skill", bold=True)
-        typer.echo("")
+        echo("")
+        secho("👁️  AgentLeak skill", bold=True)
+        echo("")
         for tgt, state in rows:
-            typer.secho(
+            secho(
                 f"  {tgt.label:<14} {_SKILL_STATUS_LABELS[state]}",
                 fg=_SKILL_STATUS_COLORS[state],
             )
-        typer.echo("")
+        echo("")
         if any(state in {"missing", "stale"} for _, state in rows):
-            typer.echo("  Install with:  agentleak skill --install")
+            echo("  Install with:  agentleak skill --install")
         elif not any(state != "absent" for _, state in rows):
-            typer.echo("  No supported agent detected. Use --path <skills-dir> to install anyway.")
+            echo("  No supported agent detected. Use --path <skills-dir> to install anyway.")
         return
 
     if not locations:
-        typer.secho(
+        secho(
             "✗ No supported agent detected (Claude Code, OpenClaw, Cursor, Windsurf, Codex CLI).",
             fg=typer.colors.RED,
         )
-        typer.echo("  Install into an explicit directory with:  agentleak skill --install --path <dir>")
+        echo("  Install into an explicit directory with:  agentleak skill --install --path <dir>")
         raise typer.Exit(code=1)
 
     # --- act ------------------------------------------------------------------
@@ -352,22 +356,22 @@ def skill(
             )
 
     prefix = "[dry-run] " if dry_run else ""
-    typer.echo("")
+    echo("")
     for outcome in outcomes:
         mark = "✓" if outcome.ok else "✗"
-        typer.secho(
+        secho(
             f"  {mark} {outcome.label or outcome.path.parent.name}: "
             f"{prefix}{_SKILL_STATUS_LABELS[outcome.status]}",
             fg=_SKILL_STATUS_COLORS[outcome.status],
         )
         if outcome.changed or outcome.status == "unchanged":
-            typer.secho(f"      {outcome.path}", fg=typer.colors.BRIGHT_BLACK)
-    typer.echo("")
+            secho(f"      {outcome.path}", fg=typer.colors.BRIGHT_BLACK)
+    echo("")
 
     if any(not o.ok for o in outcomes):
         raise typer.Exit(code=1)
     if install and not dry_run:
-        typer.echo("  Start a new agent session for the skill to be picked up.")
+        echo("  Start a new agent session for the skill to be picked up.")
 
 
 # ----------------------------------------------------------------------
@@ -394,7 +398,7 @@ def scan(
 
     fmt = fmt.lower().strip()
     if fmt not in {"json", "sarif"}:
-        typer.secho("✗ format must be 'json' or 'sarif'", fg=typer.colors.RED)
+        secho("✗ format must be 'json' or 'sarif'", fg=typer.colors.RED)
         raise typer.Exit(code=2)
 
     cfg: Config | None = None
@@ -402,7 +406,7 @@ def scan(
         try:
             cfg = Config.load(config)
         except (OSError, ValueError) as exc:
-            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=1) from exc
     if mode:
         # Mode override: standard enables Presidio, hybrid also enables the
@@ -422,43 +426,43 @@ def scan(
 
     try:
         if repo:
-            typer.echo(f"Fetching {repo}@{branch} …")
+            echo(f"Fetching {repo}@{branch} …")
             result = scan_github_repo(repo, branch=branch, config=cfg)
         else:
             # scan_path dispatches on what the argument actually is: a single
             # file, a directory tree or a zip archive.
             result = scan_path(path, config=cfg)
     except (ValueError, OSError) as exc:
-        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        secho(f"✗ {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
     summary = result.summary()
     color = typer.colors.GREEN if result.score >= 90 else (
         typer.colors.YELLOW if result.score >= 70 else typer.colors.RED
     )
-    typer.secho(f"Code privacy score: {result.score}/100 — {result.verdict}", fg=color, bold=True)
-    typer.echo(
+    secho(f"Code privacy score: {result.score}/100 — {result.verdict}", fg=color, bold=True)
+    echo(
         f"  mode: {result.detection_mode} · tiers: {', '.join(result.tiers)}\n"
         f"  files scanned: {summary['files_scanned']} · findings: {summary['total_findings']}"
         f" · levels: {summary['level_profile']}"
     )
     for f in result.findings[:25]:
-        typer.echo(f"  [L{f.level}] {f.file}:{f.line} {f.rule} ({f.data_type}, {f.tier})")
-        typer.echo(f"        {f.snippet}")
+        echo(f"  [L{f.level}] {f.file}:{f.line} {f.rule} ({f.data_type}, {f.tier})")
+        echo(f"        {f.snippet}")
     if len(result.findings) > 25:
-        typer.echo(f"  … and {len(result.findings) - 25} more (use --output for the full list)")
+        echo(f"  … and {len(result.findings) - 25} more (use --output for the full list)")
 
     if output:
         payload = result.to_sarif() if fmt == "sarif" else result.to_dict()
         try:
             Path(output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
         except OSError as exc:
-            typer.secho(f"✗ could not write {output}: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not write {output}: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=1) from exc
-        typer.secho(f"✓ wrote {output}", fg=typer.colors.GREEN)
+        secho(f"✓ wrote {output}", fg=typer.colors.GREEN)
 
     if fail_under is not None and result.score < fail_under:
-        typer.secho(f"✗ score {result.score} < fail-under {fail_under}", fg=typer.colors.RED)
+        secho(f"✗ score {result.score} < fail-under {fail_under}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
 
@@ -487,21 +491,21 @@ def redact(
     # said for several releases while rejecting it.
     style = {"mask": "masked"}.get(style, style)
     if style not in valid:
-        typer.secho(f"✗ style must be one of: {', '.join(sorted(valid))}", fg=typer.colors.RED)
+        secho(f"✗ style must be one of: {', '.join(sorted(valid))}", fg=typer.colors.RED)
         raise typer.Exit(code=2)
 
     try:
         text = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
     except (OSError, UnicodeDecodeError) as exc:
-        typer.secho(f"✗ could not read {path or 'stdin'} as UTF-8 text: {exc}", fg=typer.colors.RED)
+        secho(f"✗ could not read {path or 'stdin'} as UTF-8 text: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
     cleaned = sanitize_text(text, style=style)
     if output:
         Path(output).write_text(cleaned, encoding="utf-8")
-        typer.secho(f"✓ redacted → {output}", fg=typer.colors.GREEN)
+        secho(f"✓ redacted → {output}", fg=typer.colors.GREEN)
     else:
-        typer.echo(cleaned)
+        echo(cleaned)
 
 
 # ----------------------------------------------------------------------
@@ -531,13 +535,13 @@ def admin_reset_password(
     if not password:
         password = typer.prompt("New password", hide_input=True, confirmation_prompt=True)
     if len(password) < 8:
-        typer.secho("✗ password must be at least 8 characters", fg=typer.colors.RED)
+        secho("✗ password must be at least 8 characters", fg=typer.colors.RED)
         raise typer.Exit(code=2)
 
     if Store().reset_password(email, password):
-        typer.secho(f"✓ password reset for {email} (all sessions revoked)", fg=typer.colors.GREEN)
+        secho(f"✓ password reset for {email} (all sessions revoked)", fg=typer.colors.GREEN)
     else:
-        typer.secho(f"✗ no account with email: {email}", fg=typer.colors.RED)
+        secho(f"✗ no account with email: {email}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
 
@@ -548,13 +552,13 @@ def admin_list_users() -> None:
 
     users = Store().list_users()
     if not users:
-        typer.echo("No accounts yet.")
+        echo("No accounts yet.")
         return
     for user in users:
         role = "admin" if user.get("is_admin") else "user"
         state = " · disabled" if user.get("disabled") else ""
-        typer.echo(f"{user['email']:<40} {role}{state}")
-    typer.echo(f"\n{len(users)} account(s).")
+        echo(f"{user['email']:<40} {role}{state}")
+    echo(f"\n{len(users)} account(s).")
 
 
 # ----------------------------------------------------------------------
@@ -572,10 +576,10 @@ def mcp() -> None:
     try:
         run_stdio()
     except RuntimeError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
+        secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     except ImportError as exc:  # the SDK import lives inside run_stdio
-        typer.secho(MCP_MISSING, fg=typer.colors.RED)
+        secho(MCP_MISSING, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     except KeyboardInterrupt:  # pragma: no cover - normal way to stop a server
         pass
@@ -627,11 +631,11 @@ def proxy(
     from .defenses import RedactionStyle
 
     if {"mask": "masked"}.get(style, style) not in {x.value for x in RedactionStyle}:
-        typer.secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
+        secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
         raise typer.Exit(code=2)
     command = list(ctx.args)
     if not command:
-        typer.secho(
+        secho(
             "No server command. Put it after `--`, e.g.\n"
             "  agentleak proxy -- npx -y @modelcontextprotocol/server-github",
             fg=typer.colors.RED,
@@ -646,10 +650,10 @@ def proxy(
             flows = list(cfg.privacy_policy.flows)
             groups = dict(cfg.privacy_policy.groups)
         except Exception as exc:  # noqa: BLE001
-            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
         if not flows:
-            typer.secho(
+            secho(
                 "Note: the config declares no privacy_policy.flows, so nothing is "
                 "refused. Every call is still recorded.",
                 fg=typer.colors.YELLOW, err=True,
@@ -675,7 +679,7 @@ def proxy(
             repin=repin,
         )
     except FileNotFoundError as exc:
-        typer.secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)
+        secho(f"✗ could not start the server: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     except KeyboardInterrupt:  # pragma: no cover
         code = 0
@@ -711,10 +715,10 @@ def llm_proxy(
 
     style = {"mask": "masked"}.get(style, style)
     if style not in {x.value for x in RedactionStyle}:
-        typer.secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
+        secho(f"✗ unknown --style {style!r}", fg=typer.colors.RED)
         raise typer.Exit(code=2)
     if not _is_loopback_host(host):
-        typer.secho(
+        secho(
             f"Note: listening on {host}. Anything that can reach this port can send "
             "requests through it with its own credentials.", fg=typer.colors.YELLOW,
         )
@@ -724,7 +728,7 @@ def llm_proxy(
         try:
             cfg = Config.load(config)
         except Exception as exc:  # noqa: BLE001
-            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
         flows = list(cfg.privacy_policy.flows)
         groups = dict(cfg.privacy_policy.groups)
@@ -771,12 +775,12 @@ def evidence(
         try:
             private_file, public_file = generate_keypair(keygen)
         except RuntimeError as exc:
-            typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+            secho(f"✗ {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
-        typer.secho(f"✓ private key → {private_file} (mode 600)", fg=typer.colors.GREEN)
-        typer.secho(f"✓ public key  → {public_file}", fg=typer.colors.GREEN)
-        typer.echo("Sign with:   agentleak proxy --sign-key " + str(private_file) + " -- …")
-        typer.echo("Verify with: agentleak evidence LOG --public-key " + str(public_file))
+        secho(f"✓ private key → {private_file} (mode 600)", fg=typer.colors.GREEN)
+        secho(f"✓ public key  → {public_file}", fg=typer.colors.GREEN)
+        echo("Sign with:   agentleak proxy --sign-key " + str(private_file) + " -- …")
+        echo("Verify with: agentleak evidence LOG --public-key " + str(public_file))
         return
 
     key = None
@@ -786,7 +790,7 @@ def evidence(
         try:
             key = load_public_key(public_key)
         except (RuntimeError, OSError, ValueError) as exc:
-            typer.secho(f"✗ could not load public key: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not load public key: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
 
     result = verify_chain(path, public_key=key)
@@ -798,36 +802,36 @@ def evidence(
                              f"{want[:16]}: entries were removed from the end, or added")
     if verify_only:
         if fmt == "json":
-            typer.echo(json.dumps(result.to_dict(), indent=2))
+            echo(json.dumps(result.to_dict(), indent=2))
         else:
             colour = typer.colors.GREEN if result.ok else typer.colors.RED
-            typer.secho(result.detail, fg=colour)
+            secho(result.detail, fg=colour)
         raise typer.Exit(code=0 if result.ok else 1)
 
     if not result.ok:
-        typer.secho(f"⛔ {result.detail}", fg=typer.colors.RED)
+        secho(f"⛔ {result.detail}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     summary = EvidenceLog(path).summary()
     if fmt == "json":
-        typer.echo(json.dumps(summary, indent=2))
+        echo(json.dumps(summary, indent=2))
         return
 
-    typer.secho(f"✓ {result.detail}", fg=typer.colors.GREEN)
-    typer.echo("")
+    secho(f"✓ {result.detail}", fg=typer.colors.GREEN)
+    echo("")
     for action, count in summary["by_action"].items():
         colour = {
             "block": typer.colors.RED,
             "redact": typer.colors.YELLOW,
             "allow": typer.colors.GREEN,
         }.get(action, typer.colors.WHITE)
-        typer.secho(f"  {action:<8}", fg=colour, nl=False)
-        typer.echo(f" {count}")
+        secho(f"  {action:<8}", fg=colour, nl=False)
+        echo(f" {count}")
     if summary["by_data_type"]:
-        typer.echo("")
-        typer.echo("Data types seen:")
+        echo("")
+        echo("Data types seen:")
         for data_type, count in summary["by_data_type"].items():
-            typer.echo(f"  {data_type:<22} {count}")
+            echo(f"  {data_type:<22} {count}")
 
 
 def _is_loopback_host(host: str) -> bool:
@@ -854,7 +858,7 @@ def subjects(
 
     store = SubjectLedger(path=ledger)
     if not Path(ledger).exists():
-        typer.secho(
+        secho(
             f"No ledger at {ledger}. Set privacy.subject_ledger in your config "
             "and give each run a subject to start one.",
             fg=typer.colors.YELLOW,
@@ -863,22 +867,22 @@ def subjects(
 
     if forget:
         removed = store.forget(forget)
-        typer.secho(f"✓ erased {removed} secret(s) attributed to '{forget}'", fg=typer.colors.GREEN)
+        secho(f"✓ erased {removed} secret(s) attributed to '{forget}'", fg=typer.colors.GREEN)
         return
 
     summary = store.summary()
     if fmt == "json":
-        typer.echo(json.dumps(summary, indent=2))
+        echo(json.dumps(summary, indent=2))
         return
-    typer.echo(f"{summary['secrets_tracked']} secret(s) tracked across {summary['subjects']} subject(s)")
-    typer.echo("")
+    echo(f"{summary['secrets_tracked']} secret(s) tracked across {summary['subjects']} subject(s)")
+    echo("")
     for subject, count in summary["by_subject"].items():
-        typer.echo(f"  {subject:<24} {count}")
+        echo(f"  {subject:<24} {count}")
     if summary["by_data_type"]:
-        typer.echo("")
-        typer.echo("By data type:")
+        echo("")
+        echo("By data type:")
         for data_type, count in summary["by_data_type"].items():
-            typer.echo(f"  {data_type:<24} {count}")
+            echo(f"  {data_type:<24} {count}")
 
 
 @app.command()
@@ -900,7 +904,7 @@ def serve(
     """
     if local:
         if not _is_loopback_host(host):
-            typer.secho(
+            secho(
                 f"✗ --local cannot bind {host}. It serves an unauthenticated "
                 "workspace, so it only listens on loopback. Drop --local to "
                 "serve accounts, or bind 127.0.0.1.",
@@ -908,7 +912,7 @@ def serve(
             )
             raise typer.Exit(code=2)
         if os.environ.get("AGENTLEAK_PUBLIC_MODE", "").strip().lower() in {"1", "true", "yes", "on"}:
-            typer.secho(
+            secho(
                 "✗ --local and AGENTLEAK_PUBLIC_MODE are mutually exclusive.",
                 fg=typer.colors.RED,
             )
@@ -918,18 +922,18 @@ def serve(
     try:
         from .web import run_server
     except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
+        secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
-    typer.secho(f"AgentLeak GUI → http://{host}:{port}  (Ctrl+C to stop)", fg=typer.colors.GREEN)
+    secho(f"AgentLeak GUI → http://{host}:{port}  (Ctrl+C to stop)", fg=typer.colors.GREEN)
     if local:
-        typer.secho(
+        secho(
             "  local mode: no sign-in, single workspace, loopback only.",
             fg=typer.colors.YELLOW,
         )
     try:
         run_server(host=host, port=port, open_browser=not no_browser)
     except RuntimeError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
+        secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
 
@@ -943,7 +947,7 @@ def run(
     pack: str | None = typer.Option(None, "--pack", help="Take --scenario from a bundled pack (e.g. agentleak_bench), or run 'all' of it."),
     trace: str | None = typer.Option(None, "--trace", "-t", help="Analyze a trace JSON file."),
     output: str | None = typer.Option(None, "--output", "-o", help="Report output directory."),
-    fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats."),
+    fmt: str = typer.Option("json,html,markdown", "--format", "-f", help="Comma-separated formats: json, html, markdown, sarif."),
     fail_under: int | None = typer.Option(None, "--fail-under", min=0, help="Exit non-zero if a score is below this (101 always fails)."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Less console output."),
 ) -> None:
@@ -953,13 +957,13 @@ def run(
         try:
             cfg = Config.load(config)
         except Exception as exc:  # noqa: BLE001
-            typer.secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not load config: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
 
     try:
         formats = normalize_formats([f for f in fmt.split(",") if f.strip()])
     except ValueError as exc:
-        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        secho(f"✗ {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
 
     # A missing file, a malformed or non-UTF-8 trace, or an unknown scenario
@@ -969,13 +973,13 @@ def run(
     except typer.BadParameter:
         raise
     except KeyError as exc:
-        typer.secho(f"✗ {exc.args[0] if exc.args else exc}", fg=typer.colors.RED)
+        secho(f"✗ {exc.args[0] if exc.args else exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
     except (OSError, ValueError, TypeError) as exc:
-        typer.secho(f"✗ could not load trace {trace or scenario}: {exc}", fg=typer.colors.RED)
+        secho(f"✗ could not load trace {trace or scenario}: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
     if not traces:
-        typer.secho(
+        secho(
             "Nothing to run. Provide --trace, --scenario, or scenarios in --config.",
             fg=typer.colors.RED,
         )
@@ -989,7 +993,7 @@ def run(
         if not t.events:
             # An empty trace scores a perfect Pass. Say so, so a CI gate fed
             # the wrong file is not mistaken for a clean agent.
-            typer.secho(
+            secho(
                 f"⚠ {label}: the trace has no events; nothing was analyzed.",
                 fg=typer.colors.BRIGHT_YELLOW, bold=True,
             )
@@ -997,22 +1001,22 @@ def run(
         if fail_under is not None:
             result.fail_below = fail_under
         try:
-            written = write_reports(result, out_dir, formats, basename=result.run_id)
+            written = write_reports(result, out_dir, formats, basename=result.run_id, trace_path=trace)
         except OSError as exc:
-            typer.secho(f"✗ could not write reports to {out_dir}: {exc}", fg=typer.colors.RED)
+            secho(f"✗ could not write reports to {out_dir}: {exc}", fg=typer.colors.RED)
             raise typer.Exit(code=1) from exc
         if not quiet:
             _print_result(result, written)
         elif result.warnings:
             # Degradation warnings are safety-critical — surface them even in
             # --quiet mode so a degraded run is never mistaken for a clean pass.
-            typer.secho(
+            secho(
                 f"⚠ {result.run_id}: degraded run — a requested detection tier "
                 "did not run; score may under-report leakage.",
                 fg=typer.colors.BRIGHT_YELLOW, bold=True,
             )
             for w in result.warnings:
-                typer.secho(f"  · {w}", fg=typer.colors.BRIGHT_YELLOW)
+                secho(f"  · {w}", fg=typer.colors.BRIGHT_YELLOW)
         worst_blocked = worst_blocked or result.blocked
 
     raise typer.Exit(code=1 if worst_blocked else 0)
@@ -1032,11 +1036,11 @@ def report(
         with open(input, encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception as exc:  # noqa: BLE001
-        typer.secho(f"✗ could not read report: {exc}", fg=typer.colors.RED)
+        secho(f"✗ could not read report: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
 
     if not isinstance(data, dict) or not {"privacy_score", "verdict", "findings"} <= data.keys():
-        typer.secho(
+        secho(
             f"✗ {input} is not an AgentLeak report (write one with `agentleak run`).",
             fg=typer.colors.RED,
         )
@@ -1044,7 +1048,7 @@ def report(
     try:
         formats = normalize_formats([x for x in fmt.split(",") if x.strip()])
     except ValueError as exc:
-        typer.secho(f"✗ {exc}", fg=typer.colors.RED)
+        secho(f"✗ {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
 
     out_dir = output or os.path.dirname(os.path.abspath(input))
@@ -1056,12 +1060,12 @@ def report(
         try:
             content = render(data, f)
         except (KeyError, TypeError, AttributeError, ValueError) as exc:
-            typer.secho(f"✗ could not render {input} as {f}: {exc!r}", fg=typer.colors.RED)
+            secho(f"✗ could not render {input} as {f}: {exc!r}", fg=typer.colors.RED)
             raise typer.Exit(code=2) from exc
         path = os.path.join(out_dir, f"{basename}.{_EXTENSIONS[f]}")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(content)
-        typer.secho(f"✓ {f}: {path}", fg=typer.colors.GREEN)
+        secho(f"✓ {f}: {path}", fg=typer.colors.GREEN)
 
 
 # ----------------------------------------------------------------------
@@ -1136,7 +1140,7 @@ def _resolve_traces(
                 try:
                     out.append((ref.id, load_example_trace(ref.id), None))
                 except (KeyError, ValueError):
-                    typer.secho(f"! skipping unknown scenario '{ref.id}'", fg=typer.colors.YELLOW)
+                    secho(f"! skipping unknown scenario '{ref.id}'", fg=typer.colors.YELLOW)
         return out
     return []
 
@@ -1145,18 +1149,18 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
     data = result.to_dict()
     verdict_color = _VERDICT_COLORS.get(result.verdict, typer.colors.WHITE)
 
-    typer.echo("")
-    typer.secho("AgentLeak Privacy Report (AgentRisk scoring)", bold=True)
-    typer.echo(f"Agent: {result.agent_name} · run: {result.run_id} · events: {result.event_count}")
-    typer.echo("")
-    typer.secho(
+    echo("")
+    secho("AgentLeak Privacy Report (AgentRisk scoring)", bold=True)
+    echo(f"Agent: {result.agent_name} · run: {result.run_id} · events: {result.event_count}")
+    echo("")
+    secho(
         f"Risk Index: {data['risk_index']:.3f}   {result.verdict}   "
         f"(privacy {result.privacy_score}/100)",
         fg=verdict_color, bold=True,
     )
     lp = data["summary"]["level_profile"]
     s = data["summary"]
-    typer.echo(
+    echo(
         f"WSL {data['wsl']} / ρ_S {data['rho_s']}  ·  "
         f"{s['leaked_secrets']} of {s['vault_secrets']} secrets leaked  "
         f"(L4 {lp['L4']}, L3 {lp['L3']}, L2 {lp['L2']}, L1 {lp['L1']})"
@@ -1167,12 +1171,12 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
     det = data.get("detection", {})
     if det:
         tiers = ", ".join(det.get("tiers", []))
-        typer.secho(
+        secho(
             f"Detection: {det.get('mode', '?')} mode · tiers: {tiers}",
             fg=typer.colors.BRIGHT_BLACK,
         )
         if det.get("mode") == "fast":
-            typer.secho(
+            secho(
                 "  (regex only — add Presidio with --mode standard, or the "
                 "LLM-judge with --mode hybrid, for deeper coverage)",
                 fg=typer.colors.BRIGHT_BLACK,
@@ -1180,77 +1184,82 @@ def _print_result(result: AnalysisResult, written: dict[str, str]) -> None:
     cs = data.get("compliance", {}).get("summary")
     if cs:
         color = typer.colors.GREEN if cs["non_compliant"] == 0 else typer.colors.BRIGHT_YELLOW
-        typer.secho(
+        secho(
             f"Compliance: {cs['compliant']}/{cs['total']} frameworks clear "
             f"({cs['controls_at_risk']} control(s) at risk)",
             fg=color,
         )
     if result.warnings:
-        typer.echo("")
-        typer.secho(
+        echo("")
+        secho(
             "⚠ Degraded run — a requested detection tier did not run. "
             "This score may under-report leakage; do not read it as a clean pass.",
             fg=typer.colors.BRIGHT_YELLOW, bold=True,
         )
         for w in result.warnings:
-            typer.secho(f"  · {w}", fg=typer.colors.BRIGHT_YELLOW)
+            secho(f"  · {w}", fg=typer.colors.BRIGHT_YELLOW)
 
     policy = data.get("privacy_policy", {})
     if policy.get("enabled"):
         color = typer.colors.GREEN if policy.get("passed") else typer.colors.RED
         status = "passed" if policy.get("passed") else "failed"
-        typer.secho(
+        secho(
             f"Privacy policy: {status} · {len(policy.get('violations', []))} violation(s)",
             fg=color,
         )
         for violation in policy.get("violations", []):
-            typer.echo(f"  - {violation['rule']}: {violation['message']}")
+            echo(f"  - {violation['rule']}: {violation['message']}")
         # A flow violation names a recipient and a purpose, which is what the
         # operator changes. Summarised in the message, listed in full here.
         for decision in policy.get("flows", {}).get("violations", []):
             recipient = decision.get("recipient") or "?"
             purpose = decision.get("purpose") or "no declared purpose"
-            typer.echo(
+            echo(
                 f"      {decision['data_type']} -> {recipient} ({purpose})"
             )
 
     cross = data.get("cross_session") or {}
     if cross.get("enabled") and not cross.get("passed"):
         breaches = cross["cross_subject_disclosures"]
-        typer.secho(
+        secho(
             f"Cross-session: {len(breaches)} disclosure(s) of another subject's data",
             fg=typer.colors.RED,
         )
         for breach in breaches:
-            typer.echo(
+            echo(
                 f"  - {breach['data_type']}: belongs to '{breach['owner']}', "
                 f"disclosed on {breach['channel']} while serving "
                 f"'{breach['disclosed_to']}'"
             )
 
+    obs = data.get("observation") or {}
+    if obs.get("unobserved_channels"):
+        secho(f"Observed by {obs.get('source')}: {', '.join(obs.get('observable_channels', []))}"
+                    f" only. Not audited: {', '.join(obs['unobserved_channels'])}.",
+                    fg=typer.colors.BRIGHT_YELLOW)
     if data["channel_risks"]:
-        typer.echo("")
-        typer.echo("Risk by channel:")
+        echo("")
+        echo("Risk by channel:")
         for cr in data["channel_risks"]:
             color = _LEVEL_COLORS.get(cr["level"], typer.colors.WHITE)
-            typer.echo("  " + f"{cr['channel']:<22} ", nl=False)
-            typer.secho(f"{cr['level_label']:<4}", fg=color, nl=False)
-            typer.echo(f" RI {cr['ri']:.3f}  {cr['finding_count']} finding(s)")
+            echo("  " + f"{cr['channel']:<22} ", nl=False)
+            secho(f"{cr['level_label']:<4}", fg=color, nl=False)
+            echo(f" RI {cr['ri']:.3f}  {cr['finding_count']} finding(s)")
 
     insight = _console_insight(data)
     if insight:
-        typer.echo("")
-        typer.secho("Key insight: ", fg=typer.colors.CYAN, bold=True, nl=False)
-        typer.echo(insight)
+        echo("")
+        secho("Key insight: ", fg=typer.colors.CYAN, bold=True, nl=False)
+        echo(insight)
 
     if result.blocked:
-        typer.echo("")
-        typer.secho("⛔ Blocked — this run would fail a CI privacy gate.", fg=typer.colors.RED, bold=True)
+        echo("")
+        secho("⛔ Blocked — this run would fail a CI privacy gate.", fg=typer.colors.RED, bold=True)
 
     if written:
-        typer.echo("")
+        echo("")
         for f, path in written.items():
-            typer.secho(f"✓ {f:<8} {path}", fg=typer.colors.GREEN)
+            secho(f"✓ {f:<8} {path}", fg=typer.colors.GREEN)
 
 
 def _console_insight(data: dict) -> str | None:
@@ -1282,20 +1291,20 @@ def history(
     store = Store(db_path) if db_path else Store()
     proj = store.get_project_by_name(project)
     if not proj:
-        typer.secho(f"✗ Project '{project}' not found.", fg=typer.colors.RED)
+        secho(f"✗ Project '{project}' not found.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     runs = store.run_history(proj["id"], limit=limit)
     if not runs:
-        typer.secho(f"No runs found for project '{project}'.", fg=typer.colors.YELLOW)
+        secho(f"No runs found for project '{project}'.", fg=typer.colors.YELLOW)
         return
 
-    typer.secho(f"\nHistory — {project}  ({len(runs)} runs)\n", bold=True)
-    typer.echo(
+    secho(f"\nHistory — {project}  ({len(runs)} runs)\n", bold=True)
+    echo(
         f"  {'#':<4}  {'Run ID':<18}  {'Date':<20}  {'Score':>5}  {'Δ':>5}  "
         f"{'RI':>6}  {'ΔRI':>7}  {'Verdict':<18}  Label"
     )
-    typer.echo("  " + "─" * 95)
+    echo("  " + "─" * 95)
     for r in runs:
         d_score = r["delta_score"]
         d_ri = r["delta_ri"]
@@ -1314,23 +1323,23 @@ def history(
             else typer.colors.RED if (d_score or 0) < 0
             else typer.colors.WHITE
         )
-        typer.echo(f"  {r['rank']:<4}  {r['id']:<18}  {dt:<20}  ", nl=False)
-        typer.secho(f"{r['privacy_score']:>5}", fg=score_color, nl=False)
-        typer.echo("  ", nl=False)
-        typer.secho(delta_str, fg=delta_color, nl=False)
-        typer.echo(f"  {r['risk_index']:>6.3f}  {dri_str:>7}  {r['verdict']:<18}{blocked_flag}  {label}")
+        echo(f"  {r['rank']:<4}  {r['id']:<18}  {dt:<20}  ", nl=False)
+        secho(f"{r['privacy_score']:>5}", fg=score_color, nl=False)
+        echo("  ", nl=False)
+        secho(delta_str, fg=delta_color, nl=False)
+        echo(f"  {r['risk_index']:>6.3f}  {dri_str:>7}  {r['verdict']:<18}{blocked_flag}  {label}")
 
     if len(runs) > 1:
         first, last = runs[0], runs[-1]
         total = last["privacy_score"] - first["privacy_score"]
         total_color = typer.colors.GREEN if total > 0 else typer.colors.RED if total < 0 else typer.colors.WHITE
         best = max(runs, key=lambda r: r["privacy_score"])
-        typer.echo("")
-        typer.echo("  Total improvement : ", nl=False)
-        typer.secho(f"{total:+d} pts", fg=total_color, bold=True)
-        typer.echo(f"  Best run          : {best['id']}  ({best['privacy_score']}/100)")
-        typer.echo(f"  Blocked runs      : {sum(1 for r in runs if r['blocked'])}/{len(runs)}")
-    typer.echo("")
+        echo("")
+        echo("  Total improvement : ", nl=False)
+        secho(f"{total:+d} pts", fg=total_color, bold=True)
+        echo(f"  Best run          : {best['id']}  ({best['privacy_score']}/100)")
+        echo(f"  Blocked runs      : {sum(1 for r in runs if r['blocked'])}/{len(runs)}")
+    echo("")
 
 
 # ----------------------------------------------------------------------
@@ -1350,18 +1359,18 @@ def compare(
     store = Store(db_path) if db_path else Store()
     result = store.compare_runs(run_a, run_b)
     if result is None:
-        typer.secho("✗ One or both run IDs not found.", fg=typer.colors.RED)
+        secho("✗ One or both run IDs not found.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     a, b, diff = result["run_a"], result["run_b"], result["diff"]
 
-    typer.secho("\nRun comparison", bold=True)
-    typer.echo(f"  A (baseline) : {a['id']}  {a.get('label') or ''}".rstrip())
-    typer.echo(f"  B (current)  : {b['id']}  {b.get('label') or ''}".rstrip())
-    typer.echo("")
+    secho("\nRun comparison", bold=True)
+    echo(f"  A (baseline) : {a['id']}  {a.get('label') or ''}".rstrip())
+    echo(f"  B (current)  : {b['id']}  {b.get('label') or ''}".rstrip())
+    echo("")
 
-    typer.echo(f"  {'Metric':<24}  {'A':>8}  {'B':>8}  {'Delta':>8}")
-    typer.echo("  " + "─" * 56)
+    echo(f"  {'Metric':<24}  {'A':>8}  {'B':>8}  {'Delta':>8}")
+    echo("  " + "─" * 56)
 
     def _row(name: str, val_a: _Any, val_b: _Any, delta: _Any, *, invert: bool = False) -> None:
         if delta is None:
@@ -1376,8 +1385,8 @@ def compare(
             )
         va = f"{val_a:.3f}" if isinstance(val_a, float) else str(val_a)
         vb = f"{val_b:.3f}" if isinstance(val_b, float) else str(val_b)
-        typer.echo(f"  {name:<24}  {va:>8}  {vb:>8}  ", nl=False)
-        typer.secho(f"{delta_str:>8}", fg=delta_color)
+        echo(f"  {name:<24}  {va:>8}  {vb:>8}  ", nl=False)
+        secho(f"{delta_str:>8}", fg=delta_color)
 
     _row("Privacy score", a["privacy_score"], b["privacy_score"], diff["delta_score"])
     _row("Risk Index (RI)", a["risk_index"], b["risk_index"], diff["delta_ri"], invert=True)
@@ -1389,24 +1398,24 @@ def compare(
 
     fws = diff.get("frameworks", [])
     if fws:
-        typer.echo("")
-        typer.secho("  Compliance frameworks:", bold=True)
+        echo("")
+        secho("  Compliance frameworks:", bold=True)
         for fw in fws:
             icon = {"fixed": "✓", "regressed": "✗", "same": " "}.get(fw["change"], " ")
             color = {"fixed": typer.colors.GREEN, "regressed": typer.colors.RED}.get(fw["change"])
             line = f"  {icon} [{fw['id']:<14}]  {fw['before']:<12} → {fw['after']}"
             if color:
-                typer.secho(line, fg=color)
+                secho(line, fg=color)
             else:
-                typer.echo(line)
+                echo(line)
 
-    typer.echo("")
+    echo("")
     direction = diff.get("score_direction", "unchanged")
     dcolor = {"improved": typer.colors.GREEN, "regressed": typer.colors.RED}.get(direction, typer.colors.WHITE)
-    typer.secho(f"  Overall: {direction.upper()}", fg=dcolor, bold=True)
+    secho(f"  Overall: {direction.upper()}", fg=dcolor, bold=True)
     if diff.get("blocked_resolved"):
-        typer.secho("  Blocker resolved — run B passes the privacy gate.", fg=typer.colors.GREEN)
-    typer.echo("")
+        secho("  Blocker resolved — run B passes the privacy gate.", fg=typer.colors.GREEN)
+    echo("")
 
 
 def main() -> None:

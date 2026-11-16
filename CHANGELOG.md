@@ -6,6 +6,191 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-16
+
+Feature release: two new scenario packs, an AI-security framework mapping,
+finding triage, imports from other testing tools and better recall on
+personal data written in prose. Includes every fix of 0.19.1.
+
+**Scores move.** 23 of 362 bundled scenarios change risk index or leaked
+finding count, 6 of them verdict; built-in scenarios (including the
+quickstart's 0.44) do not move. The AgentRisk formula and the L1–L4 levels are
+unchanged; only what the detectors find changed. Verdict changes:
+`agentleak_bench/agentleak_leg_00744` High risk → Fail (military address
+leaked); `injecagent_ds/…googlecalendarreadevents__teladocviewprescriptions__base`
+High risk → Fail (Lisinopril leaked); `privacylens_ci/trace_main63`
+Conditional pass → High risk (Lisinopril); `trace_main121` Conditional pass →
+High risk (autism spectrum disorder after "a diagnosis of"); `trace_main483`
+High risk → Fail (a diagnosis after "diagnosed with"); `trace_main43` Fail →
+High risk (a birthday the agent received but did not disclose now counts in
+the vault). The full list is in `docs/reports/next/PROSE-REPORT.md`.
+
+### Added
+
+- **AgentSocialBench pack** (`agentsocialbench_ma`, 105 scenarios, MIT). One
+  agent hands two facts that must not cross to another agent: 50 on
+  `inter_agent_message` (another user's agent, or the same user's agent in
+  another domain) and 55 on `shared_memory` (a group chat or a shared plan).
+  The facts ship as canaries, and every record converts to a clean counterpart
+  that carries the source's abstraction instead (`"variant": "clean"`). Built
+  by `scripts/packs/build_agentsocialbench_pack.py` from commit `6d8497c`.
+- **MCPTox pack** (`mcptox_recipient_hijack`, 24 scenarios, CC-BY-4.0). A
+  poisoned MCP tool description makes a model send the user's data to the
+  attacker's recipient through a legitimate tool. The calls, and the clean
+  counterparts, are the models' own recorded calls. The pack ships a flow-rule
+  preset (`flow_preset`) that flags all 24 leaks and none of the counterparts;
+  in 7 pairs presence alone cannot tell them apart. Built by
+  `scripts/packs/build_mcptox_pack.py` from commit `630121b`.
+- **AI-security framework mapping.** Reports gain a `security_frameworks` key
+  and `/api/meta` publishes the table: OWASP Top 10 for Agentic Applications
+  (ASI01-ASI10, identifiers only), MITRE ATLAS techniques (2026.10) and NIST
+  AI 100-2 E2025 terms, by leak channel and by attack class. A review aid, not
+  a certification; the 14 privacy frameworks and every existing report key and
+  count are unchanged (pinned by `tests/test_security_frameworks.py`).
+- `scripts/packs/measure_new_packs.py`: recall and specificity of the pattern
+  tier on the two packs against their shipped counterparts.
+- **Finding triage.** Mark a finding true positive, false positive, accepted
+  risk (optionally until a date) or needs review, one at a time or in bulk,
+  with a rationale (required except for a true positive), the reviewer and the
+  time. Every decision is kept as an audit trail. A decision carries over to
+  the same value on the same channel in later runs of the project, and says
+  so. An expired accepted risk reads "needs review" again and says why.
+  Findings can be filtered by triage state; triage fields are in the CSV/JSON
+  export; the comparison page shows each side's triage.
+- **Triaged view of the score.** Next to the measured result, labelled, with
+  both denominators: "2 of 6 findings triaged as false positive, covering 1
+  of 4 leaked secrets. Score excluding them: RI 0.280 (WSL 7 / ρ_S 25)". The
+  measured RI, privacy score, verdict and gate never change; accepted risks
+  still count. `GET /api/runs/{id}` and every CI-facing response are
+  unchanged; the triaged figure comes only from `GET /api/runs/{id}/triage`.
+- `GET /api/runs`: every run the account owns, filtered (project, verdict,
+  gate, source, date range, text), sorted and paged on the server.
+  `GET /api/runs/export` exports every matching row (up to 10,000) as CSV or
+  JSON. The Runs page uses them, keeps the filter in the URL, and says whether
+  an export is the page or every matching row.
+- Leak paths export as SVG and JSON from the trace tab (values masked).
+- Project settings: the evaluation gate (`privacy_policy`) can be set per
+  project.
+- `GET /api/auth/session`, a sign-in probe that answers 200 when nobody is
+  signed in.
+- `agentleak import FILE [--from auto|promptfoo|inspect|garak|pyrit] [-o OUT] [--score]`
+  turns the output of promptfoo (eval results, with OpenTelemetry traces when
+  present), Inspect AI (`.eval` and `.json` logs), garak (`report.jsonl`) and
+  PyRIT (conversation JSON) into AgentLeak traces, and with `--score` analyzes
+  them. Auto-detection says what it recognised and why; an unrecognised file
+  gets an error listing every format tried. Each importer was built against real
+  output of the tool (promptfoo 0.125.1, Inspect AI 0.3.290, garak 0.17.1,
+  PyRIT 1.2.0). See `docs/interop.md`.
+- Imported traces record their provenance (tool, version, source SHA-256,
+  record id) and what their source could observe, in a new optional
+  `Trace.metadata`. Reports scored from them carry an `observation` block, and
+  the console, Markdown and HTML reports name the channels that were not
+  observed, so a black-box import (garak, promptfoo without tracing) is never
+  presented as a clean audit of tool calls or memory.
+- `agentleak run --format sarif` (and `report --format sarif`): SARIF 2.1.0 for
+  trace findings, with rule ids `agentleak/trace/<data_type>`, the channel and
+  level on each result, the event as location and no values.
+- GitHub Action: optional `sarif` output for code scanning
+  (`security-events: write`) and an optional sticky pull-request comment
+  (`pr-comment`, `pull-requests: write`) with the verdict, the per-channel
+  table and, given a `baseline` report, new and resolved findings.
+- **Context-window rules** (`detectors/context.py`) for values that are
+  ambiguous alone: local phone numbers (`ctx_phone_local`), dates of birth
+  (`ctx_dob`), account numbers (`ctx_account_number`), salaries (`ctx_salary`,
+  `ctx_salary_verb`) and health conditions (`ctx_health_diagnosis`,
+  `ctx_health_symptom`), in English, French and Spanish. A value is reported
+  only with a cue word a few glue words before it, never across a sentence
+  break; findings carry `metadata.rule` and a confidence of 0.50–0.60.
+- **US addresses with a city, state and ZIP tail** (`address_us_zip`) and US
+  military mail (`address_us_military`), read without a street-type word.
+- **A cued-prose condition** in the quality measurement
+  (`scripts/detection_quality_cued.py`, `docs/detection-quality-cued.md`):
+  templates frozen before any rule, a seeded development/held-out split, and
+  104 new look-alike hard negatives, half held out. English cued-prose recall
+  on the held-out half: 0.604 (339/561) → 0.881 (494/561). Uncued English prose:
+  0.574 (217/378) → 0.627 (237/378).
+- `scripts/judge_agreement.py`: agreement harness for the LLM-judge tier
+  (Cohen's kappa with a cluster-bootstrap interval, confusion table, judge
+  model, prompt hash) against the PrivacyLens pack. Bring your own key, off by
+  default; **no agreement figure is published yet.**
+- `scripts/scenario_scores.py`, `scripts/detection_stdlib_check.py`,
+  `scripts/email_regex_check.py`: the before/after measurements of this entry.
+- Medications: `enalapril`, `lisinopril`, `ramipril`, `amlodipine`/`amlodipino`,
+  `losartan`/`losartán`, `bisoprolol`, `simvastatin` and its FR/ES forms.
+
+### Changed
+
+- Bundled scenarios: 362 → 491. `/llms.txt`, `docs/mcp.md` and the MCP server
+  text quote the new total.
+- `scripts/build_benchmark.py` and `research.corpus.FAILURE_MODES` classify
+  the AgentSocialBench pack as `norm` and the MCPTox pack as `hijack`.
+- Project settings, Integrate, Identity & code and Administration use the same
+  dense sections and tables as the rest of the app. Administration shows every
+  rate and mean with its denominator and no longer shows a "healthy" badge it
+  could not back.
+- `GET /api/projects` returns `run_count`, `avg_risk_index` and `last_run`,
+  like `GET /api/projects/{id}`.
+
+### Fixed
+
+- Saving project settings replaced the whole project config, dropping the
+  project's test agents, its API key and any gate. The form now merges into
+  the stored config.
+- A rebuild of the GUI under a running server served a stale `index.html`
+  pointing at deleted assets until restart; it is re-read when it changes.
+- An evaluation gate sent with `POST /api/projects/{id}/runs` was ignored. It
+  is applied unless the project defines its own.
+- Account and project deletion, agent-card removal and API-key rotation ask
+  for confirmation in the app's dialog.
+- `integrations.openai_swarm.trace_from_messages` dropped every
+  `function_call`, `function_call_output`, `reasoning` and handoff item of an
+  OpenAI Agents SDK `to_input_list()`; a leak passed to a tool scored as a
+  clean Pass. It now reads them with the converter the self-test uses. It also
+  records `system`/`developer` messages as `user_input`.
+- `integrations.otel.trace_from_spans` produced no event for OpenTelemetry
+  GenAI semantic-convention spans (`execute_tool`, `chat`, `invoke_agent` …).
+  It now reads them, alone or mixed with OpenInference spans. The promptfoo
+  assertion with `require_trace: true` therefore grades such traces instead of
+  reporting INCOMPLETE.
+- The Action's job summary and step outputs now escape report values (data
+  types, channels, file names) and run the CLI between `stop-commands`
+  markers.
+- **Sanitizer left part of an email behind** (`dana.[REDACTED_ADDRESS]@example.com`):
+  a postal-code-shaped run inside the local part was reported as an address
+  and won as the inner span. It is no longer reported there, and an email span
+  is now removed whole.
+- **Sanitizer did not remove `MRN-12345678`.** The prefixed record number is
+  now one `health_identifier` token (`mrn_token`), and `MRN_RE` no longer takes
+  the lowercase words after the number with it.
+- A full name read across a possessive ("John Doe's Personal Finance") was
+  reported as "John Doe Personal", a string absent from the text that the
+  Sanitizer could not remove; it is now "John Doe".
+- **`compliance.SECRET_TYPES` lacked `llm_api_key`, `google_api_key` and
+  `bearer_token`**, so a leaked model-provider key, Google key or bearer token
+  did not put GDPR Art. 32 at risk. No bundled scenario leaks one of these
+  types, so no bundled compliance posture changes.
+- A new property test checks that every value the detectors find in the
+  bundled scenarios and the cued-prose set is gone from the Sanitizer's
+  output and not found again by a re-scan.
+
+### Performance
+
+- Detector throughput on the 0.18.0 corpus: 2,153–2,339 → 2,084–2,223
+  events/s (best of 10, three runs each); `analyze()` 201–224 → 203–214
+  traces/s. About 5–8% slower. `EMAIL_RE` was already linear in 0.19.0
+  (0.0006 s on `"a" * 50000 + "@"`); a guard test now keeps it so.
+
+### Database
+
+- Two new tables, `finding_triage` and `finding_fingerprints`, and two
+  indexes, created with `CREATE ... IF NOT EXISTS` at start-up. No existing
+  table or row is changed; a database opened by this version still opens with
+  0.19.0. Finding fingerprints are HMAC-SHA256 values under a key read from
+  `AGENTLEAK_FINGERPRINT_KEY` or created in `agentleak-fingerprint.key` next
+  to the database (mode 0600); raw values are never stored. Back that key up
+  with the database: without it, decisions still apply to old runs but only
+  by masked value.
+
 ## [0.19.1] - 2026-11-15
 
 Security release. No new feature, no score change.

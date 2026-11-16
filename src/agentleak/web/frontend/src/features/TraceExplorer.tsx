@@ -1,12 +1,15 @@
 // SPDX-FileCopyrightText: 2026 AgentLeak contributors
 // SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff, FileUp, Search } from "lucide-react"
+import { ArrowRight, ChevronLeft, ChevronRight, Download, Eye, EyeOff, FileUp, Search } from "lucide-react"
 import { toast } from "sonner"
 import { api, type Finding, type LeakPath, type LeakStep, type Report, type TraceDoc, type TraceEvent } from "@/lib/api"
+import { download } from "@/lib/format"
+import { leakPathsJson, leakPathsSvg } from "@/lib/leakpath"
 import { channelSplit, useMeta } from "@/lib/meta"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { LevelChip } from "./Chips"
 
@@ -276,6 +279,28 @@ export function TraceExplorer({
           <span className="ml-auto text-[11px] tnum text-muted-foreground" aria-live="polite">
             {filtered.length} of {rows.length} events
           </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8" disabled={!(report.leak_paths ?? []).length}>
+                <Download /> Leak paths
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(["svg", "json"] as const).map((fmt) => (
+                <DropdownMenuItem
+                  key={fmt}
+                  onSelect={() => {
+                    const name = `leak-paths-${report.run_id}.${fmt}`
+                    if (fmt === "svg") download(name, leakPathsSvg(report), "image/svg+xml")
+                    else download(name, leakPathsJson(report), "application/json")
+                    toast.success(`Exported ${(report.leak_paths ?? []).length} leak path(s) to ${name}, values masked`)
+                  }}
+                >
+                  {fmt.toUpperCase()}, all {(report.leak_paths ?? []).length} paths, values masked
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5" role="group" aria-label="Channels">
           {[

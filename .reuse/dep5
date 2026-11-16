@@ -41,6 +41,31 @@ Comment: Derived from InjecAgent by Zhan, Liang, Ying and Kang (Findings of ACL
  and reshaped into AgentLeak traces with an added exfiltration step; built by
  scripts/packs/build_injecagent_pack.py.
 
+Files: src/agentleak/scenarios/packs/agentsocialbench_ma.json
+Copyright: 2026 Prince Zizhuang Wang, Shuli Jiang (AgentSocialBench authors); 2026
+ AgentLeak contributors for the selection, conversion and packaging
+License: MIT
+Comment: Derived from AgentSocialBench, https://github.com/kingofspace0wzz/agentsocialbench,
+ commit 6d8497c05dbab812714b2545a563e6fe7d4160ec. 105 scenarios were selected and
+ reshaped into AgentLeak traces; built by scripts/packs/build_agentsocialbench_pack.py.
+
+Files: src/agentleak/scenarios/packs/mcptox_recipient_hijack.json
+Copyright: MCPTox contributors; 2026 AgentLeak contributors for the selection,
+ conversion and packaging
+License: CC-BY-4.0
+Comment: Derived from MCPTox (Wang et al., AAAI 2026),
+ https://github.com/zhiqiangwang4/MCPTox-Benchmark, commit
+ 630121b3275f74cc72d000a7a056e4d3c68648ef. 24 of 1,348 malicious instances were
+ selected and reshaped into AgentLeak traces; third-party tool descriptions were
+ replaced by tool names; canaries and a flow preset were added. Built by
+ scripts/packs/build_mcptox_pack.py.
+
+Files: tests/fixtures/report_pin_healthcare_patient_summary.json
+Copyright: 2026 AgentLeak contributors
+License: MIT
+Comment: Report of a synthetic built-in scenario, pinned before the
+ security-framework mapping was added.
+
 Files: scripts/detection_quality_fr.json scripts/detection_hard_negatives.json
 Copyright: 2026 AgentLeak contributors
 License: MIT

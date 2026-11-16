@@ -39,7 +39,9 @@ belongs to a real person.
 
 ## How to read the result
 
-**Structured recall is 1.000** (114/114) and **prose recall 0.860** (98/114).
+**Structured recall is 1.000** (114/114) and **prose recall 0.860** (98/114),
+unchanged since the 0.19.0 release. Cued prose, with a development and a held-out half, is
+on [its own page](detection-quality-cued.md).
 On 0.18.0 the same set gives 0.684 (78/114) and 0.623 (71/114).
 
 Read the sequence, because the set and the rules were written by the same hand.
@@ -72,7 +74,7 @@ decimals.
 
 ## Results
 
-AgentLeak 0.18.0 · language: fr · tier: fast (deterministic: regex + dictionaries)
+AgentLeak 0.19.0 · language: fr · tier: fast (deterministic: regex + dictionaries)
 Not run: presidio, semantic judge.
 Ground truth: made-up labelled French values in scripts/detection_quality_fr.json.
 

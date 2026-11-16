@@ -266,6 +266,7 @@ class AgentLeakRunner:
             policy_evaluation=policy_evaluation,
             subject_evaluation=subject_evaluation,
             task_success=trace.task_success,
+            observation=_observation_of(trace),
             warnings=run_warnings,
             detection_mode=self._pipeline.mode.value,
             tiers=self._pipeline.finding_tiers,
@@ -286,6 +287,28 @@ class AgentLeakRunner:
 # Types whose value names a category rather than identifying anyone; anchoring
 # on them would report every later mention of the word.
 _NOT_ANCHORS = frozenset({"employment_status", "internal_note"})
+
+
+def _observation_of(trace: Trace) -> dict[str, Any] | None:
+    """The importer's statement of what the trace's source could observe."""
+    from .trace import CHANNELS
+
+    value = trace.metadata.get("observation") if isinstance(trace.metadata, dict) else None
+    if not isinstance(value, dict) or not value:
+        return None
+
+    def channels(key: str) -> list[str]:
+        items = value.get(key)
+        return [c for c in items if c in CHANNELS] if isinstance(items, list) else []
+
+    # Only known keys of known types reach the report: a trace file is data.
+    return {
+        "source": str(value.get("source") or "unknown")[:80],
+        "observable_channels": channels("observable_channels"),
+        "unobserved_channels": channels("unobserved_channels"),
+        "black_box": bool(value.get("black_box")),
+        "note": str(value.get("note") or "")[:600],
+    }
 
 
 #: Distinct values x events that provenance may compare by substring search.

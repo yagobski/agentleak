@@ -12,6 +12,7 @@ from typing import Any
 
 from . import compliance as _compliance
 from . import flow as _flow
+from . import security_frameworks as _security_frameworks
 from .agentrisk import BASELINE_CHANNELS, LEVEL_LABELS
 from .detector import Finding, Severity
 from .privacy_policy import PolicyEvaluation
@@ -195,6 +196,11 @@ class AnalysisResult:
     subject_evaluation: Any = None
     #: The trace's own task_success, when the caller declared one.
     task_success: bool | None = None
+    #: What the trace's source could observe (``trace.metadata["observation"]``,
+    #: set by the importers). A black-box red-team log sees only the prompt and
+    #: the reply; the report carries that so silence on the other channels is
+    #: not read as a clean audit of them.
+    observation: dict[str, Any] | None = None
 
     # -- convenience accessors (used by the SDK and reporters) -----------
     @property
@@ -334,6 +340,7 @@ class AnalysisResult:
             "warnings": list(self.warnings),
             "privacy_policy": self.policy_evaluation.to_dict(),
             **({"utility": self.utility()} if self.task_success is not None else {}),
+            **({"observation": self.observation} if self.observation else {}),
             **(
                 {"cross_session": self.subject_evaluation.to_dict()}
                 if self.subject_evaluation is not None
@@ -365,6 +372,9 @@ class AnalysisResult:
             "agentrisk": agentrisk,
         }
         data["compliance"] = _compliance.evaluate(data)
+        # Added after compliance and read-only over the findings, so no
+        # existing key or count moves (pinned in tests/test_security_frameworks.py).
+        data["security_frameworks"] = _security_frameworks.evaluate(data)
         data["flow"] = _flow.build_topology(self.events, self.findings)
         data["leak_paths"] = _flow.build_leak_paths(
             self.events, self.findings, redact=self.redact_values
