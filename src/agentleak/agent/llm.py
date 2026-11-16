@@ -59,15 +59,12 @@ def resolve_api_key(base_url: str, explicit: str = "") -> str:
     # a tenant's URL: tenants bring their own key or send none.
     if guard_enabled():
         return ""
-    import urllib.parse as _up
+    # A provider's key goes only to that provider's host, and a host nobody
+    # vouched for gets no key (it used to get OPENAI_API_KEY): the URL may
+    # come from a configuration file a pull request can edit.
+    from ..core.keys import default_key
 
-    hostname = (_up.urlparse(base_url).hostname or "").lower().rstrip(".")
-    for host, env in _KEY_ENV_BY_HOST.items():
-        # Match the host itself, not a substring of the URL: the path or a
-        # look-alike host ("openrouter.ai.example") must not select a key.
-        if hostname == host or hostname.endswith("." + host):
-            return os.environ.get(env, "")
-    return os.environ.get("OPENAI_API_KEY", "")
+    return default_key(base_url)
 
 
 @dataclass

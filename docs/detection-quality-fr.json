@@ -1,5 +1,5 @@
 {
-  "software_version": "0.20.0",
+  "software_version": "0.20.1",
   "language": "fr",
   "detector_tier": "fast (deterministic: regex + dictionaries)",
   "tiers_not_run": [

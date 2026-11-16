@@ -121,17 +121,11 @@ class LLMJudgeDetector(Detector):
     # ------------------------------------------------------------------
 
     def _resolve_key(self) -> str:
-        for var in (
-            "OPENAI_API_KEY",
-            "OPENROUTER_API_KEY",
-            "ANTHROPIC_API_KEY",
-            "TOGETHER_API_KEY",
-            "GROQ_API_KEY",
-        ):
-            val = os.environ.get(var, "")
-            if val:
-                return val
-        return ""
+        # Only a key that may go to this endpoint (see core/keys.py): the
+        # first set provider key used to be sent to whatever URL was given.
+        from ..core.keys import default_key
+
+        return default_key(self._base_url)
 
     def _cache_get(self, key: str) -> list[dict[str, Any]] | None:
         return self._cache.get(key)

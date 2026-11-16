@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -174,11 +173,16 @@ def analyze_unit(
 
 def _live_llm(manifest: Manifest) -> Any:
     from ..agent.llm import LLMConfig, OpenAICompatLLM
+    from ..core.keys import key_for
 
     agent = manifest.agent
-    key = os.environ.get(agent.api_key_env, "") if agent.api_key_env else ""
+    base_url = agent.base_url or "https://api.openai.com/v1"
+    # A manifest is a file others write; it may not send any variable anywhere.
+    key, refused = key_for(agent.api_key_env, base_url)
+    if refused:
+        raise RunError(f"agent.api_key_env: {refused}")
     cfg = LLMConfig(
-        base_url=agent.base_url or "https://api.openai.com/v1",
+        base_url=base_url,
         model=agent.model,
         api_key=key,
         temperature=agent.temperature,

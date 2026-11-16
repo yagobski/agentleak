@@ -6,6 +6,29 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-16
+
+Security release. No new feature, no score change.
+
+### Security
+
+- A configuration file can no longer send an arbitrary environment variable
+  to a host it chooses. `detection.llm_judge.api_key_env`, a bench manifest's
+  `agent.api_key_env` and the live-agent key lookup now follow one rule: a
+  known provider's key goes only to that provider's host, another `*_API_KEY`
+  only to a server on this machine, anything else only when the operator
+  lists it in `AGENTLEAK_KEY_ENVS` (`NAME@host` or `NAME`). In CI, a pull
+  request that edits the configuration could otherwise have sent a secret
+  the job exposes (a token, another provider's key) to its own host.
+- A live agent pointed at a host AgentLeak does not know no longer receives
+  `OPENAI_API_KEY`, and the LLM judge no longer sends the first provider key
+  it finds to whatever endpoint it was given.
+
+**Behaviour change.** A setup that sends a key under another name, or to
+another host (Azure OpenAI, a company gateway), needs one line in the
+environment, for example `AGENTLEAK_KEY_ENVS=AZURE_OPENAI_KEY@myres.openai.azure.com`.
+The run's warnings print the exact line.
+
 ## [0.20.0] - 2026-11-16
 
 Feature release: two new scenario packs, an AI-security framework mapping,
