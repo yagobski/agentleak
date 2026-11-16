@@ -6,6 +6,10 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-16
+
+Security release. No new feature, no score change.
+
 ### Security
 
 - A configuration file can no longer send an arbitrary environment variable
