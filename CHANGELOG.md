@@ -6,7 +6,7 @@ All notable changes to AgentLeak OSS are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.20.0] - 2026-11-15
+## [0.20.0] - 2026-11-16
 
 Feature release: two new scenario packs, an AI-security framework mapping,
 finding triage, imports from other testing tools and better recall on
